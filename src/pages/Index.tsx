@@ -9,7 +9,7 @@ const Index = () => {
           浮世絵 · Ukiyo-e
         </p>
         <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight mb-4">
-          Floating World<br />
+          Japanese World<br />
           <span className="text-primary">Image Generator</span>
         </h1>
         <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed">
