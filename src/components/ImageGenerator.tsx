@@ -7,9 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const EXAMPLE_PROMPTS = [
   "A great wave crashing against Mount Fuji at sunset",
-  "A geisha walking through a bamboo forest in autumn",
   "Koi fish swimming in a tranquil garden pond",
-  "A samurai meditating under cherry blossoms",
   "A crane flying over misty mountains at dawn",
 ];
 
@@ -55,6 +53,7 @@ export default function ImageGenerator() {
           className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary"
         />
 
+        <p className="font-display font-bold text-sm text-foreground">Suggestions</p>
         <div className="flex flex-wrap gap-2">
           {EXAMPLE_PROMPTS.map((p) => (
             <button
