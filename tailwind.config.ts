@@ -13,7 +13,14 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        display: ['"Noto Serif JP"', 'serif'],
+      },
       colors: {
+        ink: "hsl(var(--ink))",
+        gold: "hsl(var(--gold))",
+        cream: "hsl(var(--cream))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
