@@ -64,7 +64,24 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      setImageUrl(data.imageUrl);
+      let finalUrl = data.imageUrl;
+
+      // Second pass: upscale/enhance
+      setEnhancing(true);
+      try {
+        const { data: upData, error: upError } = await supabase.functions.invoke("upscale-image", {
+          body: { imageUrl: data.imageUrl, aspectRatio: printSize.ratio },
+        });
+        if (!upError && upData?.imageUrl) {
+          finalUrl = upData.imageUrl;
+        }
+      } catch (upErr) {
+        console.warn("Upscale pass skipped:", upErr);
+      } finally {
+        setEnhancing(false);
+      }
+
+      setImageUrl(finalUrl);
 
       if (saveToGalleryEnabled) {
         setSaving(true);
