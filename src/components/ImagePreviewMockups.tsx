@@ -150,7 +150,7 @@ export default function ImagePreviewMockups({ imageUrl, alt, disabled, children 
         </Select>
 
         {mode === "frame" && (
-          <Select value={frameStyle} onValueChange={setFrameStyle}>
+          <Select value={frameStyle} onValueChange={setFrameStyle} disabled={disabled}>
             <SelectTrigger className="w-[160px] font-display text-xs h-9">
               <SelectValue />
             </SelectTrigger>
