@@ -11,7 +11,7 @@ export const PRINT_SIZES: PrintSize[] = [
   { label: "Classic", dimensions: "30 × 40 cm", ratio: "3:4" },
   { label: "Poster", dimensions: "50 × 70 cm", ratio: "5:7" },
   { label: "Large", dimensions: "60 × 90 cm", ratio: "2:3" },
-  { label: "Panoramic", dimensions: "50 × 100 cm", ratio: "1:2" },
+  { label: "Panoramic", dimensions: "100 × 50 cm", ratio: "2:1" },
 ];
 
 interface Props {
