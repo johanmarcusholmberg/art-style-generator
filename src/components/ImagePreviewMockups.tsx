@@ -92,10 +92,7 @@ export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMocku
       </div>
 
       {/* Preview area */}
-      <div className={cn(
-        "w-full flex items-center justify-center rounded-sm p-8 transition-colors",
-        mode === "frame" ? selectedFrame.bg : ""
-      )}>
+      <div className="w-full flex items-center justify-center">
         {mode === "original" && (
           <img
             src={imageUrl}
