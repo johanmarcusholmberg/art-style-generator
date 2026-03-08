@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { cacheImageFromUrl, getCachedImage } from "@/lib/image-cache";
 
 interface GenerationState {
-  imageUrl: string | null;
-  baseImageUrl: string | null;
   prompt: string;
   savedToGallery: boolean;
 }
@@ -11,6 +10,8 @@ const STORAGE_KEY_PREFIX = "gen-state-";
 
 export function usePersistedGeneration(mode: "japanese" | "freestyle", initialPrompt?: string) {
   const key = STORAGE_KEY_PREFIX + mode;
+  const imgKey = `img-${mode}`;
+  const baseImgKey = `img-base-${mode}`;
 
   const loadState = (): GenerationState | null => {
     try {
@@ -23,42 +24,67 @@ export function usePersistedGeneration(mode: "japanese" | "freestyle", initialPr
 
   const cached = loadState();
 
-  const [imageUrl, setImageUrl] = useState<string | null>(cached?.imageUrl ?? null);
-  const [baseImageUrl, setBaseImageUrl] = useState<string | null>(cached?.baseImageUrl ?? null);
+  const [imageUrl, setImageUrlState] = useState<string | null>(null);
+  const [baseImageUrl, setBaseImageUrlState] = useState<string | null>(null);
   const [prompt, setPrompt] = useState(initialPrompt || cached?.prompt || "");
   const [savedToGallery, setSavedToGallery] = useState(cached?.savedToGallery ?? false);
 
-  const persist = useCallback((state: Partial<GenerationState>) => {
+  // Restore images from IndexedDB on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [img, baseImg] = await Promise.all([
+        getCachedImage(imgKey),
+        getCachedImage(baseImgKey),
+      ]);
+      if (!cancelled) {
+        if (img) setImageUrlState(img);
+        if (baseImg) setBaseImageUrlState(baseImg);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [imgKey, baseImgKey]);
+
+  const persistMeta = useCallback((state: Partial<GenerationState>) => {
     try {
-      const current = loadState() || { imageUrl: null, baseImageUrl: null, prompt: "", savedToGallery: false };
+      const current = loadState() || { prompt: "", savedToGallery: false };
       sessionStorage.setItem(key, JSON.stringify({ ...current, ...state }));
     } catch { /* quota exceeded, ignore */ }
   }, [key]);
 
   // Wrap setters to also persist
-  const setImageUrlPersisted = useCallback((url: string | null) => {
-    setImageUrl(url);
-    persist({ imageUrl: url });
-  }, [persist]);
+  const setImageUrl = useCallback(async (url: string | null) => {
+    if (url) {
+      // Cache to IndexedDB as base64, then set state with the data-URL
+      const dataUrl = await cacheImageFromUrl(imgKey, url);
+      setImageUrlState(dataUrl);
+    } else {
+      setImageUrlState(null);
+    }
+  }, [imgKey]);
 
-  const setBaseImageUrlPersisted = useCallback((url: string | null) => {
-    setBaseImageUrl(url);
-    persist({ baseImageUrl: url });
-  }, [persist]);
+  const setBaseImageUrl = useCallback(async (url: string | null) => {
+    if (url) {
+      const dataUrl = await cacheImageFromUrl(baseImgKey, url);
+      setBaseImageUrlState(dataUrl);
+    } else {
+      setBaseImageUrlState(null);
+    }
+  }, [baseImgKey]);
 
   const setPromptPersisted = useCallback((p: string) => {
     setPrompt(p);
-    persist({ prompt: p });
-  }, [persist]);
+    persistMeta({ prompt: p });
+  }, [persistMeta]);
 
   const setSavedToGalleryPersisted = useCallback((v: boolean) => {
     setSavedToGallery(v);
-    persist({ savedToGallery: v });
-  }, [persist]);
+    persistMeta({ savedToGallery: v });
+  }, [persistMeta]);
 
   return {
-    imageUrl, setImageUrl: setImageUrlPersisted,
-    baseImageUrl, setBaseImageUrl: setBaseImageUrlPersisted,
+    imageUrl, setImageUrl,
+    baseImageUrl, setBaseImageUrl,
     prompt, setPrompt: setPromptPersisted,
     savedToGallery, setSavedToGallery: setSavedToGalleryPersisted,
   };
