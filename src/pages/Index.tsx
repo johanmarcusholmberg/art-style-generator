@@ -1,4 +1,6 @@
 import ImageGenerator from "@/components/ImageGenerator";
+import FreestyleImageGenerator from "@/components/FreestyleImageGenerator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   return (
@@ -20,8 +22,23 @@ const Index = () => {
       </header>
 
       {/* Generator */}
-      <main className="pb-20">
-        <ImageGenerator />
+      <main className="pb-20 px-4">
+        <Tabs defaultValue="japanese" className="w-full max-w-4xl mx-auto">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="japanese" className="font-display text-sm">
+              🏯 Japanese Scenes
+            </TabsTrigger>
+            <TabsTrigger value="freestyle" className="font-display text-sm">
+              🎨 Freestyle
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="japanese">
+            <ImageGenerator />
+          </TabsContent>
+          <TabsContent value="freestyle">
+            <FreestyleImageGenerator />
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Footer */}
