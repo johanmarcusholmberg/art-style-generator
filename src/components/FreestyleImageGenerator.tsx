@@ -87,7 +87,7 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
         setSaving(true);
         try {
           await saveToGallery({
-            imageUrl: data.imageUrl,
+            imageUrl: finalUrl,
             prompt: prompt.trim(),
             mode: "freestyle",
             aspectRatio: printSize.ratio,
