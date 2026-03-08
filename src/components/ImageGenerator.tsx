@@ -198,12 +198,18 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
         {!loading && !enhancing && imageUrl && (
           <div className="flex flex-col items-center gap-4 p-4 w-full">
             {viewVersion === "compare" && hasEnhanced ? (
-              <BeforeAfterSlider
-                beforeUrl={baseImageUrl!}
-                afterUrl={imageUrl}
+              <ImagePreviewMockups
+                imageUrl={imageUrl}
                 alt={prompt}
-                className="max-w-full"
-              />
+                disabled
+              >
+                <BeforeAfterSlider
+                  beforeUrl={baseImageUrl!}
+                  afterUrl={imageUrl}
+                  alt={prompt}
+                  className="max-w-full"
+                />
+              </ImagePreviewMockups>
             ) : (
               <ImagePreviewMockups
                 imageUrl={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
