@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 
 type ViewMode = "original" | "frame";
 
@@ -42,20 +43,17 @@ function useEdgeColor(imageUrl: string): string | null {
         canvas.height = img.naturalHeight;
         ctx.drawImage(img, 0, 0);
 
-        // Sample pixels along all four edges
         const w = canvas.width;
         const h = canvas.height;
         let r = 0, g = 0, b = 0, count = 0;
         const step = Math.max(1, Math.floor(Math.max(w, h) / 40));
 
-        // Top & bottom edges
         for (let x = 0; x < w; x += step) {
           for (const y of [0, h - 1]) {
             const d = ctx.getImageData(x, y, 1, 1).data;
             r += d[0]; g += d[1]; b += d[2]; count++;
           }
         }
-        // Left & right edges
         for (let y = 0; y < h; y += step) {
           for (const x of [0, w - 1]) {
             const d = ctx.getImageData(x, y, 1, 1).data;
@@ -70,7 +68,6 @@ function useEdgeColor(imageUrl: string): string | null {
           setColor(`rgb(${r},${g},${b})`);
         }
       } catch {
-        // CORS or other error — fallback
         setColor(null);
       }
     };
@@ -90,7 +87,6 @@ function FramedImage({ imageUrl, alt, frame, edgeColor, className }: { imageUrl:
     }
   }, []);
 
-  // Scale thickness proportionally: use shorter side as reference
   const shortSide = dims ? Math.min(dims.w, dims.h) : 500;
   const framePx = Math.max(4, Math.round(shortSide * 0.02));
   const innerPx = Math.max(1, Math.round(shortSide * 0.005));
@@ -113,6 +109,28 @@ function FramedImage({ imageUrl, alt, frame, edgeColor, className }: { imageUrl:
   );
 }
 
+function FramedContent({ children, frame, edgeColor }: { children: React.ReactNode; frame: FrameStyle; edgeColor: string | null }) {
+  const framePx = 8;
+  const innerPx = 2;
+  const matPx = 24;
+
+  const matStyle: React.CSSProperties = {
+    padding: matPx,
+    ...(edgeColor ? { backgroundColor: edgeColor } : {}),
+  };
+  const matClass = edgeColor ? "" : "bg-muted";
+
+  return (
+    <div className={cn("rounded-sm shadow-xl", frame.border)} style={{ padding: framePx }}>
+      <div className={cn(frame.inner)} style={{ padding: innerPx }}>
+        <div className={cn(matClass)} style={matStyle}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const VIEW_MODES: { id: ViewMode; label: string }[] = [
   { id: "original", label: "Original" },
   { id: "frame", label: "Framed" },
@@ -121,22 +139,22 @@ const VIEW_MODES: { id: ViewMode; label: string }[] = [
 interface ImagePreviewMockupsProps {
   imageUrl: string;
   alt: string;
-  disabled?: boolean;
-  children?: React.ReactNode;
+  compareUrl?: string;
 }
 
-export default function ImagePreviewMockups({ imageUrl, alt, disabled, children }: ImagePreviewMockupsProps) {
+export default function ImagePreviewMockups({ imageUrl, alt, compareUrl }: ImagePreviewMockupsProps) {
   const [mode, setMode] = useState<ViewMode>("original");
   const [frameStyle, setFrameStyle] = useState<string>(FRAME_STYLES[0].id);
   const edgeColor = useEdgeColor(imageUrl);
 
   const selectedFrame = FRAME_STYLES.find((f) => f.id === frameStyle) || FRAME_STYLES[0];
+  const isCompare = !!compareUrl;
 
   return (
     <div className="flex flex-col items-center gap-4 w-full">
       {/* Controls row */}
       <div className="flex flex-wrap gap-2 items-center">
-        <Select value={mode} onValueChange={(v) => setMode(v as ViewMode)} disabled={disabled}>
+        <Select value={mode} onValueChange={(v) => setMode(v as ViewMode)}>
           <SelectTrigger className="w-[160px] font-display text-xs h-9">
             <SelectValue />
           </SelectTrigger>
@@ -150,7 +168,7 @@ export default function ImagePreviewMockups({ imageUrl, alt, disabled, children 
         </Select>
 
         {mode === "frame" && (
-          <Select value={frameStyle} onValueChange={setFrameStyle} disabled={disabled}>
+          <Select value={frameStyle} onValueChange={setFrameStyle}>
             <SelectTrigger className="w-[160px] font-display text-xs h-9">
               <SelectValue />
             </SelectTrigger>
@@ -170,8 +188,14 @@ export default function ImagePreviewMockups({ imageUrl, alt, disabled, children 
 
       {/* Preview area */}
       <div className="w-full flex items-center justify-center">
-        {children ? (
-          children
+        {isCompare ? (
+          mode === "frame" ? (
+            <FramedContent frame={selectedFrame} edgeColor={edgeColor}>
+              <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full" />
+            </FramedContent>
+          ) : (
+            <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full" />
+          )
         ) : mode === "original" ? (
           <img
             src={imageUrl}
