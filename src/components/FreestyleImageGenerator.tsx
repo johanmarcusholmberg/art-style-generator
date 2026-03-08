@@ -202,7 +202,7 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
           </div>
         )}
 
-        {!loading && !imageUrl && (
+        {!loading && !enhancing && !imageUrl && (
           <p className="font-display text-muted-foreground text-sm">
             Your artwork will appear here
           </p>

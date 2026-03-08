@@ -202,7 +202,7 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
           </div>
         )}
 
-        {!loading && !imageUrl && (
+        {!loading && !enhancing && !imageUrl && (
           <p className="font-display text-muted-foreground text-sm">
             Your artwork will appear here
           </p>
