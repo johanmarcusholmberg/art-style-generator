@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -26,6 +27,7 @@ export default function FreestyleImageGenerator() {
   const [prompt, setPrompt] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const { toast } = useToast();
 
   const generate = async () => {
@@ -35,7 +37,7 @@ export default function FreestyleImageGenerator() {
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-image-freestyle", {
-        body: { prompt: prompt.trim() },
+        body: { prompt: prompt.trim(), aspectRatio: printSize.ratio },
       });
 
       if (error) throw error;
@@ -76,6 +78,8 @@ export default function FreestyleImageGenerator() {
           ))}
         </div>
 
+        <PrintSizeSelector selected={printSize} onChange={setPrintSize} />
+
         <Button
           onClick={generate}
           disabled={loading || !prompt.trim()}
@@ -101,7 +105,7 @@ export default function FreestyleImageGenerator() {
         )}
 
         {!loading && imageUrl && (
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-4 p-4">
             <img
               src={imageUrl}
               alt={prompt}
@@ -110,11 +114,11 @@ export default function FreestyleImageGenerator() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => downloadImage(imageUrl, `ukiyoe-freestyle-${Date.now()}.png`)}
+              onClick={() => downloadImage(imageUrl, `ukiyoe-freestyle-${printSize.ratio.replace(":", "x")}-${Date.now()}.png`)}
               className="font-display text-xs tracking-wider"
             >
               <Download className="mr-2 h-4 w-4" />
-              Download HD
+              Download ({printSize.dimensions})
             </Button>
           </div>
         )}
