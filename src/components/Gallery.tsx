@@ -63,7 +63,7 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
   const [deleteTarget, setDeleteTarget] = useState<GalleryImage | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 9;
 
   const [modeFilter, setModeFilter] = useState("all");
   const [ratioFilter, setRatioFilter] = useState("all");
@@ -215,13 +215,12 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
                 </button>
                 {/* Hover preview tooltip */}
                 <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 hidden group-hover:block w-64 max-w-xs">
-                  <div className="bg-card border border-border rounded-sm shadow-xl p-2 space-y-1">
+                  <div className="bg-card border border-border rounded-sm shadow-xl p-2">
                     <img
                       src={img.publicUrl}
                       alt={img.prompt}
                       className="w-full h-auto rounded-sm object-contain max-h-64"
                     />
-                    <p className="text-[11px] font-display text-muted-foreground line-clamp-2">{img.prompt}</p>
                   </div>
                 </div>
               </div>
