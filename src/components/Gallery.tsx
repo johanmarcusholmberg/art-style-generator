@@ -193,7 +193,7 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
         </p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {filtered.map((img) => (
+          {paginated.map((img) => (
             <button
               key={img.id}
               onClick={() => setSelected(img)}
@@ -219,6 +219,45 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
             </button>
           ))}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-6">
+            {currentPage > 1 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-display text-xs"
+                onClick={() => setCurrentPage(1)}
+              >
+                ← First
+              </Button>
+            )}
+            {currentPage > 1 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-display text-xs"
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                Previous
+              </Button>
+            )}
+            <span className="text-sm font-display text-muted-foreground px-2">
+              Page {currentPage} of {totalPages}
+            </span>
+            {currentPage < totalPages && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-display text-xs"
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                Next
+              </Button>
+            )}
+          </div>
+        )}
       )}
 
       {/* Lightbox */}
