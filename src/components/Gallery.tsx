@@ -153,6 +153,8 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
       prompt: img.prompt,
       imageUrl: img.publicUrl,
       mode: img.mode as "japanese" | "freestyle",
+      originalId: img.id,
+      originalStoragePath: img.storage_path,
     });
   };
 
