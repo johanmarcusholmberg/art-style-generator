@@ -59,7 +59,7 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
     setLoading(true);
     setImageUrl(null);
     setBaseImageUrl(null);
-    setShowComparison(false);
+    setViewVersion("enhanced");
     setSavedToGallery(false);
 
     try {
