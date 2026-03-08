@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, aspectRatio } = await req.json();
+    const { prompt, aspectRatio, sourceImageUrl } = await req.json();
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "Invalid prompt" }), {
@@ -29,7 +29,25 @@ serve(async (req) => {
 
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
 
-    const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in the visual style of a traditional ukiyo-e woodblock print — use flat colors, bold outlines, washi paper texture, and sumi ink details. The subject itself should be exactly as described, do NOT change it to a Japanese setting. Do NOT include any Japanese text, characters, kanji, hiragana, katakana, or any written script in the image. Only apply the art style, nothing else Japanese. Generate at maximum resolution with fine detail suitable for large format printing: ${trimmedPrompt}.${ratioText}`;
+    let messages;
+
+    if (sourceImageUrl) {
+      // Edit mode: user provides a source image and describes changes
+      const editPrompt = `You are an image editor. Take the provided image and apply the following changes while keeping the ukiyo-e woodblock print art style (flat colors, bold outlines, washi paper texture, sumi ink details). Do NOT change the subject to a Japanese setting — only keep the art style. Do NOT include any Japanese text, characters, kanji, hiragana, katakana, or any written script. Changes requested: ${trimmedPrompt}. Generate at maximum resolution with fine detail suitable for large format printing.${ratioText}`;
+      messages = [
+        {
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: sourceImageUrl } },
+            { type: "text", text: editPrompt },
+          ],
+        },
+      ];
+    } else {
+      // Generate mode: create from scratch
+      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in the visual style of a traditional ukiyo-e woodblock print — use flat colors, bold outlines, washi paper texture, and sumi ink details. The subject itself should be exactly as described, do NOT change it to a Japanese setting. Do NOT include any Japanese text, characters, kanji, hiragana, katakana, or any written script in the image. Only apply the art style, nothing else Japanese. Generate at maximum resolution with fine detail suitable for large format printing: ${trimmedPrompt}.${ratioText}`;
+      messages = [{ role: "user", content: enhancedPrompt }];
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -39,7 +57,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "google/gemini-3-pro-image-preview",
-        messages: [{ role: "user", content: enhancedPrompt }],
+        messages,
         modalities: ["image", "text"],
       }),
     });

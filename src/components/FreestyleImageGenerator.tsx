@@ -34,8 +34,10 @@ interface FreestyleImageGeneratorProps {
 }
 
 export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, initialImageUrl }: FreestyleImageGeneratorProps) {
-  const [prompt, setPrompt] = useState(initialPrompt || "");
-  const [imageUrl, setImageUrl] = useState<string | null>(initialImageUrl || null);
+  const isEditMode = !!initialImageUrl;
+  const [prompt, setPrompt] = useState(isEditMode ? "" : (initialPrompt || ""));
+  const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveToGalleryEnabled, setSaveToGalleryEnabled] = useState(true);
@@ -48,9 +50,9 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
     setImageUrl(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke("generate-image-freestyle", {
-        body: { prompt: prompt.trim(), aspectRatio: printSize.ratio },
-      });
+      const body: any = { prompt: prompt.trim(), aspectRatio: printSize.ratio };
+      if (sourceImageUrl) body.sourceImageUrl = sourceImageUrl;
+      const { data, error } = await supabase.functions.invoke("generate-image-freestyle", { body });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -89,10 +91,16 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
       <div className="space-y-4 mb-8">
+        {isEditMode && sourceImageUrl && (
+          <div className="space-y-2">
+            <p className="font-display text-xs text-muted-foreground">Editing this image:</p>
+            <img src={sourceImageUrl} alt="Source image" className="max-h-40 rounded-sm border border-border object-contain" />
+          </div>
+        )}
         <Textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Describe any scene… e.g. 'Central Park in New York during autumn'"
+          placeholder={isEditMode ? "Describe the changes you want… e.g. 'Add more vibrant colors'" : "Describe any scene… e.g. 'Central Park in New York during autumn'"}
           className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary"
         />
 
@@ -130,10 +138,10 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Painting…
+              {isEditMode ? "Editing…" : "Painting…"}
             </>
           ) : (
-            "Generate 浮世絵"
+            isEditMode ? "Apply Changes" : "Generate 浮世絵"
           )}
         </Button>
       </div>
