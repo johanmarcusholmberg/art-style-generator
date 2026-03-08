@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
-import { saveToGallery } from "@/lib/gallery";
+import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 
 
