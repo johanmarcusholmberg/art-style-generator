@@ -109,10 +109,11 @@ function FramedImage({ imageUrl, alt, frame, edgeColor, className }: { imageUrl:
   );
 }
 
-function FramedContent({ children, frame, edgeColor }: { children: React.ReactNode; frame: FrameStyle; edgeColor: string | null }) {
-  const framePx = 8;
-  const innerPx = 2;
-  const matPx = 24;
+function FramedContent({ children, frame, edgeColor, className }: { children: React.ReactNode; frame: FrameStyle; edgeColor: string | null; className?: string }) {
+  const shortSide = 500;
+  const framePx = Math.max(4, Math.round(shortSide * 0.02));
+  const innerPx = Math.max(1, Math.round(shortSide * 0.005));
+  const matPx = Math.max(8, Math.round(shortSide * 0.06));
 
   const matStyle: React.CSSProperties = {
     padding: matPx,
@@ -121,7 +122,7 @@ function FramedContent({ children, frame, edgeColor }: { children: React.ReactNo
   const matClass = edgeColor ? "" : "bg-muted";
 
   return (
-    <div className={cn("rounded-sm shadow-xl", frame.border)} style={{ padding: framePx }}>
+    <div className={cn("rounded-sm shadow-xl", frame.border, className)} style={{ padding: framePx }}>
       <div className={cn(frame.inner)} style={{ padding: innerPx }}>
         <div className={cn(matClass)} style={matStyle}>
           {children}
@@ -191,10 +192,10 @@ export default function ImagePreviewMockups({ imageUrl, alt, compareUrl }: Image
         {isCompare ? (
           mode === "frame" ? (
             <FramedContent frame={selectedFrame} edgeColor={edgeColor}>
-              <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full" />
+              <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full max-h-[500px]" />
             </FramedContent>
           ) : (
-            <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full" />
+            <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full max-h-[600px]" />
           )
         ) : mode === "original" ? (
           <img
