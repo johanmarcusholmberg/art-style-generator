@@ -45,6 +45,7 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveToGalleryEnabled, setSaveToGalleryEnabled] = useState(true);
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
@@ -63,13 +64,30 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      setImageUrl(data.imageUrl);
+      let finalUrl = data.imageUrl;
+
+      // Second pass: upscale/enhance
+      setEnhancing(true);
+      try {
+        const { data: upData, error: upError } = await supabase.functions.invoke("upscale-image", {
+          body: { imageUrl: data.imageUrl, aspectRatio: printSize.ratio },
+        });
+        if (!upError && upData?.imageUrl) {
+          finalUrl = upData.imageUrl;
+        }
+      } catch (upErr) {
+        console.warn("Upscale pass skipped:", upErr);
+      } finally {
+        setEnhancing(false);
+      }
+
+      setImageUrl(finalUrl);
 
       if (saveToGalleryEnabled) {
         setSaving(true);
         try {
           await saveToGallery({
-            imageUrl: data.imageUrl,
+            imageUrl: finalUrl,
             prompt: prompt.trim(),
             mode: "freestyle",
             aspectRatio: printSize.ratio,
@@ -153,14 +171,16 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
       </div>
 
       <div className="relative min-h-[300px] flex items-center justify-center rounded-sm border border-border bg-card paper-texture">
-        {loading && (
+        {(loading || enhancing) && (
           <div className="flex flex-col items-center gap-4 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin" />
-            <p className="font-display text-sm">The artist is at work…</p>
+            <p className="font-display text-sm">
+              {enhancing ? "Enhancing details…" : "The artist is at work…"}
+            </p>
           </div>
         )}
 
-        {!loading && imageUrl && (
+        {!loading && !enhancing && imageUrl && (
           <div className="flex flex-col items-center gap-4 p-4 w-full">
             <ImagePreviewMockups imageUrl={imageUrl} alt={prompt} />
             <div className="flex gap-2">
@@ -182,7 +202,7 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
           </div>
         )}
 
-        {!loading && !imageUrl && (
+        {!loading && !enhancing && !imageUrl && (
           <p className="font-display text-muted-foreground text-sm">
             Your artwork will appear here
           </p>
