@@ -121,9 +121,11 @@ const VIEW_MODES: { id: ViewMode; label: string }[] = [
 interface ImagePreviewMockupsProps {
   imageUrl: string;
   alt: string;
+  disabled?: boolean;
+  children?: React.ReactNode;
 }
 
-export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMockupsProps) {
+export default function ImagePreviewMockups({ imageUrl, alt, disabled, children }: ImagePreviewMockupsProps) {
   const [mode, setMode] = useState<ViewMode>("original");
   const [frameStyle, setFrameStyle] = useState<string>(FRAME_STYLES[0].id);
   const edgeColor = useEdgeColor(imageUrl);
@@ -134,7 +136,7 @@ export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMocku
     <div className="flex flex-col items-center gap-4 w-full">
       {/* Controls row */}
       <div className="flex flex-wrap gap-2 items-center">
-        <Select value={mode} onValueChange={(v) => setMode(v as ViewMode)}>
+        <Select value={mode} onValueChange={(v) => setMode(v as ViewMode)} disabled={disabled}>
           <SelectTrigger className="w-[160px] font-display text-xs h-9">
             <SelectValue />
           </SelectTrigger>
@@ -148,7 +150,7 @@ export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMocku
         </Select>
 
         {mode === "frame" && (
-          <Select value={frameStyle} onValueChange={setFrameStyle}>
+          <Select value={frameStyle} onValueChange={setFrameStyle} disabled={disabled}>
             <SelectTrigger className="w-[160px] font-display text-xs h-9">
               <SelectValue />
             </SelectTrigger>
@@ -168,17 +170,17 @@ export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMocku
 
       {/* Preview area */}
       <div className="w-full flex items-center justify-center">
-        {mode === "original" && (
+        {children ? (
+          children
+        ) : mode === "original" ? (
           <img
             src={imageUrl}
             alt={alt}
             className="max-w-full max-h-[600px] rounded-sm animate-ink-spread"
           />
-        )}
-
-        {mode === "frame" && (
+        ) : mode === "frame" ? (
           <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} edgeColor={edgeColor} />
-        )}
+        ) : null}
       </div>
     </div>
   );
