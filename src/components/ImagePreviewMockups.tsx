@@ -81,14 +81,32 @@ function useEdgeColor(imageUrl: string): string | null {
 }
 
 function FramedImage({ imageUrl, alt, frame, edgeColor, className }: { imageUrl: string; alt: string; frame: FrameStyle; edgeColor: string | null; className?: string }) {
-  const matStyle = edgeColor ? { backgroundColor: edgeColor } : undefined;
+  const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  const onLoad = useCallback(() => {
+    if (imgRef.current) {
+      setDims({ w: imgRef.current.naturalWidth, h: imgRef.current.naturalHeight });
+    }
+  }, []);
+
+  // Scale thickness proportionally: use shorter side as reference
+  const shortSide = dims ? Math.min(dims.w, dims.h) : 500;
+  const framePx = Math.max(4, Math.round(shortSide * 0.02));
+  const innerPx = Math.max(1, Math.round(shortSide * 0.005));
+  const matPx = Math.max(8, Math.round(shortSide * 0.06));
+
+  const matStyle: React.CSSProperties = {
+    padding: matPx,
+    ...(edgeColor ? { backgroundColor: edgeColor } : {}),
+  };
   const matClass = edgeColor ? "" : "bg-muted";
 
   return (
-    <div className={cn("p-1.5 rounded-sm shadow-xl", frame.border, className)}>
-      <div className={cn("p-0.5", frame.inner)}>
-        <div className={cn("p-5", matClass)} style={matStyle}>
-          <img src={imageUrl} alt={alt} className="max-w-full max-h-[500px] shadow-inner block" />
+    <div className={cn("rounded-sm shadow-xl", frame.border, className)} style={{ padding: framePx }}>
+      <div className={cn(frame.inner)} style={{ padding: innerPx }}>
+        <div className={cn(matClass)} style={matStyle}>
+          <img ref={imgRef} src={imageUrl} alt={alt} onLoad={onLoad} className="max-w-full max-h-[500px] shadow-inner block" />
         </div>
       </div>
     </div>
