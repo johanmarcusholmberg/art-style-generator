@@ -38,6 +38,8 @@ export interface EditRequest {
   prompt: string;
   imageUrl: string;
   mode: "japanese" | "freestyle";
+  originalId: string;
+  originalStoragePath: string;
 }
 
 const downloadImage = async (url: string, filename: string) => {
@@ -151,6 +153,8 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
       prompt: img.prompt,
       imageUrl: img.publicUrl,
       mode: img.mode as "japanese" | "freestyle",
+      originalId: img.id,
+      originalStoragePath: img.storage_path,
     });
   };
 

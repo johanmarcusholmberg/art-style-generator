@@ -4,7 +4,6 @@ import FreestyleImageGenerator from "@/components/FreestyleImageGenerator";
 import Gallery from "@/components/Gallery";
 import type { EditRequest } from "@/components/Gallery";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getCachedImage } from "@/lib/image-cache";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,16 +30,10 @@ const Index = () => {
     setTimeout(() => generatorRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
   }, []);
 
-  const handleEditImage = useCallback(async (req: EditRequest) => {
-    // Check if the target generator tab has an active image in cache
-    const imgKey = `img-${req.mode}`;
-    const cached = await getCachedImage(imgKey);
-    if (cached) {
-      setPendingEdit(req);
-    } else {
-      applyEdit(req);
-    }
-  }, [applyEdit]);
+  const handleEditImage = useCallback((req: EditRequest) => {
+    // Always confirm before loading gallery image for editing
+    setPendingEdit(req);
+  }, []);
 
   // Key to force remount generators when edit state changes
   const editKey = editState ? `${editState.mode}-${editState.prompt}` : "default";
@@ -80,6 +73,8 @@ const Index = () => {
               onImageSaved={refreshGallery}
               initialPrompt={editState?.mode === "japanese" ? editState.prompt : undefined}
               initialImageUrl={editState?.mode === "japanese" ? editState.imageUrl : undefined}
+              originalImageId={editState?.mode === "japanese" ? editState.originalId : undefined}
+              originalStoragePath={editState?.mode === "japanese" ? editState.originalStoragePath : undefined}
             />
           </TabsContent>
           <TabsContent value="freestyle">
@@ -88,6 +83,8 @@ const Index = () => {
               onImageSaved={refreshGallery}
               initialPrompt={editState?.mode === "freestyle" ? editState.prompt : undefined}
               initialImageUrl={editState?.mode === "freestyle" ? editState.imageUrl : undefined}
+              originalImageId={editState?.mode === "freestyle" ? editState.originalId : undefined}
+              originalStoragePath={editState?.mode === "freestyle" ? editState.originalStoragePath : undefined}
             />
           </TabsContent>
         </Tabs>
@@ -116,9 +113,9 @@ const Index = () => {
       <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display">Replace current image?</AlertDialogTitle>
+            <AlertDialogTitle className="font-display">Edit this image?</AlertDialogTitle>
             <AlertDialogDescription>
-              You have an unsaved generated image. Loading a gallery image for editing will replace it. Continue?
+              This will load the selected image into the editor. You can then modify it with a new prompt and choose to replace the original or save as a new image.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

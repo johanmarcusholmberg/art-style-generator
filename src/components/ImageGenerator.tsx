@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
-import { saveToGallery } from "@/lib/gallery";
+import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 
 
@@ -40,15 +40,18 @@ interface ImageGeneratorProps {
   onImageSaved?: () => void;
   initialPrompt?: string;
   initialImageUrl?: string;
+  originalImageId?: string;
+  originalStoragePath?: string;
 }
 
-export default function ImageGenerator({ onImageSaved, initialPrompt, initialImageUrl }: ImageGeneratorProps) {
+export default function ImageGenerator({ onImageSaved, initialPrompt, initialImageUrl, originalImageId, originalStoragePath }: ImageGeneratorProps) {
   const isEditMode = !!initialImageUrl;
   const { prompt, setPrompt, imageUrl, setImageUrl, baseImageUrl, setBaseImageUrl, savedToGallery, setSavedToGallery } = usePersistedGeneration("japanese", isEditMode ? undefined : initialPrompt);
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
   const [loading, setLoading] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [replacing, setReplacing] = useState(false);
   const [hdEnhance, setHdEnhance] = useState(true);
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
@@ -123,6 +126,30 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
       toast({ title: "Save failed", description: saveErr.message || "Could not save", variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleReplaceOriginal = async () => {
+    if (!imageUrl || !originalImageId || !originalStoragePath || replacing) return;
+    setReplacing(true);
+    try {
+      await replaceInGallery({
+        originalId: originalImageId,
+        originalStoragePath,
+        imageUrl,
+        prompt: prompt.trim(),
+        mode: "japanese",
+        aspectRatio: printSize.ratio,
+        printSize: printSize.dimensions,
+      });
+      setSavedToGallery(true);
+      onImageSaved?.();
+      toast({ title: "Original replaced", description: "The gallery image has been updated." });
+    } catch (err: any) {
+      console.error("Replace failed:", err);
+      toast({ title: "Replace failed", description: err.message || "Could not replace", variant: "destructive" });
+    } finally {
+      setReplacing(false);
     }
   };
 
@@ -230,18 +257,33 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
                 <Download className="mr-2 h-4 w-4" />
                 Download {hasEnhanced ? (viewVersion === "original" ? "(Original)" : "(Enhanced)") : ""} ({printSize.dimensions})
               </Button>
+              {!savedToGallery && isEditMode && originalImageId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReplaceOriginal}
+                  disabled={replacing || saving}
+                  className="font-display text-xs tracking-wider"
+                >
+                  {replacing ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Replacing…</>
+                  ) : (
+                    <><Replace className="mr-2 h-4 w-4" /> Replace Original</>
+                  )}
+                </Button>
+              )}
               {!savedToGallery && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleSaveToGallery}
-                  disabled={saving}
+                  disabled={saving || replacing}
                   className="font-display text-xs tracking-wider"
                 >
                   {saving ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
                   ) : (
-                    <><Save className="mr-2 h-4 w-4" /> Save to Gallery</>
+                    <><Save className="mr-2 h-4 w-4" /> {isEditMode ? "Save as New" : "Save to Gallery"}</>
                   )}
                 </Button>
               )}
