@@ -76,7 +76,6 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
       .finally(() => setLoading(false));
   }, [refreshKey]);
 
-  // Reset to page 1 when filters change
   useEffect(() => { setCurrentPage(1); }, [modeFilter, ratioFilter]);
 
   const uniqueRatios = useMemo(
@@ -145,10 +144,10 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
 
   return (
     <>
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
+      {/* Filters + Pagination on one row */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <Select value={modeFilter} onValueChange={setModeFilter}>
-          <SelectTrigger className="w-[150px] font-display text-xs h-9">
+          <SelectTrigger className="w-[120px] font-display text-xs h-8">
             <SelectValue placeholder="Mode" />
           </SelectTrigger>
           <SelectContent>
@@ -159,8 +158,8 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
         </Select>
 
         <Select value={ratioFilter} onValueChange={setRatioFilter}>
-          <SelectTrigger className="w-[150px] font-display text-xs h-9">
-            <SelectValue placeholder="Aspect Ratio" />
+          <SelectTrigger className="w-[110px] font-display text-xs h-8">
+            <SelectValue placeholder="Ratio" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Ratios</SelectItem>
@@ -176,14 +175,48 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="font-display text-xs h-9"
+            className="font-display text-xs h-8 px-2"
             onClick={() => {
               setModeFilter("all");
               setRatioFilter("all");
             }}
           >
-            Clear filters
+            ✕
           </Button>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1 ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-display text-xs h-8 px-2"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => p - 1)}
+            >
+              ‹
+            </Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                variant={page === currentPage ? "default" : "outline"}
+                size="sm"
+                className="font-display text-xs h-8 min-w-[1.75rem] px-1"
+                onClick={() => setCurrentPage(page)}
+              >
+                {page}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-display text-xs h-8 px-2"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => p + 1)}
+            >
+              ›
+            </Button>
+          </div>
         )}
       </div>
 
@@ -192,73 +225,37 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
           No images match the selected filters.
         </p>
       ) : (
-        <>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-1 mb-4 flex-wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                className="font-display text-xs"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-5">
+          {paginated.map((img) => (
+            <div key={img.id} className="relative group">
+              <button
+                onClick={() => setSelected(img)}
+                className="relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
               >
-                ‹ Föregående
-              </Button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <Button
-                  key={page}
-                  variant={page === currentPage ? "default" : "outline"}
-                  size="sm"
-                  className="font-display text-xs min-w-[2rem]"
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </Button>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                className="font-display text-xs"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-              >
-                Nästa ›
-              </Button>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-5">
-            {paginated.map((img) => (
-              <div key={img.id} className="relative group">
-                <button
-                  onClick={() => setSelected(img)}
-                  className="relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
-                >
+                <img
+                  src={img.publicUrl}
+                  alt={img.prompt}
+                  className="w-full h-full object-cover block"
+                  loading="lazy"
+                />
+                {/* Hover: show full image on top */}
+                <div className="absolute inset-0 bg-card opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center p-2 z-20">
                   <img
                     src={img.publicUrl}
                     alt={img.prompt}
-                    className="w-full h-full object-cover block"
-                    loading="lazy"
+                    className="max-w-full max-h-full object-contain rounded-sm"
                   />
-                  {/* Hover: show full image on top */}
-                  <div className="absolute inset-0 bg-card opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center p-2 z-20">
-                    <img
-                      src={img.publicUrl}
-                      alt={img.prompt}
-                      className="max-w-full max-h-full object-contain rounded-sm"
-                    />
-                  </div>
-                  <Badge
-                    variant="secondary"
-                    className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80 z-30"
-                  >
-                    {img.mode === "japanese" ? "🏯" : "🎨"}
-                  </Badge>
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
+                </div>
+                <Badge
+                  variant="secondary"
+                  className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80 z-30"
+                >
+                  {img.mode === "japanese" ? "🏯" : "🎨"}
+                </Badge>
+              </button>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Lightbox */}
