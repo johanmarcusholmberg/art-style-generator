@@ -121,9 +121,11 @@ const VIEW_MODES: { id: ViewMode; label: string }[] = [
 interface ImagePreviewMockupsProps {
   imageUrl: string;
   alt: string;
+  disabled?: boolean;
+  children?: React.ReactNode;
 }
 
-export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMockupsProps) {
+export default function ImagePreviewMockups({ imageUrl, alt, disabled, children }: ImagePreviewMockupsProps) {
   const [mode, setMode] = useState<ViewMode>("original");
   const [frameStyle, setFrameStyle] = useState<string>(FRAME_STYLES[0].id);
   const edgeColor = useEdgeColor(imageUrl);
