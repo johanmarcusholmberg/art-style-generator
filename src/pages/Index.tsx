@@ -1,12 +1,27 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import ImageGenerator from "@/components/ImageGenerator";
 import FreestyleImageGenerator from "@/components/FreestyleImageGenerator";
 import Gallery from "@/components/Gallery";
+import type { EditRequest } from "@/components/Gallery";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const [galleryRefreshKey, setGalleryRefreshKey] = useState(0);
+  const [activeTab, setActiveTab] = useState("japanese");
+  const [editState, setEditState] = useState<EditRequest | null>(null);
+  const generatorRef = useRef<HTMLDivElement>(null);
+
   const refreshGallery = useCallback(() => setGalleryRefreshKey((k) => k + 1), []);
+
+  const handleEditImage = useCallback((req: EditRequest) => {
+    setActiveTab(req.mode);
+    setEditState(req);
+    // Scroll to generator
+    setTimeout(() => generatorRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  }, []);
+
+  // Key to force remount generators when edit state changes
+  const editKey = editState ? `${editState.mode}-${editState.prompt}` : "default";
 
   return (
     <div className="min-h-screen bg-background paper-texture">
@@ -27,8 +42,8 @@ const Index = () => {
       </header>
 
       {/* Generator */}
-      <main className="pb-12 px-4">
-        <Tabs defaultValue="japanese" className="w-full max-w-4xl mx-auto">
+      <main className="pb-12 px-4" ref={generatorRef}>
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setEditState(null); }} className="w-full max-w-4xl mx-auto">
           <TabsList className="grid w-full grid-cols-2 mb-8">
             <TabsTrigger value="japanese" className="font-display text-sm">
               🏯 Japanese Scenes
@@ -38,10 +53,20 @@ const Index = () => {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="japanese">
-            <ImageGenerator onImageSaved={refreshGallery} />
+            <ImageGenerator
+              key={activeTab === "japanese" ? editKey : "jp"}
+              onImageSaved={refreshGallery}
+              initialPrompt={editState?.mode === "japanese" ? editState.prompt : undefined}
+              initialImageUrl={editState?.mode === "japanese" ? editState.imageUrl : undefined}
+            />
           </TabsContent>
           <TabsContent value="freestyle">
-            <FreestyleImageGenerator onImageSaved={refreshGallery} />
+            <FreestyleImageGenerator
+              key={activeTab === "freestyle" ? editKey : "fs"}
+              onImageSaved={refreshGallery}
+              initialPrompt={editState?.mode === "freestyle" ? editState.prompt : undefined}
+              initialImageUrl={editState?.mode === "freestyle" ? editState.imageUrl : undefined}
+            />
           </TabsContent>
         </Tabs>
       </main>
@@ -54,7 +79,7 @@ const Index = () => {
             <h2 className="font-display text-lg font-bold text-foreground">Gallery</h2>
             <div className="h-px flex-1 bg-border" />
           </div>
-          <Gallery refreshKey={galleryRefreshKey} />
+          <Gallery refreshKey={galleryRefreshKey} onEditImage={handleEditImage} />
         </div>
       </section>
 

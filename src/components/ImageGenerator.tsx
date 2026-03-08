@@ -2,10 +2,13 @@ import { useState } from "react";
 import { Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
 import { saveToGallery } from "@/lib/gallery";
+import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -24,11 +27,18 @@ const EXAMPLE_PROMPTS = [
   "A crane flying over misty mountains at dawn",
 ];
 
-export default function ImageGenerator({ onImageSaved }: { onImageSaved?: () => void }) {
-  const [prompt, setPrompt] = useState("");
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+interface ImageGeneratorProps {
+  onImageSaved?: () => void;
+  initialPrompt?: string;
+  initialImageUrl?: string;
+}
+
+export default function ImageGenerator({ onImageSaved, initialPrompt, initialImageUrl }: ImageGeneratorProps) {
+  const [prompt, setPrompt] = useState(initialPrompt || "");
+  const [imageUrl, setImageUrl] = useState<string | null>(initialImageUrl || null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveToGalleryEnabled, setSaveToGalleryEnabled] = useState(true);
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const { toast } = useToast();
 
@@ -47,22 +57,23 @@ export default function ImageGenerator({ onImageSaved }: { onImageSaved?: () => 
 
       setImageUrl(data.imageUrl);
 
-      // Auto-save to gallery
-      setSaving(true);
-      try {
-        await saveToGallery({
-          imageUrl: data.imageUrl,
-          prompt: prompt.trim(),
-          mode: "japanese",
-          aspectRatio: printSize.ratio,
-          printSize: printSize.dimensions,
-        });
-        onImageSaved?.();
-        toast({ title: "Saved to gallery", description: "Your artwork has been saved." });
-      } catch (saveErr: any) {
-        console.error("Gallery save failed:", saveErr);
-      } finally {
-        setSaving(false);
+      if (saveToGalleryEnabled) {
+        setSaving(true);
+        try {
+          await saveToGallery({
+            imageUrl: data.imageUrl,
+            prompt: prompt.trim(),
+            mode: "japanese",
+            aspectRatio: printSize.ratio,
+            printSize: printSize.dimensions,
+          });
+          onImageSaved?.();
+          toast({ title: "Saved to gallery", description: "Your artwork has been saved." });
+        } catch (saveErr: any) {
+          console.error("Gallery save failed:", saveErr);
+        } finally {
+          setSaving(false);
+        }
       }
     } catch (err: any) {
       toast({
@@ -100,6 +111,17 @@ export default function ImageGenerator({ onImageSaved }: { onImageSaved?: () => 
 
         <PrintSizeSelector selected={printSize} onChange={setPrintSize} />
 
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="save-to-gallery-jp"
+            checked={saveToGalleryEnabled}
+            onCheckedChange={(checked) => setSaveToGalleryEnabled(checked === true)}
+          />
+          <Label htmlFor="save-to-gallery-jp" className="font-display text-sm text-muted-foreground cursor-pointer">
+            Save to gallery
+          </Label>
+        </div>
+
         <Button
           onClick={generate}
           disabled={loading || !prompt.trim()}
@@ -125,12 +147,8 @@ export default function ImageGenerator({ onImageSaved }: { onImageSaved?: () => 
         )}
 
         {!loading && imageUrl && (
-          <div className="flex flex-col items-center gap-4 p-4">
-            <img
-              src={imageUrl}
-              alt={prompt}
-              className="max-w-full max-h-[600px] rounded-sm animate-ink-spread"
-            />
+          <div className="flex flex-col items-center gap-4 p-4 w-full">
+            <ImagePreviewMockups imageUrl={imageUrl} alt={prompt} />
             <div className="flex gap-2">
               <Button
                 variant="outline"
