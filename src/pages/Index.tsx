@@ -4,7 +4,6 @@ import FreestyleImageGenerator from "@/components/FreestyleImageGenerator";
 import Gallery from "@/components/Gallery";
 import type { EditRequest } from "@/components/Gallery";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getCachedImage } from "@/lib/image-cache";
 import {
   AlertDialog,
   AlertDialogAction,
