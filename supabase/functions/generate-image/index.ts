@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, aspectRatio } = await req.json();
+    const { prompt, aspectRatio, sourceImageUrl } = await req.json();
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "Invalid prompt" }), {
@@ -29,7 +29,25 @@ serve(async (req) => {
 
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
 
-    const enhancedPrompt = `Create a high-resolution, highly detailed traditional Japanese ukiyo-e woodblock print style artwork: ${trimmedPrompt}. Style: flat colors, bold outlines, traditional Japanese composition, washi paper texture, sumi ink details, Edo period aesthetic. Generate at maximum resolution with fine detail suitable for large format printing.${ratioText}`;
+    let messages;
+
+    if (sourceImageUrl) {
+      // Edit mode: user provides a source image and describes changes
+      const editPrompt = `You are an image editor. Take the provided image and apply the following changes while keeping the traditional Japanese ukiyo-e woodblock print style (flat colors, bold outlines, washi paper texture, sumi ink details, Edo period aesthetic). Changes requested: ${trimmedPrompt}. Generate at maximum resolution with fine detail suitable for large format printing.${ratioText}`;
+      messages = [
+        {
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: sourceImageUrl } },
+            { type: "text", text: editPrompt },
+          ],
+        },
+      ];
+    } else {
+      // Generate mode: create from scratch
+      const enhancedPrompt = `Create a high-resolution, highly detailed traditional Japanese ukiyo-e woodblock print style artwork: ${trimmedPrompt}. Style: flat colors, bold outlines, traditional Japanese composition, washi paper texture, sumi ink details, Edo period aesthetic. Generate at maximum resolution with fine detail suitable for large format printing.${ratioText}`;
+      messages = [{ role: "user", content: enhancedPrompt }];
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -39,7 +57,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "google/gemini-3-pro-image-preview",
-        messages: [{ role: "user", content: enhancedPrompt }],
+        messages,
         modalities: ["image", "text"],
       }),
     });

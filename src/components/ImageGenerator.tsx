@@ -136,10 +136,10 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Painting…
+              {isEditMode ? "Editing…" : "Painting…"}
             </>
           ) : (
-            "Generate 浮世絵"
+            isEditMode ? "Apply Changes" : "Generate 浮世絵"
           )}
         </Button>
       </div>
