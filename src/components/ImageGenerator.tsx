@@ -86,6 +86,7 @@ export default function ImageGenerator({
   const [saving, setSaving] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [hdEnhance, setHdEnhance] = useState(true);
+  const [whiteFrame, setWhiteFrame] = useState(false);
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const { toast } = useToast();
@@ -101,7 +102,7 @@ export default function ImageGenerator({
     setSavedToGallery(false);
 
     try {
-      const body: any = { prompt: prompt.trim(), aspectRatio: printSize.ratio };
+      const body: any = { prompt: prompt.trim(), aspectRatio: printSize.ratio, whiteFrame };
       if (sourceImageUrl) body.sourceImageUrl = sourceImageUrl;
       const { data, error } = await supabase.functions.invoke(edgeFn, { body });
 
@@ -260,19 +261,34 @@ export default function ImageGenerator({
 
         <PrintSizeSelector selected={printSize} onChange={setPrintSize} />
 
-        <div className="flex items-center gap-2">
-          <Switch
-            id={`hd-enhance-${mode}`}
-            checked={hdEnhance}
-            onCheckedChange={setHdEnhance}
-          />
-          <Label
-            htmlFor={`hd-enhance-${mode}`}
-            className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            HD Enhance
-          </Label>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch
+              id={`hd-enhance-${mode}`}
+              checked={hdEnhance}
+              onCheckedChange={setHdEnhance}
+            />
+            <Label
+              htmlFor={`hd-enhance-${mode}`}
+              className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              HD Enhance
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id={`white-frame-${mode}`}
+              checked={whiteFrame}
+              onCheckedChange={setWhiteFrame}
+            />
+            <Label
+              htmlFor={`white-frame-${mode}`}
+              className="font-display text-sm text-muted-foreground cursor-pointer"
+            >
+              White Frame
+            </Label>
+          </div>
         </div>
 
         <Button
