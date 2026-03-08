@@ -220,33 +220,43 @@ export default function ImageGenerator({
           </div>
         )}
 
-        <Textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder={
-            isEditMode
-              ? "Describe the changes you want… e.g. 'Make the sky a sunset orange'"
-              : mode === "japanese"
-                ? "Describe your scene… e.g. 'A crane flying over misty mountains'"
-                : "Describe any scene… e.g. 'Central Park in New York during autumn'"
-          }
-          className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary"
-        />
+        {/* Lock prompt editing when there's an unsaved generated image */}
+        {(() => {
+          const promptLocked = !!imageUrl && !savedToGallery;
+          return (
+            <>
+              <Textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                disabled={promptLocked}
+                placeholder={
+                  isEditMode
+                    ? "Describe the changes you want… e.g. 'Make the sky a sunset orange'"
+                    : mode === "japanese"
+                      ? "Describe your scene… e.g. 'A crane flying over misty mountains'"
+                      : "Describe any scene… e.g. 'Central Park in New York during autumn'"
+                }
+                className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary disabled:opacity-60"
+              />
 
-        <p className="font-display font-bold text-sm text-foreground">
-          {isEditMode ? "Edit suggestions" : "Suggestions"}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {(isEditMode ? suggestions.edit : suggestions.generate).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPrompt(p)}
-              className="text-xs px-3 py-1.5 rounded-sm bg-secondary text-secondary-foreground hover:bg-muted transition-colors font-display"
-            >
-              {p.length > 40 ? p.slice(0, 40) + "…" : p}
-            </button>
-          ))}
-        </div>
+              <p className="font-display font-bold text-sm text-foreground">
+                {isEditMode ? "Edit suggestions" : "Suggestions"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(isEditMode ? suggestions.edit : suggestions.generate).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPrompt(p)}
+                    disabled={promptLocked}
+                    className="text-xs px-3 py-1.5 rounded-sm bg-secondary text-secondary-foreground hover:bg-muted transition-colors font-display disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {p.length > 40 ? p.slice(0, 40) + "…" : p}
+                  </button>
+                ))}
+              </div>
+            </>
+          );
+        })()}
 
         <PrintSizeSelector selected={printSize} onChange={setPrintSize} />
 
