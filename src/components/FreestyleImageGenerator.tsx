@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Loader2, Download, Sparkles } from "lucide-react";
+import { Loader2, Download, Sparkles, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
@@ -50,7 +50,7 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
   const [loading, setLoading] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveToGalleryEnabled, setSaveToGalleryEnabled] = useState(true);
+  const [savedToGallery, setSavedToGallery] = useState(false);
   const [hdEnhance, setHdEnhance] = useState(true);
   const [showComparison, setShowComparison] = useState(false);
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
@@ -62,6 +62,7 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
     setImageUrl(null);
     setBaseImageUrl(null);
     setShowComparison(false);
+    setSavedToGallery(false);
 
     try {
       const body: any = { prompt: prompt.trim(), aspectRatio: printSize.ratio };
@@ -92,24 +93,6 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
 
       setImageUrl(finalUrl);
 
-      if (saveToGalleryEnabled) {
-        setSaving(true);
-        try {
-          await saveToGallery({
-            imageUrl: finalUrl,
-            prompt: prompt.trim(),
-            mode: "freestyle",
-            aspectRatio: printSize.ratio,
-            printSize: printSize.dimensions,
-          });
-          onImageSaved?.();
-          toast({ title: "Saved to gallery", description: "Your artwork has been saved." });
-        } catch (saveErr: any) {
-          console.error("Gallery save failed:", saveErr);
-        } finally {
-          setSaving(false);
-        }
-      }
     } catch (err: any) {
       toast({
         title: "Generation failed",
@@ -122,6 +105,28 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
   };
 
   const hasEnhanced = hdEnhance && baseImageUrl && imageUrl && baseImageUrl !== imageUrl;
+
+  const handleSaveToGallery = async () => {
+    if (!imageUrl || savedToGallery || saving) return;
+    setSaving(true);
+    try {
+      await saveToGallery({
+        imageUrl,
+        prompt: prompt.trim(),
+        mode: "freestyle",
+        aspectRatio: printSize.ratio,
+        printSize: printSize.dimensions,
+      });
+      setSavedToGallery(true);
+      onImageSaved?.();
+      toast({ title: "Saved to gallery", description: "Your artwork has been saved." });
+    } catch (saveErr: any) {
+      console.error("Gallery save failed:", saveErr);
+      toast({ title: "Save failed", description: saveErr.message || "Could not save", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
@@ -154,29 +159,16 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
 
         <PrintSizeSelector selected={printSize} onChange={setPrintSize} />
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="save-to-gallery-fs"
-              checked={saveToGalleryEnabled}
-              onCheckedChange={(checked) => setSaveToGalleryEnabled(checked === true)}
-            />
-            <Label htmlFor="save-to-gallery-fs" className="font-display text-sm text-muted-foreground cursor-pointer">
-              Save to gallery
-            </Label>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Switch
-              id="hd-enhance-fs"
-              checked={hdEnhance}
-              onCheckedChange={setHdEnhance}
-            />
-            <Label htmlFor="hd-enhance-fs" className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              HD Enhance
-            </Label>
-          </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            id="hd-enhance-fs"
+            checked={hdEnhance}
+            onCheckedChange={setHdEnhance}
+          />
+          <Label htmlFor="hd-enhance-fs" className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            HD Enhance
+          </Label>
         </div>
 
         <Button
@@ -238,9 +230,24 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
                   {showComparison ? "Hide Comparison" : "Before / After"}
                 </Button>
               )}
-              {saving && (
-                <span className="text-xs text-muted-foreground flex items-center gap-1 font-display">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+              {!savedToGallery && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSaveToGallery}
+                  disabled={saving}
+                  className="font-display text-xs tracking-wider"
+                >
+                  {saving ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
+                  ) : (
+                    <><Save className="mr-2 h-4 w-4" /> Save to Gallery</>
+                  )}
+                </Button>
+              )}
+              {savedToGallery && (
+                <span className="text-xs text-primary flex items-center gap-1 font-display">
+                  ✓ Saved to gallery
                 </span>
               )}
             </div>
