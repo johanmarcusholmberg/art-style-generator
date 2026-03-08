@@ -197,25 +197,11 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
 
         {!loading && !enhancing && imageUrl && (
           <div className="flex flex-col items-center gap-4 p-4 w-full">
-            {viewVersion === "compare" && hasEnhanced ? (
-              <ImagePreviewMockups
-                imageUrl={imageUrl}
-                alt={prompt}
-                disabled
-              >
-                <BeforeAfterSlider
-                  beforeUrl={baseImageUrl!}
-                  afterUrl={imageUrl}
-                  alt={prompt}
-                  className="max-w-full"
-                />
-              </ImagePreviewMockups>
-            ) : (
-              <ImagePreviewMockups
-                imageUrl={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
-                alt={prompt}
-              />
-            )}
+            <ImagePreviewMockups
+              imageUrl={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
+              alt={prompt}
+              compareUrl={viewVersion === "compare" && hasEnhanced ? baseImageUrl! : undefined}
+            />
             <div className="flex flex-wrap gap-2 items-center justify-center">
               {hasEnhanced && (
                 <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
