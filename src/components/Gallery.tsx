@@ -116,6 +116,35 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
     }
   };
 
+  // Lock body scroll when lightbox is open
+  useEffect(() => {
+    if (selected) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [selected]);
+
+  // Navigate between filtered images
+  const selectedIndex = selected ? filtered.findIndex((img) => img.id === selected.id) : -1;
+  const goPrev = useCallback(() => {
+    if (selectedIndex > 0) setSelected(filtered[selectedIndex - 1]);
+  }, [selectedIndex, filtered]);
+  const goNext = useCallback(() => {
+    if (selectedIndex >= 0 && selectedIndex < filtered.length - 1) setSelected(filtered[selectedIndex + 1]);
+  }, [selectedIndex, filtered]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!selected) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") goPrev();
+      else if (e.key === "ArrowRight") goNext();
+      else if (e.key === "Escape") setSelected(null);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selected, goPrev, goNext]);
+
   const handleEdit = (img: GalleryImage) => {
     setSelected(null);
     onEditImage?.({
