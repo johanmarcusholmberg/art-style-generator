@@ -14,7 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      generated_images: {
+        Row: {
+          aspect_ratio: string
+          created_at: string
+          id: string
+          mode: string
+          print_size: string | null
+          prompt: string
+          storage_path: string
+        }
+        Insert: {
+          aspect_ratio?: string
+          created_at?: string
+          id?: string
+          mode?: string
+          print_size?: string | null
+          prompt: string
+          storage_path: string
+        }
+        Update: {
+          aspect_ratio?: string
+          created_at?: string
+          id?: string
+          mode?: string
+          print_size?: string | null
+          prompt?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
