@@ -40,6 +40,8 @@ interface ImageGeneratorProps {
   onImageSaved?: () => void;
   initialPrompt?: string;
   initialImageUrl?: string;
+  originalImageId?: string;
+  originalStoragePath?: string;
 }
 
 export default function ImageGenerator({ onImageSaved, initialPrompt, initialImageUrl }: ImageGeneratorProps) {
