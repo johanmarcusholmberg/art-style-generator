@@ -160,29 +160,17 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
 
         <PrintSizeSelector selected={printSize} onChange={setPrintSize} />
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="save-to-gallery-jp"
-              checked={saveToGalleryEnabled}
-              onCheckedChange={(checked) => setSaveToGalleryEnabled(checked === true)}
-            />
-            <Label htmlFor="save-to-gallery-jp" className="font-display text-sm text-muted-foreground cursor-pointer">
-              Save to gallery
-            </Label>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Switch
-              id="hd-enhance-jp"
-              checked={hdEnhance}
-              onCheckedChange={setHdEnhance}
-            />
-            <Label htmlFor="hd-enhance-jp" className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              HD Enhance
-            </Label>
-          </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            id="hd-enhance-jp"
+            checked={hdEnhance}
+            onCheckedChange={setHdEnhance}
+          />
+          <Label htmlFor="hd-enhance-jp" className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            HD Enhance
+          </Label>
+        </div>
         </div>
 
         <Button
