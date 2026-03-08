@@ -113,9 +113,9 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
           className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary"
         />
 
-        <p className="font-display font-bold text-sm text-foreground">Suggestions</p>
+        <p className="font-display font-bold text-sm text-foreground">{isEditMode ? "Edit suggestions" : "Suggestions"}</p>
         <div className="flex flex-wrap gap-2">
-          {EXAMPLE_PROMPTS.map((p) => (
+          {(isEditMode ? EDIT_PROMPTS : GENERATE_PROMPTS).map((p) => (
             <button
               key={p}
               onClick={() => setPrompt(p)}
