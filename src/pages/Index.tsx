@@ -14,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { getCachedImage, deleteCachedImage } from "@/lib/image-cache";
 
 const Index = () => {
   const [galleryRefreshKey, setGalleryRefreshKey] = useState(0);
