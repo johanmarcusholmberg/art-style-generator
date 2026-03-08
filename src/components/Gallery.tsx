@@ -206,11 +206,6 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
-                <div className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/40 transition-colors flex items-end">
-                  <div className="w-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="text-xs text-background font-display line-clamp-2">{img.prompt}</p>
-                  </div>
-                </div>
                 <Badge
                   variant="secondary"
                   className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80"
