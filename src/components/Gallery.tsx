@@ -193,17 +193,17 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          <div className="columns-2 sm:columns-3 md:columns-5 gap-3 space-y-3">
             {paginated.map((img) => (
               <button
                 key={img.id}
                 onClick={() => setSelected(img)}
-                className="group relative aspect-square overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-colors"
+                className="group relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-colors break-inside-avoid block w-full"
               >
                 <img
                   src={img.publicUrl}
                   alt={img.prompt}
-                  className="w-full h-full object-cover"
+                  className="w-full h-auto block"
                   loading="lazy"
                 />
                 <Badge
