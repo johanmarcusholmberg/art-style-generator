@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef } from "react";
 import ImageGenerator from "@/components/ImageGenerator";
-import FreestyleImageGenerator from "@/components/FreestyleImageGenerator";
 import Gallery from "@/components/Gallery";
 import type { EditRequest } from "@/components/Gallery";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,7 +26,6 @@ const Index = () => {
   const refreshGallery = useCallback(() => setGalleryRefreshKey((k) => k + 1), []);
 
   const clearCurrentGeneration = useCallback(async () => {
-    // Clear cached images for both modes
     await Promise.all([
       deleteCachedImage("img-japanese"),
       deleteCachedImage("img-base-japanese"),
@@ -38,22 +36,33 @@ const Index = () => {
     sessionStorage.removeItem("gen-state-freestyle");
   }, []);
 
-  const applyEdit = useCallback(async (req: EditRequest) => {
+  const applyEdit = useCallback(
+    async (req: EditRequest) => {
+      await clearCurrentGeneration();
+      setActiveTab(req.mode);
+      setEditState(req);
+      setTimeout(() => generatorRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    },
+    [clearCurrentGeneration]
+  );
+
+  const handleExitEdit = useCallback(async () => {
     await clearCurrentGeneration();
-    setActiveTab(req.mode);
-    setEditState(req);
-    setTimeout(() => generatorRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    setEditState(null);
   }, [clearCurrentGeneration]);
 
   const handleEditImage = useCallback(async (req: EditRequest) => {
-    // Check if there's an unsaved generated image in either mode
     const [jpImg, fsImg] = await Promise.all([
       getCachedImage("img-japanese"),
       getCachedImage("img-freestyle"),
     ]);
 
-    const jpState = (() => { try { const r = sessionStorage.getItem("gen-state-japanese"); return r ? JSON.parse(r) : null; } catch { return null; } })();
-    const fsState = (() => { try { const r = sessionStorage.getItem("gen-state-freestyle"); return r ? JSON.parse(r) : null; } catch { return null; } })();
+    const jpState = (() => {
+      try { const r = sessionStorage.getItem("gen-state-japanese"); return r ? JSON.parse(r) : null; } catch { return null; }
+    })();
+    const fsState = (() => {
+      try { const r = sessionStorage.getItem("gen-state-freestyle"); return r ? JSON.parse(r) : null; } catch { return null; }
+    })();
 
     const hasUnsaved = (jpImg && !jpState?.savedToGallery) || (fsImg && !fsState?.savedToGallery);
 
@@ -61,8 +70,7 @@ const Index = () => {
     setPendingEdit(req);
   }, []);
 
-  // Key to force remount generators when edit state changes
-  const editKey = editState ? `${editState.mode}-${editState.prompt}` : "default";
+  const editKey = editState ? `${editState.mode}-${editState.prompt}-${editState.originalId}` : "default";
 
   return (
     <div className="min-h-screen bg-background paper-texture">
@@ -84,7 +92,14 @@ const Index = () => {
 
       {/* Generator */}
       <main className="pb-12 px-4" ref={generatorRef}>
-        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setEditState(null); }} className="w-full max-w-4xl mx-auto">
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => {
+            setActiveTab(v);
+            setEditState(null);
+          }}
+          className="w-full max-w-4xl mx-auto"
+        >
           <TabsList className="grid w-full grid-cols-2 mb-8">
             <TabsTrigger value="japanese" className="font-display text-sm">
               🏯 Japanese Scenes
@@ -96,7 +111,9 @@ const Index = () => {
           <TabsContent value="japanese">
             <ImageGenerator
               key={activeTab === "japanese" ? editKey : "jp"}
+              mode="japanese"
               onImageSaved={refreshGallery}
+              onExitEdit={editState?.mode === "japanese" ? handleExitEdit : undefined}
               initialPrompt={editState?.mode === "japanese" ? editState.prompt : undefined}
               initialImageUrl={editState?.mode === "japanese" ? editState.imageUrl : undefined}
               originalImageId={editState?.mode === "japanese" ? editState.originalId : undefined}
@@ -104,9 +121,11 @@ const Index = () => {
             />
           </TabsContent>
           <TabsContent value="freestyle">
-            <FreestyleImageGenerator
+            <ImageGenerator
               key={activeTab === "freestyle" ? editKey : "fs"}
+              mode="freestyle"
               onImageSaved={refreshGallery}
+              onExitEdit={editState?.mode === "freestyle" ? handleExitEdit : undefined}
               initialPrompt={editState?.mode === "freestyle" ? editState.prompt : undefined}
               initialImageUrl={editState?.mode === "freestyle" ? editState.imageUrl : undefined}
               originalImageId={editState?.mode === "freestyle" ? editState.originalId : undefined}
@@ -135,7 +154,7 @@ const Index = () => {
         </p>
       </footer>
 
-      {/* Confirm replacing active image */}
+      {/* Confirm edit dialog */}
       <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -150,10 +169,12 @@ const Index = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              if (pendingEdit) applyEdit(pendingEdit);
-              setPendingEdit(null);
-            }}>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingEdit) applyEdit(pendingEdit);
+                setPendingEdit(null);
+              }}
+            >
               {hasUnsavedImage ? "Discard & Edit" : "Continue"}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
 import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
-
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -24,29 +22,64 @@ const downloadImage = async (dataUrl: string, filename: string) => {
   URL.revokeObjectURL(url);
 };
 
-const GENERATE_PROMPTS = [
-  "A great wave crashing against Mount Fuji at sunset",
-  "Koi fish swimming in a tranquil garden pond",
-  "A crane flying over misty mountains at dawn",
-];
-
-const EDIT_PROMPTS = [
-  "Change the background to a sunset sky",
-  "Make the colors more vibrant and saturated",
-  "Add cherry blossoms falling in the scene",
-];
+const PROMPTS: Record<string, { generate: string[]; edit: string[] }> = {
+  japanese: {
+    generate: [
+      "A great wave crashing against Mount Fuji at sunset",
+      "Koi fish swimming in a tranquil garden pond",
+      "A crane flying over misty mountains at dawn",
+    ],
+    edit: [
+      "Change the background to a sunset sky",
+      "Make the colors more vibrant and saturated",
+      "Add cherry blossoms falling in the scene",
+    ],
+  },
+  freestyle: {
+    generate: [
+      "Central Park in New York during autumn",
+      "The Eiffel Tower at golden hour",
+      "A cozy Italian café on a rainy day",
+    ],
+    edit: [
+      "Change the background to a sunset sky",
+      "Make the colors more vibrant and saturated",
+      "Add rain and reflections on the ground",
+    ],
+  },
+};
 
 interface ImageGeneratorProps {
+  mode: "japanese" | "freestyle";
   onImageSaved?: () => void;
+  onExitEdit?: () => void;
   initialPrompt?: string;
   initialImageUrl?: string;
   originalImageId?: string;
   originalStoragePath?: string;
 }
 
-export default function ImageGenerator({ onImageSaved, initialPrompt, initialImageUrl, originalImageId, originalStoragePath }: ImageGeneratorProps) {
+export default function ImageGenerator({
+  mode,
+  onImageSaved,
+  onExitEdit,
+  initialPrompt,
+  initialImageUrl,
+  originalImageId,
+  originalStoragePath,
+}: ImageGeneratorProps) {
   const isEditMode = !!initialImageUrl;
-  const { prompt, setPrompt, imageUrl, setImageUrl, baseImageUrl, setBaseImageUrl, savedToGallery, setSavedToGallery } = usePersistedGeneration("japanese", isEditMode ? undefined : initialPrompt);
+  const edgeFn = mode === "japanese" ? "generate-image" : "generate-image-freestyle";
+  const modeLabel = mode === "japanese" ? "🏯 Japanese" : "🎨 Freestyle";
+  const generateLabel = mode === "japanese" ? "Generate 浮世絵" : "Generate Image";
+
+  const {
+    prompt, setPrompt,
+    imageUrl, setImageUrl,
+    baseImageUrl, setBaseImageUrl,
+    savedToGallery, setSavedToGallery,
+  } = usePersistedGeneration(mode, isEditMode ? undefined : initialPrompt);
+
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
   const [loading, setLoading] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
@@ -56,6 +89,8 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const { toast } = useToast();
+
+  const suggestions = PROMPTS[mode] || PROMPTS.japanese;
 
   const generate = async () => {
     if (!prompt.trim()) return;
@@ -68,7 +103,7 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
     try {
       const body: any = { prompt: prompt.trim(), aspectRatio: printSize.ratio };
       if (sourceImageUrl) body.sourceImageUrl = sourceImageUrl;
-      const { data, error } = await supabase.functions.invoke("generate-image", { body });
+      const { data, error } = await supabase.functions.invoke(edgeFn, { body });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -93,7 +128,6 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
       }
 
       setImageUrl(finalUrl);
-
     } catch (err: any) {
       toast({
         title: "Generation failed",
@@ -114,7 +148,7 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
       await saveToGallery({
         imageUrl,
         prompt: prompt.trim(),
-        mode: "japanese",
+        mode,
         aspectRatio: printSize.ratio,
         printSize: printSize.dimensions,
       });
@@ -138,7 +172,7 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
         originalStoragePath,
         imageUrl,
         prompt: prompt.trim(),
-        mode: "japanese",
+        mode,
         aspectRatio: printSize.ratio,
         printSize: printSize.dimensions,
       });
@@ -156,22 +190,54 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
       <div className="space-y-4 mb-8">
+        {/* Edit mode banner */}
         {isEditMode && sourceImageUrl && (
-          <div className="space-y-2">
-            <p className="font-display text-xs text-muted-foreground">Editing this image:</p>
-            <img src={sourceImageUrl} alt="Source image" className="max-h-40 rounded-sm border border-border object-contain" />
+          <div className="flex items-start gap-4 p-3 rounded-sm border border-primary/30 bg-primary/5">
+            <img
+              src={sourceImageUrl}
+              alt="Source image"
+              className="h-24 sm:h-32 rounded-sm border border-border object-contain flex-shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="font-display text-xs text-muted-foreground mb-1">
+                Editing {modeLabel} image
+              </p>
+              <p className="font-display text-sm text-foreground truncate">
+                {initialPrompt || "Original prompt"}
+              </p>
+            </div>
+            {onExitEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onExitEdit}
+                className="font-display text-xs flex-shrink-0"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Cancel
+              </Button>
+            )}
           </div>
         )}
+
         <Textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder={isEditMode ? "Describe the changes you want… e.g. 'Make the sky a sunset orange'" : "Describe your scene… e.g. 'A crane flying over misty mountains'"}
+          placeholder={
+            isEditMode
+              ? "Describe the changes you want… e.g. 'Make the sky a sunset orange'"
+              : mode === "japanese"
+                ? "Describe your scene… e.g. 'A crane flying over misty mountains'"
+                : "Describe any scene… e.g. 'Central Park in New York during autumn'"
+          }
           className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary"
         />
 
-        <p className="font-display font-bold text-sm text-foreground">{isEditMode ? "Edit suggestions" : "Suggestions"}</p>
+        <p className="font-display font-bold text-sm text-foreground">
+          {isEditMode ? "Edit suggestions" : "Suggestions"}
+        </p>
         <div className="flex flex-wrap gap-2">
-          {(isEditMode ? EDIT_PROMPTS : GENERATE_PROMPTS).map((p) => (
+          {(isEditMode ? suggestions.edit : suggestions.generate).map((p) => (
             <button
               key={p}
               onClick={() => setPrompt(p)}
@@ -186,11 +252,14 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
 
         <div className="flex items-center gap-2">
           <Switch
-            id="hd-enhance-jp"
+            id={`hd-enhance-${mode}`}
             checked={hdEnhance}
             onCheckedChange={setHdEnhance}
           />
-          <Label htmlFor="hd-enhance-jp" className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1">
+          <Label
+            htmlFor={`hd-enhance-${mode}`}
+            className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1"
+          >
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             HD Enhance
           </Label>
@@ -207,7 +276,7 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
               {isEditMode ? "Editing…" : "Painting…"}
             </>
           ) : (
-            isEditMode ? "Apply Changes" : "Generate 浮世絵"
+            isEditMode ? "Apply Changes" : generateLabel
           )}
         </Button>
       </div>
@@ -248,14 +317,22 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => downloadImage(
-                  viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl,
-                  `ukiyoe-${printSize.ratio.replace(":", "x")}-${Date.now()}.png`
-                )}
+                onClick={() =>
+                  downloadImage(
+                    viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl,
+                    `ukiyoe-${mode}-${printSize.ratio.replace(":", "x")}-${Date.now()}.png`
+                  )
+                }
                 className="font-display text-xs tracking-wider"
               >
                 <Download className="mr-2 h-4 w-4" />
-                Download {hasEnhanced ? (viewVersion === "original" ? "(Original)" : "(Enhanced)") : ""} ({printSize.dimensions})
+                Download{" "}
+                {hasEnhanced
+                  ? viewVersion === "original"
+                    ? "(Original)"
+                    : "(Enhanced)"
+                  : ""}{" "}
+                ({printSize.dimensions})
               </Button>
               {!savedToGallery && isEditMode && originalImageId && (
                 <Button
@@ -266,9 +343,13 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
                   className="font-display text-xs tracking-wider"
                 >
                   {replacing ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Replacing…</>
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Replacing…
+                    </>
                   ) : (
-                    <><Replace className="mr-2 h-4 w-4" /> Replace Original</>
+                    <>
+                      <Replace className="mr-2 h-4 w-4" /> Replace Original
+                    </>
                   )}
                 </Button>
               )}
@@ -281,9 +362,14 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
                   className="font-display text-xs tracking-wider"
                 >
                   {saving ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…
+                    </>
                   ) : (
-                    <><Save className="mr-2 h-4 w-4" /> {isEditMode ? "Save as New" : "Save to Gallery"}</>
+                    <>
+                      <Save className="mr-2 h-4 w-4" />{" "}
+                      {isEditMode ? "Save as New" : "Save to Gallery"}
+                    </>
                   )}
                 </Button>
               )}

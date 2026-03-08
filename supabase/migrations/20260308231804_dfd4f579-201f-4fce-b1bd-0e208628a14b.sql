@@ -1,0 +1,1 @@
+CREATE POLICY "Anyone can update images" ON public.generated_images FOR UPDATE USING (true) WITH CHECK (true);
