@@ -262,9 +262,24 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
                   {showComparison ? "Hide Comparison" : "Before / After"}
                 </Button>
               )}
-              {saving && (
-                <span className="text-xs text-muted-foreground flex items-center gap-1 font-display">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+              {!savedToGallery && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSaveToGallery}
+                  disabled={saving}
+                  className="font-display text-xs tracking-wider"
+                >
+                  {saving ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
+                  ) : (
+                    <><Save className="mr-2 h-4 w-4" /> Save to Gallery</>
+                  )}
+                </Button>
+              )}
+              {savedToGallery && (
+                <span className="text-xs text-primary flex items-center gap-1 font-display">
+                  ✓ Saved to gallery
                 </span>
               )}
             </div>
