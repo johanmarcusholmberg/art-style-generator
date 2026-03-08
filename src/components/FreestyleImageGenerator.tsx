@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
