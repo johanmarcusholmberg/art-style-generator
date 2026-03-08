@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type ViewMode = "original" | "frame" | "wall" | "hanging";
+type ViewMode = "original" | "frame" | "clothesline";
 
 interface FrameStyle {
   id: string;
@@ -30,8 +30,7 @@ const FRAME_STYLES: FrameStyle[] = [
 const VIEW_MODES: { id: ViewMode; label: string }[] = [
   { id: "original", label: "Original" },
   { id: "frame", label: "Framed" },
-  { id: "wall", label: "On Wall" },
-  { id: "hanging", label: "Hanging Wire" },
+  { id: "clothesline", label: "Clothesline" },
 ];
 
 interface ImagePreviewMockupsProps {
@@ -74,7 +73,7 @@ export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMocku
           </SelectContent>
         </Select>
 
-        {(mode === "frame" || mode === "wall") && (
+        {mode === "frame" && (
           <Select value={frameStyle} onValueChange={setFrameStyle}>
             <SelectTrigger className="w-[160px] font-display text-xs h-9">
               <SelectValue />
@@ -107,58 +106,64 @@ export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMocku
           <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} />
         )}
 
-        {mode === "wall" && (
-          <div className="relative w-full max-w-2xl">
-            <div className="w-full aspect-[16/10] bg-gradient-to-b from-secondary via-muted to-secondary rounded-sm flex items-center justify-center relative overflow-hidden">
-              {/* Subtle wall texture */}
-              <div className="absolute inset-0 opacity-30" style={{
-                backgroundImage: "repeating-linear-gradient(90deg, transparent, transparent 40px, hsl(var(--border)) 40px, hsl(var(--border)) 41px), repeating-linear-gradient(0deg, transparent, transparent 40px, hsl(var(--border)) 40px, hsl(var(--border)) 41px)"
-              }} />
-              <div className="relative" style={{ filter: "drop-shadow(4px 6px 12px rgba(0,0,0,0.3))" }}>
-                <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} className="max-h-[350px]" />
+        {mode === "clothesline" && (
+          <div className="relative w-full max-w-2xl flex justify-center">
+            {/* Container for wires + image */}
+            <div className="relative inline-flex flex-col items-center">
+              {/* Two horizontal wires */}
+              <div className="relative w-full" style={{ height: 32 }}>
+                {/* Wire 1 (top) */}
+                <div className="absolute left-0 right-0 top-[8px] h-[1px] bg-foreground/40" />
+                {/* Wire 2 (bottom) */}
+                <div className="absolute left-0 right-0 top-[22px] h-[1px] bg-foreground/40" />
               </div>
-            </div>
-          </div>
-        )}
 
-        {mode === "hanging" && (
-          <div className="relative w-full max-w-2xl flex flex-col items-center">
-            {/* Wire and clips */}
-            <svg viewBox="0 0 400 40" className="w-full max-w-lg" style={{ height: 40 }}>
-              {/* Wire with natural sag */}
-              <path
-                d="M 20 8 Q 200 28 380 8"
-                fill="none"
-                stroke="hsl(var(--foreground))"
-                strokeWidth="1"
-                opacity="0.5"
-              />
-              {/* Left clip */}
-              <g transform="translate(120, 4)">
-                <rect x="0" y="0" width="12" height="18" rx="2" fill="hsl(var(--muted-foreground))" opacity="0.7" />
-                <rect x="2" y="2" width="8" height="6" rx="1" fill="hsl(var(--muted-foreground))" opacity="0.9" />
-                <line x1="3" y1="10" x2="9" y2="10" stroke="hsl(var(--foreground))" strokeWidth="0.5" opacity="0.4" />
-              </g>
-              {/* Right clip */}
-              <g transform="translate(268, 4)">
-                <rect x="0" y="0" width="12" height="18" rx="2" fill="hsl(var(--muted-foreground))" opacity="0.7" />
-                <rect x="2" y="2" width="8" height="6" rx="1" fill="hsl(var(--muted-foreground))" opacity="0.9" />
-                <line x1="3" y1="10" x2="9" y2="10" stroke="hsl(var(--foreground))" strokeWidth="0.5" opacity="0.4" />
-              </g>
-            </svg>
-            {/* Image */}
-            <div
-              className="relative -mt-1"
-              style={{
-                transform: "rotate(-0.5deg)",
-                filter: "drop-shadow(2px 4px 10px rgba(0,0,0,0.15))",
-              }}
-            >
-              <img
-                src={imageUrl}
-                alt={alt}
-                className="max-h-[450px] max-w-full rounded-sm"
-              />
+              {/* Image with clips overlapping the wires */}
+              <div
+                className="relative -mt-3"
+                style={{
+                  transform: "rotate(-0.8deg)",
+                  filter: "drop-shadow(2px 4px 8px rgba(0,0,0,0.15))",
+                }}
+              >
+                {/* Left clip — sits on top edge of image, straddling the wire */}
+                <svg
+                  className="absolute z-10"
+                  style={{ top: -14, left: "18%" }}
+                  width="20" height="36" viewBox="0 0 20 36"
+                >
+                  {/* Clip body */}
+                  <rect x="3" y="0" width="14" height="24" rx="2" fill="hsl(var(--muted-foreground))" opacity="0.85" />
+                  {/* Clip grip top */}
+                  <rect x="5" y="2" width="10" height="8" rx="1.5" fill="hsl(var(--foreground))" opacity="0.25" />
+                  {/* Spring ring */}
+                  <circle cx="10" cy="13" r="2.5" fill="none" stroke="hsl(var(--foreground))" strokeWidth="1" opacity="0.3" />
+                  {/* Lower jaw */}
+                  <rect x="5" y="18" width="10" height="16" rx="1" fill="hsl(var(--muted-foreground))" opacity="0.7" />
+                  <line x1="7" y1="22" x2="13" y2="22" stroke="hsl(var(--foreground))" strokeWidth="0.5" opacity="0.3" />
+                  <line x1="7" y1="25" x2="13" y2="25" stroke="hsl(var(--foreground))" strokeWidth="0.5" opacity="0.3" />
+                </svg>
+
+                {/* Right clip */}
+                <svg
+                  className="absolute z-10"
+                  style={{ top: -14, right: "18%" }}
+                  width="20" height="36" viewBox="0 0 20 36"
+                >
+                  <rect x="3" y="0" width="14" height="24" rx="2" fill="hsl(var(--muted-foreground))" opacity="0.85" />
+                  <rect x="5" y="2" width="10" height="8" rx="1.5" fill="hsl(var(--foreground))" opacity="0.25" />
+                  <circle cx="10" cy="13" r="2.5" fill="none" stroke="hsl(var(--foreground))" strokeWidth="1" opacity="0.3" />
+                  <rect x="5" y="18" width="10" height="16" rx="1" fill="hsl(var(--muted-foreground))" opacity="0.7" />
+                  <line x1="7" y1="22" x2="13" y2="22" stroke="hsl(var(--foreground))" strokeWidth="0.5" opacity="0.3" />
+                  <line x1="7" y1="25" x2="13" y2="25" stroke="hsl(var(--foreground))" strokeWidth="0.5" opacity="0.3" />
+                </svg>
+
+                <img
+                  src={imageUrl}
+                  alt={alt}
+                  className="max-h-[450px] max-w-full rounded-sm border border-border/30"
+                />
+              </div>
             </div>
           </div>
         )}
