@@ -197,37 +197,47 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
 
         {!loading && !enhancing && imageUrl && (
           <div className="flex flex-col items-center gap-4 p-4 w-full">
-            {showComparison && hasEnhanced ? (
+            {viewVersion === "compare" && hasEnhanced ? (
               <BeforeAfterSlider
                 beforeUrl={baseImageUrl!}
                 afterUrl={imageUrl}
                 alt={prompt}
-                className="max-w-full max-h-[600px]"
+                className="max-w-full"
               />
             ) : (
-              <ImagePreviewMockups imageUrl={imageUrl} alt={prompt} />
+              <ImagePreviewMockups
+                imageUrl={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
+                alt={prompt}
+              />
             )}
             <div className="flex flex-wrap gap-2 items-center justify-center">
+              {hasEnhanced && (
+                <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
+                  {(["enhanced", "original", "compare"] as const).map((v) => (
+                    <Button
+                      key={v}
+                      variant={viewVersion === v ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setViewVersion(v)}
+                      className="font-display text-xs h-7 px-2"
+                    >
+                      {v === "enhanced" ? "Enhanced" : v === "original" ? "Original" : "Compare"}
+                    </Button>
+                  ))}
+                </div>
+              )}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => downloadImage(imageUrl, `ukiyoe-freestyle-${printSize.ratio.replace(":", "x")}-${Date.now()}.png`)}
+                onClick={() => downloadImage(
+                  viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl,
+                  `ukiyoe-freestyle-${printSize.ratio.replace(":", "x")}-${Date.now()}.png`
+                )}
                 className="font-display text-xs tracking-wider"
               >
                 <Download className="mr-2 h-4 w-4" />
-                Download ({printSize.dimensions})
+                Download {hasEnhanced ? (viewVersion === "original" ? "(Original)" : "(Enhanced)") : ""} ({printSize.dimensions})
               </Button>
-              {hasEnhanced && (
-                <Button
-                  variant={showComparison ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowComparison((v) => !v)}
-                  className="font-display text-xs tracking-wider"
-                >
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  {showComparison ? "Hide Comparison" : "Before / After"}
-                </Button>
-              )}
               {!savedToGallery && (
                 <Button
                   variant="outline"
