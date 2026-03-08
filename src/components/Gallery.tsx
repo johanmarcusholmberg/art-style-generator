@@ -268,7 +268,7 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
           onClick={() => setSelected(null)}
         >
           <div
-            className="bg-card rounded-sm border border-border max-w-3xl w-full max-h-[90vh] overflow-auto p-4 space-y-4"
+            className="bg-card rounded-sm border border-border max-w-3xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 space-y-4 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
             onClick={(e) => e.stopPropagation()}
           >
             <ImagePreviewMockups imageUrl={selected.publicUrl} alt={selected.prompt} />
