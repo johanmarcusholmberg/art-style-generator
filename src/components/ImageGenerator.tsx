@@ -50,7 +50,6 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
   const [loading, setLoading] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [savedToGallery, setSavedToGallery] = useState(false);
   const [hdEnhance, setHdEnhance] = useState(true);
   const [showComparison, setShowComparison] = useState(false);
