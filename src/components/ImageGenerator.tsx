@@ -205,7 +205,7 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
                 className="max-w-full max-h-[600px]"
               />
             ) : (
-              <ImagePreviewMockups imageUrl={imageUrl} alt={prompt} />
+              <ImagePreviewMockups imageUrl={imageUrl} alt={prompt} initialPrintSize={printSize} />
             )}
             <div className="flex flex-wrap gap-2 items-center justify-center">
               <Button
