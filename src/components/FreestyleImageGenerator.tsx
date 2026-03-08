@@ -171,7 +171,6 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
             HD Enhance
           </Label>
         </div>
-        </div>
 
         <Button
           onClick={generate}

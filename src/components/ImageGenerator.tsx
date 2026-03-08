@@ -171,7 +171,6 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
             HD Enhance
           </Label>
         </div>
-        </div>
 
         <Button
           onClick={generate}
