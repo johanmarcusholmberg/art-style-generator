@@ -113,9 +113,9 @@ const Index = () => {
       <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display">Replace current image?</AlertDialogTitle>
+            <AlertDialogTitle className="font-display">Edit this image?</AlertDialogTitle>
             <AlertDialogDescription>
-              You have an unsaved generated image. Loading a gallery image for editing will replace it. Continue?
+              This will load the selected image into the editor. You can then modify it with a new prompt and choose to replace the original or save as a new image.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
