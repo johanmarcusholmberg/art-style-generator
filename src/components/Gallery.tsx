@@ -236,6 +236,9 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
                   src={img.publicUrl}
                   alt={img.prompt}
                   className="w-full h-full object-cover block"
+                  style={{ imageRendering: 'auto' }}
+                  decoding="async"
+                  sizes="(min-width: 768px) 33vw, (min-width: 640px) 33vw, 50vw"
                   loading="lazy"
                 />
                 {/* Hover: show full image on top */}
