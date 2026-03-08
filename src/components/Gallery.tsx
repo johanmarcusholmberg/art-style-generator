@@ -296,6 +296,24 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
           className="fixed inset-0 z-50 bg-foreground/80 flex items-center justify-center p-4"
           onClick={() => setSelected(null)}
         >
+          {/* Prev arrow */}
+          {selectedIndex > 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); goPrev(); }}
+              className="fixed left-2 top-1/2 -translate-y-1/2 z-[60] p-2 rounded-full bg-card/80 backdrop-blur-sm border border-border hover:bg-card transition-colors"
+            >
+              <ChevronLeft className="h-6 w-6 text-foreground" />
+            </button>
+          )}
+          {/* Next arrow */}
+          {selectedIndex < filtered.length - 1 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); goNext(); }}
+              className="fixed right-2 top-1/2 -translate-y-1/2 z-[60] p-2 rounded-full bg-card/80 backdrop-blur-sm border border-border hover:bg-card transition-colors"
+            >
+              <ChevronRight className="h-6 w-6 text-foreground" />
+            </button>
+          )}
           <div
             className="bg-card rounded-sm border border-border max-w-3xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 space-y-4 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
             onClick={(e) => e.stopPropagation()}
