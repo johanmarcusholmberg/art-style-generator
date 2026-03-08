@@ -7,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
 
 type ViewMode = "original" | "frame";
 
@@ -43,17 +42,20 @@ function useEdgeColor(imageUrl: string): string | null {
         canvas.height = img.naturalHeight;
         ctx.drawImage(img, 0, 0);
 
+        // Sample pixels along all four edges
         const w = canvas.width;
         const h = canvas.height;
         let r = 0, g = 0, b = 0, count = 0;
         const step = Math.max(1, Math.floor(Math.max(w, h) / 40));
 
+        // Top & bottom edges
         for (let x = 0; x < w; x += step) {
           for (const y of [0, h - 1]) {
             const d = ctx.getImageData(x, y, 1, 1).data;
             r += d[0]; g += d[1]; b += d[2]; count++;
           }
         }
+        // Left & right edges
         for (let y = 0; y < h; y += step) {
           for (const x of [0, w - 1]) {
             const d = ctx.getImageData(x, y, 1, 1).data;
@@ -68,6 +70,7 @@ function useEdgeColor(imageUrl: string): string | null {
           setColor(`rgb(${r},${g},${b})`);
         }
       } catch {
+        // CORS or other error — fallback
         setColor(null);
       }
     };
@@ -77,40 +80,20 @@ function useEdgeColor(imageUrl: string): string | null {
   return color;
 }
 
-/** Parse ratio string like "5:7" into [5, 7] */
-function parseRatio(ratio: string): [number, number] {
-  const parts = ratio.split(":").map(Number);
-  return [parts[0] || 1, parts[1] || 1];
-}
+function FramedImage({ imageUrl, alt, frame, edgeColor, className }: { imageUrl: string; alt: string; frame: FrameStyle; edgeColor: string | null; className?: string }) {
+  const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
 
-interface FramedImageProps {
-  imageUrl: string;
-  alt: string;
-  frame: FrameStyle;
-  edgeColor: string | null;
-  printSize: PrintSize;
-  className?: string;
-}
+  const onLoad = useCallback(() => {
+    if (imgRef.current) {
+      setDims({ w: imgRef.current.naturalWidth, h: imgRef.current.naturalHeight });
+    }
+  }, []);
 
-function FramedImage({ imageUrl, alt, frame, edgeColor, printSize, className }: FramedImageProps) {
-  const [rw, rh] = parseRatio(printSize.ratio);
-
-  // Use a fixed display height and compute width from the print ratio
-  const maxDisplayH = 500;
-  const maxDisplayW = 600;
-
-  // Compute display dimensions preserving the print ratio
-  let displayW = maxDisplayH * (rw / rh);
-  let displayH = maxDisplayH;
-  if (displayW > maxDisplayW) {
-    displayW = maxDisplayW;
-    displayH = maxDisplayW * (rh / rw);
-  }
-
-  // Frame thickness proportional to shorter display side
-  const shortSide = Math.min(displayW, displayH);
-  const framePx = Math.max(4, Math.round(shortSide * 0.025));
-  const innerPx = Math.max(1, Math.round(shortSide * 0.006));
+  // Scale thickness proportionally: use shorter side as reference
+  const shortSide = dims ? Math.min(dims.w, dims.h) : 500;
+  const framePx = Math.max(4, Math.round(shortSide * 0.02));
+  const innerPx = Math.max(1, Math.round(shortSide * 0.005));
   const matPx = Math.max(8, Math.round(shortSide * 0.06));
 
   const matStyle: React.CSSProperties = {
@@ -120,15 +103,10 @@ function FramedImage({ imageUrl, alt, frame, edgeColor, printSize, className }: 
   const matClass = edgeColor ? "" : "bg-muted";
 
   return (
-    <div className={cn("rounded-sm shadow-xl inline-block", frame.border, className)} style={{ padding: framePx }}>
+    <div className={cn("rounded-sm shadow-xl", frame.border, className)} style={{ padding: framePx }}>
       <div className={cn(frame.inner)} style={{ padding: innerPx }}>
         <div className={cn(matClass)} style={matStyle}>
-          <img
-            src={imageUrl}
-            alt={alt}
-            className="block shadow-inner"
-            style={{ width: displayW, height: displayH, objectFit: "cover" }}
-          />
+          <img ref={imgRef} src={imageUrl} alt={alt} onLoad={onLoad} className="max-w-full max-h-[500px] shadow-inner block" />
         </div>
       </div>
     </div>
@@ -143,13 +121,11 @@ const VIEW_MODES: { id: ViewMode; label: string }[] = [
 interface ImagePreviewMockupsProps {
   imageUrl: string;
   alt: string;
-  initialPrintSize?: PrintSize;
 }
 
-export default function ImagePreviewMockups({ imageUrl, alt, initialPrintSize }: ImagePreviewMockupsProps) {
+export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMockupsProps) {
   const [mode, setMode] = useState<ViewMode>("original");
   const [frameStyle, setFrameStyle] = useState<string>(FRAME_STYLES[0].id);
-  const [printSize, setPrintSize] = useState<PrintSize>(initialPrintSize || PRINT_SIZES[2]);
   const edgeColor = useEdgeColor(imageUrl);
 
   const selectedFrame = FRAME_STYLES.find((f) => f.id === frameStyle) || FRAME_STYLES[0];
@@ -159,7 +135,7 @@ export default function ImagePreviewMockups({ imageUrl, alt, initialPrintSize }:
       {/* Controls row */}
       <div className="flex flex-wrap gap-2 items-center">
         <Select value={mode} onValueChange={(v) => setMode(v as ViewMode)}>
-          <SelectTrigger className="w-[140px] font-display text-xs h-9">
+          <SelectTrigger className="w-[160px] font-display text-xs h-9">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -172,39 +148,21 @@ export default function ImagePreviewMockups({ imageUrl, alt, initialPrintSize }:
         </Select>
 
         {mode === "frame" && (
-          <>
-            <Select value={frameStyle} onValueChange={setFrameStyle}>
-              <SelectTrigger className="w-[150px] font-display text-xs h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FRAME_STYLES.map((f) => (
-                  <SelectItem key={f.id} value={f.id} className="font-display text-xs">
-                    <span className="flex items-center gap-2">
-                      <span className={cn("w-3 h-3 rounded-sm inline-block border border-border", f.border)} />
-                      {f.label}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={printSize.ratio} onValueChange={(v) => {
-              const found = PRINT_SIZES.find((s) => s.ratio === v);
-              if (found) setPrintSize(found);
-            }}>
-              <SelectTrigger className="w-[170px] font-display text-xs h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PRINT_SIZES.map((s) => (
-                  <SelectItem key={s.ratio} value={s.ratio} className="font-display text-xs">
-                    {s.label} ({s.dimensions})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </>
+          <Select value={frameStyle} onValueChange={setFrameStyle}>
+            <SelectTrigger className="w-[160px] font-display text-xs h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FRAME_STYLES.map((f) => (
+                <SelectItem key={f.id} value={f.id} className="font-display text-xs">
+                  <span className="flex items-center gap-2">
+                    <span className={cn("w-3 h-3 rounded-sm inline-block border border-border", f.border)} />
+                    {f.label}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </div>
 
@@ -219,7 +177,7 @@ export default function ImagePreviewMockups({ imageUrl, alt, initialPrintSize }:
         )}
 
         {mode === "frame" && (
-          <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} edgeColor={edgeColor} printSize={printSize} />
+          <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} edgeColor={edgeColor} />
         )}
       </div>
     </div>
