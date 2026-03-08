@@ -87,7 +87,7 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
         setSaving(true);
         try {
           await saveToGallery({
-            imageUrl: data.imageUrl,
+            imageUrl: finalUrl,
             prompt: prompt.trim(),
             mode: "japanese",
             aspectRatio: printSize.ratio,
