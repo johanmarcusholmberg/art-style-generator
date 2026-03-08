@@ -125,6 +125,28 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
 
   const hasEnhanced = hdEnhance && baseImageUrl && imageUrl && baseImageUrl !== imageUrl;
 
+  const handleSaveToGallery = async () => {
+    if (!imageUrl || savedToGallery || saving) return;
+    setSaving(true);
+    try {
+      await saveToGallery({
+        imageUrl,
+        prompt: prompt.trim(),
+        mode: "freestyle",
+        aspectRatio: printSize.ratio,
+        printSize: printSize.dimensions,
+      });
+      setSavedToGallery(true);
+      onImageSaved?.();
+      toast({ title: "Saved to gallery", description: "Your artwork has been saved." });
+    } catch (saveErr: any) {
+      console.error("Gallery save failed:", saveErr);
+      toast({ title: "Save failed", description: saveErr.message || "Could not save", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
       <div className="space-y-4 mb-8">
