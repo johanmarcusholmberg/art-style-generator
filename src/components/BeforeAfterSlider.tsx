@@ -49,14 +49,13 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className 
 
       {/* Before image (clipped) */}
       <div
-        className="absolute inset-0 overflow-hidden"
-        style={{ width: `${position}%` }}
+        className="absolute inset-0"
+        style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
       >
         <img
           src={beforeUrl}
           alt={`${alt} (original)`}
           className="w-full block"
-          style={{ width: containerRef.current ? `${containerRef.current.offsetWidth}px` : "100%" }}
           draggable={false}
         />
       </div>
