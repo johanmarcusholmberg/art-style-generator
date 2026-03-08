@@ -111,6 +111,27 @@ const Index = () => {
           墨 · Sumi Ink Studio
         </p>
       </footer>
+
+      {/* Confirm replacing active image */}
+      <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display">Replace current image?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have an unsaved generated image. Loading a gallery image for editing will replace it. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (pendingEdit) applyEdit(pendingEdit);
+              setPendingEdit(null);
+            }}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
