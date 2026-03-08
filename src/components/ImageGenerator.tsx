@@ -48,9 +48,9 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
     setImageUrl(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke("generate-image", {
-        body: { prompt: prompt.trim(), aspectRatio: printSize.ratio },
-      });
+      const body: any = { prompt: prompt.trim(), aspectRatio: printSize.ratio };
+      if (sourceImageUrl) body.sourceImageUrl = sourceImageUrl;
+      const { data, error } = await supabase.functions.invoke("generate-image", { body });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
