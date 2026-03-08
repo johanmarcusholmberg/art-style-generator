@@ -21,18 +21,43 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("japanese");
   const [editState, setEditState] = useState<EditRequest | null>(null);
   const [pendingEdit, setPendingEdit] = useState<EditRequest | null>(null);
+  const [hasUnsavedImage, setHasUnsavedImage] = useState(false);
   const generatorRef = useRef<HTMLDivElement>(null);
 
   const refreshGallery = useCallback(() => setGalleryRefreshKey((k) => k + 1), []);
 
-  const applyEdit = useCallback((req: EditRequest) => {
+  const clearCurrentGeneration = useCallback(async () => {
+    // Clear cached images for both modes
+    await Promise.all([
+      deleteCachedImage("img-japanese"),
+      deleteCachedImage("img-base-japanese"),
+      deleteCachedImage("img-freestyle"),
+      deleteCachedImage("img-base-freestyle"),
+    ]);
+    sessionStorage.removeItem("gen-state-japanese");
+    sessionStorage.removeItem("gen-state-freestyle");
+  }, []);
+
+  const applyEdit = useCallback(async (req: EditRequest) => {
+    await clearCurrentGeneration();
     setActiveTab(req.mode);
     setEditState(req);
     setTimeout(() => generatorRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-  }, []);
+  }, [clearCurrentGeneration]);
 
-  const handleEditImage = useCallback((req: EditRequest) => {
-    // Always confirm before loading gallery image for editing
+  const handleEditImage = useCallback(async (req: EditRequest) => {
+    // Check if there's an unsaved generated image in either mode
+    const [jpImg, fsImg] = await Promise.all([
+      getCachedImage("img-japanese"),
+      getCachedImage("img-freestyle"),
+    ]);
+
+    const jpState = (() => { try { const r = sessionStorage.getItem("gen-state-japanese"); return r ? JSON.parse(r) : null; } catch { return null; } })();
+    const fsState = (() => { try { const r = sessionStorage.getItem("gen-state-freestyle"); return r ? JSON.parse(r) : null; } catch { return null; } })();
+
+    const hasUnsaved = (jpImg && !jpState?.savedToGallery) || (fsImg && !fsState?.savedToGallery);
+
+    setHasUnsavedImage(!!hasUnsaved);
     setPendingEdit(req);
   }, []);
 
