@@ -193,40 +193,8 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-5">
-            {paginated.map((img) => (
-              <div key={img.id} className="relative group">
-                <button
-                  onClick={() => setSelected(img)}
-                  className="relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
-                >
-                  <img
-                    src={img.publicUrl}
-                    alt={img.prompt}
-                    className="w-full h-full object-cover block"
-                    loading="lazy"
-                  />
-                  {/* Hover: show full image on top */}
-                  <div className="absolute inset-0 bg-card opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center p-2 z-20">
-                    <img
-                      src={img.publicUrl}
-                      alt={img.prompt}
-                      className="max-w-full max-h-full object-contain rounded-sm"
-                    />
-                  </div>
-                  <Badge
-                    variant="secondary"
-                    className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80 z-30"
-                  >
-                    {img.mode === "japanese" ? "🏯" : "🎨"}
-                  </Badge>
-                </button>
-              </div>
-            ))}
-          </div>
-
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-1 mt-6 flex-wrap">
+            <div className="flex items-center justify-center gap-1 mb-4 flex-wrap">
               <Button
                 variant="outline"
                 size="sm"
@@ -258,6 +226,38 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
               </Button>
             </div>
           )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-5">
+            {paginated.map((img) => (
+              <div key={img.id} className="relative group">
+                <button
+                  onClick={() => setSelected(img)}
+                  className="relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
+                >
+                  <img
+                    src={img.publicUrl}
+                    alt={img.prompt}
+                    className="w-full h-full object-cover block"
+                    loading="lazy"
+                  />
+                  {/* Hover: show full image on top */}
+                  <div className="absolute inset-0 bg-card opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center p-2 z-20">
+                    <img
+                      src={img.publicUrl}
+                      alt={img.prompt}
+                      className="max-w-full max-h-full object-contain rounded-sm"
+                    />
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80 z-30"
+                  >
+                    {img.mode === "japanese" ? "🏯" : "🎨"}
+                  </Badge>
+                </button>
+              </div>
+            ))}
+          </div>
         </>
       )}
 
