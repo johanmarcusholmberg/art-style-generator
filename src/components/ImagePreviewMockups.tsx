@@ -136,7 +136,7 @@ export default function ImagePreviewMockups({ imageUrl, alt, disabled, children 
     <div className="flex flex-col items-center gap-4 w-full">
       {/* Controls row */}
       <div className="flex flex-wrap gap-2 items-center">
-        <Select value={mode} onValueChange={(v) => setMode(v as ViewMode)}>
+        <Select value={mode} onValueChange={(v) => setMode(v as ViewMode)} disabled={disabled}>
           <SelectTrigger className="w-[160px] font-display text-xs h-9">
             <SelectValue />
           </SelectTrigger>
