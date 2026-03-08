@@ -62,6 +62,8 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
   const [selected, setSelected] = useState<GalleryImage | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GalleryImage | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const [modeFilter, setModeFilter] = useState("all");
   const [ratioFilter, setRatioFilter] = useState("all");
@@ -73,6 +75,9 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [refreshKey]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => { setCurrentPage(1); }, [modeFilter, ratioFilter]);
 
   const uniqueRatios = useMemo(
     () => [...new Set(images.map((img) => img.aspect_ratio))].sort(),
@@ -87,6 +92,12 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
           (ratioFilter === "all" || img.aspect_ratio === ratioFilter)
       ),
     [images, modeFilter, ratioFilter]
+  );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const paginated = useMemo(
+    () => filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE),
+    [filtered, currentPage]
   );
 
   const handleDelete = async () => {
