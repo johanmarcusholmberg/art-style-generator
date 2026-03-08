@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { Loader2, Download } from "lucide-react";
+import { Loader2, Download, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
 import { saveToGallery } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
+import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -44,10 +46,13 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
   const [prompt, setPrompt] = useState(isEditMode ? "" : (initialPrompt || ""));
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [baseImageUrl, setBaseImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveToGalleryEnabled, setSaveToGalleryEnabled] = useState(true);
+  const [hdEnhance, setHdEnhance] = useState(true);
+  const [showComparison, setShowComparison] = useState(false);
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const { toast } = useToast();
 
@@ -55,6 +60,8 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
     if (!prompt.trim()) return;
     setLoading(true);
     setImageUrl(null);
+    setBaseImageUrl(null);
+    setShowComparison(false);
 
     try {
       const body: any = { prompt: prompt.trim(), aspectRatio: printSize.ratio };
@@ -65,20 +72,22 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
       if (data?.error) throw new Error(data.error);
 
       let finalUrl = data.imageUrl;
+      setBaseImageUrl(data.imageUrl);
 
-      // Second pass: upscale/enhance
-      setEnhancing(true);
-      try {
-        const { data: upData, error: upError } = await supabase.functions.invoke("upscale-image", {
-          body: { imageUrl: data.imageUrl, aspectRatio: printSize.ratio },
-        });
-        if (!upError && upData?.imageUrl) {
-          finalUrl = upData.imageUrl;
+      if (hdEnhance) {
+        setEnhancing(true);
+        try {
+          const { data: upData, error: upError } = await supabase.functions.invoke("upscale-image", {
+            body: { imageUrl: data.imageUrl, aspectRatio: printSize.ratio },
+          });
+          if (!upError && upData?.imageUrl) {
+            finalUrl = upData.imageUrl;
+          }
+        } catch (upErr) {
+          console.warn("Upscale pass skipped:", upErr);
+        } finally {
+          setEnhancing(false);
         }
-      } catch (upErr) {
-        console.warn("Upscale pass skipped:", upErr);
-      } finally {
-        setEnhancing(false);
       }
 
       setImageUrl(finalUrl);
@@ -112,6 +121,8 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
     }
   };
 
+  const hasEnhanced = hdEnhance && baseImageUrl && imageUrl && baseImageUrl !== imageUrl;
+
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
       <div className="space-y-4 mb-8">
@@ -143,15 +154,29 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
 
         <PrintSizeSelector selected={printSize} onChange={setPrintSize} />
 
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="save-to-gallery-fs"
-            checked={saveToGalleryEnabled}
-            onCheckedChange={(checked) => setSaveToGalleryEnabled(checked === true)}
-          />
-          <Label htmlFor="save-to-gallery-fs" className="font-display text-sm text-muted-foreground cursor-pointer">
-            Save to gallery
-          </Label>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="save-to-gallery-fs"
+              checked={saveToGalleryEnabled}
+              onCheckedChange={(checked) => setSaveToGalleryEnabled(checked === true)}
+            />
+            <Label htmlFor="save-to-gallery-fs" className="font-display text-sm text-muted-foreground cursor-pointer">
+              Save to gallery
+            </Label>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Switch
+              id="hd-enhance-fs"
+              checked={hdEnhance}
+              onCheckedChange={setHdEnhance}
+            />
+            <Label htmlFor="hd-enhance-fs" className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              HD Enhance
+            </Label>
+          </div>
         </div>
 
         <Button
@@ -182,8 +207,17 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
 
         {!loading && !enhancing && imageUrl && (
           <div className="flex flex-col items-center gap-4 p-4 w-full">
-            <ImagePreviewMockups imageUrl={imageUrl} alt={prompt} />
-            <div className="flex gap-2">
+            {showComparison && hasEnhanced ? (
+              <BeforeAfterSlider
+                beforeUrl={baseImageUrl!}
+                afterUrl={imageUrl}
+                alt={prompt}
+                className="max-w-full max-h-[600px]"
+              />
+            ) : (
+              <ImagePreviewMockups imageUrl={imageUrl} alt={prompt} />
+            )}
+            <div className="flex flex-wrap gap-2 items-center justify-center">
               <Button
                 variant="outline"
                 size="sm"
@@ -193,6 +227,17 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
                 <Download className="mr-2 h-4 w-4" />
                 Download ({printSize.dimensions})
               </Button>
+              {hasEnhanced && (
+                <Button
+                  variant={showComparison ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowComparison((v) => !v)}
+                  className="font-display text-xs tracking-wider"
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  {showComparison ? "Hide Comparison" : "Before / After"}
+                </Button>
+              )}
               {saving && (
                 <span className="text-xs text-muted-foreground flex items-center gap-1 font-display">
                   <Loader2 className="h-3 w-3 animate-spin" /> Saving…
