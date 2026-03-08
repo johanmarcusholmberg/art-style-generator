@@ -21,10 +21,19 @@ const downloadImage = async (dataUrl: string, filename: string) => {
   URL.revokeObjectURL(url);
 };
 
-const EXAMPLE_PROMPTS = [
+const GENERATE_PROMPTS = [
   "A great wave crashing against Mount Fuji at sunset",
   "Koi fish swimming in a tranquil garden pond",
   "A crane flying over misty mountains at dawn",
+];
+
+const EDIT_PROMPTS = [
+  "Change the background to a sunset sky",
+  "Make the colors more vibrant and saturated",
+  "Add cherry blossoms falling in the scene",
+  "Change the season to winter with snow",
+  "Make the sky darker and more dramatic",
+  "Add mist and fog to the mountains",
 ];
 
 interface ImageGeneratorProps {
@@ -104,9 +113,9 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
           className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary"
         />
 
-        <p className="font-display font-bold text-sm text-foreground">Suggestions</p>
+        <p className="font-display font-bold text-sm text-foreground">{isEditMode ? "Edit suggestions" : "Suggestions"}</p>
         <div className="flex flex-wrap gap-2">
-          {EXAMPLE_PROMPTS.map((p) => (
+          {(isEditMode ? EDIT_PROMPTS : GENERATE_PROMPTS).map((p) => (
             <button
               key={p}
               onClick={() => setPrompt(p)}
