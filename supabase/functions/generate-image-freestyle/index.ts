@@ -33,7 +33,7 @@ serve(async (req) => {
 
     if (sourceImageUrl) {
       // Edit mode: user provides a source image and describes changes
-      const editPrompt = `You are an image editor. Take the provided image and apply the following changes while keeping the ukiyo-e woodblock print art style (flat colors, bold outlines, washi paper texture, sumi ink details). Do NOT change the subject to a Japanese setting — only keep the art style. Do NOT include any Japanese text, characters, kanji, hiragana, katakana, or any written script. Changes requested: ${trimmedPrompt}. Generate at maximum resolution with fine detail suitable for large format printing.${ratioText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the ukiyo-e woodblock print art style. Do NOT include any Japanese text, characters, or script. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}`;
       messages = [
         {
           role: "user",
