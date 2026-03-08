@@ -29,8 +29,9 @@ export function usePersistedGeneration(mode: "japanese" | "freestyle", initialPr
   const [prompt, setPrompt] = useState(initialPrompt || cached?.prompt || "");
   const [savedToGallery, setSavedToGallery] = useState(cached?.savedToGallery ?? false);
 
-  // Restore images from IndexedDB on mount
+  // Restore images from IndexedDB on mount (only if not already saved)
   useEffect(() => {
+    if (cached?.savedToGallery) return; // Already saved — don't restore stale image
     let cancelled = false;
     (async () => {
       const [img, baseImg] = await Promise.all([
