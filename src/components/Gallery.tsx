@@ -64,6 +64,8 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
   const [selected, setSelected] = useState<GalleryImage | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GalleryImage | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [undoTarget, setUndoTarget] = useState<GalleryImage | null>(null);
+  const [undoTimer, setUndoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 9;
 
@@ -101,21 +103,46 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
     [filtered, currentPage]
   );
 
-  const handleDelete = async () => {
+  // Soft delete with undo
+  const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    setDeleting(true);
-    try {
-      await deleteFromGallery(deleteTarget.id, deleteTarget.storage_path);
-      setImages((prev) => prev.filter((img) => img.id !== deleteTarget.id));
-      if (selected?.id === deleteTarget.id) setSelected(null);
-      toast.success("Image deleted");
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to delete image");
-    } finally {
-      setDeleting(false);
-      setDeleteTarget(null);
-    }
+    const target = deleteTarget;
+    setDeleteTarget(null);
+
+    // Optimistically remove from UI
+    setImages((prev) => prev.filter((img) => img.id !== target.id));
+    if (selected?.id === target.id) setSelected(null);
+
+    // Show undo toast
+    setUndoTarget(target);
+    const timer = setTimeout(async () => {
+      // Actually delete after undo window
+      try {
+        await deleteFromGallery(target.id, target.storage_path);
+      } catch (e) {
+        console.error(e);
+        // Restore on failure
+        setImages((prev) => [target, ...prev]);
+        toast.error("Failed to delete image");
+      }
+      setUndoTarget(null);
+    }, 5000);
+    setUndoTimer(timer);
+
+    toast.success("Image deleted", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          clearTimeout(timer);
+          setImages((prev) => [target, ...prev].sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          ));
+          setUndoTarget(null);
+          toast.info("Delete undone");
+        },
+      },
+      duration: 5000,
+    });
   };
 
   // Lock body scroll when lightbox is open
@@ -197,9 +224,7 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
           <SelectContent>
             <SelectItem value="all">All Ratios</SelectItem>
             {uniqueRatios.map((r) => (
-              <SelectItem key={r} value={r}>
-                {r}
-              </SelectItem>
+              <SelectItem key={r} value={r}>{r}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -209,10 +234,7 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
             variant="ghost"
             size="sm"
             className="font-display text-xs h-8 px-2"
-            onClick={() => {
-              setModeFilter("all");
-              setRatioFilter("all");
-            }}
+            onClick={() => { setModeFilter("all"); setRatioFilter("all"); }}
           >
             ✕
           </Button>
@@ -269,18 +291,21 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
                   src={img.publicUrl}
                   alt={img.prompt}
                   className="w-full h-full object-cover block"
-                  style={{ imageRendering: 'auto' }}
+                  style={{ imageRendering: "auto" }}
                   decoding="async"
                   sizes="(min-width: 768px) 33vw, (min-width: 640px) 33vw, 50vw"
                   loading="lazy"
                 />
-                {/* Hover: show full image on top */}
-                <div className="absolute inset-0 bg-card opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center p-2 z-20">
+                {/* Hover: show full image + prompt */}
+                <div className="absolute inset-0 bg-card opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center p-2 z-20">
                   <img
                     src={img.publicUrl}
                     alt={img.prompt}
-                    className="max-w-full max-h-full object-contain rounded-sm"
+                    className="max-w-full max-h-[75%] object-contain rounded-sm"
                   />
+                  <p className="mt-2 text-[10px] text-muted-foreground font-display line-clamp-2 text-center px-1">
+                    {img.prompt}
+                  </p>
                 </div>
                 <Badge
                   variant="secondary"
@@ -322,6 +347,14 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
             className="bg-card rounded-sm border border-border max-w-3xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 space-y-4 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Close X in top-right */}
+            <button
+              onClick={() => setSelected(null)}
+              className="absolute top-3 right-3 z-10 p-1.5 rounded-sm hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            >
+              ✕
+            </button>
+
             <ImagePreviewMockups imageUrl={selected.publicUrl} alt={selected.prompt} />
             <div className="space-y-2">
               <p className="font-display text-sm text-foreground">{selected.prompt}</p>
@@ -371,14 +404,6 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelected(null)}
-                  className="font-display text-xs"
-                >
-                  Close
-                </Button>
               </div>
             </div>
           </div>
@@ -391,13 +416,13 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display">Delete image?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove the image from storage and cannot be undone.
+              This will permanently remove the image from storage. You'll have 5 seconds to undo after confirming.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={deleting}>
-              {deleting ? "Deleting…" : "Delete"}
+            <AlertDialogAction onClick={handleDeleteConfirm} disabled={deleting}>
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
