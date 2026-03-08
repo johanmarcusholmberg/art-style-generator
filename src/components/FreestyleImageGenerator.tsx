@@ -89,10 +89,16 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
       <div className="space-y-4 mb-8">
+        {isEditMode && sourceImageUrl && (
+          <div className="space-y-2">
+            <p className="font-display text-xs text-muted-foreground">Editing this image:</p>
+            <img src={sourceImageUrl} alt="Source image" className="max-h-40 rounded-sm border border-border object-contain" />
+          </div>
+        )}
         <Textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Describe any scene… e.g. 'Central Park in New York during autumn'"
+          placeholder={isEditMode ? "Describe the changes you want… e.g. 'Add more vibrant colors'" : "Describe any scene… e.g. 'Central Park in New York during autumn'"}
           className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary"
         />
 
