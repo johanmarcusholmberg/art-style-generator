@@ -51,7 +51,7 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
   const [loading, setLoading] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [hdEnhance, setHdEnhance] = useState(true);
+  const [replacing, setReplacing] = useState(false);
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const { toast } = useToast();
