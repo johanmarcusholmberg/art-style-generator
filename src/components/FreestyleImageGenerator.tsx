@@ -63,6 +63,7 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
     setImageUrl(null);
     setBaseImageUrl(null);
     setShowComparison(false);
+    setSavedToGallery(false);
 
     try {
       const body: any = { prompt: prompt.trim(), aspectRatio: printSize.ratio };
