@@ -89,10 +89,16 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
       <div className="space-y-4 mb-8">
+        {isEditMode && sourceImageUrl && (
+          <div className="space-y-2">
+            <p className="font-display text-xs text-muted-foreground">Editing this image:</p>
+            <img src={sourceImageUrl} alt="Source image" className="max-h-40 rounded-sm border border-border object-contain" />
+          </div>
+        )}
         <Textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Describe your scene… e.g. 'A crane flying over misty mountains'"
+          placeholder={isEditMode ? "Describe the changes you want… e.g. 'Make the sky a sunset orange'" : "Describe your scene… e.g. 'A crane flying over misty mountains'"}
           className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary"
         />
 
