@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Download, Loader2, Image as ImageIcon, Trash2 } from "lucide-react";
+import { Download, Loader2, Image as ImageIcon, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { fetchGalleryImages, deleteFromGallery } from "@/lib/gallery";
 import { toast } from "sonner";
+import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 
 interface GalleryImage {
   id: string;
@@ -31,6 +32,12 @@ interface GalleryImage {
   storage_path: string;
   created_at: string;
   publicUrl: string;
+}
+
+export interface EditRequest {
+  prompt: string;
+  imageUrl: string;
+  mode: "japanese" | "freestyle";
 }
 
 const downloadImage = async (url: string, filename: string) => {
@@ -44,14 +51,18 @@ const downloadImage = async (url: string, filename: string) => {
   URL.revokeObjectURL(blobUrl);
 };
 
-export default function Gallery({ refreshKey }: { refreshKey: number }) {
+interface GalleryProps {
+  refreshKey: number;
+  onEditImage?: (req: EditRequest) => void;
+}
+
+export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<GalleryImage | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GalleryImage | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Filters
   const [modeFilter, setModeFilter] = useState("all");
   const [ratioFilter, setRatioFilter] = useState("all");
 
@@ -93,6 +104,15 @@ export default function Gallery({ refreshKey }: { refreshKey: number }) {
       setDeleting(false);
       setDeleteTarget(null);
     }
+  };
+
+  const handleEdit = (img: GalleryImage) => {
+    setSelected(null);
+    onEditImage?.({
+      prompt: img.prompt,
+      imageUrl: img.publicUrl,
+      mode: img.mode as "japanese" | "freestyle",
+    });
   };
 
   if (loading) {
@@ -200,11 +220,7 @@ export default function Gallery({ refreshKey }: { refreshKey: number }) {
             className="bg-card rounded-sm border border-border max-w-3xl w-full max-h-[90vh] overflow-auto p-4 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={selected.publicUrl}
-              alt={selected.prompt}
-              className="w-full rounded-sm"
-            />
+            <ImagePreviewMockups imageUrl={selected.publicUrl} alt={selected.prompt} />
             <div className="space-y-2">
               <p className="font-display text-sm text-foreground">{selected.prompt}</p>
               <div className="flex flex-wrap gap-2 items-center">
@@ -223,7 +239,7 @@ export default function Gallery({ refreshKey }: { refreshKey: number }) {
                   {new Date(selected.created_at).toLocaleDateString()}
                 </span>
               </div>
-              <div className="flex gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -233,6 +249,17 @@ export default function Gallery({ refreshKey }: { refreshKey: number }) {
                   <Download className="mr-2 h-4 w-4" />
                   Download
                 </Button>
+                {onEditImage && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(selected)}
+                    className="font-display text-xs"
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit with new prompt
+                  </Button>
+                )}
                 <Button
                   variant="destructive"
                   size="sm"
