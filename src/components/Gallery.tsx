@@ -193,9 +193,9 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-5" style={{ overflow: 'visible' }}>
             {paginated.map((img) => (
-              <div key={img.id} className="relative group">
+              <div key={img.id} className="relative group" style={{ overflow: 'visible' }}>
                 <button
                   onClick={() => setSelected(img)}
                   className="relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
@@ -213,13 +213,13 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
                     {img.mode === "japanese" ? "🏯" : "🎨"}
                   </Badge>
                 </button>
-                {/* Hover preview tooltip */}
-                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 hidden group-hover:block w-64 max-w-xs">
-                  <div className="bg-card border border-border rounded-sm shadow-xl p-2">
+                {/* Hover preview above thumbnail */}
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-[calc(100%+0.5rem)] z-[100] opacity-0 group-hover:opacity-100 transition-opacity duration-200 w-72">
+                  <div className="bg-card border border-border rounded-sm shadow-2xl p-2">
                     <img
                       src={img.publicUrl}
                       alt={img.prompt}
-                      className="w-full h-auto rounded-sm object-contain max-h-64"
+                      className="w-full h-auto rounded-sm object-contain max-h-72"
                     />
                   </div>
                 </div>
