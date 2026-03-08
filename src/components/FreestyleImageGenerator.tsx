@@ -44,7 +44,7 @@ interface FreestyleImageGeneratorProps {
   originalStoragePath?: string;
 }
 
-export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, initialImageUrl }: FreestyleImageGeneratorProps) {
+export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, initialImageUrl, originalImageId, originalStoragePath }: FreestyleImageGeneratorProps) {
   const isEditMode = !!initialImageUrl;
   const { prompt, setPrompt, imageUrl, setImageUrl, baseImageUrl, setBaseImageUrl, savedToGallery, setSavedToGallery } = usePersistedGeneration("freestyle", isEditMode ? undefined : initialPrompt);
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);

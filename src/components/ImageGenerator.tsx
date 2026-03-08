@@ -44,7 +44,7 @@ interface ImageGeneratorProps {
   originalStoragePath?: string;
 }
 
-export default function ImageGenerator({ onImageSaved, initialPrompt, initialImageUrl }: ImageGeneratorProps) {
+export default function ImageGenerator({ onImageSaved, initialPrompt, initialImageUrl, originalImageId, originalStoragePath }: ImageGeneratorProps) {
   const isEditMode = !!initialImageUrl;
   const { prompt, setPrompt, imageUrl, setImageUrl, baseImageUrl, setBaseImageUrl, savedToGallery, setSavedToGallery } = usePersistedGeneration("japanese", isEditMode ? undefined : initialPrompt);
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
