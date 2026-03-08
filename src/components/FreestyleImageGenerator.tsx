@@ -101,11 +101,22 @@ export default function FreestyleImageGenerator() {
         )}
 
         {!loading && imageUrl && (
-          <img
-            src={imageUrl}
-            alt={prompt}
-            className="max-w-full max-h-[600px] rounded-sm animate-ink-spread"
-          />
+          <div className="flex flex-col items-center gap-4">
+            <img
+              src={imageUrl}
+              alt={prompt}
+              className="max-w-full max-h-[600px] rounded-sm animate-ink-spread"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadImage(imageUrl, `ukiyoe-freestyle-${Date.now()}.png`)}
+              className="font-display text-xs tracking-wider"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download HD
+            </Button>
+          </div>
         )}
 
         {!loading && !imageUrl && (
