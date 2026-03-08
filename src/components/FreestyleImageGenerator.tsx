@@ -129,6 +129,30 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
     }
   };
 
+  const handleReplaceOriginal = async () => {
+    if (!imageUrl || !originalImageId || !originalStoragePath || replacing) return;
+    setReplacing(true);
+    try {
+      await replaceInGallery({
+        originalId: originalImageId,
+        originalStoragePath,
+        imageUrl,
+        prompt: prompt.trim(),
+        mode: "freestyle",
+        aspectRatio: printSize.ratio,
+        printSize: printSize.dimensions,
+      });
+      setSavedToGallery(true);
+      onImageSaved?.();
+      toast({ title: "Original replaced", description: "The gallery image has been updated." });
+    } catch (err: any) {
+      console.error("Replace failed:", err);
+      toast({ title: "Replace failed", description: err.message || "Could not replace", variant: "destructive" });
+    } finally {
+      setReplacing(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
       <div className="space-y-4 mb-8">
