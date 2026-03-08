@@ -31,16 +31,10 @@ const Index = () => {
     setTimeout(() => generatorRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
   }, []);
 
-  const handleEditImage = useCallback(async (req: EditRequest) => {
-    // Check if the target generator tab has an active image in cache
-    const imgKey = `img-${req.mode}`;
-    const cached = await getCachedImage(imgKey);
-    if (cached) {
-      setPendingEdit(req);
-    } else {
-      applyEdit(req);
-    }
-  }, [applyEdit]);
+  const handleEditImage = useCallback((req: EditRequest) => {
+    // Always confirm before loading gallery image for editing
+    setPendingEdit(req);
+  }, []);
 
   // Key to force remount generators when edit state changes
   const editKey = editState ? `${editState.mode}-${editState.prompt}` : "default";
