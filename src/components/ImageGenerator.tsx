@@ -102,7 +102,7 @@ export default function ImageGenerator({
     setSavedToGallery(false);
 
     try {
-      const body: any = { prompt: prompt.trim(), aspectRatio: printSize.ratio };
+      const body: any = { prompt: prompt.trim(), aspectRatio: printSize.ratio, whiteFrame };
       if (sourceImageUrl) body.sourceImageUrl = sourceImageUrl;
       const { data, error } = await supabase.functions.invoke(edgeFn, { body });
 
