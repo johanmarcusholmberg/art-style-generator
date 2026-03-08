@@ -50,6 +50,23 @@ function FramedImage({ imageUrl, alt, frame, className }: { imageUrl: string; al
   );
 }
 
+/** Binder clip SVG — the kind with a black triangular body and silver wire handles */
+function BinderClip({ x }: { x: number }) {
+  return (
+    <g transform={`translate(${x}, 0)`}>
+      {/* Silver wire handles going up */}
+      <path d="M 4 0 C 4 -20, 4 -28, 10 -32 Q 14 -34, 18 -32 C 24 -28, 24 -20, 24 0"
+        fill="none" stroke="hsl(0,0%,60%)" strokeWidth="1.8" />
+      {/* Black clip body */}
+      <rect x="0" y="-2" width="28" height="16" rx="1" fill="hsl(0,0%,15%)" />
+      {/* Clip grip lines */}
+      <line x1="6" y1="3" x2="22" y2="3" stroke="hsl(0,0%,30%)" strokeWidth="0.7" />
+      <line x1="6" y1="6" x2="22" y2="6" stroke="hsl(0,0%,30%)" strokeWidth="0.7" />
+      <line x1="6" y1="9" x2="22" y2="9" stroke="hsl(0,0%,30%)" strokeWidth="0.7" />
+    </g>
+  );
+}
+
 export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMockupsProps) {
   const [mode, setMode] = useState<ViewMode>("original");
   const [frameStyle, setFrameStyle] = useState<string>(FRAME_STYLES[0].id);
@@ -107,63 +124,38 @@ export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMocku
         )}
 
         {mode === "clothesline" && (
-          <div className="relative w-full max-w-2xl flex justify-center">
-            {/* Container for wires + image */}
-            <div className="relative inline-flex flex-col items-center">
-              {/* Two horizontal wires */}
-              <div className="relative w-full" style={{ height: 32 }}>
-                {/* Wire 1 (top) */}
-                <div className="absolute left-0 right-0 top-[8px] h-[1px] bg-foreground/40" />
-                {/* Wire 2 (bottom) */}
-                <div className="absolute left-0 right-0 top-[22px] h-[1px] bg-foreground/40" />
-              </div>
+          <div className="relative w-full max-w-2xl flex justify-center pt-12">
+            {/* Strings going up to "ceiling" — two diagonal strings */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[320px] h-12 pointer-events-none">
+              <svg width="320" height="48" viewBox="0 0 320 48" className="w-full h-full">
+                {/* Left string */}
+                <line x1="100" y1="48" x2="80" y2="0" stroke="hsl(var(--foreground))" strokeWidth="1" opacity="0.4" />
+                {/* Right string */}
+                <line x1="220" y1="48" x2="240" y2="0" stroke="hsl(var(--foreground))" strokeWidth="1" opacity="0.4" />
+              </svg>
+            </div>
 
-              {/* Image with clips overlapping the wires */}
-              <div
-                className="relative -mt-3"
-                style={{
-                  transform: "rotate(-0.8deg)",
-                  filter: "drop-shadow(2px 4px 8px rgba(0,0,0,0.15))",
-                }}
+            {/* Image with binder clips on top */}
+            <div className="relative inline-block">
+              {/* Binder clips SVG overlay */}
+              <svg
+                className="absolute z-10 pointer-events-none"
+                style={{ top: -30, left: 0, width: "100%", height: 46 }}
+                viewBox="0 0 300 46"
+                preserveAspectRatio="xMidYMax meet"
               >
-                {/* Left clip — sits on top edge of image, straddling the wire */}
-                <svg
-                  className="absolute z-10"
-                  style={{ top: -14, left: "18%" }}
-                  width="20" height="36" viewBox="0 0 20 36"
-                >
-                  {/* Clip body */}
-                  <rect x="3" y="0" width="14" height="24" rx="2" fill="hsl(var(--muted-foreground))" opacity="0.85" />
-                  {/* Clip grip top */}
-                  <rect x="5" y="2" width="10" height="8" rx="1.5" fill="hsl(var(--foreground))" opacity="0.25" />
-                  {/* Spring ring */}
-                  <circle cx="10" cy="13" r="2.5" fill="none" stroke="hsl(var(--foreground))" strokeWidth="1" opacity="0.3" />
-                  {/* Lower jaw */}
-                  <rect x="5" y="18" width="10" height="16" rx="1" fill="hsl(var(--muted-foreground))" opacity="0.7" />
-                  <line x1="7" y1="22" x2="13" y2="22" stroke="hsl(var(--foreground))" strokeWidth="0.5" opacity="0.3" />
-                  <line x1="7" y1="25" x2="13" y2="25" stroke="hsl(var(--foreground))" strokeWidth="0.5" opacity="0.3" />
-                </svg>
+                <BinderClip x={72} />
+                <BinderClip x={200} />
+              </svg>
 
-                {/* Right clip */}
-                <svg
-                  className="absolute z-10"
-                  style={{ top: -14, right: "18%" }}
-                  width="20" height="36" viewBox="0 0 20 36"
-                >
-                  <rect x="3" y="0" width="14" height="24" rx="2" fill="hsl(var(--muted-foreground))" opacity="0.85" />
-                  <rect x="5" y="2" width="10" height="8" rx="1.5" fill="hsl(var(--foreground))" opacity="0.25" />
-                  <circle cx="10" cy="13" r="2.5" fill="none" stroke="hsl(var(--foreground))" strokeWidth="1" opacity="0.3" />
-                  <rect x="5" y="18" width="10" height="16" rx="1" fill="hsl(var(--muted-foreground))" opacity="0.7" />
-                  <line x1="7" y1="22" x2="13" y2="22" stroke="hsl(var(--foreground))" strokeWidth="0.5" opacity="0.3" />
-                  <line x1="7" y1="25" x2="13" y2="25" stroke="hsl(var(--foreground))" strokeWidth="0.5" opacity="0.3" />
-                </svg>
-
-                <img
-                  src={imageUrl}
-                  alt={alt}
-                  className="max-h-[450px] max-w-full rounded-sm border border-border/30"
-                />
-              </div>
+              <img
+                src={imageUrl}
+                alt={alt}
+                className="max-h-[480px] max-w-full rounded-sm"
+                style={{
+                  filter: "drop-shadow(2px 6px 12px rgba(0,0,0,0.2))",
+                }}
+              />
             </div>
           </div>
         )}
