@@ -192,72 +192,73 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
           No images match the selected filters.
         </p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {paginated.map((img) => (
-            <button
-              key={img.id}
-              onClick={() => setSelected(img)}
-              className="group relative aspect-square overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-colors"
-            >
-              <img
-                src={img.publicUrl}
-                alt={img.prompt}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/40 transition-colors flex items-end">
-                <div className="w-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <p className="text-xs text-background font-display line-clamp-2">{img.prompt}</p>
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {paginated.map((img) => (
+              <button
+                key={img.id}
+                onClick={() => setSelected(img)}
+                className="group relative aspect-square overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-colors"
+              >
+                <img
+                  src={img.publicUrl}
+                  alt={img.prompt}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-foreground/0 group-hover:bg-foreground/40 transition-colors flex items-end">
+                  <div className="w-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <p className="text-xs text-background font-display line-clamp-2">{img.prompt}</p>
+                  </div>
                 </div>
-              </div>
-              <Badge
-                variant="secondary"
-                className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80"
-              >
-                {img.mode === "japanese" ? "🏯" : "🎨"}
-              </Badge>
-            </button>
-          ))}
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-6">
-            {currentPage > 1 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="font-display text-xs"
-                onClick={() => setCurrentPage(1)}
-              >
-                ← First
-              </Button>
-            )}
-            {currentPage > 1 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="font-display text-xs"
-                onClick={() => setCurrentPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-            )}
-            <span className="text-sm font-display text-muted-foreground px-2">
-              Page {currentPage} of {totalPages}
-            </span>
-            {currentPage < totalPages && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="font-display text-xs"
-                onClick={() => setCurrentPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            )}
+                <Badge
+                  variant="secondary"
+                  className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80"
+                >
+                  {img.mode === "japanese" ? "🏯" : "🎨"}
+                </Badge>
+              </button>
+            ))}
           </div>
-        )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-6">
+              {currentPage > 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="font-display text-xs"
+                  onClick={() => setCurrentPage(1)}
+                >
+                  ← First
+                </Button>
+              )}
+              {currentPage > 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="font-display text-xs"
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+              )}
+              <span className="text-sm font-display text-muted-foreground px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              {currentPage < totalPages && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="font-display text-xs"
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Lightbox */}
