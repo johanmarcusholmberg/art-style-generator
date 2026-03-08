@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
 import { Loader2, Download, Sparkles, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,14 +44,11 @@ interface FreestyleImageGeneratorProps {
 
 export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, initialImageUrl }: FreestyleImageGeneratorProps) {
   const isEditMode = !!initialImageUrl;
-  const [prompt, setPrompt] = useState(isEditMode ? "" : (initialPrompt || ""));
+  const { prompt, setPrompt, imageUrl, setImageUrl, baseImageUrl, setBaseImageUrl, savedToGallery, setSavedToGallery } = usePersistedGeneration("freestyle", isEditMode ? undefined : initialPrompt);
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [baseImageUrl, setBaseImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [savedToGallery, setSavedToGallery] = useState(false);
   const [hdEnhance, setHdEnhance] = useState(true);
   const [showComparison, setShowComparison] = useState(false);
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
