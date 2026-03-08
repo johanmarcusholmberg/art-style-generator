@@ -63,7 +63,7 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
   const [deleteTarget, setDeleteTarget] = useState<GalleryImage | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 9;
 
   const [modeFilter, setModeFilter] = useState("all");
   const [ratioFilter, setRatioFilter] = useState("all");
