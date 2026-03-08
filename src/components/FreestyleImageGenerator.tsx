@@ -180,7 +180,7 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
           </div>
         )}
 
-        {!loading && imageUrl && (
+        {!loading && !enhancing && imageUrl && (
           <div className="flex flex-col items-center gap-4 p-4 w-full">
             <ImagePreviewMockups imageUrl={imageUrl} alt={prompt} />
             <div className="flex gap-2">
