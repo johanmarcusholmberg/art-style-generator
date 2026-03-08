@@ -45,7 +45,7 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className 
       style={{ touchAction: "none" }}
     >
       {/* After image (full) */}
-      <img src={afterUrl} alt={`${alt} (enhanced)`} className="w-full block" draggable={false} />
+      <img src={afterUrl} alt={`${alt} (enhanced)`} className="max-w-full max-h-[600px] object-contain block" draggable={false} />
 
       {/* Before image (clipped) */}
       <div
@@ -55,7 +55,7 @@ export default function BeforeAfterSlider({ beforeUrl, afterUrl, alt, className 
         <img
           src={beforeUrl}
           alt={`${alt} (original)`}
-          className="w-full block"
+          className="max-w-full max-h-[600px] object-contain block"
           draggable={false}
         />
       </div>
