@@ -193,64 +193,72 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-5">
             {paginated.map((img) => (
-              <button
-                key={img.id}
-                onClick={() => setSelected(img)}
-                className="group relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
-              >
-                <img
-                  src={img.publicUrl}
-                  alt={img.prompt}
-                  className="w-full h-full object-cover block transition-transform duration-300 group-hover:scale-110 group-hover:object-contain group-hover:bg-card"
-                  loading="lazy"
-                />
-                <Badge
-                  variant="secondary"
-                  className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80 z-10"
+              <div key={img.id} className="relative group">
+                <button
+                  onClick={() => setSelected(img)}
+                  className="relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
                 >
-                  {img.mode === "japanese" ? "🏯" : "🎨"}
-                </Badge>
-              </button>
+                  <img
+                    src={img.publicUrl}
+                    alt={img.prompt}
+                    className="w-full h-full object-cover block"
+                    loading="lazy"
+                  />
+                  <Badge
+                    variant="secondary"
+                    className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80 z-10"
+                  >
+                    {img.mode === "japanese" ? "🏯" : "🎨"}
+                  </Badge>
+                </button>
+                {/* Hover preview tooltip */}
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 hidden group-hover:block w-64 max-w-xs">
+                  <div className="bg-card border border-border rounded-sm shadow-xl p-2 space-y-1">
+                    <img
+                      src={img.publicUrl}
+                      alt={img.prompt}
+                      className="w-full h-auto rounded-sm object-contain max-h-64"
+                    />
+                    <p className="text-[11px] font-display text-muted-foreground line-clamp-2">{img.prompt}</p>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-6">
-              {currentPage > 1 && (
+            <div className="flex items-center justify-center gap-1 mt-6 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-display text-xs"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+              >
+                ‹ Föregående
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <Button
-                  variant="outline"
+                  key={page}
+                  variant={page === currentPage ? "default" : "outline"}
                   size="sm"
-                  className="font-display text-xs"
-                  onClick={() => setCurrentPage(1)}
+                  className="font-display text-xs min-w-[2rem]"
+                  onClick={() => setCurrentPage(page)}
                 >
-                  ← First
+                  {page}
                 </Button>
-              )}
-              {currentPage > 1 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="font-display text-xs"
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                >
-                  Previous
-                </Button>
-              )}
-              <span className="text-sm font-display text-muted-foreground px-2">
-                Page {currentPage} of {totalPages}
-              </span>
-              {currentPage < totalPages && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="font-display text-xs"
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
-              )}
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-display text-xs"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+              >
+                Nästa ›
+              </Button>
             </div>
           )}
         </>
