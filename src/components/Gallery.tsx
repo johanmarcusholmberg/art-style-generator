@@ -198,7 +198,7 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
               <button
                 key={img.id}
                 onClick={() => setSelected(img)}
-                className="group relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-colors break-inside-avoid block w-full"
+                className="group relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:scale-105 hover:shadow-lg break-inside-avoid block w-full cursor-pointer"
               >
                 <img
                   src={img.publicUrl}
