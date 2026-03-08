@@ -40,6 +40,8 @@ interface FreestyleImageGeneratorProps {
   onImageSaved?: () => void;
   initialPrompt?: string;
   initialImageUrl?: string;
+  originalImageId?: string;
+  originalStoragePath?: string;
 }
 
 export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, initialImageUrl }: FreestyleImageGeneratorProps) {
