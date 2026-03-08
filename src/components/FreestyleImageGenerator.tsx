@@ -21,10 +21,19 @@ const downloadImage = async (dataUrl: string, filename: string) => {
   URL.revokeObjectURL(url);
 };
 
-const EXAMPLE_PROMPTS = [
+const GENERATE_PROMPTS = [
   "Central Park in New York during autumn",
   "The Eiffel Tower at golden hour",
   "A cozy Italian café on a rainy day",
+];
+
+const EDIT_PROMPTS = [
+  "Change the background to a sunset sky",
+  "Make the colors more vibrant and saturated",
+  "Add rain and reflections on the ground",
+  "Change the time of day to night",
+  "Make the atmosphere warmer and cozier",
+  "Add dramatic clouds to the sky",
 ];
 
 interface FreestyleImageGeneratorProps {
