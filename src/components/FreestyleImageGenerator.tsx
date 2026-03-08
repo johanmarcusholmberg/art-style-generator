@@ -45,6 +45,7 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveToGalleryEnabled, setSaveToGalleryEnabled] = useState(true);
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
