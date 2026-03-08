@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Download, Loader2, Image as ImageIcon, Trash2, Pencil } from "lucide-react";
+import { Download, Loader2, Image as ImageIcon, Trash2, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -115,6 +115,35 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
       setDeleteTarget(null);
     }
   };
+
+  // Lock body scroll when lightbox is open
+  useEffect(() => {
+    if (selected) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [selected]);
+
+  // Navigate between filtered images
+  const selectedIndex = selected ? filtered.findIndex((img) => img.id === selected.id) : -1;
+  const goPrev = useCallback(() => {
+    if (selectedIndex > 0) setSelected(filtered[selectedIndex - 1]);
+  }, [selectedIndex, filtered]);
+  const goNext = useCallback(() => {
+    if (selectedIndex >= 0 && selectedIndex < filtered.length - 1) setSelected(filtered[selectedIndex + 1]);
+  }, [selectedIndex, filtered]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!selected) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") goPrev();
+      else if (e.key === "ArrowRight") goNext();
+      else if (e.key === "Escape") setSelected(null);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selected, goPrev, goNext]);
 
   const handleEdit = (img: GalleryImage) => {
     setSelected(null);
@@ -267,6 +296,24 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
           className="fixed inset-0 z-50 bg-foreground/80 flex items-center justify-center p-4"
           onClick={() => setSelected(null)}
         >
+          {/* Prev arrow */}
+          {selectedIndex > 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); goPrev(); }}
+              className="fixed left-2 top-1/2 -translate-y-1/2 z-[60] p-2 rounded-full bg-card/80 backdrop-blur-sm border border-border hover:bg-card transition-colors"
+            >
+              <ChevronLeft className="h-6 w-6 text-foreground" />
+            </button>
+          )}
+          {/* Next arrow */}
+          {selectedIndex < filtered.length - 1 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); goNext(); }}
+              className="fixed right-2 top-1/2 -translate-y-1/2 z-[60] p-2 rounded-full bg-card/80 backdrop-blur-sm border border-border hover:bg-card transition-colors"
+            >
+              <ChevronRight className="h-6 w-6 text-foreground" />
+            </button>
+          )}
           <div
             className="bg-card rounded-sm border border-border max-w-3xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 space-y-4 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
             onClick={(e) => e.stopPropagation()}
