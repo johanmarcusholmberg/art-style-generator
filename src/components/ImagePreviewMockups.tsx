@@ -98,6 +98,22 @@ export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMocku
   const [mode, setMode] = useState<ViewMode>("original");
   const [frameStyle, setFrameStyle] = useState<string>(FRAME_STYLES[0].id);
 
+
+const VIEW_MODES: { id: ViewMode; label: string }[] = [
+  { id: "original", label: "Original" },
+  { id: "frame", label: "Framed" },
+];
+
+interface ImagePreviewMockupsProps {
+  imageUrl: string;
+  alt: string;
+}
+
+export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMockupsProps) {
+  const [mode, setMode] = useState<ViewMode>("original");
+  const [frameStyle, setFrameStyle] = useState<string>(FRAME_STYLES[0].id);
+  const edgeColor = useEdgeColor(imageUrl);
+
   const selectedFrame = FRAME_STYLES.find((f) => f.id === frameStyle) || FRAME_STYLES[0];
 
   return (
@@ -147,7 +163,7 @@ export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMocku
         )}
 
         {mode === "frame" && (
-          <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} />
+          <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} edgeColor={edgeColor} />
         )}
       </div>
     </div>
