@@ -16,16 +16,15 @@ interface FrameStyle {
   border: string;
   inner: string;
   mat: string;
-  bg: string;
 }
 
 const FRAME_STYLES: FrameStyle[] = [
-  { id: "gold-classic", label: "Gold Classic", border: "bg-gradient-to-br from-[hsl(42,65%,65%)] via-[hsl(42,65%,55%)] to-[hsl(42,65%,45%)]", inner: "bg-[hsl(20,20%,15%)]/20", mat: "bg-[hsl(40,35%,93%)]", bg: "bg-[hsl(42,65%,55%)]" },
-  { id: "dark-wood", label: "Dark Wood", border: "bg-gradient-to-br from-[hsl(20,40%,25%)] via-[hsl(20,35%,20%)] to-[hsl(20,30%,15%)]", inner: "bg-[hsl(20,20%,10%)]/30", mat: "bg-[hsl(40,20%,90%)]", bg: "bg-[hsl(20,35%,20%)]" },
-  { id: "light-oak", label: "Light Oak", border: "bg-gradient-to-br from-[hsl(35,45%,60%)] via-[hsl(35,40%,50%)] to-[hsl(35,35%,40%)]", inner: "bg-[hsl(35,20%,30%)]/20", mat: "bg-[hsl(45,30%,95%)]", bg: "bg-[hsl(35,40%,50%)]" },
-  { id: "black-modern", label: "Black Modern", border: "bg-gradient-to-br from-[hsl(0,0%,25%)] via-[hsl(0,0%,15%)] to-[hsl(0,0%,10%)]", inner: "bg-[hsl(0,0%,5%)]/30", mat: "bg-[hsl(0,0%,97%)]", bg: "bg-[hsl(0,0%,15%)]" },
-  { id: "white-gallery", label: "White Gallery", border: "bg-gradient-to-br from-[hsl(0,0%,95%)] via-[hsl(0,0%,90%)] to-[hsl(0,0%,85%)]", inner: "bg-[hsl(0,0%,70%)]/20", mat: "bg-[hsl(0,0%,98%)]", bg: "bg-[hsl(0,0%,90%)]" },
-  { id: "cherry", label: "Cherry", border: "bg-gradient-to-br from-[hsl(0,35%,35%)] via-[hsl(0,30%,28%)] to-[hsl(0,25%,22%)]", inner: "bg-[hsl(0,20%,15%)]/30", mat: "bg-[hsl(30,20%,92%)]", bg: "bg-[hsl(0,30%,28%)]" },
+  { id: "gold-classic", label: "Gold Classic", border: "bg-gradient-to-br from-[hsl(42,65%,65%)] via-[hsl(42,65%,55%)] to-[hsl(42,65%,45%)]", inner: "bg-[hsl(20,20%,15%)]/20", mat: "bg-[hsl(42,50%,75%)]" },
+  { id: "dark-wood", label: "Dark Wood", border: "bg-gradient-to-br from-[hsl(20,40%,25%)] via-[hsl(20,35%,20%)] to-[hsl(20,30%,15%)]", inner: "bg-[hsl(20,20%,10%)]/30", mat: "bg-[hsl(20,30%,35%)]" },
+  { id: "light-oak", label: "Light Oak", border: "bg-gradient-to-br from-[hsl(35,45%,60%)] via-[hsl(35,40%,50%)] to-[hsl(35,35%,40%)]", inner: "bg-[hsl(35,20%,30%)]/20", mat: "bg-[hsl(35,35%,65%)]" },
+  { id: "black-modern", label: "Black Modern", border: "bg-gradient-to-br from-[hsl(0,0%,25%)] via-[hsl(0,0%,15%)] to-[hsl(0,0%,10%)]", inner: "bg-[hsl(0,0%,5%)]/30", mat: "bg-[hsl(0,0%,20%)]" },
+  { id: "white-gallery", label: "White Gallery", border: "bg-gradient-to-br from-[hsl(0,0%,95%)] via-[hsl(0,0%,90%)] to-[hsl(0,0%,85%)]", inner: "bg-[hsl(0,0%,70%)]/20", mat: "bg-[hsl(0,0%,92%)]" },
+  { id: "cherry", label: "Cherry", border: "bg-gradient-to-br from-[hsl(0,35%,35%)] via-[hsl(0,30%,28%)] to-[hsl(0,25%,22%)]", inner: "bg-[hsl(0,20%,15%)]/30", mat: "bg-[hsl(0,25%,35%)]" },
 ];
 
 const VIEW_MODES: { id: ViewMode; label: string }[] = [
@@ -93,10 +92,7 @@ export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMocku
       </div>
 
       {/* Preview area */}
-      <div className={cn(
-        "w-full flex items-center justify-center rounded-sm p-8 transition-colors",
-        mode === "frame" ? selectedFrame.bg : ""
-      )}>
+      <div className="w-full flex items-center justify-center">
         {mode === "original" && (
           <img
             src={imageUrl}
