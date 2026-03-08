@@ -1,0 +1,1 @@
+CREATE POLICY "Anyone can delete images" ON public.generated_images FOR DELETE USING (true);
