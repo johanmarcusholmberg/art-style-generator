@@ -38,6 +38,8 @@ export interface EditRequest {
   prompt: string;
   imageUrl: string;
   mode: "japanese" | "freestyle";
+  originalId: string;
+  originalStoragePath: string;
 }
 
 const downloadImage = async (url: string, filename: string) => {
