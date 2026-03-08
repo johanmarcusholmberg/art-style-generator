@@ -170,17 +170,17 @@ export default function ImagePreviewMockups({ imageUrl, alt, disabled, children 
 
       {/* Preview area */}
       <div className="w-full flex items-center justify-center">
-        {mode === "original" && (
+        {children ? (
+          children
+        ) : mode === "original" ? (
           <img
             src={imageUrl}
             alt={alt}
             className="max-w-full max-h-[600px] rounded-sm animate-ink-spread"
           />
-        )}
-
-        {mode === "frame" && (
+        ) : mode === "frame" ? (
           <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} edgeColor={edgeColor} />
-        )}
+        ) : null}
       </div>
     </div>
   );
