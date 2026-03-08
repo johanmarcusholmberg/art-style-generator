@@ -1,9 +1,20 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+const downloadImage = async (dataUrl: string, filename: string) => {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
 const EXAMPLE_PROMPTS = [
   "A great wave crashing against Mount Fuji at sunset",
@@ -92,11 +103,22 @@ export default function ImageGenerator() {
         )}
 
         {!loading && imageUrl && (
-          <img
-            src={imageUrl}
-            alt={prompt}
-            className="max-w-full max-h-[600px] rounded-sm animate-ink-spread"
-          />
+          <div className="flex flex-col items-center gap-4">
+            <img
+              src={imageUrl}
+              alt={prompt}
+              className="max-w-full max-h-[600px] rounded-sm animate-ink-spread"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadImage(imageUrl, `ukiyoe-${Date.now()}.png`)}
+              className="font-display text-xs tracking-wider"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download HD
+            </Button>
+          </div>
         )}
 
         {!loading && !imageUrl && (
