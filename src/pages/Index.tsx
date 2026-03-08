@@ -4,21 +4,43 @@ import FreestyleImageGenerator from "@/components/FreestyleImageGenerator";
 import Gallery from "@/components/Gallery";
 import type { EditRequest } from "@/components/Gallery";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getCachedImage } from "@/lib/image-cache";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Index = () => {
   const [galleryRefreshKey, setGalleryRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState("japanese");
   const [editState, setEditState] = useState<EditRequest | null>(null);
+  const [pendingEdit, setPendingEdit] = useState<EditRequest | null>(null);
   const generatorRef = useRef<HTMLDivElement>(null);
 
   const refreshGallery = useCallback(() => setGalleryRefreshKey((k) => k + 1), []);
 
-  const handleEditImage = useCallback((req: EditRequest) => {
+  const applyEdit = useCallback((req: EditRequest) => {
     setActiveTab(req.mode);
     setEditState(req);
-    // Scroll to generator
     setTimeout(() => generatorRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
   }, []);
+
+  const handleEditImage = useCallback(async (req: EditRequest) => {
+    // Check if the target generator tab has an active image in cache
+    const imgKey = `img-${req.mode}`;
+    const cached = await getCachedImage(imgKey);
+    if (cached) {
+      setPendingEdit(req);
+    } else {
+      applyEdit(req);
+    }
+  }, [applyEdit]);
 
   // Key to force remount generators when edit state changes
   const editKey = editState ? `${editState.mode}-${editState.prompt}` : "default";
@@ -89,6 +111,27 @@ const Index = () => {
           墨 · Sumi Ink Studio
         </p>
       </footer>
+
+      {/* Confirm replacing active image */}
+      <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display">Replace current image?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have an unsaved generated image. Loading a gallery image for editing will replace it. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (pendingEdit) applyEdit(pendingEdit);
+              setPendingEdit(null);
+            }}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
