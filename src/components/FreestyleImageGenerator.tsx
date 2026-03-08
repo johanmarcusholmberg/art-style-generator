@@ -31,9 +31,6 @@ const EDIT_PROMPTS = [
   "Change the background to a sunset sky",
   "Make the colors more vibrant and saturated",
   "Add rain and reflections on the ground",
-  "Change the time of day to night",
-  "Make the atmosphere warmer and cozier",
-  "Add dramatic clouds to the sky",
 ];
 
 interface FreestyleImageGeneratorProps {
