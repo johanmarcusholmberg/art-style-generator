@@ -70,3 +70,18 @@ export async function fetchGalleryImages() {
       .getPublicUrl(img.storage_path).data.publicUrl,
   }));
 }
+
+export async function deleteFromGallery(id: string, storagePath: string) {
+  const { error: storageError } = await supabase.storage
+    .from("generated-images")
+    .remove([storagePath]);
+
+  if (storageError) throw storageError;
+
+  const { error: dbError } = await supabase
+    .from("generated_images")
+    .delete()
+    .eq("id", id);
+
+  if (dbError) throw dbError;
+}
