@@ -40,7 +40,7 @@ export default function PrintSizeSelector({ selected, onChange }: Props) {
         ))}
       </div>
       <p className="text-xs text-muted-foreground mt-1.5 font-display">
-        Best for prints up to ~30 cm at 100 DPI. For large format printing, use as a composition reference.
+        Uses a high-quality model for sharper, more detailed output. Best results for prints up to 50 cm.
       </p>
     </div>
   );
