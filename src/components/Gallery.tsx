@@ -193,22 +193,22 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
         </p>
       ) : (
         <>
-          <div className="columns-2 sm:columns-3 md:columns-5 gap-3 space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
             {paginated.map((img) => (
               <button
                 key={img.id}
                 onClick={() => setSelected(img)}
-                className="group relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:scale-105 hover:shadow-lg break-inside-avoid block w-full cursor-pointer"
+                className="group relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
               >
                 <img
                   src={img.publicUrl}
                   alt={img.prompt}
-                  className="w-full h-auto block"
+                  className="w-full h-full object-cover block transition-transform duration-300 group-hover:scale-110 group-hover:object-contain group-hover:bg-card"
                   loading="lazy"
                 />
                 <Badge
                   variant="secondary"
-                  className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80"
+                  className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80 z-10"
                 >
                   {img.mode === "japanese" ? "🏯" : "🎨"}
                 </Badge>
