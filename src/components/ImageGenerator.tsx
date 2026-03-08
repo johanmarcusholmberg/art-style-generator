@@ -171,10 +171,12 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
       </div>
 
       <div className="relative min-h-[300px] flex items-center justify-center rounded-sm border border-border bg-card paper-texture">
-        {loading && (
+        {(loading || enhancing) && (
           <div className="flex flex-col items-center gap-4 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin" />
-            <p className="font-display text-sm">The artist is at work…</p>
+            <p className="font-display text-sm">
+              {enhancing ? "Enhancing details…" : "The artist is at work…"}
+            </p>
           </div>
         )}
 
