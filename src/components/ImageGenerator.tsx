@@ -21,10 +21,19 @@ const downloadImage = async (dataUrl: string, filename: string) => {
   URL.revokeObjectURL(url);
 };
 
-const EXAMPLE_PROMPTS = [
+const GENERATE_PROMPTS = [
   "A great wave crashing against Mount Fuji at sunset",
   "Koi fish swimming in a tranquil garden pond",
   "A crane flying over misty mountains at dawn",
+];
+
+const EDIT_PROMPTS = [
+  "Change the background to a sunset sky",
+  "Make the colors more vibrant and saturated",
+  "Add cherry blossoms falling in the scene",
+  "Change the season to winter with snow",
+  "Make the sky darker and more dramatic",
+  "Add mist and fog to the mountains",
 ];
 
 interface ImageGeneratorProps {
