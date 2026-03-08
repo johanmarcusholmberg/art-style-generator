@@ -139,9 +139,13 @@ const Index = () => {
       <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display">Edit this image?</AlertDialogTitle>
+            <AlertDialogTitle className="font-display">
+              {hasUnsavedImage ? "You have an unsaved image" : "Edit this image?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will load the selected image into the editor. You can then modify it with a new prompt and choose to replace the original or save as a new image.
+              {hasUnsavedImage
+                ? "Your current generated image hasn't been saved to the gallery yet. Loading a new image for editing will discard it. Do you want to continue?"
+                : "This will load the selected image into the editor. You can then modify it with a new prompt and choose to replace the original or save as a new image."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -150,7 +154,7 @@ const Index = () => {
               if (pendingEdit) applyEdit(pendingEdit);
               setPendingEdit(null);
             }}>
-              Continue
+              {hasUnsavedImage ? "Discard & Edit" : "Continue"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
