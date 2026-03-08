@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt } = await req.json();
+    const { prompt, aspectRatio } = await req.json();
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "Invalid prompt" }), {
@@ -27,7 +27,9 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const enhancedPrompt = `Render the following scene in the visual style of a traditional ukiyo-e woodblock print — use flat colors, bold outlines, washi paper texture, and sumi ink details. The subject itself should be exactly as described, do NOT change it to a Japanese setting. Do NOT include any Japanese text, characters, kanji, hiragana, katakana, or any written script in the image. Only apply the art style, nothing else Japanese: ${trimmedPrompt}`;
+    const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
+
+    const enhancedPrompt = `Render the following scene in the visual style of a traditional ukiyo-e woodblock print — use flat colors, bold outlines, washi paper texture, and sumi ink details. The subject itself should be exactly as described, do NOT change it to a Japanese setting. Do NOT include any Japanese text, characters, kanji, hiragana, katakana, or any written script in the image. Only apply the art style, nothing else Japanese: ${trimmedPrompt}.${ratioText}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -37,9 +39,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-image",
-        messages: [
-          { role: "user", content: enhancedPrompt },
-        ],
+        messages: [{ role: "user", content: enhancedPrompt }],
         modalities: ["image", "text"],
       }),
     });
