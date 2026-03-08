@@ -192,10 +192,10 @@ export default function ImagePreviewMockups({ imageUrl, alt, compareUrl }: Image
         {isCompare ? (
           mode === "frame" ? (
             <FramedContent frame={selectedFrame} edgeColor={edgeColor}>
-              <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full" />
+              <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full max-h-[500px]" />
             </FramedContent>
           ) : (
-            <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full" />
+            <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full max-h-[600px]" />
           )
         ) : mode === "original" ? (
           <img
