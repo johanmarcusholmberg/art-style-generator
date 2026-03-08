@@ -73,6 +73,8 @@ const Index = () => {
               onImageSaved={refreshGallery}
               initialPrompt={editState?.mode === "japanese" ? editState.prompt : undefined}
               initialImageUrl={editState?.mode === "japanese" ? editState.imageUrl : undefined}
+              originalImageId={editState?.mode === "japanese" ? editState.originalId : undefined}
+              originalStoragePath={editState?.mode === "japanese" ? editState.originalStoragePath : undefined}
             />
           </TabsContent>
           <TabsContent value="freestyle">
@@ -81,6 +83,8 @@ const Index = () => {
               onImageSaved={refreshGallery}
               initialPrompt={editState?.mode === "freestyle" ? editState.prompt : undefined}
               initialImageUrl={editState?.mode === "freestyle" ? editState.imageUrl : undefined}
+              originalImageId={editState?.mode === "freestyle" ? editState.originalId : undefined}
+              originalStoragePath={editState?.mode === "freestyle" ? editState.originalStoragePath : undefined}
             />
           </TabsContent>
         </Tabs>
