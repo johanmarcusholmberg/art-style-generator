@@ -31,9 +31,6 @@ const EDIT_PROMPTS = [
   "Change the background to a sunset sky",
   "Make the colors more vibrant and saturated",
   "Add cherry blossoms falling in the scene",
-  "Change the season to winter with snow",
-  "Make the sky darker and more dramatic",
-  "Add mist and fog to the mountains",
 ];
 
 interface ImageGeneratorProps {
