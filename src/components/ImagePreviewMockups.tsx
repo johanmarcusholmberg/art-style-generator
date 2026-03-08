@@ -94,10 +94,6 @@ function FramedImage({ imageUrl, alt, frame, edgeColor, className }: { imageUrl:
     </div>
   );
 }
-export default function ImagePreviewMockups({ imageUrl, alt }: ImagePreviewMockupsProps) {
-  const [mode, setMode] = useState<ViewMode>("original");
-  const [frameStyle, setFrameStyle] = useState<string>(FRAME_STYLES[0].id);
-
 
 const VIEW_MODES: { id: ViewMode; label: string }[] = [
   { id: "original", label: "Original" },
