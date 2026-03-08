@@ -257,18 +257,33 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
                 <Download className="mr-2 h-4 w-4" />
                 Download {hasEnhanced ? (viewVersion === "original" ? "(Original)" : "(Enhanced)") : ""} ({printSize.dimensions})
               </Button>
+              {!savedToGallery && isEditMode && originalImageId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReplaceOriginal}
+                  disabled={replacing || saving}
+                  className="font-display text-xs tracking-wider"
+                >
+                  {replacing ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Replacing…</>
+                  ) : (
+                    <><Replace className="mr-2 h-4 w-4" /> Replace Original</>
+                  )}
+                </Button>
+              )}
               {!savedToGallery && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleSaveToGallery}
-                  disabled={saving}
+                  disabled={saving || replacing}
                   className="font-display text-xs tracking-wider"
                 >
                   {saving ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
                   ) : (
-                    <><Save className="mr-2 h-4 w-4" /> Save to Gallery</>
+                    <><Save className="mr-2 h-4 w-4" /> {isEditMode ? "Save as New" : "Save to Gallery"}</>
                   )}
                 </Button>
               )}
