@@ -16,7 +16,6 @@ interface FrameStyle {
   border: string;
   inner: string;
   mat: string;
-  bg: string;
 }
 
 const FRAME_STYLES: FrameStyle[] = [
