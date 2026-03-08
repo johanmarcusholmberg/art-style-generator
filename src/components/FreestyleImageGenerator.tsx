@@ -94,24 +94,6 @@ export default function FreestyleImageGenerator({ onImageSaved, initialPrompt, i
 
       setImageUrl(finalUrl);
 
-      if (saveToGalleryEnabled) {
-        setSaving(true);
-        try {
-          await saveToGallery({
-            imageUrl: finalUrl,
-            prompt: prompt.trim(),
-            mode: "freestyle",
-            aspectRatio: printSize.ratio,
-            printSize: printSize.dimensions,
-          });
-          onImageSaved?.();
-          toast({ title: "Saved to gallery", description: "Your artwork has been saved." });
-        } catch (saveErr: any) {
-          console.error("Gallery save failed:", saveErr);
-        } finally {
-          setSaving(false);
-        }
-      }
     } catch (err: any) {
       toast({
         title: "Generation failed",

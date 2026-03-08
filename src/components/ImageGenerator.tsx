@@ -94,24 +94,6 @@ export default function ImageGenerator({ onImageSaved, initialPrompt, initialIma
 
       setImageUrl(finalUrl);
 
-      if (saveToGalleryEnabled) {
-        setSaving(true);
-        try {
-          await saveToGallery({
-            imageUrl: finalUrl,
-            prompt: prompt.trim(),
-            mode: "japanese",
-            aspectRatio: printSize.ratio,
-            printSize: printSize.dimensions,
-          });
-          onImageSaved?.();
-          toast({ title: "Saved to gallery", description: "Your artwork has been saved." });
-        } catch (saveErr: any) {
-          console.error("Gallery save failed:", saveErr);
-        } finally {
-          setSaving(false);
-        }
-      }
     } catch (err: any) {
       toast({
         title: "Generation failed",
