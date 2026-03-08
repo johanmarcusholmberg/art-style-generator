@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
+import { saveToGallery } from "@/lib/gallery";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -23,11 +24,12 @@ const EXAMPLE_PROMPTS = [
   "A crane flying over misty mountains at dawn",
 ];
 
-export default function ImageGenerator() {
+export default function ImageGenerator({ onImageSaved }: { onImageSaved?: () => void }) {
   const [prompt, setPrompt] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]); // Poster default
+  const [saving, setSaving] = useState(false);
+  const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const { toast } = useToast();
 
   const generate = async () => {
@@ -44,6 +46,24 @@ export default function ImageGenerator() {
       if (data?.error) throw new Error(data.error);
 
       setImageUrl(data.imageUrl);
+
+      // Auto-save to gallery
+      setSaving(true);
+      try {
+        await saveToGallery({
+          imageUrl: data.imageUrl,
+          prompt: prompt.trim(),
+          mode: "japanese",
+          aspectRatio: printSize.ratio,
+          printSize: printSize.dimensions,
+        });
+        onImageSaved?.();
+        toast({ title: "Saved to gallery", description: "Your artwork has been saved." });
+      } catch (saveErr: any) {
+        console.error("Gallery save failed:", saveErr);
+      } finally {
+        setSaving(false);
+      }
     } catch (err: any) {
       toast({
         title: "Generation failed",
@@ -111,15 +131,22 @@ export default function ImageGenerator() {
               alt={prompt}
               className="max-w-full max-h-[600px] rounded-sm animate-ink-spread"
             />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => downloadImage(imageUrl, `ukiyoe-${printSize.ratio.replace(":", "x")}-${Date.now()}.png`)}
-              className="font-display text-xs tracking-wider"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Download ({printSize.dimensions})
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadImage(imageUrl, `ukiyoe-${printSize.ratio.replace(":", "x")}-${Date.now()}.png`)}
+                className="font-display text-xs tracking-wider"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download ({printSize.dimensions})
+              </Button>
+              {saving && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1 font-display">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+                </span>
+              )}
+            </div>
           </div>
         )}
 
