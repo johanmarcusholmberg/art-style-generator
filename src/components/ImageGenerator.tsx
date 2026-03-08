@@ -34,8 +34,10 @@ interface ImageGeneratorProps {
 }
 
 export default function ImageGenerator({ onImageSaved, initialPrompt, initialImageUrl }: ImageGeneratorProps) {
-  const [prompt, setPrompt] = useState(initialPrompt || "");
-  const [imageUrl, setImageUrl] = useState<string | null>(initialImageUrl || null);
+  const isEditMode = !!initialImageUrl;
+  const [prompt, setPrompt] = useState(isEditMode ? "" : (initialPrompt || ""));
+  const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveToGalleryEnabled, setSaveToGalleryEnabled] = useState(true);
