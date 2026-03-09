@@ -56,21 +56,13 @@ const LineArt = () => {
   }, [clearCurrentGeneration]);
 
   const handleEditImage = useCallback(async (req: EditRequest) => {
-    const [img1, img2] = await Promise.all([
-      getCachedImage(`img-${styleConfig.styleKey}-${styleConfig.themedModeValue}`),
-      getCachedImage(`img-${styleConfig.styleKey}-${styleConfig.freestyleModeValue}`),
-    ]);
-
-    const s1 = (() => {
-      try { const r = sessionStorage.getItem(`gen-state-${styleConfig.styleKey}-${styleConfig.themedModeValue}`); return r ? JSON.parse(r) : null; } catch { return null; }
-    })();
-    const s2 = (() => {
-      try { const r = sessionStorage.getItem(`gen-state-${styleConfig.styleKey}-${styleConfig.freestyleModeValue}`); return r ? JSON.parse(r) : null; } catch { return null; }
-    })();
-
-    const hasUnsaved = (img1 && !s1?.savedToGallery) || (img2 && !s2?.savedToGallery);
-
-    setHasUnsavedImage(!!hasUnsaved);
+    const modes = [styleConfig.themedModeValue, styleConfig.freestyleModeValue, ...(styleConfig.tertiaryModeValue ? [styleConfig.tertiaryModeValue] : [])];
+    const images = await Promise.all(modes.map((m) => getCachedImage(`img-${styleConfig.styleKey}-${m}`)));
+    const states = modes.map((m) => {
+      try { const r = sessionStorage.getItem(`gen-state-${styleConfig.styleKey}-${m}`); return r ? JSON.parse(r) : null; } catch { return null; }
+    });
+    const hasUnsaved = images.some((img, i) => img && !states[i]?.savedToGallery);
+    setHasUnsavedImage(hasUnsaved);
     setPendingEdit(req);
   }, []);
 
