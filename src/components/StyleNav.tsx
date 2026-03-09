@@ -13,6 +13,7 @@ const navItems: StyleNavItem[] = [
   { to: "/minimalism", emoji: "◻", label: "Minimalism" },
   { to: "/graffiti", emoji: "🎨", label: "Graffiti" },
   { to: "/botanical", emoji: "🌿", label: "Botanical" },
+  { to: "/blend", emoji: "✨", label: "Blend" },
 ];
 
 interface StyleNavProps {
