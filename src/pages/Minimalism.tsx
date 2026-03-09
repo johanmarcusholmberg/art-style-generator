@@ -78,18 +78,18 @@ const Minimalism = () => {
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">
-        <p className="font-display text-minimal-accent text-sm tracking-[0.3em] uppercase mb-3">
+        <p className="font-display text-muted-foreground text-sm tracking-[0.3em] uppercase mb-3">
           Minimalism · Less Is More
         </p>
-        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold text-minimal-fg leading-tight mb-4">
+        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight mb-4">
           Minimalist<br />
-          <span className="text-minimal-accent">Image Generator</span>
+          <span className="text-primary">Image Generator</span>
         </h1>
-        <p className="text-minimal-muted max-w-lg mx-auto text-sm leading-relaxed">
+        <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed">
           Describe a scene and watch it distilled into clean shapes, muted tones,
           and elegant simplicity — inspired by Swiss and Scandinavian design.
         </p>
-        <div className="mt-6 w-24 h-px bg-minimal-border mx-auto" />
+        <div className="mt-6 w-24 h-px bg-border mx-auto" />
       </header>
 
       {/* Generator */}
