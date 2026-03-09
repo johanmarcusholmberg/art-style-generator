@@ -563,10 +563,42 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         </Button>
 
         {selectMode && selectedIds.size > 0 && (
-          <Button size="sm" className="font-display text-xs h-8" onClick={handleBatchDownload} disabled={downloading}>
-            {downloading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
-            Download {selectedIds.size} as ZIP
-          </Button>
+          <>
+            <Button size="sm" className="font-display text-xs h-8" onClick={handleBatchDownload} disabled={downloading}>
+              {downloading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
+              Download {selectedIds.size} as ZIP
+            </Button>
+
+            {allCollections.length > 0 && (
+              <Popover open={bulkPopoverOpen} onOpenChange={setBulkPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="font-display text-xs h-8"
+                    onClick={() => { setBulkAction("add"); setBulkPopoverOpen(true); }}>
+                    <FolderPlus className="h-3 w-3 mr-1" /> Add to folder
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2" align="start">
+                  <div className="flex gap-1 mb-2">
+                    <Button variant={bulkAction === "add" ? "default" : "outline"} size="sm"
+                      className="font-display text-xs h-6 flex-1" onClick={() => setBulkAction("add")}>
+                      <FolderPlus className="h-3 w-3 mr-1" /> Add
+                    </Button>
+                    <Button variant={bulkAction === "remove" ? "default" : "outline"} size="sm"
+                      className="font-display text-xs h-6 flex-1" onClick={() => setBulkAction("remove")}>
+                      <FolderMinus className="h-3 w-3 mr-1" /> Remove
+                    </Button>
+                  </div>
+                  {allCollections.map((c) => (
+                    <Button key={c.id} variant="ghost" size="sm"
+                      className="w-full justify-start font-display text-xs h-7"
+                      onClick={() => handleBulkCollection(c.id)}>
+                      {c.name}
+                    </Button>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            )}
+          </>
         )}
 
         {totalPages > 1 && (
