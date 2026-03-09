@@ -21,48 +21,49 @@ const navItems: StyleNavItem[] = [
 
 interface StyleNavProps {
   activePath: string;
-  activeClass: string;
-  inactiveClass: string;
-  activeBorderClass: string;
+  activeClass?: string;
+  inactiveClass?: string;
+  activeBorderClass?: string;
 }
 
-const StyleNav = ({ activePath, activeClass, inactiveClass, activeBorderClass }: StyleNavProps) => {
+const StyleNav = ({ activePath }: StyleNavProps) => {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="pt-6 px-4 max-w-lg mx-auto">
-      <nav className="grid grid-cols-4 gap-3">
-        {navItems.map((item) => {
-          const isActive = item.to === activePath;
-          if (isActive) {
+    <div className="sticky top-0 z-30 bg-background/90 backdrop-blur-sm border-b border-border">
+      <div className="flex items-center px-2">
+        {/* Scrollable pill nav */}
+        <nav className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide py-2 px-1">
+          {navItems.map((item) => {
+            const isActive = item.to === activePath;
+            if (isActive) {
+              return (
+                <span
+                  key={item.to}
+                  className="font-display text-xs font-bold whitespace-nowrap px-3 py-1.5 rounded-full bg-primary text-primary-foreground flex-shrink-0"
+                >
+                  {item.emoji} {item.label}
+                </span>
+              );
+            }
             return (
-              <span
+              <Link
                 key={item.to}
-                className={`font-display text-sm font-bold text-center pb-1 border-b-2 ${activeBorderClass} ${activeClass}`}
+                to={item.to}
+                className="font-display text-xs whitespace-nowrap px-3 py-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
               >
                 {item.emoji} {item.label}
-              </span>
+              </Link>
             );
-          }
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`font-display text-sm text-center pb-1 transition-colors hover:opacity-80 ${inactiveClass}`}
-            >
-              {item.emoji} {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+          })}
+        </nav>
 
-      {/* Dark mode toggle */}
-      <div className="flex justify-end mt-3">
+        {/* Dark mode toggle */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+          className="h-8 w-8 p-0 flex-shrink-0 text-muted-foreground hover:text-foreground ml-1"
           title="Toggle dark mode"
         >
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
