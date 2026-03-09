@@ -23,6 +23,7 @@ const App = () => (
           <Route path="/popart" element={<PopArt />} />
           <Route path="/lineart" element={<LineArt />} />
           <Route path="/minimalism" element={<Minimalism />} />
+          <Route path="/graffiti" element={<Graffiti />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
