@@ -74,10 +74,15 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const [modeFilter, setModeFilter] = useState("all");
   const [ratioFilter, setRatioFilter] = useState("all");
 
+  // Filter to only show images matching this style's modes
+  const styleModes = styleConfig
+    ? [styleConfig.themedModeValue, styleConfig.freestyleModeValue]
+    : null;
+
   useEffect(() => {
     setLoading(true);
     fetchGalleryImages()
-      .then(setImages)
+      .then((imgs) => setImages(styleModes ? imgs.filter((img: any) => styleModes.includes(img.mode)) : imgs))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [refreshKey]);
