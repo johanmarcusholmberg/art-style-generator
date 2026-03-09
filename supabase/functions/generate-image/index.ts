@@ -28,11 +28,11 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
-    const frameText = whiteFrame ? " Use a pure white background instead of the traditional beige/cream background color." : "";
+    const frameText = whiteFrame ? " Add a thin black frame/border around the illustration itself. Inside this black frame, keep the traditional beige ukiyo-e paper texture as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) with no texture — just solid white." : "";
 
     let messages;
 
-    const marginText = " IMPORTANT: Leave a clean, empty 1 cm margin of blank paper space around all sides of the artwork. This margin must be the same color as the paper (beige/cream or white depending on instructions). Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
+    const marginText = whiteFrame ? "" : " IMPORTANT: Leave a clean, empty 1 cm margin of blank paper space around all sides of the artwork. This margin must be the same beige/cream color as the paper. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
 
     if (sourceImageUrl) {
       // Edit mode: user provides a source image and describes changes

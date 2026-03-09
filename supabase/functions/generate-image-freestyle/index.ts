@@ -28,7 +28,7 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
-    const frameText = whiteFrame ? " Use a pure white background instead of the traditional beige/cream background color." : "";
+    const frameText = whiteFrame ? " Add a thin black frame/border around the illustration itself. Inside this black frame, keep the traditional beige ukiyo-e paper texture as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) with no texture — just solid white." : "";
 
     let messages;
 
