@@ -9,6 +9,7 @@ import LineArt from "./pages/LineArt";
 import Minimalism from "./pages/Minimalism";
 import Graffiti from "./pages/Graffiti";
 import Botanical from "./pages/Botanical";
+import Blend from "./pages/Blend";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
