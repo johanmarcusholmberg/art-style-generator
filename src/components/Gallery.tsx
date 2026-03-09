@@ -354,6 +354,26 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     }
   };
 
+  const handleBulkCollection = async (collectionId: string) => {
+    const ids = Array.from(selectedIds);
+    try {
+      if (bulkAction === "add") {
+        await addBulkToCollection(collectionId, ids);
+        toast.success(`Added ${ids.length} images to collection`, { duration: 3000 });
+      } else {
+        await removeBulkFromCollection(collectionId, ids);
+        toast.success(`Removed ${ids.length} images from collection`, { duration: 3000 });
+      }
+      setBulkPopoverOpen(false);
+      // Refresh collection filter if active
+      if (collectionFilter) {
+        fetchCollectionImageIds(collectionFilter).then(setCollectionImageIds).catch(console.error);
+      }
+    } catch {
+      toast.error("Failed to update collection");
+    }
+  };
+
   const handleCopyUrl = (url: string) => {
     navigator.clipboard.writeText(url).then(
       () => toast.success("Image URL copied!", { duration: 3000 }),
