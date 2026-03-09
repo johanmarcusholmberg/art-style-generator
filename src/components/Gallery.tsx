@@ -91,6 +91,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   const [modeFilter, setModeFilter] = useState("all");
   const [ratioFilter, setRatioFilter] = useState("all");
+  const [bgChanging, setBgChanging] = useState<"white" | "cream" | null>(null);
+  const [bgResult, setBgResult] = useState<{ imageUrl: string; bgStyle: string } | null>(null);
 
   // Filter to only show images matching this style's modes
   const styleModes = styleConfig
