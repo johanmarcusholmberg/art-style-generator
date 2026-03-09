@@ -117,9 +117,9 @@ function FramedContent({ children, frame, edgeColor, className }: { children: Re
 
   const matStyle: React.CSSProperties = {
     padding: matPx,
-    ...(edgeColor ? { backgroundColor: edgeColor } : {}),
+    backgroundColor: 'white',
   };
-  const matClass = edgeColor ? "" : "bg-muted";
+  const matClass = "";
 
   return (
     <div className={cn("rounded-sm shadow-xl", frame.border, className)} style={{ padding: framePx }}>
