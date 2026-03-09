@@ -79,6 +79,7 @@ const Minimalism = () => {
         <Link to="/popart" className="font-display text-sm text-minimal-muted hover:text-minimal-fg transition-colors pb-1">🎯 Pop Art</Link>
         <Link to="/lineart" className="font-display text-sm text-minimal-muted hover:text-minimal-fg transition-colors pb-1">✒️ Line Art</Link>
         <span className="font-display text-sm font-bold text-minimal-fg border-b-2 border-minimal-accent pb-1">◻ Minimalism</span>
+        <Link to="/graffiti" className="font-display text-sm text-minimal-muted hover:text-minimal-fg transition-colors pb-1">🎨 Graffiti</Link>
       </nav>
 
       {/* Header */}
