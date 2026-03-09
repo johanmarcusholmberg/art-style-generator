@@ -65,6 +65,7 @@ const Graffiti = () => {
         <Link to="/lineart" className="font-display text-sm text-graffiti-muted hover:text-graffiti-fg transition-colors pb-1">✒️ Line Art</Link>
         <Link to="/minimalism" className="font-display text-sm text-graffiti-muted hover:text-graffiti-fg transition-colors pb-1">◻ Minimalism</Link>
         <span className="font-display text-sm font-bold text-graffiti-fg border-b-2 border-graffiti-accent pb-1">🎨 Graffiti</span>
+        <Link to="/botanical" className="font-display text-sm text-graffiti-muted hover:text-graffiti-fg transition-colors pb-1">🌿 Botanical</Link>
       </nav>
 
       <header className="pt-10 pb-12 text-center px-4">

@@ -142,6 +142,24 @@
   .border-graffiti-accent {
     border-color: #FF6B35;
   }
+  .bg-botanical-bg {
+    background-color: #F7F5F0;
+  }
+  .text-botanical-fg {
+    color: #2D3B2D;
+  }
+  .text-botanical-accent {
+    color: #5B7553;
+  }
+  .text-botanical-muted {
+    color: #8A9A82;
+  }
+  .bg-botanical-border {
+    background-color: #D4CCBA;
+  }
+  .border-botanical-accent {
+    border-color: #5B7553;
+  }
 }
 
 /* Ink wash animation */

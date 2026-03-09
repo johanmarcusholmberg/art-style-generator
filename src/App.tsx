@@ -8,6 +8,7 @@ import PopArt from "./pages/PopArt";
 import LineArt from "./pages/LineArt";
 import Minimalism from "./pages/Minimalism";
 import Graffiti from "./pages/Graffiti";
+import Botanical from "./pages/Botanical";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/lineart" element={<LineArt />} />
           <Route path="/minimalism" element={<Minimalism />} />
           <Route path="/graffiti" element={<Graffiti />} />
+          <Route path="/botanical" element={<Botanical />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

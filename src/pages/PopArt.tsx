@@ -92,6 +92,7 @@ const PopArt = () => {
         <Link to="/lineart" className="font-display text-sm text-popart-muted hover:text-popart-fg transition-colors pb-1">✒️ Line Art</Link>
         <Link to="/minimalism" className="font-display text-sm text-popart-muted hover:text-popart-fg transition-colors pb-1">◻ Minimalism</Link>
         <Link to="/graffiti" className="font-display text-sm text-popart-muted hover:text-popart-fg transition-colors pb-1">🎨 Graffiti</Link>
+        <Link to="/botanical" className="font-display text-sm text-popart-muted hover:text-popart-fg transition-colors pb-1">🌿 Botanical</Link>
       </nav>
 
       {/* Header */}

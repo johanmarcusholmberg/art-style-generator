@@ -87,6 +87,7 @@ const LineArt = () => {
         <span className="font-display text-sm font-bold text-lineart-fg border-b-2 border-lineart-accent pb-1">✒️ Line Art</span>
         <Link to="/minimalism" className="font-display text-sm text-lineart-muted hover:text-lineart-fg transition-colors pb-1">◻ Minimalism</Link>
         <Link to="/graffiti" className="font-display text-sm text-lineart-muted hover:text-lineart-fg transition-colors pb-1">🎨 Graffiti</Link>
+        <Link to="/botanical" className="font-display text-sm text-lineart-muted hover:text-lineart-fg transition-colors pb-1">🌿 Botanical</Link>
       </nav>
 
       {/* Header */}
