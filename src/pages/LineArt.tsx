@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getCachedImage, deleteCachedImage } from "@/lib/image-cache";
 import { LINEART_STYLE } from "@/lib/style-config";
-import { Link } from "react-router-dom";
+import StyleNav from "@/components/StyleNav";
 
 const styleConfig = LINEART_STYLE;
 
@@ -71,24 +71,12 @@ const LineArt = () => {
   return (
     <div className="min-h-screen bg-lineart-bg">
       {/* Navigation */}
-      <nav className="flex items-center justify-center gap-6 pt-6 px-4">
-        <Link
-          to="/"
-          className="font-display text-sm text-lineart-muted hover:text-lineart-fg transition-colors pb-1"
-        >
-          🏯 Ukiyo-e
-        </Link>
-        <Link
-          to="/popart"
-          className="font-display text-sm text-lineart-muted hover:text-lineart-fg transition-colors pb-1"
-        >
-          🎯 Pop Art
-        </Link>
-        <span className="font-display text-sm font-bold text-lineart-fg border-b-2 border-lineart-accent pb-1">✒️ Line Art</span>
-        <Link to="/minimalism" className="font-display text-sm text-lineart-muted hover:text-lineart-fg transition-colors pb-1">◻ Minimalism</Link>
-        <Link to="/graffiti" className="font-display text-sm text-lineart-muted hover:text-lineart-fg transition-colors pb-1">🎨 Graffiti</Link>
-        <Link to="/botanical" className="font-display text-sm text-lineart-muted hover:text-lineart-fg transition-colors pb-1">🌿 Botanical</Link>
-      </nav>
+      <StyleNav
+        activePath="/lineart"
+        activeClass="text-lineart-fg"
+        inactiveClass="text-lineart-muted hover:text-lineart-fg"
+        activeBorderClass="border-lineart-accent"
+      />
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">

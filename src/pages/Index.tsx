@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getCachedImage, deleteCachedImage } from "@/lib/image-cache";
 import { UKIYOE_STYLE } from "@/lib/style-config";
-import { Link } from "react-router-dom";
+import StyleNav from "@/components/StyleNav";
 
 const styleConfig = UKIYOE_STYLE;
 
@@ -79,26 +79,12 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background paper-texture">
       {/* Navigation */}
-      <nav className="flex items-center justify-center gap-6 pt-6 px-4">
-        <span className="font-display text-sm font-bold text-foreground border-b-2 border-primary pb-1">
-          🏯 Ukiyo-e
-        </span>
-        <Link
-          to="/popart"
-          className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors pb-1"
-        >
-          🎯 Pop Art
-        </Link>
-        <Link
-          to="/lineart"
-          className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors pb-1"
-        >
-          ✒️ Line Art
-        </Link>
-        <Link to="/minimalism" className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors pb-1">◻ Minimalism</Link>
-        <Link to="/graffiti" className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors pb-1">🎨 Graffiti</Link>
-        <Link to="/botanical" className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors pb-1">🌿 Botanical</Link>
-      </nav>
+      <StyleNav
+        activePath="/"
+        activeClass="text-foreground"
+        inactiveClass="text-muted-foreground hover:text-foreground"
+        activeBorderClass="border-primary"
+      />
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">

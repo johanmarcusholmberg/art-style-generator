@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getCachedImage, deleteCachedImage } from "@/lib/image-cache";
 import { POPART_STYLE } from "@/lib/style-config";
-import { Link } from "react-router-dom";
+import StyleNav from "@/components/StyleNav";
 
 const styleConfig = POPART_STYLE;
 
@@ -79,21 +79,12 @@ const PopArt = () => {
   return (
     <div className="min-h-screen bg-popart-bg">
       {/* Navigation */}
-      <nav className="flex items-center justify-center gap-6 pt-6 px-4">
-        <Link
-          to="/"
-          className="font-display text-sm text-popart-muted hover:text-popart-fg transition-colors pb-1"
-        >
-          🏯 Ukiyo-e
-        </Link>
-        <span className="font-display text-sm font-bold text-popart-fg border-b-2 border-popart-accent pb-1">
-          🎯 Pop Art
-        </span>
-        <Link to="/lineart" className="font-display text-sm text-popart-muted hover:text-popart-fg transition-colors pb-1">✒️ Line Art</Link>
-        <Link to="/minimalism" className="font-display text-sm text-popart-muted hover:text-popart-fg transition-colors pb-1">◻ Minimalism</Link>
-        <Link to="/graffiti" className="font-display text-sm text-popart-muted hover:text-popart-fg transition-colors pb-1">🎨 Graffiti</Link>
-        <Link to="/botanical" className="font-display text-sm text-popart-muted hover:text-popart-fg transition-colors pb-1">🌿 Botanical</Link>
-      </nav>
+      <StyleNav
+        activePath="/popart"
+        activeClass="text-popart-fg"
+        inactiveClass="text-popart-muted hover:text-popart-fg"
+        activeBorderClass="border-popart-accent"
+      />
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">
