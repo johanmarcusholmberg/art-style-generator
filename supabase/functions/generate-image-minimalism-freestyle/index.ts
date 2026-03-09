@@ -26,7 +26,7 @@ serve(async (req) => {
     const useCream = backgroundStyle === "cream";
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
     const frameText = whiteFrame ? " Add a thin black frame/border around the artwork itself. Inside this black frame, keep the minimalist composition as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) — just solid white." : "";
-    const bgText = useCream ? " Use a warm cream/off-white paper background tone." : "";
+    const bgText = useCream ? " Use a warm cream/off-white paper background tone." : " CRITICAL: The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color — only clean pure white.";
 
     let messages;
 
