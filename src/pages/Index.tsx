@@ -95,6 +95,12 @@ const Index = () => {
         >
           ✒️ Line Art
         </Link>
+        <Link
+          to="/minimalism"
+          className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors pb-1"
+        >
+          ◻ Minimalism
+        </Link>
       </nav>
 
       {/* Header */}
