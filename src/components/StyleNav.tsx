@@ -1,7 +1,8 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRef, useCallback } from "react";
 
 interface StyleNavItem {
   to: string;
@@ -28,12 +29,25 @@ interface StyleNavProps {
 
 const StyleNav = ({ activePath }: StyleNavProps) => {
   const { theme, setTheme } = useTheme();
+  const navigate = useNavigate();
+  const navRef = useRef<HTMLElement>(null);
+
+  const handleNavClick = useCallback((to: string) => {
+    const scrollLeft = navRef.current?.scrollLeft ?? 0;
+    navigate(to);
+    // Restore scroll position after React re-renders
+    requestAnimationFrame(() => {
+      if (navRef.current) {
+        navRef.current.scrollLeft = scrollLeft;
+      }
+    });
+  }, [navigate]);
 
   return (
     <div className="sticky top-0 z-30 bg-background/90 backdrop-blur-sm border-b border-border">
       <div className="flex items-center px-2">
         {/* Scrollable pill nav */}
-        <nav className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide py-2 px-1">
+        <nav ref={navRef} className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide py-2 px-1">
           {navItems.map((item) => {
             const isActive = item.to === activePath;
             if (isActive) {
@@ -47,13 +61,13 @@ const StyleNav = ({ activePath }: StyleNavProps) => {
               );
             }
             return (
-              <Link
+              <button
                 key={item.to}
-                to={item.to}
+                onClick={() => handleNavClick(item.to)}
                 className="font-display text-xs font-medium whitespace-nowrap px-3 py-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
               >
                 {item.emoji} {item.label}
-              </Link>
+              </button>
             );
           })}
         </nav>
