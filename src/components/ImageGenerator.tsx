@@ -249,35 +249,79 @@ export default function ImageGenerator({
           const promptLocked = !!imageUrl && !savedToGallery;
           return (
             <>
-              <Textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                disabled={promptLocked}
-                placeholder={
-                  isEditMode
-                    ? "Describe the changes you want… e.g. 'Make the sky a sunset orange'"
-                    : mode === "japanese"
-                      ? "Describe your scene… e.g. 'A crane flying over misty mountains'"
-                      : "Describe any scene… e.g. 'Central Park in New York during autumn'"
-                }
-                className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary disabled:opacity-60"
-              />
-
-              <p className="font-display font-bold text-sm text-foreground">
-                {isEditMode ? "Edit suggestions" : "Suggestions"}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {(isEditMode ? suggestions.edit : suggestions.generate).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPrompt(p)}
+              {/* Normal prompt input when no generated image or editing inline */}
+              {isInlineEditing ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="font-display text-xs text-muted-foreground">
+                      Describe the changes you want to make:
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIsInlineEditing(false);
+                        setEditPrompt("");
+                      }}
+                      className="font-display text-xs h-7"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Cancel Edit
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={editPrompt}
+                    onChange={(e) => setEditPrompt(e.target.value)}
+                    placeholder="e.g. 'Change the sky to sunset colors' or 'Add cherry blossoms falling'"
+                    className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary"
+                    autoFocus
+                  />
+                  <p className="font-display font-bold text-sm text-foreground">Edit suggestions</p>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestions.edit.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setEditPrompt(p)}
+                        className="text-xs px-3 py-1.5 rounded-sm bg-secondary text-secondary-foreground hover:bg-muted transition-colors font-display"
+                      >
+                        {p.length > 40 ? p.slice(0, 40) + "…" : p}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
                     disabled={promptLocked}
-                    className="text-xs px-3 py-1.5 rounded-sm bg-secondary text-secondary-foreground hover:bg-muted transition-colors font-display disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {p.length > 40 ? p.slice(0, 40) + "…" : p}
-                  </button>
-                ))}
-              </div>
+                    placeholder={
+                      isEditMode
+                        ? "Describe the changes you want… e.g. 'Make the sky a sunset orange'"
+                        : mode === "japanese"
+                          ? "Describe your scene… e.g. 'A crane flying over misty mountains'"
+                          : "Describe any scene… e.g. 'Central Park in New York during autumn'"
+                    }
+                    className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary disabled:opacity-60"
+                  />
+
+                  <p className="font-display font-bold text-sm text-foreground">
+                    {isEditMode ? "Edit suggestions" : "Suggestions"}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(isEditMode ? suggestions.edit : suggestions.generate).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPrompt(p)}
+                        disabled={promptLocked}
+                        className="text-xs px-3 py-1.5 rounded-sm bg-secondary text-secondary-foreground hover:bg-muted transition-colors font-display disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {p.length > 40 ? p.slice(0, 40) + "…" : p}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           );
         })()}
