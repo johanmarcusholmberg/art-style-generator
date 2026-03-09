@@ -79,8 +79,8 @@ const Graffiti = () => {
       <main className="pb-12 px-4" ref={generatorRef}>
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setEditState(null); }} className="w-full max-w-4xl mx-auto">
           <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value={styleConfig.themedModeValue} className="font-sans text-sm font-bold">{styleConfig.themedTabLabel}</TabsTrigger>
-            <TabsTrigger value={styleConfig.freestyleModeValue} className="font-sans text-sm font-bold">{styleConfig.freestyleTabLabel}</TabsTrigger>
+            <TabsTrigger value={styleConfig.themedModeValue} className="font-display text-sm">{styleConfig.themedTabLabel}</TabsTrigger>
+            <TabsTrigger value={styleConfig.freestyleModeValue} className="font-display text-sm">{styleConfig.freestyleTabLabel}</TabsTrigger>
           </TabsList>
           <TabsContent value={styleConfig.themedModeValue}>
             <ImageGenerator key={activeTab === styleConfig.themedModeValue ? editKey : "t"} mode={styleConfig.themedModeValue} styleConfig={styleConfig} onImageSaved={refreshGallery} onExitEdit={editState?.mode === styleConfig.themedModeValue ? handleExitEdit : undefined} initialPrompt={editState?.mode === styleConfig.themedModeValue ? editState.prompt : undefined} initialImageUrl={editState?.mode === styleConfig.themedModeValue ? editState.imageUrl : undefined} originalImageId={editState?.mode === styleConfig.themedModeValue ? editState.originalId : undefined} originalStoragePath={editState?.mode === styleConfig.themedModeValue ? editState.originalStoragePath : undefined} />
