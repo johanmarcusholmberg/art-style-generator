@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, aspectRatio, sourceImageUrl } = await req.json();
+    const { prompt, aspectRatio, sourceImageUrl, whiteFrame } = await req.json();
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "Invalid prompt" }), {
@@ -28,12 +28,13 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
+    const frameText = whiteFrame ? " Use a pure white background instead of the traditional beige/cream background color." : "";
 
     let messages;
 
     if (sourceImageUrl) {
       // Edit mode: user provides a source image and describes changes
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the ukiyo-e woodblock print art style. Do NOT include any Japanese text, characters, or script. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the ukiyo-e woodblock print art style. Do NOT include any Japanese text, characters, or script. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}`;
       messages = [
         {
           role: "user",
@@ -45,7 +46,7 @@ serve(async (req) => {
       ];
     } else {
       // Generate mode: create from scratch
-      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in the visual style of a traditional ukiyo-e woodblock print — use flat colors, bold outlines, washi paper texture, and sumi ink details. The subject itself should be exactly as described, do NOT change it to a Japanese setting. Do NOT include any Japanese text, characters, kanji, hiragana, katakana, or any written script in the image. Only apply the art style, nothing else Japanese. Generate at maximum resolution with fine detail suitable for large format printing: ${trimmedPrompt}.${ratioText}`;
+      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in the visual style of a traditional ukiyo-e woodblock print — use flat colors, bold outlines, washi paper texture, and sumi ink details. The subject itself should be exactly as described, do NOT change it to a Japanese setting. Do NOT include any Japanese text, characters, kanji, hiragana, katakana, or any written script in the image. Only apply the art style, nothing else Japanese. Generate at maximum resolution with fine detail suitable for large format printing: ${trimmedPrompt}.${ratioText}${frameText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 
