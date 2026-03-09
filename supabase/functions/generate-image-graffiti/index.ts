@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, aspectRatio, sourceImageUrl, whiteFrame } = await req.json();
+    const { prompt, aspectRatio, sourceImageUrl, whiteFrame, backgroundStyle } = await req.json();
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "Invalid prompt" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -23,14 +23,16 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const useCream = backgroundStyle === "cream";
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
     const frameText = whiteFrame ? " Add a thin black frame/border around the artwork itself. Inside this black frame, keep the graffiti composition as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) — just solid white." : "";
+    const bgText = useCream ? " Use a warm cream/off-white aged wall tone as the background instead of pure white." : "";
     const marginText = whiteFrame ? "" : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
 
     let messages;
 
     if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the graffiti/street art style — spray paint texture, bold tags, drips, urban energy. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the graffiti/street art style — spray paint texture, bold tags, drips, urban energy.${bgText} Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
       messages = [
         {
           role: "user",
@@ -41,7 +43,7 @@ serve(async (req) => {
         },
       ];
     } else {
-      const enhancedPrompt = `Create a high-resolution graffiti/urban street art artwork: ${trimmedPrompt}. Style: vibrant spray paint colors, bold outlines, dripping paint effects, brick wall or concrete textures, wildstyle lettering influences, stencil art elements, wheatpaste aesthetics, urban grit, inspired by Banksy, KAWS, Jean-Michel Basquiat, and classic NYC subway graffiti. Rich saturated neon colors against urban backgrounds. Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
+      const enhancedPrompt = `Create a high-resolution graffiti/urban street art artwork: ${trimmedPrompt}. Style: vibrant spray paint colors, bold outlines, dripping paint effects, brick wall or concrete textures, wildstyle lettering influences, stencil art elements, wheatpaste aesthetics, urban grit, inspired by Banksy, KAWS, Jean-Michel Basquiat, and classic NYC subway graffiti. Rich saturated neon colors against urban backgrounds.${bgText} Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 

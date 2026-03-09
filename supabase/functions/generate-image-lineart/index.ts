@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, aspectRatio, sourceImageUrl, whiteFrame } = await req.json();
+    const { prompt, aspectRatio, sourceImageUrl, whiteFrame, backgroundStyle } = await req.json();
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "Invalid prompt" }), {
@@ -27,15 +27,16 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const useCream = backgroundStyle === "cream";
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
     const frameText = whiteFrame ? " Add a thin black frame/border around the artwork itself. Inside this black frame, keep the fine line art composition as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) — just solid white." : "";
-
-    const marginText = whiteFrame ? "" : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
+    const bgText = useCream ? " The background should be a warm cream/off-white vintage paper tone, like aged parchment or fine art paper." : " CRITICAL: The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted paper color — only clean pure white.";
+    const marginText = whiteFrame ? "" : (useCream ? " IMPORTANT: Leave a clean, empty 1 cm margin of blank cream paper space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty." : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.");
 
     let messages;
 
     if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, line work, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the fine line art style — delicate ink lines on a pure white (#FFFFFF) background. The background MUST be pure white, not cream, not beige, not off-white. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, line work, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the fine line art style — delicate ink lines.${bgText} Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
       messages = [
         {
           role: "user",
@@ -46,7 +47,7 @@ serve(async (req) => {
         },
       ];
     } else {
-      const enhancedPrompt = `Create a high-resolution fine line art illustration: ${trimmedPrompt}. Style: delicate thin ink lines, precise hatching and cross-hatching, elegant pen-and-ink technique, minimal shading using line density, botanical illustration precision, architectural drafting quality, reminiscent of vintage engraving and etching. Use only black ink lines — no color fills, no solid black areas, only varying line weights and densities. CRITICAL: The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted paper color — only clean pure white. Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
+      const enhancedPrompt = `Create a high-resolution fine line art illustration: ${trimmedPrompt}. Style: delicate thin ink lines, precise hatching and cross-hatching, elegant pen-and-ink technique, minimal shading using line density, botanical illustration precision, architectural drafting quality, reminiscent of vintage engraving and etching. Use only black ink lines — no color fills, no solid black areas, only varying line weights and densities.${bgText} Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 

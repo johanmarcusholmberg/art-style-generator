@@ -35,7 +35,7 @@ serve(async (req) => {
     let messages;
 
     if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the pop art style. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the pop art style.${bgText} Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}`;
       messages = [
         {
           role: "user",
@@ -46,7 +46,7 @@ serve(async (req) => {
         },
       ];
     } else {
-      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in a pop art style inspired by Andy Warhol and Roy Lichtenstein — use bold colors, Ben-Day dots, thick black outlines, flat color areas, high contrast, comic book aesthetics, and vibrant saturated palette. The subject itself should be exactly as described, rendered in pop art style. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Generate at maximum resolution with crisp detail suitable for large format printing: ${trimmedPrompt}.${ratioText}${frameText}`;
+      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in a pop art style inspired by Andy Warhol and Roy Lichtenstein — use bold colors, Ben-Day dots, thick black outlines, flat color areas, high contrast, comic book aesthetics, and vibrant saturated palette.${bgText} The subject itself should be exactly as described, rendered in pop art style. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Generate at maximum resolution with crisp detail suitable for large format printing: ${trimmedPrompt}.${ratioText}${frameText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 

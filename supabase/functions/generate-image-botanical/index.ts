@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, aspectRatio, sourceImageUrl, whiteFrame } = await req.json();
+    const { prompt, aspectRatio, sourceImageUrl, whiteFrame, backgroundStyle } = await req.json();
 
     if (!prompt || typeof prompt !== "string") return new Response(JSON.stringify({ error: "Invalid prompt" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -19,17 +19,19 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const useCream = backgroundStyle === "cream";
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
     const frameText = whiteFrame ? " Add a thin black frame/border around the artwork itself. Inside this black frame, keep the botanical illustration as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) — just solid white." : "";
-    const marginText = whiteFrame ? "" : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
+    const bgText = useCream ? " Use a warm cream/off-white vintage paper background, like aged botanical art paper." : " CRITICAL: The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, or off-white.";
+    const marginText = whiteFrame ? "" : (useCream ? " IMPORTANT: Leave a clean, empty 1 cm margin of blank cream paper space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty." : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.");
 
     let messages;
 
     if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the scientific botanical illustration style — precise watercolor on cream/white paper. Do NOT include any text, labels, or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the scientific botanical illustration style.${bgText} Do NOT include any text, labels, or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
       messages = [{ role: "user", content: [{ type: "image_url", image_url: { url: sourceImageUrl } }, { type: "text", text: editPrompt }] }];
     } else {
-      const enhancedPrompt = `Create a high-resolution botanical illustration: ${trimmedPrompt}. Style: scientific botanical art in the tradition of Pierre-Joseph Redouté, Maria Sibylla Merian, and Ernst Haeckel. Precise watercolor rendering with delicate transparent washes, accurate botanical detail showing leaves, petals, stems, roots, seeds. Soft natural color palette, cream/white paper background, fine ink outlines with watercolor fills. Show the plant specimen with scientific accuracy — multiple views if appropriate (flower, leaf detail, cross-section). Elegant, museum-quality natural history illustration. Do NOT include any text or labels. Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
+      const enhancedPrompt = `Create a high-resolution botanical illustration: ${trimmedPrompt}. Style: scientific botanical art in the tradition of Pierre-Joseph Redouté, Maria Sibylla Merian, and Ernst Haeckel. Precise watercolor rendering with delicate transparent washes, accurate botanical detail showing leaves, petals, stems, roots, seeds. Soft natural color palette, ${useCream ? "cream/off-white vintage paper" : "pure white (#FFFFFF)"} background, fine ink outlines with watercolor fills. Show the plant specimen with scientific accuracy — multiple views if appropriate (flower, leaf detail, cross-section). Elegant, museum-quality natural history illustration. Do NOT include any text or labels. Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 

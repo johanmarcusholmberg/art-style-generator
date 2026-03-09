@@ -37,8 +37,7 @@ serve(async (req) => {
     const marginText = whiteFrame ? "" : (useCream ? " IMPORTANT: Leave a clean, empty 1 cm margin of blank paper space around all sides of the artwork. This margin must be the same beige/cream color as the paper. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty." : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.");
 
     if (sourceImageUrl) {
-      // Edit mode: user provides a source image and describes changes
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the traditional Japanese ukiyo-e woodblock print style. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the traditional Japanese ukiyo-e woodblock print style.${bgText} Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
       messages = [
         {
           role: "user",
@@ -49,8 +48,7 @@ serve(async (req) => {
         },
       ];
     } else {
-      // Generate mode: create from scratch
-      const enhancedPrompt = `Create a high-resolution, highly detailed traditional Japanese ukiyo-e woodblock print style artwork: ${trimmedPrompt}. Style: flat colors, bold outlines, traditional Japanese composition, washi paper texture, sumi ink details, Edo period aesthetic. Generate at maximum resolution with fine detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
+      const enhancedPrompt = `Create a high-resolution, highly detailed traditional Japanese ukiyo-e woodblock print style artwork: ${trimmedPrompt}. Style: flat colors, bold outlines, traditional Japanese composition, ${useCream ? "washi paper texture" : "clean white background"}, sumi ink details, Edo period aesthetic.${bgText} Generate at maximum resolution with fine detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 

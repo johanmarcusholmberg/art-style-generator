@@ -36,7 +36,7 @@ serve(async (req) => {
     let messages;
 
     if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the pop art style. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the pop art style.${bgText} Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
       messages = [
         {
           role: "user",
@@ -47,7 +47,7 @@ serve(async (req) => {
         },
       ];
     } else {
-      const enhancedPrompt = `Create a high-resolution pop art style artwork inspired by Andy Warhol and Roy Lichtenstein: ${trimmedPrompt}. Style: bold colors, Ben-Day dots, thick black outlines, flat color areas, high contrast, comic book aesthetics, screen-print texture, vibrant saturated palette. Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
+      const enhancedPrompt = `Create a high-resolution pop art style artwork inspired by Andy Warhol and Roy Lichtenstein: ${trimmedPrompt}. Style: bold colors, Ben-Day dots, thick black outlines, flat color areas, high contrast, comic book aesthetics, screen-print texture, vibrant saturated palette.${bgText} Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 
