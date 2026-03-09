@@ -116,16 +116,16 @@ const Minimalism = () => {
       <section className="pb-20 px-4">
         <div className="w-full max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <div className="h-px flex-1 bg-minimal-border" />
-            <h2 className="font-display text-lg font-bold text-minimal-fg">Gallery</h2>
-            <div className="h-px flex-1 bg-minimal-border" />
+            <div className="h-px flex-1 bg-border" />
+            <h2 className="font-display text-lg font-bold text-foreground">Gallery</h2>
+            <div className="h-px flex-1 bg-border" />
           </div>
           <Gallery refreshKey={galleryRefreshKey} onEditImage={handleEditImage} styleConfig={styleConfig} />
         </div>
       </section>
 
       <footer className="pb-8 text-center">
-        <p className="text-minimal-muted text-xs font-display tracking-widest">◻ Minimal Studio</p>
+        <p className="text-muted-foreground text-xs font-display tracking-widest">◻ Minimal Studio</p>
       </footer>
 
       <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>

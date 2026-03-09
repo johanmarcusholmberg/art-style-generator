@@ -156,9 +156,9 @@ const LineArt = () => {
       <section className="pb-20 px-4">
         <div className="w-full max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <div className="h-px flex-1 bg-lineart-border" />
-            <h2 className="font-display text-lg font-bold text-lineart-fg">Gallery</h2>
-            <div className="h-px flex-1 bg-lineart-border" />
+            <div className="h-px flex-1 bg-border" />
+            <h2 className="font-display text-lg font-bold text-foreground">Gallery</h2>
+            <div className="h-px flex-1 bg-border" />
           </div>
           <Gallery
             refreshKey={galleryRefreshKey}
@@ -170,7 +170,7 @@ const LineArt = () => {
 
       {/* Footer */}
       <footer className="pb-8 text-center">
-        <p className="text-lineart-muted text-xs font-display tracking-widest">
+        <p className="text-muted-foreground text-xs font-display tracking-widest">
           ✒ Ink & Line Studio
         </p>
       </footer>

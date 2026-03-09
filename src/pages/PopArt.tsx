@@ -148,9 +148,9 @@ const PopArt = () => {
       <section className="pb-20 px-4">
         <div className="w-full max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <div className="h-px flex-1 bg-popart-border" />
-            <h2 className="font-sans text-lg font-black text-popart-fg uppercase">Gallery</h2>
-            <div className="h-px flex-1 bg-popart-border" />
+            <div className="h-px flex-1 bg-border" />
+            <h2 className="font-sans text-lg font-black text-foreground uppercase">Gallery</h2>
+            <div className="h-px flex-1 bg-border" />
           </div>
           <Gallery
             refreshKey={galleryRefreshKey}
@@ -162,7 +162,7 @@ const PopArt = () => {
 
       {/* Footer */}
       <footer className="pb-8 text-center">
-        <p className="text-popart-muted text-xs font-sans tracking-widest uppercase font-bold">
+        <p className="text-muted-foreground text-xs font-sans tracking-widest uppercase font-bold">
           Pop Art Studio
         </p>
       </footer>
