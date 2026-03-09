@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      collection_images: {
+        Row: {
+          added_at: string
+          collection_id: string
+          id: string
+          image_id: string
+        }
+        Insert: {
+          added_at?: string
+          collection_id: string
+          id?: string
+          image_id: string
+        }
+        Update: {
+          added_at?: string
+          collection_id?: string
+          id?: string
+          image_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_images_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_images_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "generated_images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collections: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       generated_images: {
         Row: {
           aspect_ratio: string

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Download, Loader2, Image as ImageIcon, Trash2, Pencil, ChevronLeft, ChevronRight, Sun, FileText } from "lucide-react";
+import { Download, Loader2, Image as ImageIcon, Trash2, Pencil, ChevronLeft, ChevronRight, Sun, FileText, Share2, CheckSquare, Square } from "lucide-react";
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,9 +21,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fetchGalleryImages, deleteFromGallery, saveToGallery, replaceInGallery } from "@/lib/gallery";
+import { fetchCollectionImageIds } from "@/lib/collections";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
+import CollectionsManager from "@/components/CollectionsManager";
+import JSZip from "jszip";
 
 interface GalleryImage {
   id: string;
@@ -44,7 +47,6 @@ export interface EditRequest {
   originalStoragePath: string;
 }
 
-/** Map image mode to the correct edge function for regeneration */
 const MODE_TO_EDGE_FN: Record<string, string> = {
   japanese: "generate-image",
   freestyle: "generate-image-freestyle",
@@ -94,7 +96,15 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const [bgChanging, setBgChanging] = useState<"white" | "cream" | null>(null);
   const [bgResult, setBgResult] = useState<{ imageUrl: string; bgStyle: string } | null>(null);
 
-  // Filter to only show images matching this style's modes
+  // Batch selection
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [downloading, setDownloading] = useState(false);
+
+  // Collections filter
+  const [collectionFilter, setCollectionFilter] = useState<string | null>(null);
+  const [collectionImageIds, setCollectionImageIds] = useState<string[] | null>(null);
+
   const styleModes = styleConfig
     ? [styleConfig.themedModeValue, styleConfig.freestyleModeValue, ...(styleConfig.tertiaryModeValue ? [styleConfig.tertiaryModeValue] : [])]
     : null;
@@ -107,7 +117,16 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       .finally(() => setLoading(false));
   }, [refreshKey]);
 
-  useEffect(() => { setCurrentPage(1); }, [modeFilter, ratioFilter]);
+  // Load collection image IDs when filter changes
+  useEffect(() => {
+    if (collectionFilter) {
+      fetchCollectionImageIds(collectionFilter).then(setCollectionImageIds).catch(console.error);
+    } else {
+      setCollectionImageIds(null);
+    }
+  }, [collectionFilter, refreshKey]);
+
+  useEffect(() => { setCurrentPage(1); }, [modeFilter, ratioFilter, collectionFilter]);
 
   const uniqueRatios = useMemo(
     () => [...new Set(images.map((img) => img.aspect_ratio))].sort(),
@@ -119,9 +138,10 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       images.filter(
         (img) =>
           (modeFilter === "all" || img.mode === modeFilter) &&
-          (ratioFilter === "all" || img.aspect_ratio === ratioFilter)
+          (ratioFilter === "all" || img.aspect_ratio === ratioFilter) &&
+          (collectionImageIds === null || collectionImageIds.includes(img.id))
       ),
-    [images, modeFilter, ratioFilter]
+    [images, modeFilter, ratioFilter, collectionImageIds]
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
@@ -130,25 +150,66 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     [filtered, currentPage]
   );
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+
+  const handleBatchDownload = async () => {
+    if (selectedIds.size === 0) return;
+    setDownloading(true);
+    try {
+      const zip = new JSZip();
+      const selectedImages = images.filter((img) => selectedIds.has(img.id));
+      await Promise.all(
+        selectedImages.map(async (img, i) => {
+          const res = await fetch(img.publicUrl);
+          const blob = await res.blob();
+          zip.file(`art-${i + 1}-${img.mode}.png`, blob);
+        })
+      );
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `artwork-${Date.now()}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setSelectMode(false);
+      setSelectedIds(new Set());
+      toast.success(`Downloaded ${selectedImages.length} images`, { duration: 3000 });
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to create ZIP");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleCopyUrl = (url: string) => {
+    navigator.clipboard.writeText(url).then(
+      () => toast.success("Image URL copied!", { duration: 3000 }),
+      () => toast.error("Failed to copy URL")
+    );
+  };
+
   // Soft delete with undo
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
     const target = deleteTarget;
     setDeleteTarget(null);
-
-    // Optimistically remove from UI
     setImages((prev) => prev.filter((img) => img.id !== target.id));
     if (selected?.id === target.id) setSelected(null);
 
-    // Show undo toast
     setUndoTarget(target);
     const timer = setTimeout(async () => {
-      // Actually delete after undo window
       try {
         await deleteFromGallery(target.id, target.storage_path);
       } catch (e) {
         console.error(e);
-        // Restore on failure
         setImages((prev) => [target, ...prev]);
         toast.error("Failed to delete image");
       }
@@ -172,7 +233,6 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     });
   };
 
-  // Lock body scroll when lightbox is open
   useEffect(() => {
     if (selected) {
       document.body.style.overflow = "hidden";
@@ -180,7 +240,6 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     }
   }, [selected]);
 
-  // Navigate between filtered images
   const selectedIndex = selected ? filtered.findIndex((img) => img.id === selected.id) : -1;
   const goPrev = useCallback(() => {
     if (selectedIndex > 0) setSelected(filtered[selectedIndex - 1]);
@@ -189,7 +248,6 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     if (selectedIndex >= 0 && selectedIndex < filtered.length - 1) setSelected(filtered[selectedIndex + 1]);
   }, [selectedIndex, filtered]);
 
-  // Keyboard navigation
   useEffect(() => {
     if (!selected) return;
     const handler = (e: KeyboardEvent) => {
@@ -249,7 +307,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   const handleSaveBgResult = async (img: GalleryImage, replace: boolean) => {
     if (!bgResult) return;
-    setBgChanging("white"); // reuse as saving indicator
+    setBgChanging("white");
     try {
       const newPrompt = `${img.prompt} | BG: ${bgResult.bgStyle}`;
       if (replace) {
@@ -275,7 +333,6 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       }
       setBgResult(null);
       setSelected(null);
-      // Refresh gallery
       setLoading(true);
       fetchGalleryImages()
         .then((imgs) => setImages(styleModes ? imgs.filter((img: any) => styleModes.includes(img.mode)) : imgs))
@@ -288,7 +345,6 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     }
   };
 
-  // Clear bg result when changing selected image
   useEffect(() => { setBgResult(null); }, [selected?.id]);
 
   if (loading) {
@@ -310,7 +366,12 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   return (
     <>
-      {/* Filters + Pagination on one row */}
+      {/* Collections filter bar */}
+      <div className="mb-3">
+        <CollectionsManager onFilterChange={setCollectionFilter} activeFilter={collectionFilter} />
+      </div>
+
+      {/* Filters + Batch + Pagination */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Select value={modeFilter} onValueChange={setModeFilter}>
           <SelectTrigger className="w-[120px] font-display text-xs h-8">
@@ -343,6 +404,29 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
             onClick={() => { setModeFilter("all"); setRatioFilter("all"); }}
           >
             ✕
+          </Button>
+        )}
+
+        {/* Batch select toggle */}
+        <Button
+          variant={selectMode ? "default" : "outline"}
+          size="sm"
+          className="font-display text-xs h-8 px-2"
+          onClick={() => { setSelectMode(!selectMode); setSelectedIds(new Set()); }}
+        >
+          {selectMode ? <CheckSquare className="h-3 w-3 mr-1" /> : <Square className="h-3 w-3 mr-1" />}
+          Select
+        </Button>
+
+        {selectMode && selectedIds.size > 0 && (
+          <Button
+            size="sm"
+            className="font-display text-xs h-8"
+            onClick={handleBatchDownload}
+            disabled={downloading}
+          >
+            {downloading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
+            Download {selectedIds.size} as ZIP
           </Button>
         )}
 
@@ -390,7 +474,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           {paginated.map((img) => (
             <div key={img.id} className="relative group">
               <button
-                onClick={() => setSelected(img)}
+                onClick={() => selectMode ? toggleSelect(img.id) : setSelected(img)}
                 className="relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
               >
                 <img
@@ -402,17 +486,29 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                   sizes="(min-width: 768px) 33vw, (min-width: 640px) 33vw, 50vw"
                   loading="lazy"
                 />
-                {/* Hover: show full image + prompt */}
-                <div className="absolute inset-0 bg-card opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center p-2 z-20">
-                  <img
-                    src={img.publicUrl}
-                    alt={img.prompt}
-                    className="max-w-full max-h-[75%] object-contain rounded-sm"
-                  />
-                  <p className="mt-2 text-[10px] text-muted-foreground font-display line-clamp-2 text-center px-1">
-                    {img.prompt}
-                  </p>
-                </div>
+                {/* Hover overlay */}
+                {!selectMode && (
+                  <div className="absolute inset-0 bg-card opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center p-2 z-20">
+                    <img
+                      src={img.publicUrl}
+                      alt={img.prompt}
+                      className="max-w-full max-h-[75%] object-contain rounded-sm"
+                    />
+                    <p className="mt-2 text-[10px] text-muted-foreground font-display line-clamp-2 text-center px-1">
+                      {img.prompt}
+                    </p>
+                  </div>
+                )}
+                {/* Select checkbox overlay */}
+                {selectMode && (
+                  <div className="absolute top-2 left-2 z-30">
+                    {selectedIds.has(img.id) ? (
+                      <CheckSquare className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Square className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                )}
                 <Badge
                   variant="secondary"
                   className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80 z-30"
@@ -431,7 +527,6 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           className="fixed inset-0 z-50 bg-foreground/80 flex items-center justify-center p-4"
           onClick={() => setSelected(null)}
         >
-          {/* Prev arrow */}
           {selectedIndex > 0 && (
             <button
               onClick={(e) => { e.stopPropagation(); goPrev(); }}
@@ -440,7 +535,6 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
               <ChevronLeft className="h-6 w-6 text-foreground" />
             </button>
           )}
-          {/* Next arrow */}
           {selectedIndex < filtered.length - 1 && (
             <button
               onClick={(e) => { e.stopPropagation(); goNext(); }}
@@ -453,7 +547,6 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
             className="bg-card rounded-sm border border-border max-w-3xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 space-y-4 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close X in top-right */}
             <button
               onClick={() => setSelected(null)}
               className="absolute top-3 right-3 z-10 p-1.5 rounded-sm hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
@@ -480,6 +573,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                   {new Date(selected.created_at).toLocaleDateString()}
                 </span>
               </div>
+
+              {/* Action buttons */}
               <div className="flex flex-wrap gap-2 pt-2">
                 <Button
                   variant="outline"
@@ -489,6 +584,15 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Download
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopyUrl(selected.publicUrl)}
+                  className="font-display text-xs"
+                >
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Copy URL
                 </Button>
                 {onEditImage && (
                   <Button
@@ -510,6 +614,11 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </Button>
+              </div>
+
+              {/* Collections */}
+              <div className="pt-3 border-t border-border">
+                <CollectionsManager imageId={selected.id} />
               </div>
 
               {/* Background color change */}
