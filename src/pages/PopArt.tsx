@@ -108,10 +108,10 @@ const PopArt = () => {
           className="w-full max-w-4xl mx-auto"
         >
           <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value={styleConfig.themedModeValue} className="font-sans text-sm font-bold">
+            <TabsTrigger value={styleConfig.themedModeValue} className="font-display text-sm">
               {styleConfig.themedTabLabel}
             </TabsTrigger>
-            <TabsTrigger value={styleConfig.freestyleModeValue} className="font-sans text-sm font-bold">
+            <TabsTrigger value={styleConfig.freestyleModeValue} className="font-display text-sm">
               {styleConfig.freestyleTabLabel}
             </TabsTrigger>
           </TabsList>
