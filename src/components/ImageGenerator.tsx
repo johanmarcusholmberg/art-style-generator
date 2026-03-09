@@ -57,9 +57,10 @@ export default function ImageGenerator({
 }: ImageGeneratorProps) {
   const isEditMode = !!initialImageUrl;
   const isThemed = mode === styleConfig.themedModeValue;
-  const edgeFn = isThemed ? styleConfig.themedEdgeFn : styleConfig.freestyleEdgeFn;
-  const modeLabel = isThemed ? styleConfig.themedTabLabel : styleConfig.freestyleTabLabel;
-  const generateLabel = isThemed ? styleConfig.themedGenerateLabel : styleConfig.freestyleGenerateLabel;
+  const isTertiary = mode === styleConfig.tertiaryModeValue;
+  const edgeFn = isTertiary ? styleConfig.tertiaryEdgeFn! : isThemed ? styleConfig.themedEdgeFn : styleConfig.freestyleEdgeFn;
+  const modeLabel = isTertiary ? styleConfig.tertiaryTabLabel! : isThemed ? styleConfig.themedTabLabel : styleConfig.freestyleTabLabel;
+  const generateLabel = isTertiary ? styleConfig.tertiaryGenerateLabel! : isThemed ? styleConfig.themedGenerateLabel : styleConfig.freestyleGenerateLabel;
 
   // Use styleKey prefix for persistence to avoid collisions between styles
   const persistKey = `${styleConfig.styleKey}-${mode}` as any;
