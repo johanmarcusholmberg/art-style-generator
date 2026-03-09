@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2 } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,6 +92,8 @@ export default function ImageGenerator({
   } = usePersistedGeneration(mode, isEditMode ? undefined : initialPrompt);
 
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
+  const [isInlineEditing, setIsInlineEditing] = useState(false);
+  const [editPrompt, setEditPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -105,16 +107,20 @@ export default function ImageGenerator({
   const suggestions = PROMPTS[mode] || PROMPTS.japanese;
 
   const generate = async () => {
-    if (!prompt.trim()) return;
+    const activePrompt = isInlineEditing ? editPrompt : prompt;
+    if (!activePrompt.trim()) return;
     setLoading(true);
-    setImageUrl(null);
-    setBaseImageUrl(null);
     setViewVersion("enhanced");
     setSavedToGallery(false);
 
     try {
-      const body: any = { prompt: prompt.trim(), aspectRatio: printSize.ratio, whiteFrame };
-      if (sourceImageUrl) body.sourceImageUrl = sourceImageUrl;
+      const body: any = { prompt: activePrompt.trim(), aspectRatio: printSize.ratio, whiteFrame };
+      // Use current generated image as source when inline editing
+      if (isInlineEditing && imageUrl) {
+        body.sourceImageUrl = imageUrl;
+      } else if (sourceImageUrl) {
+        body.sourceImageUrl = sourceImageUrl;
+      }
       const { data, error } = await supabase.functions.invoke(edgeFn, { body });
 
       if (error) throw error;
@@ -140,6 +146,12 @@ export default function ImageGenerator({
       }
 
       setImageUrl(finalUrl);
+      // After successful inline edit, update main prompt and exit edit mode
+      if (isInlineEditing) {
+        setPrompt(activePrompt.trim());
+        setIsInlineEditing(false);
+        setEditPrompt("");
+      }
     } catch (err: any) {
       toast({
         title: "Generation failed",
@@ -237,35 +249,79 @@ export default function ImageGenerator({
           const promptLocked = !!imageUrl && !savedToGallery;
           return (
             <>
-              <Textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                disabled={promptLocked}
-                placeholder={
-                  isEditMode
-                    ? "Describe the changes you want… e.g. 'Make the sky a sunset orange'"
-                    : mode === "japanese"
-                      ? "Describe your scene… e.g. 'A crane flying over misty mountains'"
-                      : "Describe any scene… e.g. 'Central Park in New York during autumn'"
-                }
-                className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary disabled:opacity-60"
-              />
-
-              <p className="font-display font-bold text-sm text-foreground">
-                {isEditMode ? "Edit suggestions" : "Suggestions"}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {(isEditMode ? suggestions.edit : suggestions.generate).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPrompt(p)}
+              {/* Normal prompt input when no generated image or editing inline */}
+              {isInlineEditing ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="font-display text-xs text-muted-foreground">
+                      Describe the changes you want to make:
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setIsInlineEditing(false);
+                        setEditPrompt("");
+                      }}
+                      className="font-display text-xs h-7"
+                    >
+                      <X className="h-3 w-3 mr-1" />
+                      Cancel Edit
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={editPrompt}
+                    onChange={(e) => setEditPrompt(e.target.value)}
+                    placeholder="e.g. 'Change the sky to sunset colors' or 'Add cherry blossoms falling'"
+                    className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary"
+                    autoFocus
+                  />
+                  <p className="font-display font-bold text-sm text-foreground">Edit suggestions</p>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestions.edit.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setEditPrompt(p)}
+                        className="text-xs px-3 py-1.5 rounded-sm bg-secondary text-secondary-foreground hover:bg-muted transition-colors font-display"
+                      >
+                        {p.length > 40 ? p.slice(0, 40) + "…" : p}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
                     disabled={promptLocked}
-                    className="text-xs px-3 py-1.5 rounded-sm bg-secondary text-secondary-foreground hover:bg-muted transition-colors font-display disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {p.length > 40 ? p.slice(0, 40) + "…" : p}
-                  </button>
-                ))}
-              </div>
+                    placeholder={
+                      isEditMode
+                        ? "Describe the changes you want… e.g. 'Make the sky a sunset orange'"
+                        : mode === "japanese"
+                          ? "Describe your scene… e.g. 'A crane flying over misty mountains'"
+                          : "Describe any scene… e.g. 'Central Park in New York during autumn'"
+                    }
+                    className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary disabled:opacity-60"
+                  />
+
+                  <p className="font-display font-bold text-sm text-foreground">
+                    {isEditMode ? "Edit suggestions" : "Suggestions"}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(isEditMode ? suggestions.edit : suggestions.generate).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPrompt(p)}
+                        disabled={promptLocked}
+                        className="text-xs px-3 py-1.5 rounded-sm bg-secondary text-secondary-foreground hover:bg-muted transition-colors font-display disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {p.length > 40 ? p.slice(0, 40) + "…" : p}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           );
         })()}
@@ -304,16 +360,16 @@ export default function ImageGenerator({
 
         <Button
           onClick={generate}
-          disabled={loading || !prompt.trim()}
+          disabled={loading || (!isInlineEditing && !prompt.trim()) || (isInlineEditing && !editPrompt.trim())}
           className="w-full sm:w-auto font-display text-sm tracking-wider"
         >
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {isEditMode ? "Editing…" : "Painting…"}
+              {isInlineEditing || isEditMode ? "Editing…" : "Painting…"}
             </>
           ) : (
-            isEditMode ? "Apply Changes" : generateLabel
+            isInlineEditing || isEditMode ? "Apply Changes" : generateLabel
           )}
         </Button>
       </div>
@@ -411,9 +467,23 @@ export default function ImageGenerator({
                 </Button>
               )}
               {savedToGallery && (
-                <span className="text-xs text-primary flex items-center gap-1 font-display">
-                  ✓ Saved to gallery
-                </span>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setIsInlineEditing(true);
+                      setEditPrompt("");
+                    }}
+                    className="font-display text-xs tracking-wider"
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Image
+                  </Button>
+                  <span className="text-xs text-primary flex items-center gap-1 font-display">
+                    ✓ Saved to gallery
+                  </span>
+                </>
               )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
