@@ -169,11 +169,29 @@ export const LINEART_STYLE: StyleConfig = {
         "Add a frame of decorative vines around the image",
       ],
     },
+    tertiary: {
+      generate: [
+        "A woman's face in a single continuous line",
+        "A cat curled up sleeping — fewest lines possible",
+        "A mountain landscape with just 5-6 strokes",
+      ],
+      edit: [
+        "Simplify further — use even fewer lines",
+        "Make it a single continuous line drawing",
+        "Remove all shading, keep only outlines",
+      ],
+    },
   },
   themedModeValue: "lineart",
   freestyleModeValue: "lineart-freestyle",
+  tertiaryModeValue: "lineart-minimal",
+  tertiaryEdgeFn: "generate-image-lineart-minimal",
+  tertiaryTabLabel: "〰️ Minimal Lines",
+  tertiaryGenerateLabel: "Generate Minimal Line Art",
+  tertiaryPlaceholder: "Describe your scene… e.g. 'A woman's face in one continuous line'",
   themedBadge: "✒️",
   freestyleBadge: "🎨",
+  tertiaryBadge: "〰️",
   downloadPrefix: "lineart",
 };
 
