@@ -120,3 +120,46 @@ export const POPART_STYLE: StyleConfig = {
   freestyleBadge: "🎨",
   downloadPrefix: "popart",
 };
+
+export const LINEART_STYLE: StyleConfig = {
+  styleKey: "lineart",
+  themedEdgeFn: "generate-image-lineart",
+  freestyleEdgeFn: "generate-image-lineart-freestyle",
+  themedTabLabel: "✒️ Ink Scenes",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Line Art",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your scene… e.g. 'A lighthouse on a rocky cliff'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A vintage bicycle in a garden'",
+  prompts: {
+    themed: {
+      generate: [
+        "A lighthouse on a rocky cliff overlooking stormy seas",
+        "A detailed botanical study of roses and ferns",
+        "An old European cathedral with flying buttresses",
+      ],
+      edit: [
+        "Add more cross-hatching to the shadows",
+        "Make the lines finer and more delicate",
+        "Add birds flying in the background",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A vintage bicycle leaning against a stone wall",
+        "A cozy cabin in the woods with smoke from the chimney",
+        "A bustling street market with awnings and crates",
+      ],
+      edit: [
+        "Add more detail to the foreground",
+        "Make the lines thicker and bolder",
+        "Add a frame of decorative vines around the image",
+      ],
+    },
+  },
+  themedModeValue: "lineart",
+  freestyleModeValue: "lineart-freestyle",
+  themedBadge: "✒️",
+  freestyleBadge: "🎨",
+  downloadPrefix: "lineart",
+};

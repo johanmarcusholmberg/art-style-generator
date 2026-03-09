@@ -89,6 +89,12 @@ const Index = () => {
         >
           🎯 Pop Art
         </Link>
+        <Link
+          to="/lineart"
+          className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors pb-1"
+        >
+          ✒️ Line Art
+        </Link>
       </nav>
 
       {/* Header */}
