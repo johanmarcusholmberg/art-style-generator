@@ -239,7 +239,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       if (!data?.imageUrl) throw new Error("No image generated");
 
       setBgResult({ imageUrl: data.imageUrl, bgStyle });
-      toast.success(`${bgStyle === "white" ? "White" : "Cream"} background generated! Save or replace below.`);
+      toast.success(`${bgStyle === "white" ? "White" : "Cream"} background generated! Save or replace below.`, { duration: 3000 });
     } catch (err: any) {
       toast.error(err.message || "Failed to change background");
     } finally {
@@ -262,7 +262,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           aspectRatio: img.aspect_ratio,
           printSize: img.print_size || "",
         });
-        toast.success("Original replaced with new background");
+        toast.success("Original replaced with new background", { duration: 3000 });
       } else {
         await saveToGallery({
           imageUrl: bgResult.imageUrl,
@@ -271,7 +271,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           aspectRatio: img.aspect_ratio,
           printSize: img.print_size || "",
         });
-        toast.success("Saved as new image");
+        toast.success("Saved as new image", { duration: 3000 });
       }
       setBgResult(null);
       setSelected(null);
