@@ -30,14 +30,14 @@ const LineArt = () => {
   const refreshGallery = useCallback(() => setGalleryRefreshKey((k) => k + 1), []);
 
   const clearCurrentGeneration = useCallback(async () => {
-    await Promise.all([
-      deleteCachedImage(`img-${styleConfig.styleKey}-${styleConfig.themedModeValue}`),
-      deleteCachedImage(`img-base-${styleConfig.styleKey}-${styleConfig.themedModeValue}`),
-      deleteCachedImage(`img-${styleConfig.styleKey}-${styleConfig.freestyleModeValue}`),
-      deleteCachedImage(`img-base-${styleConfig.styleKey}-${styleConfig.freestyleModeValue}`),
-    ]);
-    sessionStorage.removeItem(`gen-state-${styleConfig.styleKey}-${styleConfig.themedModeValue}`);
-    sessionStorage.removeItem(`gen-state-${styleConfig.styleKey}-${styleConfig.freestyleModeValue}`);
+    const modes = [styleConfig.themedModeValue, styleConfig.freestyleModeValue, ...(styleConfig.tertiaryModeValue ? [styleConfig.tertiaryModeValue] : [])];
+    await Promise.all(
+      modes.flatMap((m) => [
+        deleteCachedImage(`img-${styleConfig.styleKey}-${m}`),
+        deleteCachedImage(`img-base-${styleConfig.styleKey}-${m}`),
+      ])
+    );
+    modes.forEach((m) => sessionStorage.removeItem(`gen-state-${styleConfig.styleKey}-${m}`));
   }, []);
 
   const applyEdit = useCallback(
