@@ -196,11 +196,16 @@ export default function ImageGenerator({
     if (!imageUrl || !originalImageId || !originalStoragePath || replacing) return;
     setReplacing(true);
     try {
+      // In edit mode, preserve original prompt with edit description
+      const finalPrompt = isEditMode && initialPrompt
+        ? `${initialPrompt} | Edited: ${prompt.trim()}`
+        : prompt.trim();
+      
       await replaceInGallery({
         originalId: originalImageId,
         originalStoragePath,
         imageUrl,
-        prompt: prompt.trim(),
+        prompt: finalPrompt,
         mode,
         aspectRatio: printSize.ratio,
         printSize: printSize.dimensions,
