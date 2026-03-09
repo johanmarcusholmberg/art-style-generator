@@ -169,9 +169,14 @@ export default function ImageGenerator({
     if (!imageUrl || savedToGallery || saving) return;
     setSaving(true);
     try {
+      // In edit mode, preserve original prompt with edit description
+      const finalPrompt = isEditMode && initialPrompt
+        ? `${initialPrompt} | Edited: ${prompt.trim()}`
+        : prompt.trim();
+      
       await saveToGallery({
         imageUrl,
-        prompt: prompt.trim(),
+        prompt: finalPrompt,
         mode,
         aspectRatio: printSize.ratio,
         printSize: printSize.dimensions,
