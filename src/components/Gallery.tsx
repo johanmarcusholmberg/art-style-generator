@@ -212,6 +212,85 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     });
   };
 
+  const handleChangeBackground = async (img: GalleryImage, bgStyle: "white" | "cream") => {
+    const edgeFn = MODE_TO_EDGE_FN[img.mode];
+    if (!edgeFn) {
+      toast.error("Background change not supported for this style");
+      return;
+    }
+    setBgChanging(bgStyle);
+    setBgResult(null);
+    try {
+      const prompt = bgStyle === "white"
+        ? "Change ONLY the background to pure white (#FFFFFF). Keep everything else exactly the same — same subject, same composition, same colors, same style, same details. Do NOT alter the artwork itself in any way."
+        : "Change ONLY the background to a warm cream/off-white vintage paper tone. Keep everything else exactly the same — same subject, same composition, same colors, same style, same details. Do NOT alter the artwork itself in any way.";
+
+      const { data, error } = await supabase.functions.invoke(edgeFn, {
+        body: {
+          prompt,
+          sourceImageUrl: img.publicUrl,
+          aspectRatio: img.aspect_ratio,
+          whiteFrame: false,
+          backgroundStyle: bgStyle,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (!data?.imageUrl) throw new Error("No image generated");
+
+      setBgResult({ imageUrl: data.imageUrl, bgStyle });
+      toast.success(`${bgStyle === "white" ? "White" : "Cream"} background generated! Save or replace below.`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to change background");
+    } finally {
+      setBgChanging(null);
+    }
+  };
+
+  const handleSaveBgResult = async (img: GalleryImage, replace: boolean) => {
+    if (!bgResult) return;
+    setBgChanging("white"); // reuse as saving indicator
+    try {
+      const newPrompt = `${img.prompt} | BG: ${bgResult.bgStyle}`;
+      if (replace) {
+        await replaceInGallery({
+          originalId: img.id,
+          originalStoragePath: img.storage_path,
+          imageUrl: bgResult.imageUrl,
+          prompt: newPrompt,
+          mode: img.mode,
+          aspectRatio: img.aspect_ratio,
+          printSize: img.print_size || "",
+        });
+        toast.success("Original replaced with new background");
+      } else {
+        await saveToGallery({
+          imageUrl: bgResult.imageUrl,
+          prompt: newPrompt,
+          mode: img.mode,
+          aspectRatio: img.aspect_ratio,
+          printSize: img.print_size || "",
+        });
+        toast.success("Saved as new image");
+      }
+      setBgResult(null);
+      setSelected(null);
+      // Refresh gallery
+      setLoading(true);
+      fetchGalleryImages()
+        .then((imgs) => setImages(styleModes ? imgs.filter((img: any) => styleModes.includes(img.mode)) : imgs))
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save");
+    } finally {
+      setBgChanging(null);
+    }
+  };
+
+  // Clear bg result when changing selected image
+  useEffect(() => { setBgResult(null); }, [selected?.id]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
