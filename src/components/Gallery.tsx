@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
   Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
+  FolderPlus, FolderMinus,
 } from "lucide-react";
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
@@ -18,8 +19,11 @@ import {
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
 import { fetchGalleryImages, deleteFromGallery, saveToGallery, replaceInGallery } from "@/lib/gallery";
-import { fetchCollectionImageIds } from "@/lib/collections";
+import { fetchCollections, fetchCollectionImageIds, addBulkToCollection, removeBulkFromCollection, type Collection } from "@/lib/collections";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
@@ -256,6 +260,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   const [collectionFilter, setCollectionFilter] = useState<string | null>(null);
   const [collectionImageIds, setCollectionImageIds] = useState<string[] | null>(null);
+  const [allCollections, setAllCollections] = useState<Collection[]>([]);
+  const [bulkPopoverOpen, setBulkPopoverOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState<"add" | "remove">("add");
 
   const styleModes = styleConfig
     ? [styleConfig.themedModeValue, styleConfig.freestyleModeValue, ...(styleConfig.tertiaryModeValue ? [styleConfig.tertiaryModeValue] : [])]
@@ -267,6 +274,11 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       .then((imgs) => setImages(styleModes ? imgs.filter((img: any) => styleModes.includes(img.mode)) : imgs))
       .catch(console.error)
       .finally(() => setLoading(false));
+  }, [refreshKey]);
+
+  // Load all collections for bulk actions
+  useEffect(() => {
+    fetchCollections().then(setAllCollections).catch(console.error);
   }, [refreshKey]);
 
   useEffect(() => {
@@ -339,6 +351,26 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       toast.error("Failed to create ZIP");
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleBulkCollection = async (collectionId: string) => {
+    const ids = Array.from(selectedIds);
+    try {
+      if (bulkAction === "add") {
+        await addBulkToCollection(collectionId, ids);
+        toast.success(`Added ${ids.length} images to collection`, { duration: 3000 });
+      } else {
+        await removeBulkFromCollection(collectionId, ids);
+        toast.success(`Removed ${ids.length} images from collection`, { duration: 3000 });
+      }
+      setBulkPopoverOpen(false);
+      // Refresh collection filter if active
+      if (collectionFilter) {
+        fetchCollectionImageIds(collectionFilter).then(setCollectionImageIds).catch(console.error);
+      }
+    } catch {
+      toast.error("Failed to update collection");
     }
   };
 
@@ -531,10 +563,42 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         </Button>
 
         {selectMode && selectedIds.size > 0 && (
-          <Button size="sm" className="font-display text-xs h-8" onClick={handleBatchDownload} disabled={downloading}>
-            {downloading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
-            Download {selectedIds.size} as ZIP
-          </Button>
+          <>
+            <Button size="sm" className="font-display text-xs h-8" onClick={handleBatchDownload} disabled={downloading}>
+              {downloading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
+              Download {selectedIds.size} as ZIP
+            </Button>
+
+            {allCollections.length > 0 && (
+              <Popover open={bulkPopoverOpen} onOpenChange={setBulkPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="font-display text-xs h-8"
+                    onClick={() => { setBulkAction("add"); setBulkPopoverOpen(true); }}>
+                    <FolderPlus className="h-3 w-3 mr-1" /> Add to folder
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2" align="start">
+                  <div className="flex gap-1 mb-2">
+                    <Button variant={bulkAction === "add" ? "default" : "outline"} size="sm"
+                      className="font-display text-xs h-6 flex-1" onClick={() => setBulkAction("add")}>
+                      <FolderPlus className="h-3 w-3 mr-1" /> Add
+                    </Button>
+                    <Button variant={bulkAction === "remove" ? "default" : "outline"} size="sm"
+                      className="font-display text-xs h-6 flex-1" onClick={() => setBulkAction("remove")}>
+                      <FolderMinus className="h-3 w-3 mr-1" /> Remove
+                    </Button>
+                  </div>
+                  {allCollections.map((c) => (
+                    <Button key={c.id} variant="ghost" size="sm"
+                      className="w-full justify-start font-display text-xs h-7"
+                      onClick={() => handleBulkCollection(c.id)}>
+                      {c.name}
+                    </Button>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            )}
+          </>
         )}
 
         {totalPages > 1 && (

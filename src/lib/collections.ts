@@ -42,6 +42,23 @@ export async function addToCollection(collectionId: string, imageId: string): Pr
   if (error) throw error;
 }
 
+export async function addBulkToCollection(collectionId: string, imageIds: string[]): Promise<void> {
+  if (imageIds.length === 0) return;
+  const rows = imageIds.map((image_id) => ({ collection_id: collectionId, image_id }));
+  const { error } = await supabase.from("collection_images").upsert(rows, { onConflict: "collection_id,image_id", ignoreDuplicates: true });
+  if (error) throw error;
+}
+
+export async function removeBulkFromCollection(collectionId: string, imageIds: string[]): Promise<void> {
+  if (imageIds.length === 0) return;
+  const { error } = await supabase
+    .from("collection_images")
+    .delete()
+    .eq("collection_id", collectionId)
+    .in("image_id", imageIds);
+  if (error) throw error;
+}
+
 export async function removeFromCollection(collectionId: string, imageId: string): Promise<void> {
   const { error } = await supabase
     .from("collection_images")
