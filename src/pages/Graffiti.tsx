@@ -62,10 +62,10 @@ const Graffiti = () => {
       <StyleNav activePath="/graffiti" />
 
       <header className="pt-10 pb-12 text-center px-4">
-        <p className="font-sans text-primary text-sm tracking-[0.3em] uppercase font-bold mb-3">
+        <p className="font-display text-primary text-sm tracking-[0.3em] uppercase mb-3">
           Graffiti · Urban Art
         </p>
-        <h1 className="font-sans text-4xl sm:text-5xl md:text-6xl font-black text-foreground leading-tight mb-4 uppercase">
+        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight mb-4">
           Graffiti<br />
           <span className="text-primary">Image Generator</span>
         </h1>
@@ -73,7 +73,7 @@ const Graffiti = () => {
           Describe a scene and watch it come to life as vibrant street art —
           spray paint, bold colors, and raw urban energy.
         </p>
-        <div className="mt-6 w-24 h-1 bg-primary mx-auto" />
+        <div className="mt-6 w-24 h-px bg-border mx-auto" />
       </header>
 
       <main className="pb-12 px-4" ref={generatorRef}>

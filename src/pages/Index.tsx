@@ -83,7 +83,7 @@ const Index = () => {
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">
-        <p className="font-display text-gold text-sm tracking-[0.3em] uppercase mb-3">
+        <p className="font-display text-primary text-sm tracking-[0.3em] uppercase mb-3">
           浮世絵 · Ukiyo-e
         </p>
         <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight mb-4">
