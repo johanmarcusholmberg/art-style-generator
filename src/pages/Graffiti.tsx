@@ -59,12 +59,7 @@ const Graffiti = () => {
 
   return (
     <div className="min-h-screen bg-graffiti-bg">
-      <StyleNav
-        activePath="/graffiti"
-        activeClass="text-graffiti-fg"
-        inactiveClass="text-graffiti-muted hover:text-graffiti-fg"
-        activeBorderClass="border-graffiti-accent"
-      />
+      <StyleNav activePath="/graffiti" />
 
       <header className="pt-10 pb-12 text-center px-4">
         <p className="font-sans text-graffiti-accent text-sm tracking-[0.3em] uppercase font-bold mb-3">

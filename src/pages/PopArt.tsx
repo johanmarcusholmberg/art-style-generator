@@ -79,12 +79,7 @@ const PopArt = () => {
   return (
     <div className="min-h-screen bg-popart-bg">
       {/* Navigation */}
-      <StyleNav
-        activePath="/popart"
-        activeClass="text-popart-fg"
-        inactiveClass="text-popart-muted hover:text-popart-fg"
-        activeBorderClass="border-popart-accent"
-      />
+      <StyleNav activePath="/popart" />
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">

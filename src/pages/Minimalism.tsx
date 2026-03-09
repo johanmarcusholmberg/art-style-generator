@@ -74,12 +74,7 @@ const Minimalism = () => {
   return (
     <div className="min-h-screen bg-minimal-bg">
       {/* Navigation */}
-      <StyleNav
-        activePath="/minimalism"
-        activeClass="text-minimal-fg"
-        inactiveClass="text-minimal-muted hover:text-minimal-fg"
-        activeBorderClass="border-minimal-accent"
-      />
+      <StyleNav activePath="/minimalism" />
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">

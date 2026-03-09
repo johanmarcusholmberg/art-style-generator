@@ -108,12 +108,7 @@ export default function Blend() {
 
   return (
     <div className="min-h-screen bg-background paper-texture">
-      <StyleNav
-        activePath="/blend"
-        activeClass="text-foreground"
-        inactiveClass="text-muted-foreground hover:text-foreground"
-        activeBorderClass="border-primary"
-      />
+      <StyleNav activePath="/blend" />
 
       <header className="pt-10 pb-12 text-center px-4">
         <p className="font-display text-primary text-sm tracking-[0.3em] uppercase mb-3">
