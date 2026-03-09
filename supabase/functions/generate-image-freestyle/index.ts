@@ -34,7 +34,7 @@ serve(async (req) => {
 
     if (sourceImageUrl) {
       // Edit mode: user provides a source image and describes changes
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the ukiyo-e woodblock print art style. Do NOT include any Japanese text, characters, or script. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the ukiyo-e woodblock print art style. Do NOT include any Japanese text, characters, or script. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}`;
       messages = [
         {
           role: "user",
