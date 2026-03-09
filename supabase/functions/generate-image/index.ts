@@ -32,9 +32,11 @@ serve(async (req) => {
 
     let messages;
 
+    const marginText = " IMPORTANT: Always include a 1 cm margin (indentation) around all sides of the image content, creating a consistent border between the artwork and the outer frame edge.";
+
     if (sourceImageUrl) {
       // Edit mode: user provides a source image and describes changes
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the traditional Japanese ukiyo-e woodblock print style. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the traditional Japanese ukiyo-e woodblock print style. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
       messages = [
         {
           role: "user",
@@ -46,7 +48,7 @@ serve(async (req) => {
       ];
     } else {
       // Generate mode: create from scratch
-      const enhancedPrompt = `Create a high-resolution, highly detailed traditional Japanese ukiyo-e woodblock print style artwork: ${trimmedPrompt}. Style: flat colors, bold outlines, traditional Japanese composition, washi paper texture, sumi ink details, Edo period aesthetic. Generate at maximum resolution with fine detail suitable for large format printing.${ratioText}${frameText}`;
+      const enhancedPrompt = `Create a high-resolution, highly detailed traditional Japanese ukiyo-e woodblock print style artwork: ${trimmedPrompt}. Style: flat colors, bold outlines, traditional Japanese composition, washi paper texture, sumi ink details, Edo period aesthetic. Generate at maximum resolution with fine detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 
