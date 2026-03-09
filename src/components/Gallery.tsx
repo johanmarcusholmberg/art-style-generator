@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Download, Loader2, Image as ImageIcon, Trash2, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import { Download, Loader2, Image as ImageIcon, Trash2, Pencil, ChevronLeft, ChevronRight, Sun, FileText } from "lucide-react";
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,8 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { fetchGalleryImages, deleteFromGallery } from "@/lib/gallery";
+import { fetchGalleryImages, deleteFromGallery, saveToGallery, replaceInGallery } from "@/lib/gallery";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 
 interface GalleryImage {
@@ -42,6 +43,23 @@ export interface EditRequest {
   originalId: string;
   originalStoragePath: string;
 }
+
+/** Map image mode to the correct edge function for regeneration */
+const MODE_TO_EDGE_FN: Record<string, string> = {
+  japanese: "generate-image",
+  freestyle: "generate-image-freestyle",
+  popart: "generate-image-popart",
+  "popart-freestyle": "generate-image-popart-freestyle",
+  lineart: "generate-image-lineart",
+  "lineart-freestyle": "generate-image-lineart-freestyle",
+  "lineart-minimal": "generate-image-lineart-minimal",
+  minimalism: "generate-image-minimalism",
+  "minimalism-freestyle": "generate-image-minimalism-freestyle",
+  graffiti: "generate-image-graffiti",
+  "graffiti-freestyle": "generate-image-graffiti-freestyle",
+  botanical: "generate-image-botanical",
+  "botanical-freestyle": "generate-image-botanical-freestyle",
+};
 
 const downloadImage = async (url: string, filename: string) => {
   const res = await fetch(url);
@@ -73,6 +91,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   const [modeFilter, setModeFilter] = useState("all");
   const [ratioFilter, setRatioFilter] = useState("all");
+  const [bgChanging, setBgChanging] = useState<"white" | "cream" | null>(null);
+  const [bgResult, setBgResult] = useState<{ imageUrl: string; bgStyle: string } | null>(null);
 
   // Filter to only show images matching this style's modes
   const styleModes = styleConfig
@@ -191,6 +211,85 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       originalStoragePath: img.storage_path,
     });
   };
+
+  const handleChangeBackground = async (img: GalleryImage, bgStyle: "white" | "cream") => {
+    const edgeFn = MODE_TO_EDGE_FN[img.mode];
+    if (!edgeFn) {
+      toast.error("Background change not supported for this style");
+      return;
+    }
+    setBgChanging(bgStyle);
+    setBgResult(null);
+    try {
+      const prompt = bgStyle === "white"
+        ? "Change ONLY the background to pure white (#FFFFFF). Keep everything else exactly the same — same subject, same composition, same colors, same style, same details. Do NOT alter the artwork itself in any way."
+        : "Change ONLY the background to a warm cream/off-white vintage paper tone. Keep everything else exactly the same — same subject, same composition, same colors, same style, same details. Do NOT alter the artwork itself in any way.";
+
+      const { data, error } = await supabase.functions.invoke(edgeFn, {
+        body: {
+          prompt,
+          sourceImageUrl: img.publicUrl,
+          aspectRatio: img.aspect_ratio,
+          whiteFrame: false,
+          backgroundStyle: bgStyle,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (!data?.imageUrl) throw new Error("No image generated");
+
+      setBgResult({ imageUrl: data.imageUrl, bgStyle });
+      toast.success(`${bgStyle === "white" ? "White" : "Cream"} background generated! Save or replace below.`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to change background");
+    } finally {
+      setBgChanging(null);
+    }
+  };
+
+  const handleSaveBgResult = async (img: GalleryImage, replace: boolean) => {
+    if (!bgResult) return;
+    setBgChanging("white"); // reuse as saving indicator
+    try {
+      const newPrompt = `${img.prompt} | BG: ${bgResult.bgStyle}`;
+      if (replace) {
+        await replaceInGallery({
+          originalId: img.id,
+          originalStoragePath: img.storage_path,
+          imageUrl: bgResult.imageUrl,
+          prompt: newPrompt,
+          mode: img.mode,
+          aspectRatio: img.aspect_ratio,
+          printSize: img.print_size || "",
+        });
+        toast.success("Original replaced with new background");
+      } else {
+        await saveToGallery({
+          imageUrl: bgResult.imageUrl,
+          prompt: newPrompt,
+          mode: img.mode,
+          aspectRatio: img.aspect_ratio,
+          printSize: img.print_size || "",
+        });
+        toast.success("Saved as new image");
+      }
+      setBgResult(null);
+      setSelected(null);
+      // Refresh gallery
+      setLoading(true);
+      fetchGalleryImages()
+        .then((imgs) => setImages(styleModes ? imgs.filter((img: any) => styleModes.includes(img.mode)) : imgs))
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save");
+    } finally {
+      setBgChanging(null);
+    }
+  };
+
+  // Clear bg result when changing selected image
+  useEffect(() => { setBgResult(null); }, [selected?.id]);
 
   if (loading) {
     return (
@@ -385,7 +484,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => downloadImage(selected.publicUrl, `ukiyoe-${selected.id}.png`)}
+                  onClick={() => downloadImage(selected.publicUrl, `art-${selected.id}.png`)}
                   className="font-display text-xs"
                 >
                   <Download className="mr-2 h-4 w-4" />
@@ -412,6 +511,83 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                   Delete
                 </Button>
               </div>
+
+              {/* Background color change */}
+              {MODE_TO_EDGE_FN[selected.mode] && !bgResult && (
+                <div className="pt-3 border-t border-border">
+                  <p className="font-display text-xs text-muted-foreground mb-2">Change background color</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!!bgChanging}
+                      onClick={() => handleChangeBackground(selected, "white")}
+                      className="font-display text-xs"
+                    >
+                      {bgChanging === "white" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sun className="mr-2 h-4 w-4" />}
+                      Pure White
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!!bgChanging}
+                      onClick={() => handleChangeBackground(selected, "cream")}
+                      className="font-display text-xs"
+                    >
+                      {bgChanging === "cream" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                      Cream Paper
+                    </Button>
+                  </div>
+                  {bgChanging && (
+                    <p className="font-display text-xs text-muted-foreground mt-2 animate-pulse">
+                      Regenerating with {bgChanging === "white" ? "pure white" : "cream"} background…
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Background change result */}
+              {bgResult && selected && (
+                <div className="pt-3 border-t border-border space-y-3">
+                  <p className="font-display text-xs text-muted-foreground">
+                    New version with {bgResult.bgStyle === "white" ? "pure white" : "cream"} background:
+                  </p>
+                  <div className="rounded-sm border border-border overflow-hidden">
+                    <img
+                      src={bgResult.imageUrl}
+                      alt="New background version"
+                      className="w-full max-h-[40vh] object-contain bg-muted"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      disabled={!!bgChanging}
+                      onClick={() => handleSaveBgResult(selected, false)}
+                      className="font-display text-xs"
+                    >
+                      Save as New
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!!bgChanging}
+                      onClick={() => handleSaveBgResult(selected, true)}
+                      className="font-display text-xs"
+                    >
+                      Replace Original
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setBgResult(null)}
+                      className="font-display text-xs"
+                    >
+                      Discard
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
