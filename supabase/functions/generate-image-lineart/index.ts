@@ -35,7 +35,7 @@ serve(async (req) => {
     let messages;
 
     if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, line work, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the fine line art style — delicate ink lines on white/cream paper. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, line work, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the fine line art style — delicate ink lines on a pure white (#FFFFFF) background. The background MUST be pure white, not cream, not beige, not off-white. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
       messages = [
         {
           role: "user",
