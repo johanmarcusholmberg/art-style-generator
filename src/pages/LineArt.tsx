@@ -71,12 +71,7 @@ const LineArt = () => {
   return (
     <div className="min-h-screen bg-lineart-bg">
       {/* Navigation */}
-      <StyleNav
-        activePath="/lineart"
-        activeClass="text-lineart-fg"
-        inactiveClass="text-lineart-muted hover:text-lineart-fg"
-        activeBorderClass="border-lineart-accent"
-      />
+      <StyleNav activePath="/lineart" />
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">

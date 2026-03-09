@@ -79,12 +79,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background paper-texture">
       {/* Navigation */}
-      <StyleNav
-        activePath="/"
-        activeClass="text-foreground"
-        inactiveClass="text-muted-foreground hover:text-foreground"
-        activeBorderClass="border-primary"
-      />
+      <StyleNav activePath="/" />
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">

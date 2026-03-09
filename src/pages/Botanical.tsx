@@ -48,12 +48,7 @@ const Botanical = () => {
 
   return (
     <div className="min-h-screen bg-botanical-bg">
-      <StyleNav
-        activePath="/botanical"
-        activeClass="text-botanical-fg"
-        inactiveClass="text-botanical-muted hover:text-botanical-fg"
-        activeBorderClass="border-botanical-accent"
-      />
+      <StyleNav activePath="/botanical" />
 
       <header className="pt-10 pb-12 text-center px-4">
         <p className="font-display text-botanical-accent text-sm tracking-[0.3em] uppercase mb-3">
