@@ -6,31 +6,44 @@ export interface StyleConfig {
   themedEdgeFn: string;
   /** Edge function name for the "freestyle" mode */
   freestyleEdgeFn: string;
+  /** Optional third edge function */
+  tertiaryEdgeFn?: string;
   /** Label for the themed tab */
   themedTabLabel: string;
   /** Label for the freestyle tab */
   freestyleTabLabel: string;
+  /** Optional third tab label */
+  tertiaryTabLabel?: string;
   /** Button label for generation in themed mode */
   themedGenerateLabel: string;
   /** Button label for generation in freestyle mode */
   freestyleGenerateLabel: string;
+  /** Optional third generate label */
+  tertiaryGenerateLabel?: string;
   /** Placeholder for themed prompt textarea */
   themedPlaceholder: string;
   /** Placeholder for freestyle prompt textarea */
   freestylePlaceholder: string;
+  /** Optional third placeholder */
+  tertiaryPlaceholder?: string;
   /** Suggested prompts */
   prompts: {
     themed: { generate: string[]; edit: string[] };
     freestyle: { generate: string[]; edit: string[] };
+    tertiary?: { generate: string[]; edit: string[] };
   };
   /** Mode value stored in the themed tab */
   themedModeValue: string;
   /** Mode value stored in the freestyle tab */
   freestyleModeValue: string;
+  /** Optional third mode value */
+  tertiaryModeValue?: string;
   /** Gallery badge emoji for themed mode */
   themedBadge: string;
   /** Gallery badge emoji for freestyle mode */
   freestyleBadge: string;
+  /** Optional third badge */
+  tertiaryBadge?: string;
   /** Download filename prefix */
   downloadPrefix: string;
 }
@@ -156,11 +169,29 @@ export const LINEART_STYLE: StyleConfig = {
         "Add a frame of decorative vines around the image",
       ],
     },
+    tertiary: {
+      generate: [
+        "A woman's face in a single continuous line",
+        "A cat curled up sleeping — fewest lines possible",
+        "A mountain landscape with just 5-6 strokes",
+      ],
+      edit: [
+        "Simplify further — use even fewer lines",
+        "Make it a single continuous line drawing",
+        "Remove all shading, keep only outlines",
+      ],
+    },
   },
   themedModeValue: "lineart",
   freestyleModeValue: "lineart-freestyle",
+  tertiaryModeValue: "lineart-minimal",
+  tertiaryEdgeFn: "generate-image-lineart-minimal",
+  tertiaryTabLabel: "〰️ Minimal Lines",
+  tertiaryGenerateLabel: "Generate Minimal Line Art",
+  tertiaryPlaceholder: "Describe your scene… e.g. 'A woman's face in one continuous line'",
   themedBadge: "✒️",
   freestyleBadge: "🎨",
+  tertiaryBadge: "〰️",
   downloadPrefix: "lineart",
 };
 

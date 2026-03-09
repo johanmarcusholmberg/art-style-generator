@@ -57,9 +57,10 @@ export default function ImageGenerator({
 }: ImageGeneratorProps) {
   const isEditMode = !!initialImageUrl;
   const isThemed = mode === styleConfig.themedModeValue;
-  const edgeFn = isThemed ? styleConfig.themedEdgeFn : styleConfig.freestyleEdgeFn;
-  const modeLabel = isThemed ? styleConfig.themedTabLabel : styleConfig.freestyleTabLabel;
-  const generateLabel = isThemed ? styleConfig.themedGenerateLabel : styleConfig.freestyleGenerateLabel;
+  const isTertiary = mode === styleConfig.tertiaryModeValue;
+  const edgeFn = isTertiary ? styleConfig.tertiaryEdgeFn! : isThemed ? styleConfig.themedEdgeFn : styleConfig.freestyleEdgeFn;
+  const modeLabel = isTertiary ? styleConfig.tertiaryTabLabel! : isThemed ? styleConfig.themedTabLabel : styleConfig.freestyleTabLabel;
+  const generateLabel = isTertiary ? styleConfig.tertiaryGenerateLabel! : isThemed ? styleConfig.themedGenerateLabel : styleConfig.freestyleGenerateLabel;
 
   // Use styleKey prefix for persistence to avoid collisions between styles
   const persistKey = `${styleConfig.styleKey}-${mode}` as any;
@@ -84,7 +85,7 @@ export default function ImageGenerator({
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const { toast } = useToast();
 
-  const suggestions = isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
+  const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
 
   const generate = async () => {
     const activePrompt = isInlineEditing ? editPrompt : prompt;
@@ -282,9 +283,11 @@ export default function ImageGenerator({
                     placeholder={
                       isEditMode
                         ? "Describe the changes you want…"
-                        : isThemed
-                          ? styleConfig.themedPlaceholder
-                          : styleConfig.freestylePlaceholder
+                        : isTertiary && styleConfig.tertiaryPlaceholder
+                          ? styleConfig.tertiaryPlaceholder
+                          : isThemed
+                            ? styleConfig.themedPlaceholder
+                            : styleConfig.freestylePlaceholder
                     }
                     className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary disabled:opacity-60"
                   />

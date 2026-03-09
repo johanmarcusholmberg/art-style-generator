@@ -30,14 +30,14 @@ const LineArt = () => {
   const refreshGallery = useCallback(() => setGalleryRefreshKey((k) => k + 1), []);
 
   const clearCurrentGeneration = useCallback(async () => {
-    await Promise.all([
-      deleteCachedImage(`img-${styleConfig.styleKey}-${styleConfig.themedModeValue}`),
-      deleteCachedImage(`img-base-${styleConfig.styleKey}-${styleConfig.themedModeValue}`),
-      deleteCachedImage(`img-${styleConfig.styleKey}-${styleConfig.freestyleModeValue}`),
-      deleteCachedImage(`img-base-${styleConfig.styleKey}-${styleConfig.freestyleModeValue}`),
-    ]);
-    sessionStorage.removeItem(`gen-state-${styleConfig.styleKey}-${styleConfig.themedModeValue}`);
-    sessionStorage.removeItem(`gen-state-${styleConfig.styleKey}-${styleConfig.freestyleModeValue}`);
+    const modes = [styleConfig.themedModeValue, styleConfig.freestyleModeValue, ...(styleConfig.tertiaryModeValue ? [styleConfig.tertiaryModeValue] : [])];
+    await Promise.all(
+      modes.flatMap((m) => [
+        deleteCachedImage(`img-${styleConfig.styleKey}-${m}`),
+        deleteCachedImage(`img-base-${styleConfig.styleKey}-${m}`),
+      ])
+    );
+    modes.forEach((m) => sessionStorage.removeItem(`gen-state-${styleConfig.styleKey}-${m}`));
   }, []);
 
   const applyEdit = useCallback(
@@ -56,21 +56,13 @@ const LineArt = () => {
   }, [clearCurrentGeneration]);
 
   const handleEditImage = useCallback(async (req: EditRequest) => {
-    const [img1, img2] = await Promise.all([
-      getCachedImage(`img-${styleConfig.styleKey}-${styleConfig.themedModeValue}`),
-      getCachedImage(`img-${styleConfig.styleKey}-${styleConfig.freestyleModeValue}`),
-    ]);
-
-    const s1 = (() => {
-      try { const r = sessionStorage.getItem(`gen-state-${styleConfig.styleKey}-${styleConfig.themedModeValue}`); return r ? JSON.parse(r) : null; } catch { return null; }
-    })();
-    const s2 = (() => {
-      try { const r = sessionStorage.getItem(`gen-state-${styleConfig.styleKey}-${styleConfig.freestyleModeValue}`); return r ? JSON.parse(r) : null; } catch { return null; }
-    })();
-
-    const hasUnsaved = (img1 && !s1?.savedToGallery) || (img2 && !s2?.savedToGallery);
-
-    setHasUnsavedImage(!!hasUnsaved);
+    const modes = [styleConfig.themedModeValue, styleConfig.freestyleModeValue, ...(styleConfig.tertiaryModeValue ? [styleConfig.tertiaryModeValue] : [])];
+    const images = await Promise.all(modes.map((m) => getCachedImage(`img-${styleConfig.styleKey}-${m}`)));
+    const states = modes.map((m) => {
+      try { const r = sessionStorage.getItem(`gen-state-${styleConfig.styleKey}-${m}`); return r ? JSON.parse(r) : null; } catch { return null; }
+    });
+    const hasUnsaved = images.some((img, i) => img && !states[i]?.savedToGallery);
+    setHasUnsavedImage(hasUnsaved);
     setPendingEdit(req);
   }, []);
 
@@ -123,9 +115,12 @@ const LineArt = () => {
           }}
           className="w-full max-w-4xl mx-auto"
         >
-          <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value={styleConfig.themedModeValue} className="font-display text-sm">
               {styleConfig.themedTabLabel}
+            </TabsTrigger>
+            <TabsTrigger value={styleConfig.tertiaryModeValue!} className="font-display text-sm">
+              {styleConfig.tertiaryTabLabel}
             </TabsTrigger>
             <TabsTrigger value={styleConfig.freestyleModeValue} className="font-display text-sm">
               {styleConfig.freestyleTabLabel}
@@ -142,6 +137,19 @@ const LineArt = () => {
               initialImageUrl={editState?.mode === styleConfig.themedModeValue ? editState.imageUrl : undefined}
               originalImageId={editState?.mode === styleConfig.themedModeValue ? editState.originalId : undefined}
               originalStoragePath={editState?.mode === styleConfig.themedModeValue ? editState.originalStoragePath : undefined}
+            />
+          </TabsContent>
+          <TabsContent value={styleConfig.tertiaryModeValue!}>
+            <ImageGenerator
+              key={activeTab === styleConfig.tertiaryModeValue ? editKey : "m"}
+              mode={styleConfig.tertiaryModeValue!}
+              styleConfig={styleConfig}
+              onImageSaved={refreshGallery}
+              onExitEdit={editState?.mode === styleConfig.tertiaryModeValue ? handleExitEdit : undefined}
+              initialPrompt={editState?.mode === styleConfig.tertiaryModeValue ? editState.prompt : undefined}
+              initialImageUrl={editState?.mode === styleConfig.tertiaryModeValue ? editState.imageUrl : undefined}
+              originalImageId={editState?.mode === styleConfig.tertiaryModeValue ? editState.originalId : undefined}
+              originalStoragePath={editState?.mode === styleConfig.tertiaryModeValue ? editState.originalStoragePath : undefined}
             />
           </TabsContent>
           <TabsContent value={styleConfig.freestyleModeValue}>

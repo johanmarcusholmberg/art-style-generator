@@ -76,7 +76,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   // Filter to only show images matching this style's modes
   const styleModes = styleConfig
-    ? [styleConfig.themedModeValue, styleConfig.freestyleModeValue]
+    ? [styleConfig.themedModeValue, styleConfig.freestyleModeValue, ...(styleConfig.tertiaryModeValue ? [styleConfig.tertiaryModeValue] : [])]
     : null;
 
   useEffect(() => {
