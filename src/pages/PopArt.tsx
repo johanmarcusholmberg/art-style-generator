@@ -83,18 +83,18 @@ const PopArt = () => {
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">
-        <p className="font-sans text-popart-accent text-sm tracking-[0.3em] uppercase font-bold mb-3">
+        <p className="font-sans text-primary text-sm tracking-[0.3em] uppercase font-bold mb-3">
           Pop Art · Bold & Vibrant
         </p>
-        <h1 className="font-sans text-4xl sm:text-5xl md:text-6xl font-black text-popart-fg leading-tight mb-4 uppercase">
+        <h1 className="font-sans text-4xl sm:text-5xl md:text-6xl font-black text-foreground leading-tight mb-4 uppercase">
           Pop Art<br />
-          <span className="text-popart-accent">Image Generator</span>
+          <span className="text-primary">Image Generator</span>
         </h1>
-        <p className="text-popart-muted max-w-lg mx-auto text-sm leading-relaxed">
+        <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed">
           Describe a scene and watch it come to life in the bold, vibrant style
           of pop art — inspired by Warhol and Lichtenstein.
         </p>
-        <div className="mt-6 w-24 h-1 bg-popart-accent mx-auto" />
+        <div className="mt-6 w-24 h-1 bg-primary mx-auto" />
       </header>
 
       {/* Generator */}
