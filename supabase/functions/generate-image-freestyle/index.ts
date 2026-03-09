@@ -46,7 +46,7 @@ serve(async (req) => {
       ];
     } else {
       // Generate mode: create from scratch
-      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in the visual style of a traditional ukiyo-e woodblock print — use flat colors, bold outlines, washi paper texture, and sumi ink details. The subject itself should be exactly as described, do NOT change it to a Japanese setting. Do NOT include any Japanese text, characters, kanji, hiragana, katakana, or any written script in the image. Only apply the art style, nothing else Japanese. Generate at maximum resolution with fine detail suitable for large format printing: ${trimmedPrompt}.${ratioText}`;
+      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in the visual style of a traditional ukiyo-e woodblock print — use flat colors, bold outlines, washi paper texture, and sumi ink details. The subject itself should be exactly as described, do NOT change it to a Japanese setting. Do NOT include any Japanese text, characters, kanji, hiragana, katakana, or any written script in the image. Only apply the art style, nothing else Japanese. Generate at maximum resolution with fine detail suitable for large format printing: ${trimmedPrompt}.${ratioText}${frameText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 
