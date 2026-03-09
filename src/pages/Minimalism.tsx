@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getCachedImage, deleteCachedImage } from "@/lib/image-cache";
 import { MINIMALISM_STYLE } from "@/lib/style-config";
-import { Link } from "react-router-dom";
+import StyleNav from "@/components/StyleNav";
 
 const styleConfig = MINIMALISM_STYLE;
 
