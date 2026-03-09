@@ -246,6 +246,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   const [modeFilter, setModeFilter] = useState("all");
   const [ratioFilter, setRatioFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [bgChanging, setBgChanging] = useState<"white" | "cream" | null>(null);
   const [bgResult, setBgResult] = useState<{ imageUrl: string; bgStyle: string } | null>(null);
 
