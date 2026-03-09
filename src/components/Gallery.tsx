@@ -260,6 +260,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   const [collectionFilter, setCollectionFilter] = useState<string | null>(null);
   const [collectionImageIds, setCollectionImageIds] = useState<string[] | null>(null);
+  const [allCollections, setAllCollections] = useState<Collection[]>([]);
+  const [bulkPopoverOpen, setBulkPopoverOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState<"add" | "remove">("add");
 
   const styleModes = styleConfig
     ? [styleConfig.themedModeValue, styleConfig.freestyleModeValue, ...(styleConfig.tertiaryModeValue ? [styleConfig.tertiaryModeValue] : [])]
