@@ -262,7 +262,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           aspectRatio: img.aspect_ratio,
           printSize: img.print_size || "",
         });
-        toast.success("Original replaced with new background");
+        toast.success("Original replaced with new background", { duration: 3000 });
       } else {
         await saveToGallery({
           imageUrl: bgResult.imageUrl,
