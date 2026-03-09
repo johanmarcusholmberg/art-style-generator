@@ -1,6 +1,17 @@
 import { useState } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -404,6 +415,40 @@ export default function ImageGenerator({
                   ✓ Saved to gallery
                 </span>
               )}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="font-display text-xs tracking-wider text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Remove
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="font-display">Remove generated image?</AlertDialogTitle>
+                    <AlertDialogDescription className="font-display">
+                      This will discard the generated image. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="font-display">Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="font-display bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => {
+                        setImageUrl(null);
+                        setBaseImageUrl(null);
+                        setSavedToGallery(false);
+                        setViewVersion("enhanced");
+                      }}
+                    >
+                      Remove
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         )}
