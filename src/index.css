@@ -109,6 +109,21 @@
   .bg-lineart-border {
     background-color: #ddd;
   }
+  .bg-minimal-bg {
+    background-color: #FAFAFA;
+  }
+  .text-minimal-fg {
+    color: #222;
+  }
+  .text-minimal-accent {
+    color: #888;
+  }
+  .text-minimal-muted {
+    color: #aaa;
+  }
+  .bg-minimal-border {
+    background-color: #e0e0e0;
+  }
 }
 
 /* Ink wash animation */

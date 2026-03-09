@@ -163,3 +163,46 @@ export const LINEART_STYLE: StyleConfig = {
   freestyleBadge: "🎨",
   downloadPrefix: "lineart",
 };
+
+export const MINIMALISM_STYLE: StyleConfig = {
+  styleKey: "minimalism",
+  themedEdgeFn: "generate-image-minimalism",
+  freestyleEdgeFn: "generate-image-minimalism-freestyle",
+  themedTabLabel: "◻ Minimal Scenes",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Minimal Art",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your scene… e.g. 'A single tree on a vast plain'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A coffee cup on a marble table'",
+  prompts: {
+    themed: {
+      generate: [
+        "A single tree on a vast snowy plain at dawn",
+        "Abstract geometric shapes floating in soft pastel space",
+        "A solitary boat on a calm lake with mountains",
+      ],
+      edit: [
+        "Reduce the color palette to just two tones",
+        "Add more negative space around the subject",
+        "Make the shapes more geometric and abstract",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A coffee cup casting a long shadow on a table",
+        "A city skyline reduced to simple geometric blocks",
+        "A cat sitting in a sunbeam by a window",
+      ],
+      edit: [
+        "Simplify the composition further",
+        "Change the palette to warm earth tones",
+        "Make it more abstract with fewer details",
+      ],
+    },
+  },
+  themedModeValue: "minimalism",
+  freestyleModeValue: "minimalism-freestyle",
+  themedBadge: "◻",
+  freestyleBadge: "🎨",
+  downloadPrefix: "minimalism",
+};
