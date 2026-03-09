@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
 import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
+import type { StyleConfig } from "@/lib/style-config";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -33,35 +34,9 @@ const downloadImage = async (dataUrl: string, filename: string) => {
   URL.revokeObjectURL(url);
 };
 
-const PROMPTS: Record<string, { generate: string[]; edit: string[] }> = {
-  japanese: {
-    generate: [
-      "A great wave crashing against Mount Fuji at sunset",
-      "Koi fish swimming in a tranquil garden pond",
-      "A crane flying over misty mountains at dawn",
-    ],
-    edit: [
-      "Change the background to a sunset sky",
-      "Make the colors more vibrant and saturated",
-      "Add cherry blossoms falling in the scene",
-    ],
-  },
-  freestyle: {
-    generate: [
-      "Central Park in New York during autumn",
-      "The Eiffel Tower at golden hour",
-      "A cozy Italian café on a rainy day",
-    ],
-    edit: [
-      "Change the background to a sunset sky",
-      "Make the colors more vibrant and saturated",
-      "Add rain and reflections on the ground",
-    ],
-  },
-};
-
 interface ImageGeneratorProps {
-  mode: "japanese" | "freestyle";
+  mode: string;
+  styleConfig: StyleConfig;
   onImageSaved?: () => void;
   onExitEdit?: () => void;
   initialPrompt?: string;
@@ -72,6 +47,7 @@ interface ImageGeneratorProps {
 
 export default function ImageGenerator({
   mode,
+  styleConfig,
   onImageSaved,
   onExitEdit,
   initialPrompt,
@@ -80,16 +56,20 @@ export default function ImageGenerator({
   originalStoragePath,
 }: ImageGeneratorProps) {
   const isEditMode = !!initialImageUrl;
-  const edgeFn = mode === "japanese" ? "generate-image" : "generate-image-freestyle";
-  const modeLabel = mode === "japanese" ? "🏯 Japanese" : "🎨 Freestyle";
-  const generateLabel = mode === "japanese" ? "Generate 浮世絵" : "Generate Image";
+  const isThemed = mode === styleConfig.themedModeValue;
+  const edgeFn = isThemed ? styleConfig.themedEdgeFn : styleConfig.freestyleEdgeFn;
+  const modeLabel = isThemed ? styleConfig.themedTabLabel : styleConfig.freestyleTabLabel;
+  const generateLabel = isThemed ? styleConfig.themedGenerateLabel : styleConfig.freestyleGenerateLabel;
+
+  // Use styleKey prefix for persistence to avoid collisions between styles
+  const persistKey = `${styleConfig.styleKey}-${mode}` as any;
 
   const {
     prompt, setPrompt,
     imageUrl, setImageUrl,
     baseImageUrl, setBaseImageUrl,
     savedToGallery, setSavedToGallery,
-  } = usePersistedGeneration(mode, isEditMode ? undefined : initialPrompt);
+  } = usePersistedGeneration(persistKey, isEditMode ? undefined : initialPrompt);
 
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
   const [isInlineEditing, setIsInlineEditing] = useState(false);
@@ -104,7 +84,7 @@ export default function ImageGenerator({
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const { toast } = useToast();
 
-  const suggestions = PROMPTS[mode] || PROMPTS.japanese;
+  const suggestions = isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
 
   const generate = async () => {
     const activePrompt = isInlineEditing ? editPrompt : prompt;
@@ -115,7 +95,6 @@ export default function ImageGenerator({
 
     try {
       const body: any = { prompt: activePrompt.trim(), aspectRatio: printSize.ratio, whiteFrame };
-      // Use current generated image as source when inline editing
       if (isInlineEditing && imageUrl) {
         body.sourceImageUrl = imageUrl;
       } else if (sourceImageUrl) {
@@ -146,7 +125,6 @@ export default function ImageGenerator({
       }
 
       setImageUrl(finalUrl);
-      // After successful inline edit, update main prompt and exit edit mode
       if (isInlineEditing) {
         setPrompt(activePrompt.trim());
         setIsInlineEditing(false);
@@ -169,7 +147,6 @@ export default function ImageGenerator({
     if (!imageUrl || savedToGallery || saving) return;
     setSaving(true);
     try {
-      // In edit mode, preserve original prompt with edit description
       const finalPrompt = isEditMode && initialPrompt
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
@@ -196,7 +173,6 @@ export default function ImageGenerator({
     if (!imageUrl || !originalImageId || !originalStoragePath || replacing) return;
     setReplacing(true);
     try {
-      // In edit mode, preserve original prompt with edit description
       const finalPrompt = isEditMode && initialPrompt
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
@@ -254,12 +230,10 @@ export default function ImageGenerator({
           </div>
         )}
 
-        {/* Lock prompt editing when there's an unsaved generated image */}
         {(() => {
           const promptLocked = !!imageUrl && !savedToGallery;
           return (
             <>
-              {/* Normal prompt input when no generated image or editing inline */}
               {isInlineEditing ? (
                 <>
                   <div className="flex items-center justify-between">
@@ -282,7 +256,7 @@ export default function ImageGenerator({
                   <Textarea
                     value={editPrompt}
                     onChange={(e) => setEditPrompt(e.target.value)}
-                    placeholder="e.g. 'Change the sky to sunset colors' or 'Add cherry blossoms falling'"
+                    placeholder="e.g. 'Change the sky to sunset colors' or 'Add more contrast'"
                     className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary"
                     autoFocus
                   />
@@ -307,10 +281,10 @@ export default function ImageGenerator({
                     disabled={promptLocked}
                     placeholder={
                       isEditMode
-                        ? "Describe the changes you want… e.g. 'Make the sky a sunset orange'"
-                        : mode === "japanese"
-                          ? "Describe your scene… e.g. 'A crane flying over misty mountains'"
-                          : "Describe any scene… e.g. 'Central Park in New York during autumn'"
+                        ? "Describe the changes you want…"
+                        : isThemed
+                          ? styleConfig.themedPlaceholder
+                          : styleConfig.freestylePlaceholder
                     }
                     className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary disabled:opacity-60"
                   />
@@ -341,12 +315,12 @@ export default function ImageGenerator({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Switch
-              id={`hd-enhance-${mode}`}
+              id={`hd-enhance-${persistKey}`}
               checked={hdEnhance}
               onCheckedChange={setHdEnhance}
             />
             <Label
-              htmlFor={`hd-enhance-${mode}`}
+              htmlFor={`hd-enhance-${persistKey}`}
               className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1"
             >
               <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -355,12 +329,12 @@ export default function ImageGenerator({
           </div>
           <div className="flex items-center gap-2">
             <Switch
-              id={`white-frame-${mode}`}
+              id={`white-frame-${persistKey}`}
               checked={whiteFrame}
               onCheckedChange={setWhiteFrame}
             />
             <Label
-              htmlFor={`white-frame-${mode}`}
+              htmlFor={`white-frame-${persistKey}`}
               className="font-display text-sm text-muted-foreground cursor-pointer"
             >
               White Frame
@@ -423,7 +397,7 @@ export default function ImageGenerator({
                 onClick={() =>
                   downloadImage(
                     viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl,
-                    `ukiyoe-${mode}-${printSize.ratio.replace(":", "x")}-${Date.now()}.png`
+                    `${styleConfig.downloadPrefix}-${mode}-${printSize.ratio.replace(":", "x")}-${Date.now()}.png`
                   )
                 }
                 className="font-display text-xs tracking-wider"

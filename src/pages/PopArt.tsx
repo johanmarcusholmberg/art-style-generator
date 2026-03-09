@@ -14,12 +14,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { getCachedImage, deleteCachedImage } from "@/lib/image-cache";
-import { UKIYOE_STYLE } from "@/lib/style-config";
+import { POPART_STYLE } from "@/lib/style-config";
 import { Link } from "react-router-dom";
 
-const styleConfig = UKIYOE_STYLE;
+const styleConfig = POPART_STYLE;
 
-const Index = () => {
+const PopArt = () => {
   const [galleryRefreshKey, setGalleryRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState(styleConfig.themedModeValue);
   const [editState, setEditState] = useState<EditRequest | null>(null);
@@ -77,34 +77,34 @@ const Index = () => {
   const editKey = editState ? `${editState.mode}-${editState.prompt}-${editState.originalId}` : "default";
 
   return (
-    <div className="min-h-screen bg-background paper-texture">
+    <div className="min-h-screen bg-popart-bg">
       {/* Navigation */}
       <nav className="flex items-center justify-center gap-6 pt-6 px-4">
-        <span className="font-display text-sm font-bold text-foreground border-b-2 border-primary pb-1">
-          🏯 Ukiyo-e
-        </span>
         <Link
-          to="/popart"
-          className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors pb-1"
+          to="/"
+          className="font-display text-sm text-popart-muted hover:text-popart-fg transition-colors pb-1"
         >
-          🎯 Pop Art
+          🏯 Ukiyo-e
         </Link>
+        <span className="font-display text-sm font-bold text-popart-fg border-b-2 border-popart-accent pb-1">
+          🎯 Pop Art
+        </span>
       </nav>
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">
-        <p className="font-display text-gold text-sm tracking-[0.3em] uppercase mb-3">
-          浮世絵 · Ukiyo-e
+        <p className="font-sans text-popart-accent text-sm tracking-[0.3em] uppercase font-bold mb-3">
+          Pop Art · Bold & Vibrant
         </p>
-        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight mb-4">
-          Japanese World<br />
-          <span className="text-primary">Image Generator</span>
+        <h1 className="font-sans text-4xl sm:text-5xl md:text-6xl font-black text-popart-fg leading-tight mb-4 uppercase">
+          Pop Art<br />
+          <span className="text-popart-accent">Image Generator</span>
         </h1>
-        <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed">
-          Describe a scene and watch it come to life in the timeless style
-          of traditional Japanese woodblock prints.
+        <p className="text-popart-muted max-w-lg mx-auto text-sm leading-relaxed">
+          Describe a scene and watch it come to life in the bold, vibrant style
+          of pop art — inspired by Warhol and Lichtenstein.
         </p>
-        <div className="mt-6 w-24 h-px bg-border mx-auto" />
+        <div className="mt-6 w-24 h-1 bg-popart-accent mx-auto" />
       </header>
 
       {/* Generator */}
@@ -118,10 +118,10 @@ const Index = () => {
           className="w-full max-w-4xl mx-auto"
         >
           <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value={styleConfig.themedModeValue} className="font-display text-sm">
+            <TabsTrigger value={styleConfig.themedModeValue} className="font-sans text-sm font-bold">
               {styleConfig.themedTabLabel}
             </TabsTrigger>
-            <TabsTrigger value={styleConfig.freestyleModeValue} className="font-display text-sm">
+            <TabsTrigger value={styleConfig.freestyleModeValue} className="font-sans text-sm font-bold">
               {styleConfig.freestyleTabLabel}
             </TabsTrigger>
           </TabsList>
@@ -158,9 +158,9 @@ const Index = () => {
       <section className="pb-20 px-4">
         <div className="w-full max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <div className="h-px flex-1 bg-border" />
-            <h2 className="font-display text-lg font-bold text-foreground">Gallery</h2>
-            <div className="h-px flex-1 bg-border" />
+            <div className="h-px flex-1 bg-popart-border" />
+            <h2 className="font-sans text-lg font-black text-popart-fg uppercase">Gallery</h2>
+            <div className="h-px flex-1 bg-popart-border" />
           </div>
           <Gallery
             refreshKey={galleryRefreshKey}
@@ -172,8 +172,8 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="pb-8 text-center">
-        <p className="text-muted-foreground text-xs font-display tracking-widest">
-          墨 · Sumi Ink Studio
+        <p className="text-popart-muted text-xs font-sans tracking-widest uppercase font-bold">
+          Pop Art Studio
         </p>
       </footer>
 
@@ -181,7 +181,7 @@ const Index = () => {
       <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display">
+            <AlertDialogTitle>
               {hasUnsavedImage ? "You have an unsaved image" : "Edit this image?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -207,4 +207,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default PopArt;
