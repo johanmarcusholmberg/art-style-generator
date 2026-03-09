@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2 } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
