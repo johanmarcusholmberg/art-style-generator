@@ -489,6 +489,16 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
       {/* Filters + Batch + Pagination */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search prompts…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-[160px] sm:w-[200px] font-display text-xs h-8 pl-7"
+          />
+        </div>
+
         <Select value={modeFilter} onValueChange={setModeFilter}>
           <SelectTrigger className="w-[120px] font-display text-xs h-8"><SelectValue placeholder="Mode" /></SelectTrigger>
           <SelectContent>
@@ -506,9 +516,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           </SelectContent>
         </Select>
 
-        {(modeFilter !== "all" || ratioFilter !== "all") && (
+        {(modeFilter !== "all" || ratioFilter !== "all" || searchQuery !== "") && (
           <Button variant="ghost" size="sm" className="font-display text-xs h-8 px-2"
-            onClick={() => { setModeFilter("all"); setRatioFilter("all"); }}>✕</Button>
+            onClick={() => { setModeFilter("all"); setRatioFilter("all"); setSearchQuery(""); }}>✕</Button>
         )}
 
         <Button
