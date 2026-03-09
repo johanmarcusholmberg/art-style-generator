@@ -107,16 +107,20 @@ export default function ImageGenerator({
   const suggestions = PROMPTS[mode] || PROMPTS.japanese;
 
   const generate = async () => {
-    if (!prompt.trim()) return;
+    const activePrompt = isInlineEditing ? editPrompt : prompt;
+    if (!activePrompt.trim()) return;
     setLoading(true);
-    setImageUrl(null);
-    setBaseImageUrl(null);
     setViewVersion("enhanced");
     setSavedToGallery(false);
 
     try {
-      const body: any = { prompt: prompt.trim(), aspectRatio: printSize.ratio, whiteFrame };
-      if (sourceImageUrl) body.sourceImageUrl = sourceImageUrl;
+      const body: any = { prompt: activePrompt.trim(), aspectRatio: printSize.ratio, whiteFrame };
+      // Use current generated image as source when inline editing
+      if (isInlineEditing && imageUrl) {
+        body.sourceImageUrl = imageUrl;
+      } else if (sourceImageUrl) {
+        body.sourceImageUrl = sourceImageUrl;
+      }
       const { data, error } = await supabase.functions.invoke(edgeFn, { body });
 
       if (error) throw error;
@@ -142,6 +146,12 @@ export default function ImageGenerator({
       }
 
       setImageUrl(finalUrl);
+      // After successful inline edit, update main prompt and exit edit mode
+      if (isInlineEditing) {
+        setPrompt(activePrompt.trim());
+        setIsInlineEditing(false);
+        setEditPrompt("");
+      }
     } catch (err: any) {
       toast({
         title: "Generation failed",
