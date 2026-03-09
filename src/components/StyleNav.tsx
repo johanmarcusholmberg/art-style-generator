@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 
 interface StyleNavItem {
   to: string;
@@ -24,20 +24,26 @@ interface StyleNavProps {
   activePath: string;
 }
 
+// Persist scroll position across route changes (survives unmount/remount)
+let savedScrollLeft = 0;
+
 const StyleNav = ({ activePath }: StyleNavProps) => {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const navRef = useRef<HTMLElement>(null);
 
+  // Restore saved scroll position when component mounts
+  useEffect(() => {
+    if (navRef.current) {
+      navRef.current.scrollLeft = savedScrollLeft;
+    }
+  }, []);
+
   const handleNavClick = useCallback((to: string) => {
-    const scrollLeft = navRef.current?.scrollLeft ?? 0;
+    if (navRef.current) {
+      savedScrollLeft = navRef.current.scrollLeft;
+    }
     navigate(to);
-    // Restore scroll position after React re-renders
-    requestAnimationFrame(() => {
-      if (navRef.current) {
-        navRef.current.scrollLeft = scrollLeft;
-      }
-    });
   }, [navigate]);
 
   return (
