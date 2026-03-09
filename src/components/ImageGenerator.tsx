@@ -96,7 +96,7 @@ export default function ImageGenerator({
     setSavedToGallery(false);
 
     try {
-      const body: any = { prompt: activePrompt.trim(), aspectRatio: printSize.ratio, whiteFrame };
+      const body: any = { prompt: activePrompt.trim(), aspectRatio: printSize.ratio, whiteFrame, backgroundStyle };
       if (isInlineEditing && imageUrl) {
         body.sourceImageUrl = imageUrl;
       } else if (sourceImageUrl) {
