@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           aspect_ratio: string
           created_at: string
+          deleted_at: string | null
           id: string
           mode: string
           print_size: string | null
@@ -27,6 +28,7 @@ export type Database = {
         Insert: {
           aspect_ratio?: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           mode?: string
           print_size?: string | null
@@ -36,6 +38,7 @@ export type Database = {
         Update: {
           aspect_ratio?: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           mode?: string
           print_size?: string | null
@@ -49,7 +52,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_old_deleted_images: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
