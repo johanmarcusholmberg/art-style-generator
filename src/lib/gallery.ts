@@ -103,7 +103,7 @@ export async function replaceInGallery({
   originalStoragePath: string;
   imageUrl: string;
   prompt: string;
-  mode: "japanese" | "freestyle";
+  mode: string;
   aspectRatio: string;
   printSize: string;
 }) {
