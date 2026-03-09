@@ -35,8 +35,7 @@ serve(async (req) => {
     let messages;
 
     if (sourceImageUrl) {
-      // Edit mode: user provides a source image and describes changes
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the ukiyo-e woodblock print art style. Do NOT include any Japanese text, characters, or script. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the ukiyo-e woodblock print art style.${bgText} Do NOT include any Japanese text, characters, or script. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}`;
       messages = [
         {
           role: "user",
@@ -47,8 +46,7 @@ serve(async (req) => {
         },
       ];
     } else {
-      // Generate mode: create from scratch
-      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in the visual style of a traditional ukiyo-e woodblock print — use flat colors, bold outlines, washi paper texture, and sumi ink details. The subject itself should be exactly as described, do NOT change it to a Japanese setting. Do NOT include any Japanese text, characters, kanji, hiragana, katakana, or any written script in the image. Only apply the art style, nothing else Japanese. Generate at maximum resolution with fine detail suitable for large format printing: ${trimmedPrompt}.${ratioText}${frameText}`;
+      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in the visual style of a traditional ukiyo-e woodblock print — use flat colors, bold outlines, ${useCream ? "washi paper texture" : "clean white background"}, and sumi ink details.${bgText} The subject itself should be exactly as described, do NOT change it to a Japanese setting. Do NOT include any Japanese text, characters, kanji, hiragana, katakana, or any written script in the image. Only apply the art style, nothing else. Generate at maximum resolution with fine detail suitable for large format printing: ${trimmedPrompt}.${ratioText}${frameText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 

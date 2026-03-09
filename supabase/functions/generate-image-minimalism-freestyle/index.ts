@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, aspectRatio, sourceImageUrl, whiteFrame } = await req.json();
+    const { prompt, aspectRatio, sourceImageUrl, whiteFrame, backgroundStyle } = await req.json();
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "Invalid prompt" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -23,13 +23,15 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const useCream = backgroundStyle === "cream";
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
     const frameText = whiteFrame ? " Add a thin black frame/border around the artwork itself. Inside this black frame, keep the minimalist composition as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) — just solid white." : "";
+    const bgText = useCream ? " Use a warm cream/off-white paper background tone." : "";
 
     let messages;
 
     if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the minimalist art style. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the minimalist art style.${bgText} Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}`;
       messages = [
         {
           role: "user",
@@ -40,7 +42,7 @@ serve(async (req) => {
         },
       ];
     } else {
-      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in a minimalist art style — use clean geometric shapes, limited color palette of 2-4 muted tones, generous negative space, modern composition, flat design with subtle depth, Swiss/Scandinavian design influence, abstract simplification of forms, precise edges. The subject itself should be exactly as described, rendered in minimalist style. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Generate at maximum resolution with crisp detail suitable for large format printing: ${trimmedPrompt}.${ratioText}${frameText}`;
+      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in a minimalist art style — use clean geometric shapes, limited color palette of 2-4 muted tones, generous negative space, modern composition, flat design with subtle depth, Swiss/Scandinavian design influence, abstract simplification of forms, precise edges.${bgText} The subject itself should be exactly as described, rendered in minimalist style. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Generate at maximum resolution with crisp detail suitable for large format printing: ${trimmedPrompt}.${ratioText}${frameText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 
