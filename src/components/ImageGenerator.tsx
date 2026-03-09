@@ -360,16 +360,16 @@ export default function ImageGenerator({
 
         <Button
           onClick={generate}
-          disabled={loading || !prompt.trim()}
+          disabled={loading || (!isInlineEditing && !prompt.trim()) || (isInlineEditing && !editPrompt.trim())}
           className="w-full sm:w-auto font-display text-sm tracking-wider"
         >
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {isEditMode ? "Editing…" : "Painting…"}
+              {isInlineEditing || isEditMode ? "Editing…" : "Painting…"}
             </>
           ) : (
-            isEditMode ? "Apply Changes" : generateLabel
+            isInlineEditing || isEditMode ? "Apply Changes" : generateLabel
           )}
         </Button>
       </div>
