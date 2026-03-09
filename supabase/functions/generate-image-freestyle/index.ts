@@ -28,6 +28,7 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
+    const frameText = whiteFrame ? " Use a pure white background instead of the traditional beige/cream background color." : "";
 
     let messages;
 
