@@ -62,10 +62,10 @@ const Graffiti = () => {
       <StyleNav activePath="/graffiti" />
 
       <header className="pt-10 pb-12 text-center px-4">
-        <p className="font-sans text-primary text-sm tracking-[0.3em] uppercase font-bold mb-3">
+        <p className="font-display text-primary text-sm tracking-[0.3em] uppercase mb-3">
           Graffiti · Urban Art
         </p>
-        <h1 className="font-sans text-4xl sm:text-5xl md:text-6xl font-black text-foreground leading-tight mb-4 uppercase">
+        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight mb-4">
           Graffiti<br />
           <span className="text-primary">Image Generator</span>
         </h1>
@@ -73,14 +73,14 @@ const Graffiti = () => {
           Describe a scene and watch it come to life as vibrant street art —
           spray paint, bold colors, and raw urban energy.
         </p>
-        <div className="mt-6 w-24 h-1 bg-primary mx-auto" />
+        <div className="mt-6 w-24 h-px bg-border mx-auto" />
       </header>
 
       <main className="pb-12 px-4" ref={generatorRef}>
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setEditState(null); }} className="w-full max-w-4xl mx-auto">
           <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value={styleConfig.themedModeValue} className="font-sans text-sm font-bold">{styleConfig.themedTabLabel}</TabsTrigger>
-            <TabsTrigger value={styleConfig.freestyleModeValue} className="font-sans text-sm font-bold">{styleConfig.freestyleTabLabel}</TabsTrigger>
+            <TabsTrigger value={styleConfig.themedModeValue} className="font-display text-sm">{styleConfig.themedTabLabel}</TabsTrigger>
+            <TabsTrigger value={styleConfig.freestyleModeValue} className="font-display text-sm">{styleConfig.freestyleTabLabel}</TabsTrigger>
           </TabsList>
           <TabsContent value={styleConfig.themedModeValue}>
             <ImageGenerator key={activeTab === styleConfig.themedModeValue ? editKey : "t"} mode={styleConfig.themedModeValue} styleConfig={styleConfig} onImageSaved={refreshGallery} onExitEdit={editState?.mode === styleConfig.themedModeValue ? handleExitEdit : undefined} initialPrompt={editState?.mode === styleConfig.themedModeValue ? editState.prompt : undefined} initialImageUrl={editState?.mode === styleConfig.themedModeValue ? editState.imageUrl : undefined} originalImageId={editState?.mode === styleConfig.themedModeValue ? editState.originalId : undefined} originalStoragePath={editState?.mode === styleConfig.themedModeValue ? editState.originalStoragePath : undefined} />
@@ -95,7 +95,7 @@ const Graffiti = () => {
         <div className="w-full max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
             <div className="h-px flex-1 bg-border" />
-            <h2 className="font-sans text-lg font-black text-foreground uppercase">Gallery</h2>
+            <h2 className="font-display text-lg font-bold text-foreground">Gallery</h2>
             <div className="h-px flex-1 bg-border" />
           </div>
           <Gallery refreshKey={galleryRefreshKey} onEditImage={handleEditImage} styleConfig={styleConfig} />
@@ -103,7 +103,7 @@ const Graffiti = () => {
       </section>
 
       <footer className="pb-8 text-center">
-        <p className="text-muted-foreground text-xs font-sans tracking-widest uppercase font-bold">🎨 Street Art Studio</p>
+        <p className="text-muted-foreground text-xs font-display tracking-widest">🎨 Street Art Studio</p>
       </footer>
 
       <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>
