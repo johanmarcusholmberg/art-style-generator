@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
   Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
+  FolderPlus, FolderMinus,
 } from "lucide-react";
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
@@ -18,8 +19,11 @@ import {
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
 import { fetchGalleryImages, deleteFromGallery, saveToGallery, replaceInGallery } from "@/lib/gallery";
-import { fetchCollectionImageIds } from "@/lib/collections";
+import { fetchCollections, fetchCollectionImageIds, addBulkToCollection, removeBulkFromCollection, type Collection } from "@/lib/collections";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
