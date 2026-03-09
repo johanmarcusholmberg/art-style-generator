@@ -44,7 +44,7 @@ serve(async (req) => {
         },
       ];
     } else {
-      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in a fine line art style — use delicate thin ink lines, precise hatching and cross-hatching, elegant pen-and-ink technique, clean composition on white/cream paper, varying line weights for depth. The subject itself should be exactly as described, rendered in fine line art style. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Generate at maximum resolution with crisp detail suitable for large format printing: ${trimmedPrompt}.${ratioText}${frameText}`;
+      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in a fine line art style — use delicate thin ink lines, precise hatching and cross-hatching, elegant pen-and-ink technique, varying line weights for depth. The subject itself should be exactly as described, rendered in fine line art style. CRITICAL: The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted paper color — only clean pure white. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Generate at maximum resolution with crisp detail suitable for large format printing: ${trimmedPrompt}.${ratioText}${frameText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 
