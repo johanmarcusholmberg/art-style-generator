@@ -94,7 +94,7 @@ function FramedImage({ imageUrl, alt, frame, edgeColor, className }: { imageUrl:
 
   const matStyle: React.CSSProperties = {
     padding: matPx,
-    backgroundColor: 'white',
+    backgroundColor: edgeColor || 'white',
   };
   const matClass = "";
 
