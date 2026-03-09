@@ -316,7 +316,7 @@ export default function ImageGenerator({
 
         <PrintSizeSelector selected={printSize} onChange={setPrintSize} />
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <div className="flex items-center gap-2">
             <Switch
               id={`hd-enhance-${persistKey}`}
@@ -344,22 +344,23 @@ export default function ImageGenerator({
               White Frame
             </Label>
           </div>
-          <div className="flex items-center gap-2">
-            <Label className="font-display text-sm text-muted-foreground">Background:</Label>
-            <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
-              <button
-                onClick={() => setBackgroundStyle("white")}
-                className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "white" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                Pure White
-              </button>
-              <button
-                onClick={() => setBackgroundStyle("cream")}
-                className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "cream" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                Cream Paper
-              </button>
-            </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label className="font-display text-sm text-muted-foreground">Background:</Label>
+          <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
+            <button
+              onClick={() => setBackgroundStyle("white")}
+              className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "white" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Pure White
+            </button>
+            <button
+              onClick={() => setBackgroundStyle("cream")}
+              className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "cream" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Cream Paper
+            </button>
           </div>
         </div>
 
