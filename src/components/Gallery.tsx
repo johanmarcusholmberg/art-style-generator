@@ -276,6 +276,11 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       .finally(() => setLoading(false));
   }, [refreshKey]);
 
+  // Load all collections for bulk actions
+  useEffect(() => {
+    fetchCollections().then(setAllCollections).catch(console.error);
+  }, [refreshKey]);
+
   useEffect(() => {
     if (collectionFilter) {
       fetchCollectionImageIds(collectionFilter).then(setCollectionImageIds).catch(console.error);
