@@ -44,6 +44,23 @@ export interface EditRequest {
   originalStoragePath: string;
 }
 
+/** Map image mode to the correct edge function for regeneration */
+const MODE_TO_EDGE_FN: Record<string, string> = {
+  japanese: "generate-image",
+  freestyle: "generate-image-freestyle",
+  popart: "generate-image-popart",
+  "popart-freestyle": "generate-image-popart-freestyle",
+  lineart: "generate-image-lineart",
+  "lineart-freestyle": "generate-image-lineart-freestyle",
+  "lineart-minimal": "generate-image-lineart-minimal",
+  minimalism: "generate-image-minimalism",
+  "minimalism-freestyle": "generate-image-minimalism-freestyle",
+  graffiti: "generate-image-graffiti",
+  "graffiti-freestyle": "generate-image-graffiti-freestyle",
+  botanical: "generate-image-botanical",
+  "botanical-freestyle": "generate-image-botanical-freestyle",
+};
+
 const downloadImage = async (url: string, filename: string) => {
   const res = await fetch(url);
   const blob = await res.blob();
