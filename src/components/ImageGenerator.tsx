@@ -283,9 +283,11 @@ export default function ImageGenerator({
                     placeholder={
                       isEditMode
                         ? "Describe the changes you want…"
-                        : isThemed
-                          ? styleConfig.themedPlaceholder
-                          : styleConfig.freestylePlaceholder
+                        : isTertiary && styleConfig.tertiaryPlaceholder
+                          ? styleConfig.tertiaryPlaceholder
+                          : isThemed
+                            ? styleConfig.themedPlaceholder
+                            : styleConfig.freestylePlaceholder
                     }
                     className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary disabled:opacity-60"
                   />
