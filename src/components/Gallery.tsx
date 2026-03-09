@@ -271,7 +271,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           aspectRatio: img.aspect_ratio,
           printSize: img.print_size || "",
         });
-        toast.success("Saved as new image");
+        toast.success("Saved as new image", { duration: 3000 });
       }
       setBgResult(null);
       setSelected(null);
