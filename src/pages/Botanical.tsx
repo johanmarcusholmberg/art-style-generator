@@ -47,7 +47,7 @@ const Botanical = () => {
   const editKey = editState ? `${editState.mode}-${editState.prompt}-${editState.originalId}` : "default";
 
   return (
-    <div className="min-h-screen bg-botanical-bg">
+    <div className="min-h-screen bg-background paper-texture">
       <StyleNav activePath="/botanical" />
 
       <header className="pt-10 pb-12 text-center px-4">

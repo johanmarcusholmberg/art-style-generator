@@ -77,7 +77,7 @@ const PopArt = () => {
   const editKey = editState ? `${editState.mode}-${editState.prompt}-${editState.originalId}` : "default";
 
   return (
-    <div className="min-h-screen bg-popart-bg">
+    <div className="min-h-screen bg-background paper-texture">
       {/* Navigation */}
       <StyleNav activePath="/popart" />
 

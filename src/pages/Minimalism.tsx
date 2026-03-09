@@ -72,7 +72,7 @@ const Minimalism = () => {
   const editKey = editState ? `${editState.mode}-${editState.prompt}-${editState.originalId}` : "default";
 
   return (
-    <div className="min-h-screen bg-minimal-bg">
+    <div className="min-h-screen bg-background paper-texture">
       {/* Navigation */}
       <StyleNav activePath="/minimalism" />
 
