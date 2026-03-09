@@ -51,18 +51,18 @@ const Botanical = () => {
       <StyleNav activePath="/botanical" />
 
       <header className="pt-10 pb-12 text-center px-4">
-        <p className="font-display text-botanical-accent text-sm tracking-[0.3em] uppercase mb-3">
+        <p className="font-display text-primary text-sm tracking-[0.3em] uppercase mb-3">
           Botanical · Natural History Art
         </p>
-        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold text-botanical-fg leading-tight mb-4">
+        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight mb-4">
           Botanical<br />
-          <span className="text-botanical-accent">Illustration</span>
+          <span className="text-primary">Illustration</span>
         </h1>
-        <p className="text-botanical-muted max-w-lg mx-auto text-sm leading-relaxed">
+        <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed">
           Describe a plant or natural subject and watch it rendered as a delicate
           watercolor botanical illustration — museum-quality scientific art.
         </p>
-        <div className="mt-6 w-24 h-px bg-botanical-border mx-auto" />
+        <div className="mt-6 w-24 h-px bg-border mx-auto" />
       </header>
 
       <main className="pb-12 px-4" ref={generatorRef}>
@@ -83,16 +83,16 @@ const Botanical = () => {
       <section className="pb-20 px-4">
         <div className="w-full max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <div className="h-px flex-1 bg-botanical-border" />
-            <h2 className="font-display text-lg font-bold text-botanical-fg">Gallery</h2>
-            <div className="h-px flex-1 bg-botanical-border" />
+            <div className="h-px flex-1 bg-border" />
+            <h2 className="font-display text-lg font-bold text-foreground">Gallery</h2>
+            <div className="h-px flex-1 bg-border" />
           </div>
           <Gallery refreshKey={galleryRefreshKey} onEditImage={handleEditImage} styleConfig={styleConfig} />
         </div>
       </section>
 
       <footer className="pb-8 text-center">
-        <p className="text-botanical-muted text-xs font-display tracking-widest">🌿 Botanical Studio</p>
+        <p className="text-muted-foreground text-xs font-display tracking-widest">🌿 Botanical Studio</p>
       </footer>
 
       <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>

@@ -62,18 +62,18 @@ const Graffiti = () => {
       <StyleNav activePath="/graffiti" />
 
       <header className="pt-10 pb-12 text-center px-4">
-        <p className="font-sans text-graffiti-accent text-sm tracking-[0.3em] uppercase font-bold mb-3">
+        <p className="font-sans text-primary text-sm tracking-[0.3em] uppercase font-bold mb-3">
           Graffiti · Urban Art
         </p>
-        <h1 className="font-sans text-4xl sm:text-5xl md:text-6xl font-black text-graffiti-fg leading-tight mb-4 uppercase">
+        <h1 className="font-sans text-4xl sm:text-5xl md:text-6xl font-black text-foreground leading-tight mb-4 uppercase">
           Graffiti<br />
-          <span className="text-graffiti-accent">Image Generator</span>
+          <span className="text-primary">Image Generator</span>
         </h1>
-        <p className="text-graffiti-muted max-w-lg mx-auto text-sm leading-relaxed">
+        <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed">
           Describe a scene and watch it come to life as vibrant street art —
           spray paint, bold colors, and raw urban energy.
         </p>
-        <div className="mt-6 w-24 h-1 bg-graffiti-accent mx-auto" />
+        <div className="mt-6 w-24 h-1 bg-primary mx-auto" />
       </header>
 
       <main className="pb-12 px-4" ref={generatorRef}>
@@ -94,16 +94,16 @@ const Graffiti = () => {
       <section className="pb-20 px-4">
         <div className="w-full max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <div className="h-px flex-1 bg-graffiti-border" />
-            <h2 className="font-sans text-lg font-black text-graffiti-fg uppercase">Gallery</h2>
-            <div className="h-px flex-1 bg-graffiti-border" />
+            <div className="h-px flex-1 bg-border" />
+            <h2 className="font-sans text-lg font-black text-foreground uppercase">Gallery</h2>
+            <div className="h-px flex-1 bg-border" />
           </div>
           <Gallery refreshKey={galleryRefreshKey} onEditImage={handleEditImage} styleConfig={styleConfig} />
         </div>
       </section>
 
       <footer className="pb-8 text-center">
-        <p className="text-graffiti-muted text-xs font-sans tracking-widest uppercase font-bold">🎨 Street Art Studio</p>
+        <p className="text-muted-foreground text-xs font-sans tracking-widest uppercase font-bold">🎨 Street Art Studio</p>
       </footer>
 
       <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>
