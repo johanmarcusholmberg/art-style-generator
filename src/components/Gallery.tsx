@@ -60,7 +60,7 @@ interface GalleryProps {
   styleConfig?: StyleConfig;
 }
 
-export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
+export default function Gallery({ refreshKey, onEditImage, styleConfig }: GalleryProps) {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<GalleryImage | null>(null);
