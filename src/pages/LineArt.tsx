@@ -115,9 +115,12 @@ const LineArt = () => {
           }}
           className="w-full max-w-4xl mx-auto"
         >
-          <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value={styleConfig.themedModeValue} className="font-display text-sm">
               {styleConfig.themedTabLabel}
+            </TabsTrigger>
+            <TabsTrigger value={styleConfig.tertiaryModeValue!} className="font-display text-sm">
+              {styleConfig.tertiaryTabLabel}
             </TabsTrigger>
             <TabsTrigger value={styleConfig.freestyleModeValue} className="font-display text-sm">
               {styleConfig.freestyleTabLabel}
@@ -134,6 +137,19 @@ const LineArt = () => {
               initialImageUrl={editState?.mode === styleConfig.themedModeValue ? editState.imageUrl : undefined}
               originalImageId={editState?.mode === styleConfig.themedModeValue ? editState.originalId : undefined}
               originalStoragePath={editState?.mode === styleConfig.themedModeValue ? editState.originalStoragePath : undefined}
+            />
+          </TabsContent>
+          <TabsContent value={styleConfig.tertiaryModeValue!}>
+            <ImageGenerator
+              key={activeTab === styleConfig.tertiaryModeValue ? editKey : "m"}
+              mode={styleConfig.tertiaryModeValue!}
+              styleConfig={styleConfig}
+              onImageSaved={refreshGallery}
+              onExitEdit={editState?.mode === styleConfig.tertiaryModeValue ? handleExitEdit : undefined}
+              initialPrompt={editState?.mode === styleConfig.tertiaryModeValue ? editState.prompt : undefined}
+              initialImageUrl={editState?.mode === styleConfig.tertiaryModeValue ? editState.imageUrl : undefined}
+              originalImageId={editState?.mode === styleConfig.tertiaryModeValue ? editState.originalId : undefined}
+              originalStoragePath={editState?.mode === styleConfig.tertiaryModeValue ? editState.originalStoragePath : undefined}
             />
           </TabsContent>
           <TabsContent value={styleConfig.freestyleModeValue}>
