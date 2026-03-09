@@ -28,7 +28,7 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
-    const frameText = whiteFrame ? " Add a solid white border/margin outside the black border frame of the artwork, creating a clean white space around the entire composition." : "";
+    const frameText = whiteFrame ? " Use a pure white background instead of the traditional beige/cream background color." : "";
 
     let messages;
 
