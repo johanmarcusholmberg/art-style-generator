@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, aspectRatio, sourceImageUrl, whiteFrame } = await req.json();
+    const { prompt, aspectRatio, sourceImageUrl, whiteFrame, backgroundStyle } = await req.json();
 
     if (!prompt || typeof prompt !== "string") return new Response(JSON.stringify({ error: "Invalid prompt" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -19,17 +19,19 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const useCream = backgroundStyle === "cream";
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
     const frameText = whiteFrame ? " Add a thin black frame/border around the artwork itself. Inside this black frame, keep the minimal line art composition as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) — just solid white." : "";
-    const marginText = whiteFrame ? "" : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
+    const bgText = useCream ? " The background should be a warm cream/off-white vintage paper tone, like aged parchment or fine art paper." : " CRITICAL: The background MUST be pure white (#FFFFFF) — not cream, not beige, not off-white.";
+    const marginText = whiteFrame ? "" : (useCream ? " IMPORTANT: Leave a clean, empty 1 cm margin of blank cream paper space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty." : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.");
 
     let messages;
 
     if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, line work, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the minimal line art style — very few lines, maximum simplicity, single continuous strokes where possible. The background MUST be pure white (#FFFFFF), not cream or beige. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, line work, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the minimal line art style — very few lines, maximum simplicity, single continuous strokes where possible.${bgText} Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
       messages = [{ role: "user", content: [{ type: "image_url", image_url: { url: sourceImageUrl } }, { type: "text", text: editPrompt }] }];
     } else {
-      const enhancedPrompt = `Create a high-resolution minimal line art illustration: ${trimmedPrompt}. Style: EXTREMELY minimal — use the absolute fewest lines possible to convey the subject. Single-weight thin black lines on pure white (#FFFFFF) background. CRITICAL: The background MUST be pure white (#FFFFFF) — not cream, not beige, not off-white. No hatching, no cross-hatching, no shading, no fills. Think single continuous contour drawing, one-line art style, abstract simplification. Every line must be essential — if a line can be removed without losing the subject, remove it. Inspired by Picasso's single-line drawings, Matisse's cut-outs simplified to outlines, and modern one-line art. Clean, elegant, sparse. Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
+      const enhancedPrompt = `Create a high-resolution minimal line art illustration: ${trimmedPrompt}. Style: EXTREMELY minimal — use the absolute fewest lines possible to convey the subject. Single-weight thin black lines.${bgText} No hatching, no cross-hatching, no shading, no fills. Think single continuous contour drawing, one-line art style, abstract simplification. Every line must be essential — if a line can be removed without losing the subject, remove it. Inspired by Picasso's single-line drawings, Matisse's cut-outs simplified to outlines, and modern one-line art. Clean, elegant, sparse. Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 

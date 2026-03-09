@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, aspectRatio, sourceImageUrl, whiteFrame } = await req.json();
+    const { prompt, aspectRatio, sourceImageUrl, whiteFrame, backgroundStyle } = await req.json();
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "Invalid prompt" }), {
@@ -27,16 +27,17 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const useCream = backgroundStyle === "cream";
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
-    const frameText = whiteFrame ? " Add a thin black frame/border around the illustration itself. Inside this black frame, keep the traditional beige ukiyo-e paper texture as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) with no texture — just solid white." : "";
+    const frameText = whiteFrame ? ` Add a thin black frame/border around the illustration itself. Inside this black frame, keep the ${useCream ? "traditional beige ukiyo-e paper texture" : "artwork"} as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) with no texture — just solid white.` : "";
+    const bgText = useCream ? " Use a traditional warm beige/cream washi paper texture as the background." : " CRITICAL: The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted paper color — only clean pure white.";
 
     let messages;
 
-    const marginText = whiteFrame ? "" : " IMPORTANT: Leave a clean, empty 1 cm margin of blank paper space around all sides of the artwork. This margin must be the same beige/cream color as the paper. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
+    const marginText = whiteFrame ? "" : (useCream ? " IMPORTANT: Leave a clean, empty 1 cm margin of blank paper space around all sides of the artwork. This margin must be the same beige/cream color as the paper. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty." : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.");
 
     if (sourceImageUrl) {
-      // Edit mode: user provides a source image and describes changes
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the traditional Japanese ukiyo-e woodblock print style. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the traditional Japanese ukiyo-e woodblock print style.${bgText} Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
       messages = [
         {
           role: "user",
@@ -47,8 +48,7 @@ serve(async (req) => {
         },
       ];
     } else {
-      // Generate mode: create from scratch
-      const enhancedPrompt = `Create a high-resolution, highly detailed traditional Japanese ukiyo-e woodblock print style artwork: ${trimmedPrompt}. Style: flat colors, bold outlines, traditional Japanese composition, washi paper texture, sumi ink details, Edo period aesthetic. Generate at maximum resolution with fine detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
+      const enhancedPrompt = `Create a high-resolution, highly detailed traditional Japanese ukiyo-e woodblock print style artwork: ${trimmedPrompt}. Style: flat colors, bold outlines, traditional Japanese composition, ${useCream ? "washi paper texture" : "clean white background"}, sumi ink details, Edo period aesthetic.${bgText} Generate at maximum resolution with fine detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 

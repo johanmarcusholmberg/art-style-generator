@@ -81,6 +81,7 @@ export default function ImageGenerator({
   const [replacing, setReplacing] = useState(false);
   const [hdEnhance, setHdEnhance] = useState(true);
   const [whiteFrame, setWhiteFrame] = useState(false);
+  const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const { toast } = useToast();
@@ -95,7 +96,7 @@ export default function ImageGenerator({
     setSavedToGallery(false);
 
     try {
-      const body: any = { prompt: activePrompt.trim(), aspectRatio: printSize.ratio, whiteFrame };
+      const body: any = { prompt: activePrompt.trim(), aspectRatio: printSize.ratio, whiteFrame, backgroundStyle };
       if (isInlineEditing && imageUrl) {
         body.sourceImageUrl = imageUrl;
       } else if (sourceImageUrl) {
@@ -342,6 +343,23 @@ export default function ImageGenerator({
             >
               White Frame
             </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="font-display text-sm text-muted-foreground">Background:</Label>
+            <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
+              <button
+                onClick={() => setBackgroundStyle("white")}
+                className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "white" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Pure White
+              </button>
+              <button
+                onClick={() => setBackgroundStyle("cream")}
+                className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "cream" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Cream Paper
+              </button>
+            </div>
           </div>
         </div>
 
