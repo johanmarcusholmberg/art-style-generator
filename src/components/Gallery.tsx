@@ -284,15 +284,17 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     [images]
   );
 
+  const searchLower = searchQuery.toLowerCase().trim();
   const filtered = useMemo(
     () =>
       images.filter(
         (img) =>
           (modeFilter === "all" || img.mode === modeFilter) &&
           (ratioFilter === "all" || img.aspect_ratio === ratioFilter) &&
-          (collectionImageIds === null || collectionImageIds.includes(img.id))
+          (collectionImageIds === null || collectionImageIds.includes(img.id)) &&
+          (searchLower === "" || img.prompt.toLowerCase().includes(searchLower))
       ),
-    [images, modeFilter, ratioFilter, collectionImageIds]
+    [images, modeFilter, ratioFilter, collectionImageIds, searchLower]
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
