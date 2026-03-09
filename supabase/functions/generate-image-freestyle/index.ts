@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, aspectRatio, sourceImageUrl, whiteFrame } = await req.json();
+    const { prompt, aspectRatio, sourceImageUrl, whiteFrame, backgroundStyle } = await req.json();
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "Invalid prompt" }), {
@@ -27,8 +27,10 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const useCream = backgroundStyle === "cream";
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
-    const frameText = whiteFrame ? " Add a thin black frame/border around the illustration itself. Inside this black frame, keep the traditional beige ukiyo-e paper texture as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) with no texture — just solid white." : "";
+    const frameText = whiteFrame ? ` Add a thin black frame/border around the illustration itself. Inside this black frame, keep the ${useCream ? "traditional beige ukiyo-e paper texture" : "artwork"} as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) with no texture — just solid white.` : "";
+    const bgText = useCream ? " Use a traditional warm beige/cream washi paper texture as the background." : " CRITICAL: The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted paper color — only clean pure white.";
 
     let messages;
 
