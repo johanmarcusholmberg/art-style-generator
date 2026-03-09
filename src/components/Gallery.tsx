@@ -57,6 +57,7 @@ const downloadImage = async (url: string, filename: string) => {
 interface GalleryProps {
   refreshKey: number;
   onEditImage?: (req: EditRequest) => void;
+  styleConfig?: StyleConfig;
 }
 
 export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
