@@ -59,14 +59,12 @@ const Graffiti = () => {
 
   return (
     <div className="min-h-screen bg-graffiti-bg">
-      <nav className="flex items-center justify-center gap-6 pt-6 px-4 flex-wrap">
-        <Link to="/" className="font-display text-sm text-graffiti-muted hover:text-graffiti-fg transition-colors pb-1">🏯 Ukiyo-e</Link>
-        <Link to="/popart" className="font-display text-sm text-graffiti-muted hover:text-graffiti-fg transition-colors pb-1">🎯 Pop Art</Link>
-        <Link to="/lineart" className="font-display text-sm text-graffiti-muted hover:text-graffiti-fg transition-colors pb-1">✒️ Line Art</Link>
-        <Link to="/minimalism" className="font-display text-sm text-graffiti-muted hover:text-graffiti-fg transition-colors pb-1">◻ Minimalism</Link>
-        <span className="font-display text-sm font-bold text-graffiti-fg border-b-2 border-graffiti-accent pb-1">🎨 Graffiti</span>
-        <Link to="/botanical" className="font-display text-sm text-graffiti-muted hover:text-graffiti-fg transition-colors pb-1">🌿 Botanical</Link>
-      </nav>
+      <StyleNav
+        activePath="/graffiti"
+        activeClass="text-graffiti-fg"
+        inactiveClass="text-graffiti-muted hover:text-graffiti-fg"
+        activeBorderClass="border-graffiti-accent"
+      />
 
       <header className="pt-10 pb-12 text-center px-4">
         <p className="font-sans text-graffiti-accent text-sm tracking-[0.3em] uppercase font-bold mb-3">

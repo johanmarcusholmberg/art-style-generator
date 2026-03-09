@@ -48,14 +48,12 @@ const Botanical = () => {
 
   return (
     <div className="min-h-screen bg-botanical-bg">
-      <nav className="flex items-center justify-center gap-6 pt-6 px-4 flex-wrap">
-        <Link to="/" className="font-display text-sm text-botanical-muted hover:text-botanical-fg transition-colors pb-1">🏯 Ukiyo-e</Link>
-        <Link to="/popart" className="font-display text-sm text-botanical-muted hover:text-botanical-fg transition-colors pb-1">🎯 Pop Art</Link>
-        <Link to="/lineart" className="font-display text-sm text-botanical-muted hover:text-botanical-fg transition-colors pb-1">✒️ Line Art</Link>
-        <Link to="/minimalism" className="font-display text-sm text-botanical-muted hover:text-botanical-fg transition-colors pb-1">◻ Minimalism</Link>
-        <Link to="/graffiti" className="font-display text-sm text-botanical-muted hover:text-botanical-fg transition-colors pb-1">🎨 Graffiti</Link>
-        <span className="font-display text-sm font-bold text-botanical-fg border-b-2 border-botanical-accent pb-1">🌿 Botanical</span>
-      </nav>
+      <StyleNav
+        activePath="/botanical"
+        activeClass="text-botanical-fg"
+        inactiveClass="text-botanical-muted hover:text-botanical-fg"
+        activeBorderClass="border-botanical-accent"
+      />
 
       <header className="pt-10 pb-12 text-center px-4">
         <p className="font-display text-botanical-accent text-sm tracking-[0.3em] uppercase mb-3">

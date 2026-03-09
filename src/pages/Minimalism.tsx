@@ -74,14 +74,12 @@ const Minimalism = () => {
   return (
     <div className="min-h-screen bg-minimal-bg">
       {/* Navigation */}
-      <nav className="flex items-center justify-center gap-6 pt-6 px-4">
-        <Link to="/" className="font-display text-sm text-minimal-muted hover:text-minimal-fg transition-colors pb-1">🏯 Ukiyo-e</Link>
-        <Link to="/popart" className="font-display text-sm text-minimal-muted hover:text-minimal-fg transition-colors pb-1">🎯 Pop Art</Link>
-        <Link to="/lineart" className="font-display text-sm text-minimal-muted hover:text-minimal-fg transition-colors pb-1">✒️ Line Art</Link>
-        <span className="font-display text-sm font-bold text-minimal-fg border-b-2 border-minimal-accent pb-1">◻ Minimalism</span>
-        <Link to="/graffiti" className="font-display text-sm text-minimal-muted hover:text-minimal-fg transition-colors pb-1">🎨 Graffiti</Link>
-        <Link to="/botanical" className="font-display text-sm text-minimal-muted hover:text-minimal-fg transition-colors pb-1">🌿 Botanical</Link>
-      </nav>
+      <StyleNav
+        activePath="/minimalism"
+        activeClass="text-minimal-fg"
+        inactiveClass="text-minimal-muted hover:text-minimal-fg"
+        activeBorderClass="border-minimal-accent"
+      />
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">
