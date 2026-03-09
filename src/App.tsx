@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import PopArt from "./pages/PopArt";
 import LineArt from "./pages/LineArt";
 import Minimalism from "./pages/Minimalism";
+import Graffiti from "./pages/Graffiti";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
