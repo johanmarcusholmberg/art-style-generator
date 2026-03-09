@@ -124,6 +124,24 @@
   .bg-minimal-border {
     background-color: #e0e0e0;
   }
+  .bg-graffiti-bg {
+    background-color: #1a1a1a;
+  }
+  .text-graffiti-fg {
+    color: #f0f0f0;
+  }
+  .text-graffiti-accent {
+    color: #FF6B35;
+  }
+  .text-graffiti-muted {
+    color: #888;
+  }
+  .bg-graffiti-border {
+    background-color: #333;
+  }
+  .border-graffiti-accent {
+    border-color: #FF6B35;
+  }
 }
 
 /* Ink wash animation */

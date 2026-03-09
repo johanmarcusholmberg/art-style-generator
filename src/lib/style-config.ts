@@ -206,3 +206,46 @@ export const MINIMALISM_STYLE: StyleConfig = {
   freestyleBadge: "🎨",
   downloadPrefix: "minimalism",
 };
+
+export const GRAFFITI_STYLE: StyleConfig = {
+  styleKey: "graffiti",
+  themedEdgeFn: "generate-image-graffiti",
+  freestyleEdgeFn: "generate-image-graffiti-freestyle",
+  themedTabLabel: "🎨 Street Scenes",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Graffiti",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your scene… e.g. 'A roaring lion on a brick wall'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A city skyline at night with neon lights'",
+  prompts: {
+    themed: {
+      generate: [
+        "A roaring lion sprayed on a brick wall",
+        "A boombox with music notes exploding out of it",
+        "A woman's face with flowers growing from her hair",
+      ],
+      edit: [
+        "Add more dripping paint effects",
+        "Make the colors more neon and vibrant",
+        "Add a stencil-style Banksy element",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A city skyline at night with neon reflections",
+        "A vintage car parked in a graffiti-covered alley",
+        "An astronaut floating above a colorful urban landscape",
+      ],
+      edit: [
+        "Add spray paint splatters around the edges",
+        "Make it look like it's on a concrete wall",
+        "Add bold outlines and street art tags",
+      ],
+    },
+  },
+  themedModeValue: "graffiti",
+  freestyleModeValue: "graffiti-freestyle",
+  themedBadge: "🎨",
+  freestyleBadge: "🎨",
+  downloadPrefix: "graffiti",
+};
