@@ -277,7 +277,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     }
   }, [collectionFilter, refreshKey]);
 
-  useEffect(() => { setCurrentPage(1); }, [modeFilter, ratioFilter, collectionFilter]);
+  useEffect(() => { setCurrentPage(1); }, [modeFilter, ratioFilter, collectionFilter, searchQuery]);
 
   const uniqueRatios = useMemo(
     () => [...new Set(images.map((img) => img.aspect_ratio))].sort(),
