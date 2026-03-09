@@ -69,7 +69,7 @@ const LineArt = () => {
   const editKey = editState ? `${editState.mode}-${editState.prompt}-${editState.originalId}` : "default";
 
   return (
-    <div className="min-h-screen bg-lineart-bg">
+    <div className="min-h-screen bg-background paper-texture">
       {/* Navigation */}
       <StyleNav activePath="/lineart" />
 

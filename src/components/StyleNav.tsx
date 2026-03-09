@@ -40,7 +40,7 @@ const StyleNav = ({ activePath }: StyleNavProps) => {
               return (
                 <span
                   key={item.to}
-                  className="font-display text-xs font-bold whitespace-nowrap px-3 py-1.5 rounded-full bg-primary text-primary-foreground flex-shrink-0"
+                  className="font-display text-xs font-medium whitespace-nowrap px-3 py-1.5 rounded-full bg-primary text-primary-foreground flex-shrink-0"
                 >
                   {item.emoji} {item.label}
                 </span>
@@ -50,7 +50,7 @@ const StyleNav = ({ activePath }: StyleNavProps) => {
               <Link
                 key={item.to}
                 to={item.to}
-                className="font-display text-xs whitespace-nowrap px-3 py-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
+                className="font-display text-xs font-medium whitespace-nowrap px-3 py-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
               >
                 {item.emoji} {item.label}
               </Link>
