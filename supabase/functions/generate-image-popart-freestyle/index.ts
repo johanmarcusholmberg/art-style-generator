@@ -28,12 +28,12 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
-    const frameText = whiteFrame ? " Add a thin black frame/border around the illustration itself. Inside this black frame, keep the clean minimalist composition as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) — just solid white." : "";
+    const frameText = whiteFrame ? " Add a thin black frame/border around the artwork itself. Inside this black frame, keep the pop art composition as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) — just solid white." : "";
 
     let messages;
 
     if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the minimalist art style. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the pop art style. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}`;
       messages = [
         {
           role: "user",
@@ -44,7 +44,7 @@ serve(async (req) => {
         },
       ];
     } else {
-      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in a minimalist art style — use clean lines, limited color palette, generous negative space, geometric simplicity, and modern composition. The subject itself should be exactly as described. Do NOT include any text or written script in the image. Only apply the minimalist art style, nothing else. Generate at maximum resolution with crisp detail suitable for large format printing: ${trimmedPrompt}.${ratioText}${frameText}`;
+      const enhancedPrompt = `Create a high-resolution, highly detailed image. Render the following scene in a pop art style inspired by Andy Warhol and Roy Lichtenstein — use bold colors, Ben-Day dots, thick black outlines, flat color areas, high contrast, comic book aesthetics, and vibrant saturated palette. The subject itself should be exactly as described, rendered in pop art style. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Generate at maximum resolution with crisp detail suitable for large format printing: ${trimmedPrompt}.${ratioText}${frameText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 
@@ -107,7 +107,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("generate-image-minimalism-freestyle error:", e);
+    console.error("generate-image-popart-freestyle error:", e);
     return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

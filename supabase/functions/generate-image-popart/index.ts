@@ -28,14 +28,14 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
-    const frameText = whiteFrame ? " Add a thin black frame/border around the illustration itself. Inside this black frame, keep the clean minimalist composition as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) — just solid white." : "";
+    const frameText = whiteFrame ? " Add a thin black frame/border around the artwork itself. Inside this black frame, keep the pop art composition as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) — just solid white." : "";
 
-    const marginText = whiteFrame ? "" : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. This margin must be pure white. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
+    const marginText = whiteFrame ? "" : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
 
     let messages;
 
     if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the minimalist art style. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the pop art style. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
       messages = [
         {
           role: "user",
@@ -46,7 +46,7 @@ serve(async (req) => {
         },
       ];
     } else {
-      const enhancedPrompt = `Create a high-resolution minimalist artwork: ${trimmedPrompt}. Style: clean lines, limited color palette, generous negative space, geometric simplicity, modern composition, subtle gradients, Swiss/Scandinavian design influence. Use restrained, muted tones with one or two accent colors at most. Emphasize form over detail, whitespace as a compositional element, and elegant simplicity. Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
+      const enhancedPrompt = `Create a high-resolution pop art style artwork inspired by Andy Warhol and Roy Lichtenstein: ${trimmedPrompt}. Style: bold colors, Ben-Day dots, thick black outlines, flat color areas, high contrast, comic book aesthetics, screen-print texture, vibrant saturated palette. Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 
@@ -109,7 +109,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("generate-image-minimalism error:", e);
+    console.error("generate-image-popart error:", e);
     return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

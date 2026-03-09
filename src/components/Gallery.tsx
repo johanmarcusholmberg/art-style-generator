@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Download, Loader2, Image as ImageIcon, Trash2, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -37,7 +38,7 @@ interface GalleryImage {
 export interface EditRequest {
   prompt: string;
   imageUrl: string;
-  mode: "japanese" | "freestyle";
+  mode: string;
   originalId: string;
   originalStoragePath: string;
 }
@@ -56,9 +57,10 @@ const downloadImage = async (url: string, filename: string) => {
 interface GalleryProps {
   refreshKey: number;
   onEditImage?: (req: EditRequest) => void;
+  styleConfig?: StyleConfig;
 }
 
-export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
+export default function Gallery({ refreshKey, onEditImage, styleConfig }: GalleryProps) {
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<GalleryImage | null>(null);
@@ -72,10 +74,15 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
   const [modeFilter, setModeFilter] = useState("all");
   const [ratioFilter, setRatioFilter] = useState("all");
 
+  // Filter to only show images matching this style's modes
+  const styleModes = styleConfig
+    ? [styleConfig.themedModeValue, styleConfig.freestyleModeValue]
+    : null;
+
   useEffect(() => {
     setLoading(true);
     fetchGalleryImages()
-      .then(setImages)
+      .then((imgs) => setImages(styleModes ? imgs.filter((img: any) => styleModes.includes(img.mode)) : imgs))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [refreshKey]);
@@ -179,7 +186,7 @@ export default function Gallery({ refreshKey, onEditImage }: GalleryProps) {
     onEditImage?.({
       prompt: img.prompt,
       imageUrl: img.publicUrl,
-      mode: img.mode as "japanese" | "freestyle",
+      mode: img.mode,
       originalId: img.id,
       originalStoragePath: img.storage_path,
     });
