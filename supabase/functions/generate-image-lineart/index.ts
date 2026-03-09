@@ -35,7 +35,7 @@ serve(async (req) => {
     let messages;
 
     if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, line work, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the fine line art style — delicate ink lines on white/cream paper. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
+      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, line work, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the fine line art style — delicate ink lines on a pure white (#FFFFFF) background. The background MUST be pure white, not cream, not beige, not off-white. Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
       messages = [
         {
           role: "user",
@@ -46,7 +46,7 @@ serve(async (req) => {
         },
       ];
     } else {
-      const enhancedPrompt = `Create a high-resolution fine line art illustration: ${trimmedPrompt}. Style: delicate thin ink lines, precise hatching and cross-hatching, elegant pen-and-ink technique, minimal shading using line density, clean white background, botanical illustration precision, architectural drafting quality, reminiscent of vintage engraving and etching. Use only black ink lines on white/cream paper — no color fills, no solid black areas, only varying line weights and densities. Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
+      const enhancedPrompt = `Create a high-resolution fine line art illustration: ${trimmedPrompt}. Style: delicate thin ink lines, precise hatching and cross-hatching, elegant pen-and-ink technique, minimal shading using line density, botanical illustration precision, architectural drafting quality, reminiscent of vintage engraving and etching. Use only black ink lines — no color fills, no solid black areas, only varying line weights and densities. CRITICAL: The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted paper color — only clean pure white. Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
       messages = [{ role: "user", content: enhancedPrompt }];
     }
 
