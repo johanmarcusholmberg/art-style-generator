@@ -97,6 +97,7 @@ const Index = () => {
         </Link>
         <Link to="/minimalism" className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors pb-1">◻ Minimalism</Link>
         <Link to="/graffiti" className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors pb-1">🎨 Graffiti</Link>
+        <Link to="/botanical" className="font-display text-sm text-muted-foreground hover:text-foreground transition-colors pb-1">🌿 Botanical</Link>
       </nav>
 
       {/* Header */}
