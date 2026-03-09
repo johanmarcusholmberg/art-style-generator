@@ -79,6 +79,21 @@
   .border-gold {
     border-color: hsl(var(--gold));
   }
+  .bg-popart-bg {
+    background-color: #FFFBF0;
+  }
+  .text-popart-fg {
+    color: #1a1a1a;
+  }
+  .text-popart-accent {
+    color: #E53935;
+  }
+  .text-popart-muted {
+    color: #777;
+  }
+  .bg-popart-border {
+    background-color: #ddd;
+  }
 }
 
 /* Ink wash animation */
