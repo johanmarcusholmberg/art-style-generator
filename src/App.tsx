@@ -27,6 +27,7 @@ const App = () => (
           <Route path="/minimalism" element={<Minimalism />} />
           <Route path="/graffiti" element={<Graffiti />} />
           <Route path="/botanical" element={<Botanical />} />
+          <Route path="/blend" element={<Blend />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

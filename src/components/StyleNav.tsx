@@ -25,7 +25,7 @@ interface StyleNavProps {
 
 const StyleNav = ({ activePath, activeClass, inactiveClass, activeBorderClass }: StyleNavProps) => {
   return (
-    <nav className="grid grid-cols-3 gap-3 pt-6 px-4 max-w-md mx-auto">
+    <nav className="grid grid-cols-4 gap-3 pt-6 px-4 max-w-lg mx-auto">
       {navItems.map((item) => {
         const isActive = item.to === activePath;
         if (isActive) {
