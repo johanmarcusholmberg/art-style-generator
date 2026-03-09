@@ -484,7 +484,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => downloadImage(selected.publicUrl, `ukiyoe-${selected.id}.png`)}
+                  onClick={() => downloadImage(selected.publicUrl, `art-${selected.id}.png`)}
                   className="font-display text-xs"
                 >
                   <Download className="mr-2 h-4 w-4" />
@@ -511,6 +511,83 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                   Delete
                 </Button>
               </div>
+
+              {/* Background color change */}
+              {MODE_TO_EDGE_FN[selected.mode] && !bgResult && (
+                <div className="pt-3 border-t border-border">
+                  <p className="font-display text-xs text-muted-foreground mb-2">Change background color</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!!bgChanging}
+                      onClick={() => handleChangeBackground(selected, "white")}
+                      className="font-display text-xs"
+                    >
+                      {bgChanging === "white" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sun className="mr-2 h-4 w-4" />}
+                      Pure White
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!!bgChanging}
+                      onClick={() => handleChangeBackground(selected, "cream")}
+                      className="font-display text-xs"
+                    >
+                      {bgChanging === "cream" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                      Cream Paper
+                    </Button>
+                  </div>
+                  {bgChanging && (
+                    <p className="font-display text-xs text-muted-foreground mt-2 animate-pulse">
+                      Regenerating with {bgChanging === "white" ? "pure white" : "cream"} background…
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Background change result */}
+              {bgResult && selected && (
+                <div className="pt-3 border-t border-border space-y-3">
+                  <p className="font-display text-xs text-muted-foreground">
+                    New version with {bgResult.bgStyle === "white" ? "pure white" : "cream"} background:
+                  </p>
+                  <div className="rounded-sm border border-border overflow-hidden">
+                    <img
+                      src={bgResult.imageUrl}
+                      alt="New background version"
+                      className="w-full max-h-[40vh] object-contain bg-muted"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      disabled={!!bgChanging}
+                      onClick={() => handleSaveBgResult(selected, false)}
+                      className="font-display text-xs"
+                    >
+                      Save as New
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!!bgChanging}
+                      onClick={() => handleSaveBgResult(selected, true)}
+                      className="font-display text-xs"
+                    >
+                      Replace Original
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setBgResult(null)}
+                      className="font-display text-xs"
+                    >
+                      Discard
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
