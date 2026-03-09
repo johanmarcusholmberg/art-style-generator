@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
-  Sun, FileText, Share2, CheckSquare, Square, Sparkles,
+  Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
 } from "lucide-react";
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -245,6 +246,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   const [modeFilter, setModeFilter] = useState("all");
   const [ratioFilter, setRatioFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [bgChanging, setBgChanging] = useState<"white" | "cream" | null>(null);
   const [bgResult, setBgResult] = useState<{ imageUrl: string; bgStyle: string } | null>(null);
 
@@ -275,22 +277,24 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     }
   }, [collectionFilter, refreshKey]);
 
-  useEffect(() => { setCurrentPage(1); }, [modeFilter, ratioFilter, collectionFilter]);
+  useEffect(() => { setCurrentPage(1); }, [modeFilter, ratioFilter, collectionFilter, searchQuery]);
 
   const uniqueRatios = useMemo(
     () => [...new Set(images.map((img) => img.aspect_ratio))].sort(),
     [images]
   );
 
+  const searchLower = searchQuery.toLowerCase().trim();
   const filtered = useMemo(
     () =>
       images.filter(
         (img) =>
           (modeFilter === "all" || img.mode === modeFilter) &&
           (ratioFilter === "all" || img.aspect_ratio === ratioFilter) &&
-          (collectionImageIds === null || collectionImageIds.includes(img.id))
+          (collectionImageIds === null || collectionImageIds.includes(img.id)) &&
+          (searchLower === "" || img.prompt.toLowerCase().includes(searchLower))
       ),
-    [images, modeFilter, ratioFilter, collectionImageIds]
+    [images, modeFilter, ratioFilter, collectionImageIds, searchLower]
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
@@ -485,6 +489,16 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
       {/* Filters + Batch + Pagination */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search prompts…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-[160px] sm:w-[200px] font-display text-xs h-8 pl-7"
+          />
+        </div>
+
         <Select value={modeFilter} onValueChange={setModeFilter}>
           <SelectTrigger className="w-[120px] font-display text-xs h-8"><SelectValue placeholder="Mode" /></SelectTrigger>
           <SelectContent>
@@ -502,9 +516,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           </SelectContent>
         </Select>
 
-        {(modeFilter !== "all" || ratioFilter !== "all") && (
+        {(modeFilter !== "all" || ratioFilter !== "all" || searchQuery !== "") && (
           <Button variant="ghost" size="sm" className="font-display text-xs h-8 px-2"
-            onClick={() => { setModeFilter("all"); setRatioFilter("all"); }}>✕</Button>
+            onClick={() => { setModeFilter("all"); setRatioFilter("all"); setSearchQuery(""); }}>✕</Button>
         )}
 
         <Button
