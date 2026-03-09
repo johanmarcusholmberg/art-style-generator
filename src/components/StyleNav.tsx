@@ -22,9 +22,6 @@ const navItems: StyleNavItem[] = [
 
 interface StyleNavProps {
   activePath: string;
-  activeClass?: string;
-  inactiveClass?: string;
-  activeBorderClass?: string;
 }
 
 const StyleNav = ({ activePath }: StyleNavProps) => {
