@@ -14,12 +14,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { getCachedImage, deleteCachedImage } from "@/lib/image-cache";
-import { POPART_STYLE } from "@/lib/style-config";
+import { LINEART_STYLE } from "@/lib/style-config";
 import { Link } from "react-router-dom";
 
-const styleConfig = POPART_STYLE;
+const styleConfig = LINEART_STYLE;
 
-const PopArt = () => {
+const LineArt = () => {
   const [galleryRefreshKey, setGalleryRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState(styleConfig.themedModeValue);
   const [editState, setEditState] = useState<EditRequest | null>(null);
@@ -77,40 +77,40 @@ const PopArt = () => {
   const editKey = editState ? `${editState.mode}-${editState.prompt}-${editState.originalId}` : "default";
 
   return (
-    <div className="min-h-screen bg-popart-bg">
+    <div className="min-h-screen bg-lineart-bg">
       {/* Navigation */}
       <nav className="flex items-center justify-center gap-6 pt-6 px-4">
         <Link
           to="/"
-          className="font-display text-sm text-popart-muted hover:text-popart-fg transition-colors pb-1"
+          className="font-display text-sm text-lineart-muted hover:text-lineart-fg transition-colors pb-1"
         >
           🏯 Ukiyo-e
         </Link>
-        <span className="font-display text-sm font-bold text-popart-fg border-b-2 border-popart-accent pb-1">
-          🎯 Pop Art
-        </span>
         <Link
-          to="/lineart"
-          className="font-display text-sm text-popart-muted hover:text-popart-fg transition-colors pb-1"
+          to="/popart"
+          className="font-display text-sm text-lineart-muted hover:text-lineart-fg transition-colors pb-1"
         >
-          ✒️ Line Art
+          🎯 Pop Art
         </Link>
+        <span className="font-display text-sm font-bold text-lineart-fg border-b-2 border-lineart-accent pb-1">
+          ✒️ Line Art
+        </span>
       </nav>
 
       {/* Header */}
       <header className="pt-10 pb-12 text-center px-4">
-        <p className="font-sans text-popart-accent text-sm tracking-[0.3em] uppercase font-bold mb-3">
-          Pop Art · Bold & Vibrant
+        <p className="font-display text-lineart-accent text-sm tracking-[0.3em] uppercase mb-3">
+          Fine Line Art · Pen & Ink
         </p>
-        <h1 className="font-sans text-4xl sm:text-5xl md:text-6xl font-black text-popart-fg leading-tight mb-4 uppercase">
-          Pop Art<br />
-          <span className="text-popart-accent">Image Generator</span>
+        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold text-lineart-fg leading-tight mb-4">
+          Fine Line Art<br />
+          <span className="text-lineart-accent">Image Generator</span>
         </h1>
-        <p className="text-popart-muted max-w-lg mx-auto text-sm leading-relaxed">
-          Describe a scene and watch it come to life in the bold, vibrant style
-          of pop art — inspired by Warhol and Lichtenstein.
+        <p className="text-lineart-muted max-w-lg mx-auto text-sm leading-relaxed">
+          Describe a scene and watch it come to life in elegant pen-and-ink
+          line work — delicate hatching, precise details, timeless beauty.
         </p>
-        <div className="mt-6 w-24 h-1 bg-popart-accent mx-auto" />
+        <div className="mt-6 w-24 h-px bg-lineart-border mx-auto" />
       </header>
 
       {/* Generator */}
@@ -124,10 +124,10 @@ const PopArt = () => {
           className="w-full max-w-4xl mx-auto"
         >
           <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value={styleConfig.themedModeValue} className="font-sans text-sm font-bold">
+            <TabsTrigger value={styleConfig.themedModeValue} className="font-display text-sm">
               {styleConfig.themedTabLabel}
             </TabsTrigger>
-            <TabsTrigger value={styleConfig.freestyleModeValue} className="font-sans text-sm font-bold">
+            <TabsTrigger value={styleConfig.freestyleModeValue} className="font-display text-sm">
               {styleConfig.freestyleTabLabel}
             </TabsTrigger>
           </TabsList>
@@ -164,9 +164,9 @@ const PopArt = () => {
       <section className="pb-20 px-4">
         <div className="w-full max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
-            <div className="h-px flex-1 bg-popart-border" />
-            <h2 className="font-sans text-lg font-black text-popart-fg uppercase">Gallery</h2>
-            <div className="h-px flex-1 bg-popart-border" />
+            <div className="h-px flex-1 bg-lineart-border" />
+            <h2 className="font-display text-lg font-bold text-lineart-fg">Gallery</h2>
+            <div className="h-px flex-1 bg-lineart-border" />
           </div>
           <Gallery
             refreshKey={galleryRefreshKey}
@@ -178,8 +178,8 @@ const PopArt = () => {
 
       {/* Footer */}
       <footer className="pb-8 text-center">
-        <p className="text-popart-muted text-xs font-sans tracking-widest uppercase font-bold">
-          Pop Art Studio
+        <p className="text-lineart-muted text-xs font-display tracking-widest">
+          ✒ Ink & Line Studio
         </p>
       </footer>
 
@@ -187,7 +187,7 @@ const PopArt = () => {
       <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
+            <AlertDialogTitle className="font-display">
               {hasUnsavedImage ? "You have an unsaved image" : "Edit this image?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -213,4 +213,4 @@ const PopArt = () => {
   );
 };
 
-export default PopArt;
+export default LineArt;
