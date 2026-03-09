@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Download, Loader2, Image as ImageIcon, Trash2, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
