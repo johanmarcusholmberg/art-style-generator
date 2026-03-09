@@ -85,7 +85,7 @@ export default function ImageGenerator({
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const { toast } = useToast();
 
-  const suggestions = isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
+  const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
 
   const generate = async () => {
     const activePrompt = isInlineEditing ? editPrompt : prompt;
