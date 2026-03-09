@@ -117,7 +117,7 @@ function FramedContent({ children, frame, edgeColor, className }: { children: Re
 
   const matStyle: React.CSSProperties = {
     padding: matPx,
-    backgroundColor: 'white',
+    backgroundColor: edgeColor || 'white',
   };
   const matClass = "";
 
