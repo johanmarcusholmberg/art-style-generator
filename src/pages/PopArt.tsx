@@ -149,7 +149,7 @@ const PopArt = () => {
         <div className="w-full max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
             <div className="h-px flex-1 bg-border" />
-            <h2 className="font-sans text-lg font-black text-foreground uppercase">Gallery</h2>
+            <h2 className="font-display text-lg font-bold text-foreground">Gallery</h2>
             <div className="h-px flex-1 bg-border" />
           </div>
           <Gallery
@@ -162,8 +162,8 @@ const PopArt = () => {
 
       {/* Footer */}
       <footer className="pb-8 text-center">
-        <p className="text-muted-foreground text-xs font-sans tracking-widest uppercase font-bold">
-          Pop Art Studio
+        <p className="text-muted-foreground text-xs font-display tracking-widest">
+          🎯 Pop Art Studio
         </p>
       </footer>
 
