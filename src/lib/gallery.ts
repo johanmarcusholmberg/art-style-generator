@@ -21,7 +21,7 @@ export async function saveToGallery({
 }: {
   imageUrl: string;
   prompt: string;
-  mode: "japanese" | "freestyle";
+  mode: string;
   aspectRatio: string;
   printSize: string;
 }) {
