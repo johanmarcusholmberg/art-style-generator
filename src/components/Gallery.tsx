@@ -186,7 +186,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     onEditImage?.({
       prompt: img.prompt,
       imageUrl: img.publicUrl,
-      mode: img.mode as "japanese" | "freestyle",
+      mode: img.mode,
       originalId: img.id,
       originalStoragePath: img.storage_path,
     });
