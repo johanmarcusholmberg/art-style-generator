@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Download, Loader2, Image as ImageIcon, Trash2, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import { Download, Loader2, Image as ImageIcon, Trash2, Pencil, ChevronLeft, ChevronRight, Sun, FileText } from "lucide-react";
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,8 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { fetchGalleryImages, deleteFromGallery } from "@/lib/gallery";
+import { fetchGalleryImages, deleteFromGallery, saveToGallery, replaceInGallery } from "@/lib/gallery";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 
 interface GalleryImage {
