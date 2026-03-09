@@ -280,3 +280,46 @@ export const GRAFFITI_STYLE: StyleConfig = {
   freestyleBadge: "🎨",
   downloadPrefix: "graffiti",
 };
+
+export const BOTANICAL_STYLE: StyleConfig = {
+  styleKey: "botanical",
+  themedEdgeFn: "generate-image-botanical",
+  freestyleEdgeFn: "generate-image-botanical-freestyle",
+  themedTabLabel: "🌿 Botanical",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Botanical Art",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your plant… e.g. 'A blooming peony with leaves and buds'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A wild mushroom growing on a mossy log'",
+  prompts: {
+    themed: {
+      generate: [
+        "A blooming peony with detailed leaves and buds",
+        "A branch of cherry blossoms with delicate petals",
+        "A collection of ferns and mosses from a forest floor",
+      ],
+      edit: [
+        "Add more detail to the leaf veins",
+        "Make the watercolor washes more transparent",
+        "Add a cross-section view of the flower",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "Wild mushrooms growing on a mossy log",
+        "A tropical orchid with aerial roots",
+        "An arrangement of autumn leaves in warm colors",
+      ],
+      edit: [
+        "Add dewdrops on the petals",
+        "Make the background a warmer cream tone",
+        "Add a small insect visiting the flower",
+      ],
+    },
+  },
+  themedModeValue: "botanical",
+  freestyleModeValue: "botanical-freestyle",
+  themedBadge: "🌿",
+  freestyleBadge: "🎨",
+  downloadPrefix: "botanical",
+};
