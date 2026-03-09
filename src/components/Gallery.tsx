@@ -38,7 +38,7 @@ interface GalleryImage {
 export interface EditRequest {
   prompt: string;
   imageUrl: string;
-  mode: "japanese" | "freestyle";
+  mode: string;
   originalId: string;
   originalStoragePath: string;
 }
