@@ -467,9 +467,23 @@ export default function ImageGenerator({
                 </Button>
               )}
               {savedToGallery && (
-                <span className="text-xs text-primary flex items-center gap-1 font-display">
-                  ✓ Saved to gallery
-                </span>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setIsInlineEditing(true);
+                      setEditPrompt("");
+                    }}
+                    className="font-display text-xs tracking-wider"
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Image
+                  </Button>
+                  <span className="text-xs text-primary flex items-center gap-1 font-display">
+                    ✓ Saved to gallery
+                  </span>
+                </>
               )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
