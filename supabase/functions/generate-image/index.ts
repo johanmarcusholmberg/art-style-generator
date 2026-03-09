@@ -32,7 +32,7 @@ serve(async (req) => {
 
     let messages;
 
-    const marginText = " IMPORTANT: Leave a clean, empty 1 cm margin of blank paper space around all sides of the artwork. This margin must be the same color as the paper (beige/cream or white depending on instructions). Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
+    const marginText = whiteFrame ? "" : " IMPORTANT: Leave a clean, empty 1 cm margin of blank paper space around all sides of the artwork. This margin must be the same beige/cream color as the paper. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
 
     if (sourceImageUrl) {
       // Edit mode: user provides a source image and describes changes
