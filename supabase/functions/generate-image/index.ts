@@ -32,7 +32,7 @@ serve(async (req) => {
 
     let messages;
 
-    const marginText = " IMPORTANT: Always include a 1 cm margin (indentation) around all sides of the image content, creating a consistent border between the artwork and the outer frame edge.";
+    const marginText = " IMPORTANT: Leave a clean, empty 1 cm margin of blank paper space around all sides of the artwork. This margin must be the same color as the paper (beige/cream or white depending on instructions). Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
 
     if (sourceImageUrl) {
       // Edit mode: user provides a source image and describes changes
