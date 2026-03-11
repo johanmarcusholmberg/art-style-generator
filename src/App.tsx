@@ -11,6 +11,7 @@ import Minimalism from "./pages/Minimalism";
 import Graffiti from "./pages/Graffiti";
 import Botanical from "./pages/Botanical";
 import Blend from "./pages/Blend";
+import BatchStudio from "./pages/BatchStudio";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
