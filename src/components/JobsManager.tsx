@@ -14,7 +14,7 @@ import { toast } from "sonner";
 const STATUS_ICONS: Record<string, React.ReactNode> = {
   queued: <Clock className="h-4 w-4 text-muted-foreground" />,
   processing: <Loader2 className="h-4 w-4 animate-spin text-primary" />,
-  completed: <CheckCircle2 className="h-4 w-4 text-green-600" />,
+  completed: <CheckCircle2 className="h-4 w-4 text-primary" />,
   failed: <XCircle className="h-4 w-4 text-destructive" />,
   cancelled: <Ban className="h-4 w-4 text-muted-foreground" />,
   generating: <Loader2 className="h-4 w-4 animate-spin text-primary" />,
