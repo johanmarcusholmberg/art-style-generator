@@ -18,6 +18,7 @@ const navItems: StyleNavItem[] = [
   { to: "/graffiti", emoji: "🎨", label: "Graffiti" },
   { to: "/botanical", emoji: "🌿", label: "Botanical" },
   { to: "/blend", emoji: "✨", label: "Blend" },
+  { to: "/batch", emoji: "⚡", label: "Batch" },
 ];
 
 interface StyleNavProps {
