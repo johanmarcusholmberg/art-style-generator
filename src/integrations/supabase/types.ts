@@ -101,6 +101,132 @@ export type Database = {
         }
         Relationships: []
       }
+      generation_job_items: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          gallery_image_id: string | null
+          id: string
+          image_url: string | null
+          job_id: string
+          prompt_variant: string
+          seed: number | null
+          status: string
+          storage_path: string | null
+          style: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          gallery_image_id?: string | null
+          id?: string
+          image_url?: string | null
+          job_id: string
+          prompt_variant: string
+          seed?: number | null
+          status?: string
+          storage_path?: string | null
+          style?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          gallery_image_id?: string | null
+          id?: string
+          image_url?: string | null
+          job_id?: string
+          prompt_variant?: string
+          seed?: number | null
+          status?: string
+          storage_path?: string | null
+          style?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_job_items_gallery_image_id_fkey"
+            columns: ["gallery_image_id"]
+            isOneToOne: false
+            referencedRelation: "generated_images"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_job_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "generation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generation_jobs: {
+        Row: {
+          aspect_ratio: string
+          background_style: string
+          batch_size: number
+          completed_images: number
+          created_at: string
+          failed_images: number
+          hd_enhance: boolean
+          id: string
+          job_type: string
+          matrix_variables: Json | null
+          mode: string
+          print_size: string | null
+          prompt: string
+          speed_mode: string
+          status: string
+          style_grid_styles: string[] | null
+          total_images: number
+          updated_at: string
+          white_frame: boolean
+        }
+        Insert: {
+          aspect_ratio?: string
+          background_style?: string
+          batch_size?: number
+          completed_images?: number
+          created_at?: string
+          failed_images?: number
+          hd_enhance?: boolean
+          id?: string
+          job_type?: string
+          matrix_variables?: Json | null
+          mode?: string
+          print_size?: string | null
+          prompt: string
+          speed_mode?: string
+          status?: string
+          style_grid_styles?: string[] | null
+          total_images?: number
+          updated_at?: string
+          white_frame?: boolean
+        }
+        Update: {
+          aspect_ratio?: string
+          background_style?: string
+          batch_size?: number
+          completed_images?: number
+          created_at?: string
+          failed_images?: number
+          hd_enhance?: boolean
+          id?: string
+          job_type?: string
+          matrix_variables?: Json | null
+          mode?: string
+          print_size?: string | null
+          prompt?: string
+          speed_mode?: string
+          status?: string
+          style_grid_styles?: string[] | null
+          total_images?: number
+          updated_at?: string
+          white_frame?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
