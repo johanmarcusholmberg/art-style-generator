@@ -1,4 +1,7 @@
 /** Style configuration for different art style generators */
+import type { StyleRules } from "./prompt-rules";
+import { STYLE_RULES } from "./prompt-rules";
+
 export interface StyleConfig {
   /** Unique style key used for storage/caching prefixes */
   styleKey: string;
@@ -46,6 +49,12 @@ export interface StyleConfig {
   tertiaryBadge?: string;
   /** Download filename prefix */
   downloadPrefix: string;
+  /** Structured prompt rules for themed mode */
+  themedRules: StyleRules;
+  /** Structured prompt rules for freestyle mode */
+  freestyleRules: StyleRules;
+  /** Optional third rules */
+  tertiaryRules?: StyleRules;
 }
 
 export const UKIYOE_STYLE: StyleConfig = {
@@ -56,31 +65,31 @@ export const UKIYOE_STYLE: StyleConfig = {
   freestyleTabLabel: "🎨 Freestyle",
   themedGenerateLabel: "Generate 浮世絵",
   freestyleGenerateLabel: "Generate Image",
-  themedPlaceholder: "Describe your scene… e.g. 'A crane flying over misty mountains'",
-  freestylePlaceholder: "Describe any scene… e.g. 'Central Park in New York during autumn'",
+  themedPlaceholder: "Describe your scene… e.g. 'A great wave crashing against coastal cliffs at golden hour with dramatic spray'",
+  freestylePlaceholder: "Describe any scene… e.g. 'Manhattan skyline at dusk with neon reflections on wet pavement'",
   prompts: {
     themed: {
       generate: [
-        "A great wave crashing against Mount Fuji at sunset",
-        "Koi fish swimming in a tranquil garden pond",
-        "A crane flying over misty mountains at dawn",
+        "A great wave crashing against Mount Fuji at sunset with fishermen in wooden boats bracing against the surge",
+        "Koi fish swimming through crystal-clear water beneath a stone bridge covered in wisteria blossoms",
+        "A lone crane standing in morning mist over a bamboo grove with distant snow-capped peaks",
       ],
       edit: [
-        "Change the background to a sunset sky",
-        "Make the colors more vibrant and saturated",
-        "Add cherry blossoms falling in the scene",
+        "Change the sky to a dramatic sunset with vermilion and gold clouds",
+        "Add more vibrant indigo and sumi ink contrast throughout",
+        "Add cherry blossom petals falling gently across the entire scene",
       ],
     },
     freestyle: {
       generate: [
-        "Central Park in New York during autumn",
-        "The Eiffel Tower at golden hour",
-        "A cozy Italian café on a rainy day",
+        "Central Park in autumn with golden maple trees reflected in a still lake and joggers on winding paths",
+        "The Eiffel Tower silhouette at golden hour with long shadows stretching across the Champ de Mars",
+        "A cozy Italian café terrace on a rainy cobblestone street with warm light spilling from the windows",
       ],
       edit: [
-        "Change the background to a sunset sky",
-        "Make the colors more vibrant and saturated",
-        "Add rain and reflections on the ground",
+        "Change the background to a dramatic sunset sky with warm tones",
+        "Increase the color saturation and deepen the sumi ink outlines",
+        "Add rain and reflections on wet ground surfaces",
       ],
     },
   },
@@ -89,6 +98,8 @@ export const UKIYOE_STYLE: StyleConfig = {
   themedBadge: "🏯",
   freestyleBadge: "🎨",
   downloadPrefix: "ukiyoe",
+  themedRules: STYLE_RULES["japanese"],
+  freestyleRules: STYLE_RULES["freestyle"],
 };
 
 export const POPART_STYLE: StyleConfig = {
@@ -99,31 +110,31 @@ export const POPART_STYLE: StyleConfig = {
   freestyleTabLabel: "🎨 Freestyle",
   themedGenerateLabel: "Generate Pop Art",
   freestyleGenerateLabel: "Generate Image",
-  themedPlaceholder: "Describe your scene… e.g. 'A sports car on a neon-lit highway'",
-  freestylePlaceholder: "Describe any scene… e.g. 'A bowl of fruit on a kitchen table'",
+  themedPlaceholder: "Describe your scene… e.g. 'A woman with oversized sunglasses and bold red lips against a halftone background'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A vintage diner counter with chrome stools and a neon sign'",
   prompts: {
     themed: {
       generate: [
-        "A woman with sunglasses and bold red lips",
-        "A classic Cadillac on Route 66 at sunset",
-        "A can of soup on a supermarket shelf",
+        "A woman with oversized cat-eye sunglasses and bold red lips against a cyan and magenta halftone background",
+        "A classic cherry-red Cadillac convertible cruising Route 66 under a sky made of Ben-Day dots",
+        "A row of Campbell's soup cans with vibrant pop color variations and screen-print texture",
       ],
       edit: [
-        "Change the background to bright yellow",
-        "Add Ben-Day dots to the sky",
-        "Make the colors even more saturated",
+        "Change the background to bright yellow with larger Ben-Day dots",
+        "Add a bold halftone dot pattern to the sky and shadows",
+        "Increase the color saturation and thicken all outlines",
       ],
     },
     freestyle: {
       generate: [
-        "The Statue of Liberty against a neon sky",
-        "A retro diner with chrome details",
-        "A city skyline with bold graphic shapes",
+        "The Statue of Liberty against a neon-split sky of hot pink and electric blue with bold black outlines",
+        "A chrome and neon retro diner interior with checkered floor and a jukebox in pop art style",
+        "A city skyline at night reduced to bold graphic shapes with flat saturated colors",
       ],
       edit: [
-        "Change the background to bright yellow",
-        "Add more contrast and bolder outlines",
-        "Make it look like a comic book panel",
+        "Change the background to bright yellow with graphic pop elements",
+        "Add stronger contrast, bolder outlines, and more Ben-Day dots",
+        "Transform the entire scene to look like a comic book panel with thick borders",
       ],
     },
   },
@@ -132,6 +143,8 @@ export const POPART_STYLE: StyleConfig = {
   themedBadge: "🎯",
   freestyleBadge: "🎨",
   downloadPrefix: "popart",
+  themedRules: STYLE_RULES["popart"],
+  freestyleRules: STYLE_RULES["popart-freestyle"],
 };
 
 export const LINEART_STYLE: StyleConfig = {
@@ -142,43 +155,43 @@ export const LINEART_STYLE: StyleConfig = {
   freestyleTabLabel: "🎨 Freestyle",
   themedGenerateLabel: "Generate Line Art",
   freestyleGenerateLabel: "Generate Image",
-  themedPlaceholder: "Describe your scene… e.g. 'A lighthouse on a rocky cliff'",
-  freestylePlaceholder: "Describe any scene… e.g. 'A vintage bicycle in a garden'",
+  themedPlaceholder: "Describe your scene… e.g. 'A lighthouse on a rocky cliff with crashing waves and seabirds'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A vintage bicycle leaning against a stone wall with ivy'",
   prompts: {
     themed: {
       generate: [
-        "A lighthouse on a rocky cliff overlooking stormy seas",
-        "A detailed botanical study of roses and ferns",
-        "An old European cathedral with flying buttresses",
+        "A weathered lighthouse on a craggy cliff overlooking turbulent seas with spray and circling gulls",
+        "A detailed botanical study of wild roses with thorny stems, unfurling petals, and delicate fern fronds",
+        "A Gothic cathedral facade with flying buttresses, rose window tracery, and gargoyle details",
       ],
       edit: [
-        "Add more cross-hatching to the shadows",
-        "Make the lines finer and more delicate",
-        "Add birds flying in the background",
+        "Add more dense cross-hatching to the deepest shadow areas",
+        "Make all lines finer and more delicate with varying weight",
+        "Add a flock of birds in detailed flight formation in the background sky",
       ],
     },
     freestyle: {
       generate: [
-        "A vintage bicycle leaning against a stone wall",
-        "A cozy cabin in the woods with smoke from the chimney",
-        "A bustling street market with awnings and crates",
+        "A vintage bicycle with a wicker basket leaning against a crumbling stone wall draped in ivy",
+        "A cozy log cabin nestled in pine woods with chimney smoke curling into a starry sky",
+        "A bustling Moroccan market alley with hanging lanterns, spice stalls, and woven awnings",
       ],
       edit: [
-        "Add more detail to the foreground",
-        "Make the lines thicker and bolder",
-        "Add a frame of decorative vines around the image",
+        "Add significantly more architectural detail to the foreground structures",
+        "Thicken all primary outlines and add stippling to shadow areas",
+        "Add an ornate decorative vine and leaf border frame around the entire illustration",
       ],
     },
     tertiary: {
       generate: [
-        "A woman's face in a single continuous line",
-        "A cat curled up sleeping — fewest lines possible",
-        "A mountain landscape with just 5-6 strokes",
+        "A woman's face captured in a single elegant continuous line with closed eyes and flowing hair",
+        "A cat curled up sleeping rendered with the absolute fewest lines possible — pure contour",
+        "A mountain landscape with lake reflection using only 5-6 confident brush strokes",
       ],
       edit: [
-        "Simplify further — use even fewer lines",
-        "Make it a single continuous line drawing",
-        "Remove all shading, keep only outlines",
+        "Simplify dramatically — remove all non-essential lines",
+        "Convert to a true single continuous line drawing without lifting the pen",
+        "Remove all shading and detail — keep only the purest outline contour",
       ],
     },
   },
@@ -188,11 +201,14 @@ export const LINEART_STYLE: StyleConfig = {
   tertiaryEdgeFn: "generate-image-lineart-minimal",
   tertiaryTabLabel: "〰️ Minimal Lines",
   tertiaryGenerateLabel: "Generate Minimal Line Art",
-  tertiaryPlaceholder: "Describe your scene… e.g. 'A woman's face in one continuous line'",
+  tertiaryPlaceholder: "Describe your scene… e.g. 'A dancer mid-leap captured in one flowing line'",
   themedBadge: "✒️",
   freestyleBadge: "🎨",
   tertiaryBadge: "〰️",
   downloadPrefix: "lineart",
+  themedRules: STYLE_RULES["lineart"],
+  freestyleRules: STYLE_RULES["lineart-freestyle"],
+  tertiaryRules: STYLE_RULES["lineart-minimal"],
 };
 
 export const MINIMALISM_STYLE: StyleConfig = {
@@ -203,31 +219,31 @@ export const MINIMALISM_STYLE: StyleConfig = {
   freestyleTabLabel: "🎨 Freestyle",
   themedGenerateLabel: "Generate Minimal Art",
   freestyleGenerateLabel: "Generate Image",
-  themedPlaceholder: "Describe your scene… e.g. 'A single tree on a vast plain'",
-  freestylePlaceholder: "Describe any scene… e.g. 'A coffee cup on a marble table'",
+  themedPlaceholder: "Describe your scene… e.g. 'A solitary tree on a vast snow plain at dawn with long blue shadows'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A steaming coffee cup casting a long geometric shadow on a marble surface'",
   prompts: {
     themed: {
       generate: [
-        "A single tree on a vast snowy plain at dawn",
-        "Abstract geometric shapes floating in soft pastel space",
-        "A solitary boat on a calm lake with mountains",
+        "A solitary bare tree on a vast snowy plain at dawn with long blue shadows stretching toward the horizon",
+        "Abstract geometric shapes — circles, triangles, rectangles — floating in soft pastel negative space",
+        "A single sailboat on a perfectly calm lake with distant mountains reduced to simple silhouettes",
       ],
       edit: [
-        "Reduce the color palette to just two tones",
-        "Add more negative space around the subject",
-        "Make the shapes more geometric and abstract",
+        "Reduce the entire color palette to just two complementary tones",
+        "Add significantly more negative space around the subject — let it breathe",
+        "Make all shapes more geometric and abstractly simplified",
       ],
     },
     freestyle: {
       generate: [
-        "A coffee cup casting a long shadow on a table",
-        "A city skyline reduced to simple geometric blocks",
-        "A cat sitting in a sunbeam by a window",
+        "A steaming coffee cup casting a dramatic long shadow on a clean marble surface in morning light",
+        "A city skyline reduced to simple geometric blocks and rectangles in a muted twilight palette",
+        "A cat sitting in a perfect beam of sunlight by a tall window with clean minimal surroundings",
       ],
       edit: [
-        "Simplify the composition further",
-        "Change the palette to warm earth tones",
-        "Make it more abstract with fewer details",
+        "Simplify the composition further — remove any non-essential elements",
+        "Change the palette to warm earth tones: terracotta, sand, and cream",
+        "Make it more abstract with fewer details and sharper geometric edges",
       ],
     },
   },
@@ -236,6 +252,8 @@ export const MINIMALISM_STYLE: StyleConfig = {
   themedBadge: "◻",
   freestyleBadge: "🎨",
   downloadPrefix: "minimalism",
+  themedRules: STYLE_RULES["minimalism"],
+  freestyleRules: STYLE_RULES["minimalism-freestyle"],
 };
 
 export const GRAFFITI_STYLE: StyleConfig = {
@@ -246,31 +264,31 @@ export const GRAFFITI_STYLE: StyleConfig = {
   freestyleTabLabel: "🎨 Freestyle",
   themedGenerateLabel: "Generate Graffiti",
   freestyleGenerateLabel: "Generate Image",
-  themedPlaceholder: "Describe your scene… e.g. 'A roaring lion on a brick wall'",
-  freestylePlaceholder: "Describe any scene… e.g. 'A city skyline at night with neon lights'",
+  themedPlaceholder: "Describe your scene… e.g. 'A roaring lion with a spray-painted mane dripping neon colors on a brick wall'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A vintage muscle car parked in a graffiti-covered alley at night'",
   prompts: {
     themed: {
       generate: [
-        "A roaring lion sprayed on a brick wall",
-        "A boombox with music notes exploding out of it",
-        "A woman's face with flowers growing from her hair",
+        "A roaring lion with a spray-painted mane of dripping neon colors on a weathered brick wall",
+        "A vintage boombox with music notes and sound waves exploding outward in spray paint style",
+        "A woman's face in profile with wildflowers growing from her hair rendered in stencil art layers",
       ],
       edit: [
-        "Add more dripping paint effects",
-        "Make the colors more neon and vibrant",
-        "Add a stencil-style Banksy element",
+        "Add more dripping paint effects and spray splatters throughout",
+        "Make all colors more neon and fluorescent with stronger contrast",
+        "Add a Banksy-style stencil element in the corner with urban grit",
       ],
     },
     freestyle: {
       generate: [
-        "A city skyline at night with neon reflections",
-        "A vintage car parked in a graffiti-covered alley",
-        "An astronaut floating above a colorful urban landscape",
+        "A city skyline at night with neon reflections on wet asphalt and spray-painted clouds",
+        "A vintage muscle car parked in a graffiti-covered alley with dripping tags and wheat-paste posters",
+        "An astronaut floating above a colorful urban landscape with stencil planets and spray-paint stars",
       ],
       edit: [
-        "Add spray paint splatters around the edges",
-        "Make it look like it's on a concrete wall",
-        "Add bold outlines and street art tags",
+        "Add spray paint splatters and drip marks around all edges of the composition",
+        "Transform the background to look like a weathered concrete wall with cracks and texture",
+        "Add bold graphic outlines, drip effects, and layered urban street art tags",
       ],
     },
   },
@@ -279,6 +297,8 @@ export const GRAFFITI_STYLE: StyleConfig = {
   themedBadge: "🎨",
   freestyleBadge: "🎨",
   downloadPrefix: "graffiti",
+  themedRules: STYLE_RULES["graffiti"],
+  freestyleRules: STYLE_RULES["graffiti-freestyle"],
 };
 
 export const BOTANICAL_STYLE: StyleConfig = {
@@ -289,31 +309,31 @@ export const BOTANICAL_STYLE: StyleConfig = {
   freestyleTabLabel: "🎨 Freestyle",
   themedGenerateLabel: "Generate Botanical Art",
   freestyleGenerateLabel: "Generate Image",
-  themedPlaceholder: "Describe your plant… e.g. 'A blooming peony with leaves and buds'",
-  freestylePlaceholder: "Describe any scene… e.g. 'A wild mushroom growing on a mossy log'",
+  themedPlaceholder: "Describe your plant… e.g. 'A blooming peony with detailed leaves, buds, and visible petal veins'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A cluster of wild chanterelle mushrooms on a mossy forest log'",
   prompts: {
     themed: {
       generate: [
-        "A blooming peony with detailed leaves and buds",
-        "A branch of cherry blossoms with delicate petals",
-        "A collection of ferns and mosses from a forest floor",
+        "A fully blooming peony with layered petals, detailed serrated leaves, and unopened buds on a single stem",
+        "A branch of weeping cherry blossoms with translucent petals, dark bark texture, and tiny stamens visible",
+        "A collection of forest floor specimens: fiddlehead ferns, club mosses, and shelf fungi arranged as a study",
       ],
       edit: [
-        "Add more detail to the leaf veins",
-        "Make the watercolor washes more transparent",
-        "Add a cross-section view of the flower",
+        "Add more intricate detail to all leaf veins and petal textures",
+        "Make the watercolor washes more transparent and delicately layered",
+        "Add a cross-section botanical detail view of the main flower",
       ],
     },
     freestyle: {
       generate: [
-        "Wild mushrooms growing on a mossy log",
-        "A tropical orchid with aerial roots",
-        "An arrangement of autumn leaves in warm colors",
+        "A cluster of golden chanterelle mushrooms growing on a mossy fallen log with tiny ferns nearby",
+        "A rare tropical orchid with spotted petals, aerial roots, and a detailed anatomical side view",
+        "An arrangement of pressed autumn leaves — maple, oak, birch — in rich warm colors with visible veining",
       ],
       edit: [
-        "Add dewdrops on the petals",
-        "Make the background a warmer cream tone",
-        "Add a small insect visiting the flower",
+        "Add realistic dewdrops catching light on the petals and leaves",
+        "Warm the background to a richer cream aged-paper tone",
+        "Add a small detailed insect — a honeybee or ladybug — visiting the main flower",
       ],
     },
   },
@@ -322,4 +342,6 @@ export const BOTANICAL_STYLE: StyleConfig = {
   themedBadge: "🌿",
   freestyleBadge: "🎨",
   downloadPrefix: "botanical",
+  themedRules: STYLE_RULES["botanical"],
+  freestyleRules: STYLE_RULES["botanical-freestyle"],
 };
