@@ -80,7 +80,7 @@ export default function ImageGenerator({
   const [saving, setSaving] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [hdEnhance, setHdEnhance] = useState(true);
-  const [whiteFrame, setWhiteFrame] = useState(false);
+  const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
