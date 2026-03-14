@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -27,106 +27,27 @@ const FRAME_STYLES: FrameStyle[] = [
   { id: "cherry", label: "Cherry", border: "bg-gradient-to-br from-[hsl(0,35%,35%)] via-[hsl(0,30%,28%)] to-[hsl(0,25%,22%)]", inner: "bg-[hsl(0,20%,15%)]/30" },
 ];
 
-function useEdgeColor(imageUrl: string): string | null {
-  const [color, setColor] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!imageUrl) return;
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        ctx.drawImage(img, 0, 0);
-
-        const w = canvas.width;
-        const h = canvas.height;
-        let r = 0, g = 0, b = 0, count = 0;
-        const step = Math.max(1, Math.floor(Math.max(w, h) / 40));
-
-        for (let x = 0; x < w; x += step) {
-          for (const y of [0, h - 1]) {
-            const d = ctx.getImageData(x, y, 1, 1).data;
-            r += d[0]; g += d[1]; b += d[2]; count++;
-          }
-        }
-        for (let y = 0; y < h; y += step) {
-          for (const x of [0, w - 1]) {
-            const d = ctx.getImageData(x, y, 1, 1).data;
-            r += d[0]; g += d[1]; b += d[2]; count++;
-          }
-        }
-
-        if (count > 0) {
-          r = Math.round(r / count);
-          g = Math.round(g / count);
-          b = Math.round(b / count);
-          setColor(`rgb(${r},${g},${b})`);
-        }
-      } catch {
-        setColor(null);
-      }
-    };
-    img.src = imageUrl;
-  }, [imageUrl]);
-
-  return color;
-}
-
-function FramedImage({ imageUrl, alt, frame, edgeColor, className }: { imageUrl: string; alt: string; frame: FrameStyle; edgeColor: string | null; className?: string }) {
-  const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-
-  const onLoad = useCallback(() => {
-    if (imgRef.current) {
-      setDims({ w: imgRef.current.naturalWidth, h: imgRef.current.naturalHeight });
-    }
-  }, []);
-
-  const shortSide = dims ? Math.min(dims.w, dims.h) : 500;
-  const framePx = Math.max(4, Math.round(shortSide * 0.02));
-  const innerPx = Math.max(1, Math.round(shortSide * 0.005));
-  const matPx = Math.max(8, Math.round(shortSide * 0.06));
-
-  const matStyle: React.CSSProperties = {
-    padding: matPx,
-    backgroundColor: edgeColor || 'white',
-  };
-  const matClass = "";
+function FramedImage({ imageUrl, alt, frame, className }: { imageUrl: string; alt: string; frame: FrameStyle; className?: string }) {
+  const framePx = 10;
+  const innerPx = 2;
 
   return (
     <div className={cn("rounded-sm shadow-xl", frame.border, className)} style={{ padding: framePx }}>
       <div className={cn(frame.inner)} style={{ padding: innerPx }}>
-        <div className={cn(matClass)} style={matStyle}>
-          <img ref={imgRef} src={imageUrl} alt={alt} onLoad={onLoad} className="max-w-full max-h-[500px] shadow-inner block" />
-        </div>
+        <img src={imageUrl} alt={alt} className="max-w-full max-h-[600px] block" />
       </div>
     </div>
   );
 }
 
-function FramedContent({ children, frame, edgeColor, className }: { children: React.ReactNode; frame: FrameStyle; edgeColor: string | null; className?: string }) {
-  const shortSide = 500;
-  const framePx = Math.max(4, Math.round(shortSide * 0.02));
-  const innerPx = Math.max(1, Math.round(shortSide * 0.005));
-  const matPx = Math.max(8, Math.round(shortSide * 0.06));
-
-  const matStyle: React.CSSProperties = {
-    padding: matPx,
-    backgroundColor: edgeColor || 'white',
-  };
-  const matClass = "";
+function FramedContent({ children, frame, className }: { children: React.ReactNode; frame: FrameStyle; className?: string }) {
+  const framePx = 10;
+  const innerPx = 2;
 
   return (
     <div className={cn("rounded-sm shadow-xl", frame.border, className)} style={{ padding: framePx }}>
       <div className={cn(frame.inner)} style={{ padding: innerPx }}>
-        <div className={cn(matClass)} style={matStyle}>
-          {children}
-        </div>
+        {children}
       </div>
     </div>
   );
@@ -146,14 +67,11 @@ interface ImagePreviewMockupsProps {
 export default function ImagePreviewMockups({ imageUrl, alt, compareUrl }: ImagePreviewMockupsProps) {
   const [mode, setMode] = useState<ViewMode>("original");
   const [frameStyle, setFrameStyle] = useState<string>(FRAME_STYLES[0].id);
-  const edgeColor = useEdgeColor(imageUrl);
-
   const selectedFrame = FRAME_STYLES.find((f) => f.id === frameStyle) || FRAME_STYLES[0];
   const isCompare = !!compareUrl;
 
   return (
     <div className="flex flex-col items-center gap-4 w-full">
-      {/* Controls row */}
       <div className="flex flex-wrap gap-2 items-center">
         <Select value={mode} onValueChange={(v) => setMode(v as ViewMode)}>
           <SelectTrigger className="w-[160px] font-display text-xs h-9">
@@ -187,11 +105,10 @@ export default function ImagePreviewMockups({ imageUrl, alt, compareUrl }: Image
         )}
       </div>
 
-      {/* Preview area */}
       <div className="w-full flex items-center justify-center">
         {isCompare ? (
           mode === "frame" ? (
-            <FramedContent frame={selectedFrame} edgeColor={edgeColor}>
+            <FramedContent frame={selectedFrame}>
               <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full max-h-[500px]" />
             </FramedContent>
           ) : (
@@ -204,7 +121,7 @@ export default function ImagePreviewMockups({ imageUrl, alt, compareUrl }: Image
             className="max-w-full max-h-[600px] rounded-sm animate-ink-spread"
           />
         ) : mode === "frame" ? (
-          <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} edgeColor={edgeColor} />
+          <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} />
         ) : null}
       </div>
     </div>

@@ -80,7 +80,6 @@ export default function ImageGenerator({
   const [saving, setSaving] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [hdEnhance, setHdEnhance] = useState(true);
-  const [whiteFrame, setWhiteFrame] = useState(false);
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
@@ -96,7 +95,7 @@ export default function ImageGenerator({
     setSavedToGallery(false);
 
     try {
-      const body: any = { prompt: activePrompt.trim(), aspectRatio: printSize.ratio, whiteFrame, backgroundStyle };
+      const body: any = { prompt: activePrompt.trim(), aspectRatio: printSize.ratio, backgroundStyle };
       if (isInlineEditing && imageUrl) {
         body.sourceImageUrl = imageUrl;
       } else if (sourceImageUrl) {
@@ -329,19 +328,6 @@ export default function ImageGenerator({
             >
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               HD Enhance
-            </Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <Switch
-              id={`white-frame-${persistKey}`}
-              checked={whiteFrame}
-              onCheckedChange={setWhiteFrame}
-            />
-            <Label
-              htmlFor={`white-frame-${persistKey}`}
-              className="font-display text-sm text-muted-foreground cursor-pointer"
-            >
-              White Frame
             </Label>
           </div>
         </div>
