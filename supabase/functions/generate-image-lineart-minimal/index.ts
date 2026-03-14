@@ -5,60 +5,48 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const STYLE_RULES = {
+  style: ["ultra-minimal continuous line drawing", "absolute fewest lines possible to convey the subject", "single-weight thin black line", "inspired by Picasso's single-line drawings", "one-line art style with elegant simplicity"],
+  composition: ["centered subject with maximum negative space", "every line must be essential", "abstract simplification of complex forms"],
+  color: ["single black line on white — nothing else", "no shading, no fills, no hatching"],
+  quality: ["perfectly smooth continuous line", "elegant confident strokes", "museum-quality minimal art", "high detail", "sharp edges", "no artifacts", "print-ready resolution"],
+  avoid: ["multiple line weights", "shading or cross-hatching", "unnecessary detail", "any written text or script"],
+};
+
+function buildPrompt(p: string, ar?: string, bg?: string): string {
+  const bgText = bg === "cream" ? "The background should be a warm cream/off-white vintage paper tone." : "The background MUST be pure white (#FFFFFF).";
+  const ratioText = ar ? `The image must have a ${ar} aspect ratio.` : "";
+  return [`SUBJECT: ${p}`, "", `STYLE: ${STYLE_RULES.style.join(". ")}`, `COMPOSITION: ${STYLE_RULES.composition.join(". ")}`, `COLOR: ${STYLE_RULES.color.join(". ")}`, `QUALITY: ${STYLE_RULES.quality.join(". ")}`, `AVOID: ${STYLE_RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution."].filter(Boolean).join("\n");
+}
+
+function buildEditPrompt(p: string, ar?: string, bg?: string): string {
+  const bgText = bg === "cream" ? "Maintain warm cream background." : "Background MUST be pure white (#FFFFFF).";
+  return ["CRITICAL: Keep the provided image almost entirely unchanged. Only apply the SPECIFIC edit below.", `STYLE TO MAINTAIN: ${STYLE_RULES.style.join(", ")}`, `EDIT TO APPLY: ${p}`, bgText, ar ? `Maintain ${ar} aspect ratio.` : "", `AVOID: ${STYLE_RULES.avoid.join(", ")}`, "Generate at maximum resolution."].filter(Boolean).join("\n");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
   try {
-    const { prompt, aspectRatio, sourceImageUrl, whiteFrame, backgroundStyle } = await req.json();
-
+    const { prompt, aspectRatio, sourceImageUrl, backgroundStyle } = await req.json();
     if (!prompt || typeof prompt !== "string") return new Response(JSON.stringify({ error: "Invalid prompt" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
     const trimmedPrompt = prompt.trim();
     if (trimmedPrompt.length === 0 || trimmedPrompt.length > 1000) return new Response(JSON.stringify({ error: "Prompt must be between 1 and 1000 characters" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-    const useCream = backgroundStyle === "cream";
-    const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
-    const frameText = whiteFrame ? " Add a thin black frame/border around the artwork itself. Inside this black frame, keep the minimal line art composition as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) — just solid white." : "";
-    const bgText = useCream ? " The background should be a warm cream/off-white vintage paper tone, like aged parchment or fine art paper." : " CRITICAL: The background MUST be pure white (#FFFFFF) — not cream, not beige, not off-white.";
-    const marginText = whiteFrame ? "" : (useCream ? " IMPORTANT: Leave a clean, empty 1 cm margin of blank cream paper space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty." : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.");
-
-    let messages;
-
-    if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, line work, background, perspective, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the minimal line art style — very few lines, maximum simplicity, single continuous strokes where possible.${bgText} Do NOT include any text or written script in the image. Only apply the art style, nothing else. Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
-      messages = [{ role: "user", content: [{ type: "image_url", image_url: { url: sourceImageUrl } }, { type: "text", text: editPrompt }] }];
-    } else {
-      const enhancedPrompt = `Create a high-resolution minimal line art illustration: ${trimmedPrompt}. Style: EXTREMELY minimal — use the absolute fewest lines possible to convey the subject. Single-weight thin black lines.${bgText} No hatching, no cross-hatching, no shading, no fills. Think single continuous contour drawing, one-line art style, abstract simplification. Every line must be essential — if a line can be removed without losing the subject, remove it. Inspired by Picasso's single-line drawings, Matisse's cut-outs simplified to outlines, and modern one-line art. Clean, elegant, sparse. Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
-      messages = [{ role: "user", content: enhancedPrompt }];
-    }
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages, modalities: ["image", "text"] }),
-    });
-
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY"); if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const messages = sourceImageUrl
+      ? [{ role: "user", content: [{ type: "image_url", image_url: { url: sourceImageUrl } }, { type: "text", text: buildEditPrompt(trimmedPrompt, aspectRatio, backgroundStyle) }] }]
+      : [{ role: "user", content: buildPrompt(trimmedPrompt, aspectRatio, backgroundStyle) }];
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages, modalities: ["image", "text"] }) });
     if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Usage limit reached. Please add credits." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Too many requests." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 402) return new Response(JSON.stringify({ error: "Usage limit reached." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const t = await response.text(); console.error("AI gateway error:", response.status, t);
       return new Response(JSON.stringify({ error: "Failed to generate image" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
     const responseText = await response.text();
-    if (!responseText) { console.error("AI gateway returned empty response"); return new Response(JSON.stringify({ error: "Empty response from AI. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
-    let data;
-    try { data = JSON.parse(responseText); } catch { console.error("Failed to parse AI response:", responseText.slice(0, 200)); return new Response(JSON.stringify({ error: "Invalid response from AI. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+    if (!responseText) return new Response(JSON.stringify({ error: "Empty response from AI." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    let data; try { data = JSON.parse(responseText); } catch { return new Response(JSON.stringify({ error: "Invalid response from AI." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
     const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    if (!imageUrl) return new Response(JSON.stringify({ error: "No image was generated. Try a different prompt." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
+    if (!imageUrl) return new Response(JSON.stringify({ error: "No image was generated." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     return new Response(JSON.stringify({ imageUrl }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (e) {
-    console.error("generate-image-lineart-minimal error:", e);
-    return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
+  } catch (e) { console.error("generate-image-lineart-minimal error:", e); return new Response(JSON.stringify({ error: "An unexpected error occurred." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 });
