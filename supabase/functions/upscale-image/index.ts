@@ -22,7 +22,26 @@ serve(async (req) => {
 
     const ratioText = aspectRatio ? ` Maintain the ${aspectRatio} aspect ratio exactly.` : "";
 
-    const enhancePrompt = `You are a professional image enhancer. Take this image and recreate it at the highest possible resolution and detail. Sharpen all edges, enhance fine textures (paper grain, brush strokes, ink lines), increase clarity and definition throughout. Add subtle detail refinements: enhance fabric patterns, sharpen architectural elements, refine facial features if present, deepen color richness. The output must look like a premium high-resolution print-ready version of the input — same composition, same style, same subject, but dramatically sharper and more detailed. Do NOT change the subject, style, colors, or composition — only enhance quality and detail.${ratioText}`;
+    const enhancePrompt = `CRITICAL UPSCALING INSTRUCTIONS:
+
+You are an image enhancement specialist. Your ONLY task is to upscale and sharpen this image.
+
+DO:
+- Sharpen all edges and fine details
+- Enhance texture clarity: paper grain, brush strokes, ink lines, fabric patterns
+- Increase overall resolution and definition
+- Deepen color richness and improve tonal range
+- Refine fine architectural elements, botanical details, and facial features if present
+- Produce a premium print-ready version
+
+DO NOT:
+- Change the subject, style, composition, or color palette
+- Add new elements or remove existing ones
+- Alter the artistic style or mood
+- Regenerate or reimagine any part of the image
+- Change the background color or texture
+
+The output must be the EXACT same image but dramatically sharper and more detailed.${ratioText}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -46,39 +65,21 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Usage limit reached. Please add credits." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 402) return new Response(JSON.stringify({ error: "Usage limit reached. Please add credits." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "Failed to enhance image" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "Failed to enhance image" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const data = await response.json();
     const enhancedUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
-    if (!enhancedUrl) {
-      return new Response(JSON.stringify({ error: "Enhancement failed. Try again." }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!enhancedUrl) return new Response(JSON.stringify({ error: "Enhancement failed. Try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    return new Response(JSON.stringify({ imageUrl: enhancedUrl }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ imageUrl: enhancedUrl }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("upscale-image error:", e);
-    return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

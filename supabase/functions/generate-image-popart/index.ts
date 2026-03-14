@@ -5,114 +5,54 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const STYLE_RULES = {
+  style: ["bold pop art inspired by Andy Warhol and Roy Lichtenstein", "Ben-Day dots pattern in backgrounds and shadows", "thick black outlines around all forms", "flat color areas with high contrast", "comic book panel aesthetic", "screen-print texture and layering"],
+  composition: ["strong central subject", "graphic poster-like layout", "bold cropping for dramatic impact", "clear figure-ground separation"],
+  color: ["vibrant saturated primary and secondary colors", "CMYK-inspired palette: cyan, magenta, yellow, black", "high contrast color combinations", "no subtle tones — everything bold and punchy"],
+  quality: ["crisp halftone dots at consistent size", "clean sharp outlines with uniform weight", "professional screen-print quality", "high detail", "professional illustration", "sharp edges", "balanced composition", "no artifacts", "print-ready resolution"],
+  avoid: ["photorealism", "soft pastels or muted tones", "gradients or smooth shading", "visual clutter or excessive detail", "any written text or script"],
+};
+
+function buildPrompt(p: string, ar?: string, bg?: string): string {
+  const useCream = bg === "cream";
+  const bgText = useCream ? "Use a warm cream/off-white paper background tone." : "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color.";
+  const ratioText = ar ? `The image must have a ${ar} aspect ratio, composed specifically for that format.` : "";
+  return [`SUBJECT: ${p}`, "", `STYLE: ${STYLE_RULES.style.join(". ")}`, `COMPOSITION: ${STYLE_RULES.composition.join(". ")}`, `COLOR: ${STYLE_RULES.color.join(". ")}`, `QUALITY: ${STYLE_RULES.quality.join(". ")}`, `AVOID: ${STYLE_RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution with fine detail suitable for large format printing."].filter(Boolean).join("\n");
+}
+
+function buildEditPrompt(p: string, ar?: string, bg?: string): string {
+  const bgText = bg === "cream" ? "Maintain warm cream background." : "Background MUST be pure white (#FFFFFF).";
+  const ratioText = ar ? `Maintain ${ar} aspect ratio.` : "";
+  return ["CRITICAL: Keep the provided image almost entirely unchanged. Only apply the SPECIFIC edit below.", "Preserve composition, subjects, colors, background, perspective, lighting.", `STYLE TO MAINTAIN: ${STYLE_RULES.style.join(", ")}`, `EDIT TO APPLY: ${p}`, bgText, ratioText, `QUALITY: ${STYLE_RULES.quality.join(", ")}`, `AVOID: ${STYLE_RULES.avoid.join(", ")}`, "Generate at maximum resolution."].filter(Boolean).join("\n");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
   try {
-    const { prompt, aspectRatio, sourceImageUrl, whiteFrame, backgroundStyle } = await req.json();
-
-    if (!prompt || typeof prompt !== "string") {
-      return new Response(JSON.stringify({ error: "Invalid prompt" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
+    const { prompt, aspectRatio, sourceImageUrl, backgroundStyle } = await req.json();
+    if (!prompt || typeof prompt !== "string") return new Response(JSON.stringify({ error: "Invalid prompt" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const trimmedPrompt = prompt.trim();
-    if (trimmedPrompt.length === 0 || trimmedPrompt.length > 1000) {
-      return new Response(JSON.stringify({ error: "Prompt must be between 1 and 1000 characters" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
+    if (trimmedPrompt.length === 0 || trimmedPrompt.length > 1000) return new Response(JSON.stringify({ error: "Prompt must be between 1 and 1000 characters" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-    const useCream = backgroundStyle === "cream";
-    const ratioText = aspectRatio ? ` The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
-    const frameText = whiteFrame ? " Add a thin black frame/border around the artwork itself. Inside this black frame, keep the pop art composition as normal. Outside the black frame, the margin area must be clean pure white (#FFFFFF) — just solid white." : "";
-    const bgText = useCream ? " Use a warm cream/off-white paper background tone instead of pure white." : " CRITICAL: The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color — only clean pure white.";
-    const marginText = whiteFrame ? "" : " IMPORTANT: Leave a clean, empty 1 cm margin of blank white space around all sides of the artwork. Do NOT draw any lines, frames, borders, decorative elements, or any marks in this margin area - it must be completely plain and empty.";
-
-    let messages;
-
-    if (sourceImageUrl) {
-      const editPrompt = `CRITICAL: You MUST keep the provided image almost entirely unchanged. Only make the SPECIFIC edit described below — preserve the exact same composition, subjects, colors, background, perspective, lighting, and every other detail. The result must look like the same image with a small targeted modification, NOT a new image. Do NOT regenerate or reimagine the scene. Keep the pop art style.${bgText} Specific edit to apply: ${trimmedPrompt}. Generate at maximum resolution.${ratioText}${frameText}${marginText}`;
-      messages = [
-        {
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: sourceImageUrl } },
-            { type: "text", text: editPrompt },
-          ],
-        },
-      ];
-    } else {
-      const enhancedPrompt = `Create a high-resolution pop art style artwork inspired by Andy Warhol and Roy Lichtenstein: ${trimmedPrompt}. Style: bold colors, Ben-Day dots, thick black outlines, flat color areas, high contrast, comic book aesthetics, screen-print texture, vibrant saturated palette.${bgText} Generate at maximum resolution with crisp detail suitable for large format printing.${ratioText}${frameText}${marginText}`;
-      messages = [{ role: "user", content: enhancedPrompt }];
-    }
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-pro-image-preview",
-        messages,
-        modalities: ["image", "text"],
-      }),
-    });
-
+    const messages = sourceImageUrl
+      ? [{ role: "user", content: [{ type: "image_url", image_url: { url: sourceImageUrl } }, { type: "text", text: buildEditPrompt(trimmedPrompt, aspectRatio, backgroundStyle) }] }]
+      : [{ role: "user", content: buildPrompt(trimmedPrompt, aspectRatio, backgroundStyle) }];
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages, modalities: ["image", "text"] }) });
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Usage limit reached. Please add credits." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "Failed to generate image" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 402) return new Response(JSON.stringify({ error: "Usage limit reached. Please add credits." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const t = await response.text(); console.error("AI gateway error:", response.status, t);
+      return new Response(JSON.stringify({ error: "Failed to generate image" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
     const responseText = await response.text();
-    if (!responseText) {
-      console.error("AI gateway returned empty response");
-      return new Response(JSON.stringify({ error: "Empty response from AI. Please try again." }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch {
-      console.error("Failed to parse AI response:", responseText.slice(0, 200));
-      return new Response(JSON.stringify({ error: "Invalid response from AI. Please try again." }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!responseText) return new Response(JSON.stringify({ error: "Empty response from AI." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    let data; try { data = JSON.parse(responseText); } catch { return new Response(JSON.stringify({ error: "Invalid response from AI." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
     const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-    if (!imageUrl) {
-      return new Response(JSON.stringify({ error: "No image was generated. Try a different prompt." }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(JSON.stringify({ imageUrl }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    if (!imageUrl) return new Response(JSON.stringify({ error: "No image was generated." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ imageUrl }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("generate-image-popart error:", e);
-    return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: "An unexpected error occurred." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
