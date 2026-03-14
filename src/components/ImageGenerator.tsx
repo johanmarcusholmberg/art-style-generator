@@ -331,19 +331,6 @@ export default function ImageGenerator({
               HD Enhance
             </Label>
           </div>
-          <div className="flex items-center gap-2">
-            <Switch
-              id={`white-frame-${persistKey}`}
-              checked={whiteFrame}
-              onCheckedChange={setWhiteFrame}
-            />
-            <Label
-              htmlFor={`white-frame-${persistKey}`}
-              className="font-display text-sm text-muted-foreground cursor-pointer"
-            >
-              White Frame
-            </Label>
-          </div>
         </div>
 
         <div className="flex items-center gap-2">
