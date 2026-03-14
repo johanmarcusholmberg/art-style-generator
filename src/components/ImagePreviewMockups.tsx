@@ -67,14 +67,11 @@ interface ImagePreviewMockupsProps {
 export default function ImagePreviewMockups({ imageUrl, alt, compareUrl }: ImagePreviewMockupsProps) {
   const [mode, setMode] = useState<ViewMode>("original");
   const [frameStyle, setFrameStyle] = useState<string>(FRAME_STYLES[0].id);
-  const edgeColor = useEdgeColor(imageUrl);
-
   const selectedFrame = FRAME_STYLES.find((f) => f.id === frameStyle) || FRAME_STYLES[0];
   const isCompare = !!compareUrl;
 
   return (
     <div className="flex flex-col items-center gap-4 w-full">
-      {/* Controls row */}
       <div className="flex flex-wrap gap-2 items-center">
         <Select value={mode} onValueChange={(v) => setMode(v as ViewMode)}>
           <SelectTrigger className="w-[160px] font-display text-xs h-9">
@@ -108,11 +105,10 @@ export default function ImagePreviewMockups({ imageUrl, alt, compareUrl }: Image
         )}
       </div>
 
-      {/* Preview area */}
       <div className="w-full flex items-center justify-center">
         {isCompare ? (
           mode === "frame" ? (
-            <FramedContent frame={selectedFrame} edgeColor={edgeColor}>
+            <FramedContent frame={selectedFrame}>
               <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full max-h-[500px]" />
             </FramedContent>
           ) : (
@@ -125,7 +121,7 @@ export default function ImagePreviewMockups({ imageUrl, alt, compareUrl }: Image
             className="max-w-full max-h-[600px] rounded-sm animate-ink-spread"
           />
         ) : mode === "frame" ? (
-          <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} edgeColor={edgeColor} />
+          <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} />
         ) : null}
       </div>
     </div>
