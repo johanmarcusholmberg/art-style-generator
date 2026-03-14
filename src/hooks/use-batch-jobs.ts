@@ -13,7 +13,6 @@ export interface JobRow {
   aspect_ratio: string;
   print_size: string | null;
   hd_enhance: boolean;
-  white_frame: boolean;
   background_style: string;
   speed_mode: string;
   job_type: string;

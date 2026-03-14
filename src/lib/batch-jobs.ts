@@ -7,7 +7,6 @@ export interface BatchJobConfig {
   aspectRatio: string;
   printSize: string | null;
   hdEnhance: boolean;
-  whiteFrame: boolean;
   backgroundStyle: "white" | "cream";
   speedMode: "fast" | "quality";
   jobType: "batch" | "style-grid" | "matrix";
@@ -19,8 +18,6 @@ export interface BatchJobConfig {
 
 /**
  * Expand matrix variables into all combinations.
- * e.g. { color: ["red", "green"], style: ["oil", "ink"] }
- *  => ["red oil", "red ink", "green oil", "green ink"]
  */
 function expandMatrix(basePrompt: string, variables: Record<string, string[]>): string[] {
   const keys = Object.keys(variables);
@@ -51,11 +48,9 @@ function expandMatrix(basePrompt: string, variables: Record<string, string[]>): 
  * Creates a generation job with items and kicks off background processing.
  */
 export async function createBatchJob(config: BatchJobConfig): Promise<string> {
-  // Build the list of items to generate
   const items: Array<{ prompt_variant: string; style: string | null }> = [];
 
   if (config.jobType === "style-grid" && config.styleGridStyles?.length) {
-    // One image per style
     for (const style of config.styleGridStyles) {
       for (let i = 0; i < config.batchSize; i++) {
         items.push({ prompt_variant: config.prompt, style });
@@ -67,7 +62,6 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
       items.push({ prompt_variant: p, style: null });
     }
   } else {
-    // Simple batch
     for (let i = 0; i < config.batchSize; i++) {
       items.push({ prompt_variant: config.prompt, style: null });
     }
@@ -75,7 +69,6 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
 
   const totalImages = items.length;
 
-  // Create job
   const { data: job, error: jobError } = await supabase
     .from("generation_jobs")
     .insert({
@@ -86,7 +79,7 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
       aspect_ratio: config.aspectRatio,
       print_size: config.printSize,
       hd_enhance: config.hdEnhance,
-      white_frame: config.whiteFrame,
+      white_frame: false,
       background_style: config.backgroundStyle,
       speed_mode: config.speedMode,
       job_type: config.jobType,
@@ -99,7 +92,6 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
 
   if (jobError || !job) throw new Error(jobError?.message || "Failed to create job");
 
-  // Create job items
   const jobItems = items.map((item) => ({
     job_id: job.id,
     prompt_variant: item.prompt_variant,
@@ -108,13 +100,9 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
     status: "queued" as const,
   }));
 
-  const { error: itemsError } = await supabase
-    .from("generation_job_items")
-    .insert(jobItems);
-
+  const { error: itemsError } = await supabase.from("generation_job_items").insert(jobItems);
   if (itemsError) throw new Error(itemsError.message);
 
-  // Kick off background processing (fire-and-forget)
   supabase.functions
     .invoke("batch-generate", { body: { jobId: job.id } })
     .catch((err) => console.error("Failed to invoke batch-generate:", err));
@@ -122,47 +110,21 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
   return job.id;
 }
 
-/**
- * Cancel a running job.
- */
 export async function cancelJob(jobId: string) {
-  const { error } = await supabase
-    .from("generation_jobs")
-    .update({ status: "cancelled", updated_at: new Date().toISOString() })
-    .eq("id", jobId);
+  const { error } = await supabase.from("generation_jobs").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", jobId);
   if (error) throw error;
 }
 
-/**
- * Retry failed items in a job.
- */
 export async function retryFailedItems(jobId: string) {
-  // Reset failed items to queued
-  const { error: resetError } = await supabase
-    .from("generation_job_items")
-    .update({ status: "queued", error_message: null, updated_at: new Date().toISOString() })
-    .eq("job_id", jobId)
-    .eq("status", "failed");
-
+  const { error: resetError } = await supabase.from("generation_job_items").update({ status: "queued", error_message: null, updated_at: new Date().toISOString() }).eq("job_id", jobId).eq("status", "failed");
   if (resetError) throw resetError;
 
-  // Reset job status
-  const { error: jobError } = await supabase
-    .from("generation_jobs")
-    .update({ status: "queued", failed_images: 0, updated_at: new Date().toISOString() })
-    .eq("id", jobId);
-
+  const { error: jobError } = await supabase.from("generation_jobs").update({ status: "queued", failed_images: 0, updated_at: new Date().toISOString() }).eq("id", jobId);
   if (jobError) throw jobError;
 
-  // Re-invoke
-  supabase.functions
-    .invoke("batch-generate", { body: { jobId } })
-    .catch((err) => console.error("Failed to invoke batch-generate:", err));
+  supabase.functions.invoke("batch-generate", { body: { jobId } }).catch((err) => console.error("Failed to invoke batch-generate:", err));
 }
 
-/**
- * Delete a job and its items.
- */
 export async function deleteJob(jobId: string) {
   const { error } = await supabase.from("generation_jobs").delete().eq("id", jobId);
   if (error) throw error;
