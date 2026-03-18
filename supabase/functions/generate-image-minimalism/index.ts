@@ -5,23 +5,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const STYLE_RULES = {
-  style: ["clean geometric minimalist illustration", "Scandinavian and Swiss design influence", "precise shapes with vector-like edges", "flat design with intentional subtle depth", "abstract simplification of natural forms"],
-  composition: ["centered or rule-of-thirds subject placement", "generous negative space — at least 40% of canvas", "perfectly balanced layout", "every element must be intentional"],
-  color: ["limited palette of 2-3 harmonious muted colors", "no gradients unless absolutely essential", "soft earth tones or cool neutrals", "high contrast between subject and background"],
-  quality: ["pixel-perfect geometric edges", "professional poster illustration quality", "clean and precise throughout", "high detail", "sharp edges", "no artifacts", "print-ready resolution"],
-  avoid: ["clip-art or cartoon style", "visual clutter or busy compositions", "excessive detail or ornamentation", "more than 4 colors", "any written text or script"],
+const RULES = {
+  visualGoal: ["elegant minimalist illustration", "premium poster aesthetic", "gallery-ready minimal art"],
+  styleAnchors: ["minimalist poster design", "Scandinavian design aesthetic", "flat vector illustration", "Swiss graphic design tradition"],
+  style: ["clean geometric forms", "precise edges", "Scandinavian minimalism influence", "abstract simplification of natural forms"],
+  composition: ["centered subject", "large negative space — at least 40% of canvas", "balanced symmetry", "every element must be intentional"],
+  color: ["limited palette of 2-4 harmonious colors", "soft neutral background", "no gradients unless absolutely essential", "high contrast between subject and background"],
+  quality: ["sharp edges", "high clarity", "professional illustration finish", "pixel-perfect geometric edges", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
+  avoid: ["clip-art style", "cartoon aesthetics", "inconsistent line thickness", "visual clutter", "random objects", "more than 4 colors", "any written text or script"],
 };
 
 function buildPrompt(p: string, ar?: string, bg?: string): string {
   const bgText = bg === "cream" ? "Use a warm cream/off-white paper background tone." : "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color.";
   const ratioText = ar ? `The image must have a ${ar} aspect ratio.` : "";
-  return [`SUBJECT: ${p}`, "", `STYLE: ${STYLE_RULES.style.join(". ")}`, `COMPOSITION: ${STYLE_RULES.composition.join(". ")}`, `COLOR: ${STYLE_RULES.color.join(". ")}`, `QUALITY: ${STYLE_RULES.quality.join(". ")}`, `AVOID: ${STYLE_RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution with fine detail suitable for large format printing."].filter(Boolean).join("\n");
+  return [`PRIMARY SUBJECT: ${p}`, "", `VISUAL GOAL: ${RULES.visualGoal.join(". ")}`, "", `STYLE ANCHORS: ${RULES.styleAnchors.join(". ")}`, "", `STYLE RULES: ${RULES.style.join(". ")}`, "", `COMPOSITION: ${RULES.composition.join(". ")}`, "", `COLOR: ${RULES.color.join(". ")}`, "", `GLOBAL QUALITY: ${RULES.quality.join(". ")}`, "", `AVOID: ${RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution with fine detail suitable for large format printing."].filter(Boolean).join("\n");
 }
 
 function buildEditPrompt(p: string, ar?: string, bg?: string): string {
   const bgText = bg === "cream" ? "Maintain warm cream background." : "Background MUST be pure white (#FFFFFF).";
-  return ["CRITICAL: Keep the provided image almost entirely unchanged. Only apply the SPECIFIC edit below.", `STYLE TO MAINTAIN: ${STYLE_RULES.style.join(", ")}`, `EDIT TO APPLY: ${p}`, bgText, ar ? `Maintain ${ar} aspect ratio.` : "", `AVOID: ${STYLE_RULES.avoid.join(", ")}`, "Generate at maximum resolution."].filter(Boolean).join("\n");
+  return ["CRITICAL EDITING INSTRUCTIONS:", "You MUST keep the provided image almost entirely unchanged.", "Only make the SPECIFIC edit described below.", "Do NOT regenerate or reimagine the scene.", "", `VISUAL GOAL: ${RULES.visualGoal.join(". ")}`, `STYLE ANCHORS: ${RULES.styleAnchors.join(", ")}`, `STYLE TO MAINTAIN: ${RULES.style.join(", ")}`, "", `EDIT TO APPLY: ${p}`, "", bgText, ar ? `Maintain ${ar} aspect ratio.` : "", `GLOBAL QUALITY: ${RULES.quality.join(", ")}`, `AVOID: ${RULES.avoid.join(", ")}`, "Generate at maximum resolution."].filter(Boolean).join("\n");
 }
 
 serve(async (req) => {

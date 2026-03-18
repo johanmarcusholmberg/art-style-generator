@@ -5,23 +5,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const STYLE_RULES = {
-  style: ["fine pen-and-ink line art style", "delicate ink lines with hatching for depth", "elegant pen technique with varying weights"],
+const RULES = {
+  visualGoal: ["elegant pen-and-ink artwork", "premium illustration-quality line drawing"],
+  styleAnchors: ["fine pen-and-ink line art", "elegant ink illustration tradition", "detailed monochrome drawing"],
+  style: ["delicate ink lines with hatching for depth", "elegant pen technique with varying weights"],
   composition: ["clear subject with supporting detail", "depth through line density", "balanced composition"],
   color: ["black ink on white — monochrome only", "no color fills"],
-  quality: ["consistent crisp linework", "fine detail throughout", "high detail", "professional illustration", "sharp edges", "no artifacts", "print-ready resolution"],
+  quality: ["consistent crisp linework", "fine detail throughout", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
   avoid: ["color or washes", "cartoon style", "any written text or script"],
 };
 
 function buildPrompt(p: string, ar?: string, bg?: string): string {
   const bgText = bg === "cream" ? "The background should be a warm cream/off-white vintage paper tone." : "The background MUST be pure white (#FFFFFF).";
   const ratioText = ar ? `The image must have a ${ar} aspect ratio.` : "";
-  return [`SUBJECT: ${p}`, "", `STYLE: ${STYLE_RULES.style.join(". ")}`, `COMPOSITION: ${STYLE_RULES.composition.join(". ")}`, `COLOR: ${STYLE_RULES.color.join(". ")}`, `QUALITY: ${STYLE_RULES.quality.join(". ")}`, `AVOID: ${STYLE_RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution."].filter(Boolean).join("\n");
+  return [`PRIMARY SUBJECT: ${p}`, "", `VISUAL GOAL: ${RULES.visualGoal.join(". ")}`, "", `STYLE ANCHORS: ${RULES.styleAnchors.join(". ")}`, "", `STYLE RULES: ${RULES.style.join(". ")}`, "", `COMPOSITION: ${RULES.composition.join(". ")}`, "", `COLOR: ${RULES.color.join(". ")}`, "", `GLOBAL QUALITY: ${RULES.quality.join(". ")}`, "", `AVOID: ${RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution."].filter(Boolean).join("\n");
 }
 
 function buildEditPrompt(p: string, ar?: string, bg?: string): string {
   const bgText = bg === "cream" ? "Maintain warm cream background." : "Background MUST be pure white (#FFFFFF).";
-  return ["CRITICAL: Keep the provided image almost entirely unchanged. Only apply the SPECIFIC edit below.", `STYLE TO MAINTAIN: ${STYLE_RULES.style.join(", ")}`, `EDIT TO APPLY: ${p}`, bgText, ar ? `Maintain ${ar} aspect ratio.` : "", `AVOID: ${STYLE_RULES.avoid.join(", ")}`, "Generate at maximum resolution."].filter(Boolean).join("\n");
+  return ["CRITICAL EDITING INSTRUCTIONS:", "You MUST keep the provided image almost entirely unchanged.", "Only make the SPECIFIC edit described below.", "Do NOT regenerate or reimagine the scene.", "", `VISUAL GOAL: ${RULES.visualGoal.join(". ")}`, `STYLE ANCHORS: ${RULES.styleAnchors.join(", ")}`, `STYLE TO MAINTAIN: ${RULES.style.join(", ")}`, "", `EDIT TO APPLY: ${p}`, "", bgText, ar ? `Maintain ${ar} aspect ratio.` : "", `GLOBAL QUALITY: ${RULES.quality.join(", ")}`, `AVOID: ${RULES.avoid.join(", ")}`, "Generate at maximum resolution."].filter(Boolean).join("\n");
 }
 
 serve(async (req) => {

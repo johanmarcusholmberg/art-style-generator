@@ -5,23 +5,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const STYLE_RULES = {
-  style: ["fine pen-and-ink illustration", "delicate thin ink lines with precise control", "hatching and cross-hatching for tonal depth", "stippling for texture", "varying line weights for emphasis and depth", "reminiscent of vintage engraving and etching"],
+const RULES = {
+  visualGoal: ["museum-quality pen-and-ink illustration", "fine art engraving-level detail"],
+  styleAnchors: ["fine pen-and-ink illustration", "Victorian engraving and etching tradition", "botanical illustration precision"],
+  style: ["delicate thin ink lines with precise control", "hatching and cross-hatching for tonal depth", "stippling for texture in selected areas", "varying line weights for emphasis and depth", "reminiscent of vintage engraving and etching"],
   composition: ["detailed focal subject with surrounding context", "depth created through line density variation", "balanced positive and negative space", "architectural drafting precision"],
   color: ["black ink on white only — strictly monochrome", "no color fills or solid black areas", "tonal range achieved through line density alone"],
-  quality: ["botanical illustration precision in linework", "consistent line quality throughout", "fine detail suitable for large-format printing", "high detail", "professional illustration", "sharp edges", "no artifacts", "print-ready resolution"],
+  quality: ["botanical illustration precision in linework", "consistent line quality throughout", "fine detail suitable for large-format printing", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
   avoid: ["color fills or washes", "solid black areas or silhouettes", "cartoon style or simplified forms", "inconsistent line thickness", "any written text or script"],
 };
 
 function buildPrompt(p: string, ar?: string, bg?: string): string {
   const bgText = bg === "cream" ? "The background should be a warm cream/off-white vintage paper tone, like aged parchment." : "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, or off-white.";
   const ratioText = ar ? `The image must have a ${ar} aspect ratio.` : "";
-  return [`SUBJECT: ${p}`, "", `STYLE: ${STYLE_RULES.style.join(". ")}`, `COMPOSITION: ${STYLE_RULES.composition.join(". ")}`, `COLOR: ${STYLE_RULES.color.join(". ")}`, `QUALITY: ${STYLE_RULES.quality.join(". ")}`, `AVOID: ${STYLE_RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution with fine detail suitable for large format printing."].filter(Boolean).join("\n");
+  return [`PRIMARY SUBJECT: ${p}`, "", `VISUAL GOAL: ${RULES.visualGoal.join(". ")}`, "", `STYLE ANCHORS: ${RULES.styleAnchors.join(". ")}`, "", `STYLE RULES: ${RULES.style.join(". ")}`, "", `COMPOSITION: ${RULES.composition.join(". ")}`, "", `COLOR: ${RULES.color.join(". ")}`, "", `GLOBAL QUALITY: ${RULES.quality.join(". ")}`, "", `AVOID: ${RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution with fine detail suitable for large format printing."].filter(Boolean).join("\n");
 }
 
 function buildEditPrompt(p: string, ar?: string, bg?: string): string {
   const bgText = bg === "cream" ? "Maintain warm cream vintage paper background." : "Background MUST be pure white (#FFFFFF).";
-  return ["CRITICAL: Keep the provided image almost entirely unchanged. Only apply the SPECIFIC edit below.", `STYLE TO MAINTAIN: ${STYLE_RULES.style.join(", ")}`, `EDIT TO APPLY: ${p}`, bgText, ar ? `Maintain ${ar} aspect ratio.` : "", `AVOID: ${STYLE_RULES.avoid.join(", ")}`, "Generate at maximum resolution."].filter(Boolean).join("\n");
+  return ["CRITICAL EDITING INSTRUCTIONS:", "You MUST keep the provided image almost entirely unchanged.", "Only make the SPECIFIC edit described below.", "Do NOT regenerate or reimagine the scene.", "", `VISUAL GOAL: ${RULES.visualGoal.join(". ")}`, `STYLE ANCHORS: ${RULES.styleAnchors.join(", ")}`, `STYLE TO MAINTAIN: ${RULES.style.join(", ")}`, "", `EDIT TO APPLY: ${p}`, "", bgText, ar ? `Maintain ${ar} aspect ratio.` : "", `GLOBAL QUALITY: ${RULES.quality.join(", ")}`, `AVOID: ${RULES.avoid.join(", ")}`, "Generate at maximum resolution."].filter(Boolean).join("\n");
 }
 
 serve(async (req) => {
