@@ -5,20 +5,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const STYLE_DESCRIPTIONS: Record<string, string> = {
-  japanese: "traditional Japanese ukiyo-e woodblock print with flat colors, bold outlines, sumi ink details, Edo period aesthetic",
-  freestyle: "ukiyo-e woodblock print style applied to modern subjects with flat colors and bold outlines",
-  popart: "bold pop art with Ben-Day dots, thick black outlines, flat vivid colors, comic book aesthetic, screen-print texture",
-  "popart-freestyle": "pop art inspired illustration with bold colors, halftone dots, and graphic shapes",
-  lineart: "detailed fine line art with pen and ink, cross-hatching, stippling, varying line weights, engraving quality",
-  "lineart-freestyle": "fine pen-and-ink line art with elegant technique and varying weights",
-  "lineart-minimal": "ultra-minimal continuous line drawing with the fewest possible strokes, Picasso-inspired simplicity",
-  minimalism: "minimalist art with clean geometric shapes, limited 2-3 color palette, generous negative space, Scandinavian design",
-  "minimalism-freestyle": "minimalist illustration with simplified forms, muted tones, and flat design",
-  graffiti: "urban street art graffiti with spray paint effects, bold lettering energy, drips, stencil elements, Banksy-inspired",
-  "graffiti-freestyle": "street art inspired illustration with vibrant urban energy and spray paint texture",
-  botanical: "detailed botanical illustration with scientific accuracy, delicate watercolor washes, fine ink outlines, Redouté tradition",
-  "botanical-freestyle": "botanical-inspired artistic illustration with natural watercolor forms and scientific flair",
+const STYLE_DESCRIPTIONS: Record<string, { visualGoal: string; anchors: string }> = {
+  japanese: { visualGoal: "authentic museum-quality ukiyo-e woodblock print", anchors: "traditional ukiyo-e, Hokusai/Hiroshige aesthetic, flat colors, bold outlines, sumi ink, Edo period" },
+  freestyle: { visualGoal: "ukiyo-e woodblock print applied to modern subjects", anchors: "woodblock print style, flat colors, bold outlines, sumi ink details" },
+  popart: { visualGoal: "bold gallery-quality pop art print", anchors: "Andy Warhol screen-print, Roy Lichtenstein comic panel, Ben-Day dots, thick black outlines, flat vivid colors" },
+  "popart-freestyle": { visualGoal: "vibrant pop art illustration", anchors: "pop art bold colors, halftone dots, graphic shapes" },
+  lineart: { visualGoal: "museum-quality pen-and-ink illustration", anchors: "fine pen-and-ink, cross-hatching, stippling, varying line weights, engraving quality" },
+  "lineart-freestyle": { visualGoal: "elegant pen-and-ink artwork", anchors: "fine ink line art, elegant technique, varying weights" },
+  "lineart-minimal": { visualGoal: "gallery-quality minimal line art", anchors: "ultra-minimal continuous line, Picasso-inspired, fewest possible strokes" },
+  minimalism: { visualGoal: "elegant minimalist poster art", anchors: "Scandinavian design, clean geometric shapes, limited 2-4 color palette, generous negative space" },
+  "minimalism-freestyle": { visualGoal: "clean minimalist artwork", anchors: "minimalist illustration, simplified forms, muted tones, flat design" },
+  graffiti: { visualGoal: "authentic urban street art mural", anchors: "spray paint effects, bold outlines, drips, stencil elements, Banksy/KAWS inspired" },
+  "graffiti-freestyle": { visualGoal: "vibrant street art illustration", anchors: "street art inspired, urban energy, spray paint texture" },
+  botanical: { visualGoal: "museum-quality botanical illustration", anchors: "scientific botanical art, Redouté tradition, delicate watercolor washes, fine ink outlines" },
+  "botanical-freestyle": { visualGoal: "artistic botanical watercolor", anchors: "botanical watercolor, natural forms, scientific flair" },
 };
 
 serve(async (req) => {
@@ -36,20 +36,24 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const s1 = STYLE_DESCRIPTIONS[style1];
+    const s2 = STYLE_DESCRIPTIONS[style2];
     const useCream = backgroundStyle === "cream";
     const ratioText = aspectRatio ? `The image must have a ${aspectRatio} aspect ratio.` : "";
     const bgText = useCream ? "Use a warm cream/off-white vintage paper tone background." : "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color.";
 
     const enhancedPrompt = [
-      `SUBJECT: ${trimmedPrompt}`,
+      `PRIMARY SUBJECT: ${trimmedPrompt}`,
+      "",
+      `VISUAL GOAL: A harmonious fusion of "${s1.visualGoal}" and "${s2.visualGoal}"`,
       "",
       `STYLE BLEND:`,
-      `Style 1: ${STYLE_DESCRIPTIONS[style1]}`,
-      `Style 2: ${STYLE_DESCRIPTIONS[style2]}`,
+      `Style 1 anchors: ${s1.anchors}`,
+      `Style 2 anchors: ${s2.anchors}`,
       "",
       "Blend these styles evenly — the result should feel like a natural hybrid where elements of both styles coexist harmoniously. Do not split the image; integrate both aesthetics throughout.",
       "",
-      `QUALITY: high detail, professional illustration, sharp edges, balanced composition, no artifacts, print-ready resolution`,
+      `GLOBAL QUALITY: high detail, professional illustration, sharp rendering, balanced composition, clean edges, no artifacts, print-ready resolution`,
       `AVOID: any written text or script, visual clutter, inconsistent style mixing`,
       "",
       bgText,
