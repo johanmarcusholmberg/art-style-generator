@@ -52,7 +52,6 @@ export default function Blend() {
 
   // Options
   const [selectedSize, setSelectedSize] = useState<PrintSize>(PRINT_SIZES[1]);
-  const [whiteFrame, setWhiteFrame] = useState(false);
   const [useCream, setUseCream] = useState(false);
 
   const handleGenerate = async () => {
