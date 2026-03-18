@@ -66,7 +66,6 @@ export default function Blend() {
           style1,
           style2,
           aspectRatio: selectedSize.ratio,
-          whiteFrame,
           backgroundStyle: useCream ? "cream" : "white",
         },
       });
