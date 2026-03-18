@@ -5,25 +5,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const STYLE_RULES = {
-  style: ["bold pop art inspired by Andy Warhol and Roy Lichtenstein", "Ben-Day dots pattern in backgrounds and shadows", "thick black outlines around all forms", "flat color areas with high contrast", "comic book panel aesthetic", "screen-print texture and layering"],
+const RULES = {
+  visualGoal: ["bold gallery-quality pop art print", "Warhol/Lichtenstein level graphic impact"],
+  styleAnchors: ["Andy Warhol screen-print aesthetic", "Roy Lichtenstein comic panel style", "1960s pop art movement"],
+  style: ["Ben-Day dots pattern in backgrounds and shadows", "thick black outlines around all forms", "flat color areas with high contrast", "comic book panel aesthetic", "screen-print texture and layering"],
   composition: ["strong central subject", "graphic poster-like layout", "bold cropping for dramatic impact", "clear figure-ground separation"],
   color: ["vibrant saturated primary and secondary colors", "CMYK-inspired palette: cyan, magenta, yellow, black", "high contrast color combinations", "no subtle tones — everything bold and punchy"],
-  quality: ["crisp halftone dots at consistent size", "clean sharp outlines with uniform weight", "professional screen-print quality", "high detail", "professional illustration", "sharp edges", "balanced composition", "no artifacts", "print-ready resolution"],
+  quality: ["crisp halftone dots at consistent size", "clean sharp outlines with uniform weight", "professional screen-print quality", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
   avoid: ["photorealism", "soft pastels or muted tones", "gradients or smooth shading", "visual clutter or excessive detail", "any written text or script"],
 };
 
 function buildPrompt(p: string, ar?: string, bg?: string): string {
-  const useCream = bg === "cream";
-  const bgText = useCream ? "Use a warm cream/off-white paper background tone." : "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color.";
+  const bgText = bg === "cream" ? "Use a warm cream/off-white paper background." : "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color.";
   const ratioText = ar ? `The image must have a ${ar} aspect ratio, composed specifically for that format.` : "";
-  return [`SUBJECT: ${p}`, "", `STYLE: ${STYLE_RULES.style.join(". ")}`, `COMPOSITION: ${STYLE_RULES.composition.join(". ")}`, `COLOR: ${STYLE_RULES.color.join(". ")}`, `QUALITY: ${STYLE_RULES.quality.join(". ")}`, `AVOID: ${STYLE_RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution with fine detail suitable for large format printing."].filter(Boolean).join("\n");
+  return [`PRIMARY SUBJECT: ${p}`, "", `VISUAL GOAL: ${RULES.visualGoal.join(". ")}`, "", `STYLE ANCHORS: ${RULES.styleAnchors.join(". ")}`, "", `STYLE RULES: ${RULES.style.join(". ")}`, "", `COMPOSITION: ${RULES.composition.join(". ")}`, "", `COLOR: ${RULES.color.join(". ")}`, "", `GLOBAL QUALITY: ${RULES.quality.join(". ")}`, "", `AVOID: ${RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution with fine detail suitable for large format printing."].filter(Boolean).join("\n");
 }
 
 function buildEditPrompt(p: string, ar?: string, bg?: string): string {
   const bgText = bg === "cream" ? "Maintain warm cream background." : "Background MUST be pure white (#FFFFFF).";
-  const ratioText = ar ? `Maintain ${ar} aspect ratio.` : "";
-  return ["CRITICAL: Keep the provided image almost entirely unchanged. Only apply the SPECIFIC edit below.", "Preserve composition, subjects, colors, background, perspective, lighting.", `STYLE TO MAINTAIN: ${STYLE_RULES.style.join(", ")}`, `EDIT TO APPLY: ${p}`, bgText, ratioText, `QUALITY: ${STYLE_RULES.quality.join(", ")}`, `AVOID: ${STYLE_RULES.avoid.join(", ")}`, "Generate at maximum resolution."].filter(Boolean).join("\n");
+  return ["CRITICAL EDITING INSTRUCTIONS:", "You MUST keep the provided image almost entirely unchanged.", "Only make the SPECIFIC edit described below.", "Preserve composition, subjects, colors, background, perspective, lighting.", "Do NOT regenerate or reimagine the scene.", "", `VISUAL GOAL: ${RULES.visualGoal.join(". ")}`, `STYLE ANCHORS: ${RULES.styleAnchors.join(", ")}`, `STYLE TO MAINTAIN: ${RULES.style.join(", ")}`, "", `EDIT TO APPLY: ${p}`, "", bgText, ar ? `Maintain ${ar} aspect ratio.` : "", `GLOBAL QUALITY: ${RULES.quality.join(", ")}`, `AVOID: ${RULES.avoid.join(", ")}`, "Generate at maximum resolution."].filter(Boolean).join("\n");
 }
 
 serve(async (req) => {
@@ -33,15 +33,14 @@ serve(async (req) => {
     if (!prompt || typeof prompt !== "string") return new Response(JSON.stringify({ error: "Invalid prompt" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const trimmedPrompt = prompt.trim();
     if (trimmedPrompt.length === 0 || trimmedPrompt.length > 1000) return new Response(JSON.stringify({ error: "Prompt must be between 1 and 1000 characters" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY"); if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
     const messages = sourceImageUrl
       ? [{ role: "user", content: [{ type: "image_url", image_url: { url: sourceImageUrl } }, { type: "text", text: buildEditPrompt(trimmedPrompt, aspectRatio, backgroundStyle) }] }]
       : [{ role: "user", content: buildPrompt(trimmedPrompt, aspectRatio, backgroundStyle) }];
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages, modalities: ["image", "text"] }) });
     if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Usage limit reached. Please add credits." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Too many requests." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 402) return new Response(JSON.stringify({ error: "Usage limit reached." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const t = await response.text(); console.error("AI gateway error:", response.status, t);
       return new Response(JSON.stringify({ error: "Failed to generate image" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

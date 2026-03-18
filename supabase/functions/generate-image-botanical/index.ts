@@ -5,23 +5,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const STYLE_RULES = {
-  style: ["scientific botanical illustration", "tradition of Pierre-Joseph Redouté and Ernst Haeckel", "precise watercolor rendering with transparent washes", "fine ink outlines with watercolor color fills", "accurate botanical detail: leaves, petals, stems, veins"],
+const RULES = {
+  visualGoal: ["museum-quality scientific botanical illustration", "natural history art collection worthy"],
+  styleAnchors: ["scientific botanical illustration", "Pierre-Joseph Redouté tradition", "Ernst Haeckel natural history art"],
+  style: ["precise watercolor rendering with transparent washes", "fine ink outlines with watercolor color fills", "accurate botanical detail: leaves, petals, stems, veins"],
   composition: ["specimen-style centered presentation", "multiple views if appropriate: flower, leaf, cross-section", "elegant arrangement on the page", "scientific accuracy in proportions"],
   color: ["soft natural watercolor palette", "transparent layered washes", "true-to-life botanical colors", "subtle color gradations within petals and leaves"],
-  quality: ["museum-quality natural history illustration", "visible delicate brushwork in watercolor areas", "fine ink line detail in veins and edges", "high detail", "professional illustration", "sharp edges", "no artifacts", "print-ready resolution"],
+  quality: ["museum-quality natural history illustration", "visible delicate brushwork in watercolor areas", "fine ink line detail in veins and edges", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
   avoid: ["photorealistic rendering", "digital gradient effects", "any text, labels, or annotations", "stylized or cartoonish plants"],
 };
 
 function buildPrompt(p: string, ar?: string, bg?: string): string {
   const bgText = bg === "cream" ? "Use a warm cream/off-white vintage paper background, like aged botanical art paper." : "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, or off-white.";
   const ratioText = ar ? `The image must have a ${ar} aspect ratio.` : "";
-  return [`SUBJECT: ${p}`, "", `STYLE: ${STYLE_RULES.style.join(". ")}`, `COMPOSITION: ${STYLE_RULES.composition.join(". ")}`, `COLOR: ${STYLE_RULES.color.join(". ")}`, `QUALITY: ${STYLE_RULES.quality.join(". ")}`, `AVOID: ${STYLE_RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution with fine detail suitable for large format printing."].filter(Boolean).join("\n");
+  return [`PRIMARY SUBJECT: ${p}`, "", `VISUAL GOAL: ${RULES.visualGoal.join(". ")}`, "", `STYLE ANCHORS: ${RULES.styleAnchors.join(". ")}`, "", `STYLE RULES: ${RULES.style.join(". ")}`, "", `COMPOSITION: ${RULES.composition.join(". ")}`, "", `COLOR: ${RULES.color.join(". ")}`, "", `GLOBAL QUALITY: ${RULES.quality.join(". ")}`, "", `AVOID: ${RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution with fine detail suitable for large format printing."].filter(Boolean).join("\n");
 }
 
 function buildEditPrompt(p: string, ar?: string, bg?: string): string {
   const bgText = bg === "cream" ? "Maintain warm cream vintage paper background." : "Background MUST be pure white (#FFFFFF).";
-  return ["CRITICAL: Keep the provided image almost entirely unchanged. Only apply the SPECIFIC edit below.", `STYLE TO MAINTAIN: ${STYLE_RULES.style.join(", ")}`, `EDIT TO APPLY: ${p}`, bgText, ar ? `Maintain ${ar} aspect ratio.` : "", `AVOID: ${STYLE_RULES.avoid.join(", ")}`, "Generate at maximum resolution."].filter(Boolean).join("\n");
+  return ["CRITICAL EDITING INSTRUCTIONS:", "You MUST keep the provided image almost entirely unchanged.", "Only make the SPECIFIC edit described below.", "Do NOT regenerate or reimagine the scene.", "", `VISUAL GOAL: ${RULES.visualGoal.join(". ")}`, `STYLE ANCHORS: ${RULES.styleAnchors.join(", ")}`, `STYLE TO MAINTAIN: ${RULES.style.join(", ")}`, "", `EDIT TO APPLY: ${p}`, "", bgText, ar ? `Maintain ${ar} aspect ratio.` : "", `GLOBAL QUALITY: ${RULES.quality.join(", ")}`, `AVOID: ${RULES.avoid.join(", ")}`, "Generate at maximum resolution."].filter(Boolean).join("\n");
 }
 
 serve(async (req) => {

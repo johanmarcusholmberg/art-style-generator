@@ -1,6 +1,8 @@
-/** Structured prompt rules for each art style */
+/** Structured art direction system for each style */
 
 export interface StyleRules {
+  visualGoal: string[];
+  styleAnchors: string[];
   styleRules: string[];
   compositionRules: string[];
   colorRules: string[];
@@ -9,29 +11,47 @@ export interface StyleRules {
 }
 
 /** Universal quality tokens appended to every generation */
-const UNIVERSAL_QUALITY = [
+export const GLOBAL_QUALITY = [
   "high detail",
   "professional illustration",
-  "sharp edges",
+  "sharp rendering",
   "balanced composition",
+  "clean edges",
   "no artifacts",
   "print-ready resolution",
 ];
 
+/** Variation instructions for batch generation */
+export const VARIATION_INSTRUCTIONS = [
+  "alternate composition angle",
+  "different lighting direction",
+  "slight perspective shift",
+  "variation in framing and cropping",
+  "different focal emphasis",
+];
+
 export const STYLE_RULES: Record<string, StyleRules> = {
   japanese: {
-    styleRules: [
+    visualGoal: [
+      "authentic museum-quality ukiyo-e woodblock print",
+      "feels like a genuine Edo period artwork",
+    ],
+    styleAnchors: [
       "traditional Japanese ukiyo-e woodblock print",
+      "Hokusai and Hiroshige aesthetic",
+      "Edo period visual language",
+    ],
+    styleRules: [
       "flat color areas with bold black outlines",
       "sumi ink details and brushwork",
-      "Edo period aesthetic and composition",
       "layered depth through overlapping planes",
+      "visible wood grain texture in flat areas",
     ],
     compositionRules: [
       "asymmetric balance typical of Japanese prints",
       "foreground, middle ground, background layers",
       "dramatic use of negative space",
-      "natural flow guiding the eye",
+      "natural flow guiding the eye through the scene",
     ],
     colorRules: [
       "rich but limited palette of 5-8 traditional pigment colors",
@@ -41,8 +61,8 @@ export const STYLE_RULES: Record<string, StyleRules> = {
     ],
     qualityRules: [
       "museum-quality woodblock print reproduction",
-      "visible wood grain texture in flat areas",
       "crisp registration between color layers",
+      "fine detail in linework and texture",
     ],
     avoidRules: [
       "photorealistic rendering",
@@ -54,11 +74,19 @@ export const STYLE_RULES: Record<string, StyleRules> = {
   },
 
   freestyle: {
+    visualGoal: [
+      "ukiyo-e woodblock print applied to any subject",
+      "premium art print aesthetic",
+    ],
+    styleAnchors: [
+      "ukiyo-e woodblock print art style",
+      "Japanese printmaking applied to modern subjects",
+      "bold flat-color illustration",
+    ],
     styleRules: [
-      "ukiyo-e woodblock print art style applied to any subject",
       "flat color areas with bold black outlines",
       "sumi ink details and brushwork",
-      "woodblock print aesthetic with modern subjects",
+      "woodblock print aesthetic regardless of subject",
     ],
     compositionRules: [
       "centered or asymmetric balance",
@@ -82,8 +110,16 @@ export const STYLE_RULES: Record<string, StyleRules> = {
   },
 
   popart: {
+    visualGoal: [
+      "bold gallery-quality pop art print",
+      "Warhol/Lichtenstein level graphic impact",
+    ],
+    styleAnchors: [
+      "Andy Warhol screen-print aesthetic",
+      "Roy Lichtenstein comic panel style",
+      "1960s pop art movement",
+    ],
     styleRules: [
-      "bold pop art inspired by Andy Warhol and Roy Lichtenstein",
       "Ben-Day dots pattern in backgrounds and shadows",
       "thick black outlines around all forms",
       "flat color areas with high contrast",
@@ -92,7 +128,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
     ],
     compositionRules: [
       "strong central subject",
-      "graphic, poster-like layout",
+      "graphic poster-like layout",
       "bold cropping for dramatic impact",
       "clear figure-ground separation",
     ],
@@ -117,8 +153,16 @@ export const STYLE_RULES: Record<string, StyleRules> = {
   },
 
   "popart-freestyle": {
+    visualGoal: [
+      "vibrant pop art illustration with graphic punch",
+      "street-poster quality artwork",
+    ],
+    styleAnchors: [
+      "pop art visual language",
+      "comic book and screen-print aesthetics",
+      "bold graphic illustration",
+    ],
     styleRules: [
-      "pop art visual style with bold graphic impact",
       "Ben-Day dots, thick outlines, flat vivid colors",
       "comic book and screen-print aesthetics",
     ],
@@ -144,8 +188,16 @@ export const STYLE_RULES: Record<string, StyleRules> = {
   },
 
   lineart: {
-    styleRules: [
+    visualGoal: [
+      "museum-quality pen-and-ink illustration",
+      "fine art engraving-level detail",
+    ],
+    styleAnchors: [
       "fine pen-and-ink illustration",
+      "Victorian engraving and etching tradition",
+      "botanical illustration precision",
+    ],
+    styleRules: [
       "delicate thin ink lines with precise control",
       "hatching and cross-hatching for tonal depth",
       "stippling for texture in selected areas",
@@ -178,8 +230,16 @@ export const STYLE_RULES: Record<string, StyleRules> = {
   },
 
   "lineart-freestyle": {
+    visualGoal: [
+      "elegant pen-and-ink artwork",
+      "premium illustration-quality line drawing",
+    ],
+    styleAnchors: [
+      "fine pen-and-ink line art",
+      "elegant ink illustration tradition",
+      "detailed monochrome drawing",
+    ],
     styleRules: [
-      "fine pen-and-ink line art style",
       "delicate ink lines with hatching for depth",
       "elegant pen technique with varying weights",
     ],
@@ -204,11 +264,18 @@ export const STYLE_RULES: Record<string, StyleRules> = {
   },
 
   "lineart-minimal": {
-    styleRules: [
+    visualGoal: [
+      "gallery-quality minimal line art",
+      "Picasso single-line drawing elegance",
+    ],
+    styleAnchors: [
       "ultra-minimal continuous line drawing",
+      "Picasso's single-line drawings",
+      "one-line art movement",
+    ],
+    styleRules: [
       "absolute fewest lines possible to convey the subject",
       "single-weight thin black line",
-      "inspired by Picasso's single-line drawings",
       "one-line art style with elegant simplicity",
     ],
     compositionRules: [
@@ -234,44 +301,65 @@ export const STYLE_RULES: Record<string, StyleRules> = {
   },
 
   minimalism: {
+    visualGoal: [
+      "elegant minimalist illustration",
+      "premium poster aesthetic",
+      "gallery-ready minimal art",
+    ],
+    styleAnchors: [
+      "minimalist poster design",
+      "Scandinavian design aesthetic",
+      "flat vector illustration",
+      "Swiss graphic design tradition",
+    ],
     styleRules: [
-      "clean geometric minimalist illustration",
-      "Scandinavian and Swiss design influence",
-      "precise shapes with vector-like edges",
-      "flat design with intentional subtle depth",
+      "clean geometric forms",
+      "precise edges",
+      "Scandinavian minimalism influence",
       "abstract simplification of natural forms",
     ],
     compositionRules: [
-      "centered or rule-of-thirds subject placement",
-      "generous negative space — at least 40% of canvas",
-      "perfectly balanced layout",
+      "centered subject",
+      "large negative space — at least 40% of canvas",
+      "balanced symmetry",
       "every element must be intentional",
     ],
     colorRules: [
-      "limited palette of 2-3 harmonious muted colors",
+      "limited palette of 2-4 harmonious colors",
+      "soft neutral background",
       "no gradients unless absolutely essential",
-      "soft earth tones or cool neutrals",
       "high contrast between subject and background",
     ],
     qualityRules: [
+      "sharp edges",
+      "high clarity",
+      "professional illustration finish",
       "pixel-perfect geometric edges",
-      "professional poster illustration quality",
-      "clean and precise throughout",
     ],
     avoidRules: [
-      "clip-art or cartoon style",
-      "visual clutter or busy compositions",
-      "excessive detail or ornamentation",
+      "clip-art style",
+      "cartoon aesthetics",
+      "inconsistent line thickness",
+      "visual clutter",
+      "random objects",
       "more than 4 colors",
       "any written text or script",
     ],
   },
 
   "minimalism-freestyle": {
-    styleRules: [
-      "minimalist art style with clean simplified forms",
-      "geometric shapes and flat design",
+    visualGoal: [
+      "clean minimalist artwork",
+      "modern design poster quality",
+    ],
+    styleAnchors: [
+      "minimalist art style",
       "Scandinavian design aesthetic",
+      "flat geometric illustration",
+    ],
+    styleRules: [
+      "clean simplified forms",
+      "geometric shapes and flat design",
     ],
     compositionRules: [
       "generous negative space",
@@ -294,13 +382,20 @@ export const STYLE_RULES: Record<string, StyleRules> = {
   },
 
   graffiti: {
+    visualGoal: [
+      "authentic urban street art mural",
+      "gallery-quality graffiti artwork",
+    ],
+    styleAnchors: [
+      "urban street art graffiti",
+      "Banksy, KAWS, and NYC subway graffiti",
+      "spray paint mural tradition",
+    ],
     styleRules: [
-      "urban street art graffiti style",
       "vibrant spray paint colors with dripping effects",
       "bold outlines and stencil art elements",
       "brick wall or concrete texture backgrounds",
       "wildstyle lettering energy without actual letters",
-      "inspired by Banksy, KAWS, and NYC subway graffiti",
     ],
     compositionRules: [
       "dynamic asymmetric layout",
@@ -328,8 +423,16 @@ export const STYLE_RULES: Record<string, StyleRules> = {
   },
 
   "graffiti-freestyle": {
+    visualGoal: [
+      "vibrant street art illustration",
+      "urban energy captured in art",
+    ],
+    styleAnchors: [
+      "graffiti and urban street art",
+      "spray paint mural aesthetic",
+      "stencil and freehand spray art",
+    ],
     styleRules: [
-      "graffiti and urban street art style",
       "spray paint effects, bold colors, urban energy",
       "stencil and freehand spray techniques",
     ],
@@ -353,9 +456,16 @@ export const STYLE_RULES: Record<string, StyleRules> = {
   },
 
   botanical: {
-    styleRules: [
+    visualGoal: [
+      "museum-quality scientific botanical illustration",
+      "natural history art collection worthy",
+    ],
+    styleAnchors: [
       "scientific botanical illustration",
-      "tradition of Pierre-Joseph Redouté and Ernst Haeckel",
+      "Pierre-Joseph Redouté tradition",
+      "Ernst Haeckel natural history art",
+    ],
+    styleRules: [
       "precise watercolor rendering with transparent washes",
       "fine ink outlines with watercolor color fills",
       "accurate botanical detail: leaves, petals, stems, veins",
@@ -386,10 +496,18 @@ export const STYLE_RULES: Record<string, StyleRules> = {
   },
 
   "botanical-freestyle": {
-    styleRules: [
-      "botanical watercolor illustration style",
+    visualGoal: [
+      "artistic botanical watercolor artwork",
+      "elegant natural history illustration",
+    ],
+    styleAnchors: [
+      "botanical watercolor illustration",
       "scientific accuracy with artistic flair",
+      "natural history art tradition",
+    ],
+    styleRules: [
       "delicate watercolor washes and fine ink outlines",
+      "scientific accuracy with artistic expression",
     ],
     compositionRules: [
       "elegant natural arrangement",
@@ -411,25 +529,31 @@ export const STYLE_RULES: Record<string, StyleRules> = {
 };
 
 /**
- * Builds a structured prompt from user input + style rules.
+ * Compiles a structured prompt from user input + style rules.
+ * Never sends raw user prompt — always wrapped in art direction.
  */
-export function buildStructuredPrompt(
+export function compilePrompt(
   userPrompt: string,
   styleKey: string,
   options: {
     aspectRatio?: string;
     backgroundStyle?: "white" | "cream";
     isEdit?: boolean;
-    sourceImageDescription?: string;
+    variationIndex?: number;
   } = {}
 ): string {
   const rules = STYLE_RULES[styleKey];
   if (!rules) {
-    // Fallback for unknown styles
-    return `Create a high-resolution professional artwork: ${userPrompt}. ${UNIVERSAL_QUALITY.join(", ")}.`;
+    return [
+      `PRIMARY SUBJECT: ${userPrompt}`,
+      "",
+      `VISUAL GOAL: professional art illustration`,
+      `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
+      "Generate at maximum resolution.",
+    ].join("\n");
   }
 
-  const { aspectRatio, backgroundStyle = "white", isEdit = false } = options;
+  const { aspectRatio, backgroundStyle = "white", isEdit = false, variationIndex } = options;
   const useCream = backgroundStyle === "cream";
 
   const bgText = useCream
@@ -449,35 +573,50 @@ export function buildStructuredPrompt(
       "The result must look like the same image with a small targeted modification, NOT a new image.",
       "Do NOT regenerate or reimagine the scene.",
       "",
+      `VISUAL GOAL: ${rules.visualGoal.join(". ")}`,
+      `STYLE ANCHORS: ${rules.styleAnchors.join(", ")}`,
       `STYLE TO MAINTAIN: ${rules.styleRules.join(", ")}`,
       "",
       `EDIT TO APPLY: ${userPrompt}`,
       "",
       bgText,
       ratioText,
-      `QUALITY: ${[...rules.qualityRules, ...UNIVERSAL_QUALITY].join(", ")}`,
+      `GLOBAL QUALITY: ${[...rules.qualityRules, ...GLOBAL_QUALITY].join(", ")}`,
       `AVOID: ${rules.avoidRules.join(", ")}`,
       "",
       "Generate at maximum resolution.",
     ].filter(Boolean).join("\n");
   }
 
+  // Variation instruction for batch generation
+  const variationText = variationIndex !== undefined && variationIndex > 0
+    ? `\nVARIATION: Apply ${VARIATION_INSTRUCTIONS[variationIndex % VARIATION_INSTRUCTIONS.length]} while maintaining the same subject and style.`
+    : "";
+
   return [
-    `SUBJECT: ${userPrompt}`,
+    `PRIMARY SUBJECT: ${userPrompt}`,
     "",
-    `STYLE: ${rules.styleRules.join(". ")}`,
+    `VISUAL GOAL: ${rules.visualGoal.join(". ")}`,
+    "",
+    `STYLE ANCHORS: ${rules.styleAnchors.join(". ")}`,
+    "",
+    `STYLE RULES: ${rules.styleRules.join(". ")}`,
     "",
     `COMPOSITION: ${rules.compositionRules.join(". ")}`,
     "",
     `COLOR: ${rules.colorRules.join(". ")}`,
     "",
-    `QUALITY: ${[...rules.qualityRules, ...UNIVERSAL_QUALITY].join(". ")}`,
+    `GLOBAL QUALITY: ${[...rules.qualityRules, ...GLOBAL_QUALITY].join(". ")}`,
     "",
     `AVOID: ${rules.avoidRules.join(". ")}`,
     "",
     bgText,
     ratioText,
+    variationText,
     "",
     "Generate at maximum resolution with fine detail suitable for large format printing.",
   ].filter(Boolean).join("\n");
 }
+
+/** Backward-compatible alias */
+export const buildStructuredPrompt = compilePrompt;

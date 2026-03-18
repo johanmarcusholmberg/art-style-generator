@@ -52,7 +52,6 @@ export default function Blend() {
 
   // Options
   const [selectedSize, setSelectedSize] = useState<PrintSize>(PRINT_SIZES[1]);
-  const [whiteFrame, setWhiteFrame] = useState(false);
   const [useCream, setUseCream] = useState(false);
 
   const handleGenerate = async () => {
@@ -67,7 +66,6 @@ export default function Blend() {
           style1,
           style2,
           aspectRatio: selectedSize.ratio,
-          whiteFrame,
           backgroundStyle: useCream ? "cream" : "white",
         },
       });
@@ -175,10 +173,6 @@ export default function Blend() {
           {/* Options row */}
           <div className="flex flex-wrap items-center gap-4">
             <PrintSizeSelector selected={selectedSize} onChange={setSelectedSize} />
-            <div className="flex items-center gap-2">
-              <Switch id="blend-frame" checked={whiteFrame} onCheckedChange={setWhiteFrame} />
-              <Label htmlFor="blend-frame" className="font-display text-xs cursor-pointer">White Frame</Label>
-            </div>
             <div className="flex items-center gap-2">
               <Switch id="blend-cream" checked={useCream} onCheckedChange={setUseCream} />
               <Label htmlFor="blend-cream" className="font-display text-xs cursor-pointer">Cream BG</Label>
