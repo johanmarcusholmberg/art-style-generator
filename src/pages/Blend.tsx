@@ -174,10 +174,6 @@ export default function Blend() {
           <div className="flex flex-wrap items-center gap-4">
             <PrintSizeSelector selected={selectedSize} onChange={setSelectedSize} />
             <div className="flex items-center gap-2">
-              <Switch id="blend-frame" checked={whiteFrame} onCheckedChange={setWhiteFrame} />
-              <Label htmlFor="blend-frame" className="font-display text-xs cursor-pointer">White Frame</Label>
-            </div>
-            <div className="flex items-center gap-2">
               <Switch id="blend-cream" checked={useCream} onCheckedChange={setUseCream} />
               <Label htmlFor="blend-cream" className="font-display text-xs cursor-pointer">Cream BG</Label>
             </div>

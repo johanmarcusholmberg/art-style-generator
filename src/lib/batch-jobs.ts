@@ -79,7 +79,7 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
       aspect_ratio: config.aspectRatio,
       print_size: config.printSize,
       hd_enhance: config.hdEnhance,
-      white_frame: false,
+      white_frame: false, // deprecated but kept for DB compat
       background_style: config.backgroundStyle,
       speed_mode: config.speedMode,
       job_type: config.jobType,

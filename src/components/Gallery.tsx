@@ -454,7 +454,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         ? "Change ONLY the background to pure white (#FFFFFF). Keep everything else exactly the same — same subject, same composition, same colors, same style, same details. Do NOT alter the artwork itself in any way."
         : "Change ONLY the background to a warm cream/off-white vintage paper tone. Keep everything else exactly the same — same subject, same composition, same colors, same style, same details. Do NOT alter the artwork itself in any way.";
       const { data, error } = await supabase.functions.invoke(edgeFn, {
-        body: { prompt, sourceImageUrl: img.publicUrl, aspectRatio: img.aspect_ratio, whiteFrame: false, backgroundStyle: bgStyle },
+        body: { prompt, sourceImageUrl: img.publicUrl, aspectRatio: img.aspect_ratio, backgroundStyle: bgStyle },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
