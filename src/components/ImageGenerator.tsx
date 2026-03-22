@@ -24,6 +24,7 @@ import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 import { PRINT_FORMATS, type PrintFormat } from "@/lib/print-formats";
+import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { cn } from "@/lib/utils";
 
 type GenerationMode = "standard" | "print-ready";
