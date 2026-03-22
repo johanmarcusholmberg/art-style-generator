@@ -269,7 +269,7 @@ export default function ImageGenerator({
     }
   };
 
-
+  return (
     <div className="w-full max-w-4xl mx-auto px-4">
       <div className="space-y-4 mb-8">
         {/* Edit mode banner */}
