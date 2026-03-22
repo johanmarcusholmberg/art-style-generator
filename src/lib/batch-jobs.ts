@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { QualityTarget } from "@/lib/print-resolution";
 
 export interface BatchJobConfig {
   prompt: string;
@@ -12,6 +13,10 @@ export interface BatchJobConfig {
   jobType: "batch" | "style-grid" | "matrix";
   styleGridStyles?: string[];
   matrixVariables?: Record<string, string[]>;
+  qualityTarget?: QualityTarget;
+  targetPpi?: number;
+  targetWidthPx?: number;
+  targetHeightPx?: number;
 }
 
 function expandMatrix(basePrompt: string, variables: Record<string, string[]>): string[] {
