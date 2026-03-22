@@ -31,7 +31,7 @@ import CollectionsManager from "@/components/CollectionsManager";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Link } from "react-router-dom";
 import JSZip from "jszip";
-import { getPrintFormat, assessExportReadiness } from "@/lib/print-formats";
+import { getPrintFormat, assessExportReadiness, DEFAULT_PRINT_FORMAT_ID, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 
 interface GalleryImage {
