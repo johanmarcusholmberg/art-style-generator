@@ -47,9 +47,10 @@ function parseInlineSyntax(prompt: string): { basePrompt: string; inlineVars: Ma
 export default function BatchGenerator() {
   const [prompt, setPrompt] = useState("");
   const [batchSize, setBatchSize] = useState(4);
-  const [hdEnhance, setHdEnhance] = useState(false);
+  const [hdEnhance, setHdEnhance] = useState(true);
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
-  const [speedMode, setSpeedMode] = useState<"fast" | "quality">("fast");
+  const [speedMode, setSpeedMode] = useState<"fast" | "quality">("quality");
+  const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const [selectedMode, setSelectedMode] = useState("japanese");
   const [jobType, setJobType] = useState<"batch" | "style-grid" | "matrix">("batch");
