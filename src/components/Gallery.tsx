@@ -665,9 +665,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       setPrintExporting(false);
     }
   };
-      setPrintExporting(false);
-    }
-  };
+
+
 
   if (loading) return <GallerySkeleton />;
   if (images.length === 0) return <GalleryOnboarding />;
