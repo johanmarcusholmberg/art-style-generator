@@ -233,7 +233,43 @@ export default function ImageGenerator({
     }
   };
 
-  return (
+  const handlePrintExport = async () => {
+    if (!imageUrl || exporting) return;
+    setExporting(true);
+    try {
+      const result = await preparePrintExport({
+        imageUrl,
+        printFormatId: selectedPrintFormat.id,
+        padColor: backgroundStyle === "cream" ? "#f5f0e8" : "#ffffff",
+      });
+
+      // Upload to print-exports bucket
+      const exportFilename = `print-${selectedPrintFormat.id}-${Date.now()}.png`;
+      const { error: uploadErr } = await supabase.storage
+        .from("print-exports")
+        .upload(exportFilename, result.blob, { contentType: "image/png" });
+
+      if (uploadErr) console.warn("Print export upload skipped:", uploadErr);
+
+      // Download to user
+      downloadPrintExport(
+        result.blob,
+        `${styleConfig.downloadPrefix}-${mode}-print-${selectedPrintFormat.id}-${Date.now()}.png`,
+      );
+
+      toast({
+        title: "Print export ready",
+        description: `${result.width} × ${result.height} px (${result.tier === "preferred" ? "300 PPI" : result.tier === "fallback" ? "150 PPI" : "source"})${result.upscaleApplied ? " · Upscaled" : ""}`,
+      });
+    } catch (err: any) {
+      console.error("Print export failed:", err);
+      toast({ title: "Export failed", description: err.message || "Could not export", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+
     <div className="w-full max-w-4xl mx-auto px-4">
       <div className="space-y-4 mb-8">
         {/* Edit mode banner */}
