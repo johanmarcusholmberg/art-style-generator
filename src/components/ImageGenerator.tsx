@@ -243,14 +243,9 @@ export default function ImageGenerator({
         padColor: backgroundStyle === "cream" ? "#f5f0e8" : "#ffffff",
       });
 
-      const tierLabel = result.tier === "preferred"
-        ? "300 PPI — Full print quality"
-        : result.tier === "fallback"
-        ? "150 PPI — Standard print quality"
-        : "Source resolution — best effort";
-      const upscaleNote = result.upscaleApplied
-        ? ` · Enhanced ${result.upscaleFactor}×`
-        : " · Native resolution";
+      const { tierLabel, upscaleNote, summary } = formatExportDescription(
+        result.tier, result.upscaleApplied, result.upscaleFactor, result.width, result.height,
+      );
 
       // Upload to print-exports bucket (non-blocking failure)
       const exportFilename = `print-${selectedPrintFormat.id}-${Date.now()}.png`;
