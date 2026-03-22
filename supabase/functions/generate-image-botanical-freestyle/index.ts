@@ -11,7 +11,7 @@ const RULES = {
   style: ["delicate watercolor washes and fine ink outlines", "scientific accuracy with artistic expression"],
   composition: ["elegant natural arrangement", "specimen presentation style"],
   color: ["natural watercolor palette", "transparent layered washes"],
-  quality: ["museum-quality botanical art", "fine detail throughout", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
+  quality: ["museum-quality botanical art", "fine detail throughout", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
   avoid: ["photorealism", "any text or labels"],
 };
 

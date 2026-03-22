@@ -11,7 +11,7 @@ const RULES = {
   style: ["vibrant spray paint colors with dripping effects", "bold outlines and stencil art elements", "brick wall or concrete texture backgrounds", "wildstyle lettering energy without actual letters"],
   composition: ["dynamic asymmetric layout", "subject fills the frame with energy", "layered depth: background texture, mid-ground tags, foreground subject", "controlled chaos — busy but intentional"],
   color: ["neon and saturated spray paint colors", "rich contrast against urban textures", "fluorescent accents over darker bases", "color bleeding and overlap effects"],
-  quality: ["realistic spray paint texture and drip patterns", "authentic wall texture and weathering", "crisp stencil edges where appropriate", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
+  quality: ["realistic spray paint texture and drip patterns", "authentic wall texture and weathering", "crisp stencil edges where appropriate", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
   avoid: ["clean digital look", "soft pastels or muted tones", "symmetrical or formal composition", "any readable text, letters, or script"],
 };
 

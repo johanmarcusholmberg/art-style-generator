@@ -11,7 +11,7 @@ const RULES = {
   style: ["flat color areas with bold black outlines", "sumi ink details and brushwork", "layered depth through overlapping planes", "visible wood grain texture in flat areas"],
   composition: ["asymmetric balance typical of Japanese prints", "foreground, middle ground, background layers", "dramatic use of negative space", "natural flow guiding the eye"],
   color: ["rich but limited palette of 5-8 traditional pigment colors", "indigo, vermilion, ochre, sap green, black", "no gradients — flat color blocks only", "colors separated by bold outlines"],
-  quality: ["museum-quality woodblock print reproduction", "crisp registration between color layers", "fine detail in linework and texture", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
+  quality: ["museum-quality woodblock print reproduction", "crisp registration between color layers", "fine detail in linework and texture", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
   avoid: ["photorealistic rendering", "soft gradients or airbrushing", "modern digital effects", "Japanese text, kanji, hiragana, or katakana", "any written script or labels"],
 };
 

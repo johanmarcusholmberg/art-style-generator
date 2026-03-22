@@ -171,7 +171,7 @@ export function normalizeRatio(
   sourceWidth: number,
   sourceHeight: number,
   targetRatio: string,
-  preferredMethod: "crop" | "pad" | "auto" = "auto",
+  preferredMethod: "crop" | "pad" | "auto" = "pad",
 ): RatioNormalizationResult {
   const target = parseRatio(targetRatio);
   const sourceRatio = sourceWidth / sourceHeight;
@@ -183,15 +183,8 @@ export function normalizeRatio(
   if (preferredMethod === "crop") return calculateCrop(sourceWidth, sourceHeight, targetRatio);
   if (preferredMethod === "pad") return calculatePad(sourceWidth, sourceHeight, targetRatio);
 
-  // Auto: compare area changes
-  const crop = calculateCrop(sourceWidth, sourceHeight, targetRatio);
-  const pad = calculatePad(sourceWidth, sourceHeight, targetRatio);
-
-  const sourceArea = sourceWidth * sourceHeight;
-  const cropLoss = 1 - (crop.outputWidth * crop.outputHeight) / sourceArea;
-
-  // Prefer crop when it loses < 10 % of the image
-  return cropLoss <= 0.1 ? crop : pad;
+  // Auto: prefer padding to never crop artwork
+  return calculatePad(sourceWidth, sourceHeight, targetRatio);
 }
 
 // ── helpers ──

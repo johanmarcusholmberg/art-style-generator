@@ -85,7 +85,7 @@ export default function ImageGenerator({
   const [saving, setSaving] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [hdEnhance, setHdEnhance] = useState(true);
+  const hdEnhance = true; // Always max quality — no toggle
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
@@ -470,21 +470,9 @@ export default function ImageGenerator({
           <PrintSizeSelector selected={printSize} onChange={setPrintSize} qualityTarget={qualityTarget} onQualityChange={setQualityTarget} />
         )}
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-          <div className="flex items-center gap-2">
-            <Switch
-              id={`hd-enhance-${persistKey}`}
-              checked={hdEnhance}
-              onCheckedChange={setHdEnhance}
-            />
-            <Label
-              htmlFor={`hd-enhance-${persistKey}`}
-              className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Print Quality Enhancement
-            </Label>
-          </div>
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-primary/5 border border-primary/10 w-fit">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <span className="font-display text-xs text-muted-foreground">Max quality pipeline active</span>
         </div>
 
         <div className="flex items-center gap-2">

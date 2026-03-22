@@ -13,12 +13,16 @@ export interface StyleRules {
 /** Universal quality tokens appended to every generation */
 export const GLOBAL_QUALITY = [
   "high detail",
+  "sharp focus",
+  "clean edges",
+  "high resolution",
+  "detailed textures",
   "professional illustration",
   "sharp rendering",
   "balanced composition",
-  "clean edges",
   "no artifacts",
   "print-ready resolution",
+  "suitable for large format printing",
 ];
 
 /** Variation instructions for batch generation */

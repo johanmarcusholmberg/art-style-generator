@@ -11,7 +11,7 @@ const RULES = {
   style: ["delicate ink lines with hatching for depth", "elegant pen technique with varying weights"],
   composition: ["clear subject with supporting detail", "depth through line density", "balanced composition"],
   color: ["black ink on white — monochrome only", "no color fills"],
-  quality: ["consistent crisp linework", "fine detail throughout", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
+  quality: ["consistent crisp linework", "fine detail throughout", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
   avoid: ["color or washes", "cartoon style", "any written text or script"],
 };
 

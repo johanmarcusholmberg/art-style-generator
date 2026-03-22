@@ -114,11 +114,12 @@ export async function preparePrintExport(
   }
 
   // 1. Normalize ratio
+  // Always use padding — never crop artwork
   const norm = normalizeRatio(
     srcW,
     srcH,
     format.aspectRatio,
-    opts.ratioMethod ?? "auto",
+    opts.ratioMethod ?? "pad",
   );
 
   // 2. Determine target tier

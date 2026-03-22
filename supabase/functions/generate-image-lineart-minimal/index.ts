@@ -11,7 +11,7 @@ const RULES = {
   style: ["absolute fewest lines possible to convey the subject", "single-weight thin black line", "one-line art style with elegant simplicity"],
   composition: ["centered subject with maximum negative space", "every line must be essential", "abstract simplification of complex forms"],
   color: ["single black line on white — nothing else", "no shading, no fills, no hatching"],
-  quality: ["perfectly smooth continuous line", "elegant confident strokes", "museum-quality minimal art", "high detail", "sharp rendering", "clean edges", "no artifacts", "print-ready resolution"],
+  quality: ["perfectly smooth continuous line", "elegant confident strokes", "museum-quality minimal art", "high detail", "sharp rendering", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
   avoid: ["multiple line weights", "shading or cross-hatching", "unnecessary detail", "any written text or script"],
 };
 
