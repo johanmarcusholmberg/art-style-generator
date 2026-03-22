@@ -18,7 +18,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["flat color areas with bold black outlines", "sumi ink details", "layered depth through overlapping planes"],
     composition: ["asymmetric balance", "foreground/middle/background layers", "dramatic negative space"],
     color: ["limited palette of 5-8 traditional pigment colors", "no gradients — flat blocks only"],
-    quality: ["museum-quality woodblock print", "crisp registration", "high detail", "sharp rendering", "clean edges", "no artifacts", "print-ready resolution"],
+    quality: ["museum-quality woodblock print", "crisp registration", "high detail", "sharp rendering", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["photorealism", "soft gradients", "any text or script"],
   },
   freestyle: {
@@ -27,7 +27,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["flat colors with bold outlines", "sumi ink details", "woodblock print aesthetic"],
     composition: ["centered or asymmetric balance", "clear subject with defined background"],
     color: ["rich limited traditional palette", "flat color blocks"],
-    quality: ["museum-quality reproduction", "crisp lines", "high detail", "sharp rendering", "clean edges", "no artifacts", "print-ready resolution"],
+    quality: ["museum-quality reproduction", "crisp lines", "high detail", "sharp rendering", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["photorealism", "gradients", "any text or script"],
   },
   popart: {
@@ -36,7 +36,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["Ben-Day dots", "thick black outlines", "flat high-contrast colors", "comic book aesthetic"],
     composition: ["strong central subject", "graphic poster layout", "clear figure-ground separation"],
     color: ["vibrant saturated CMYK palette", "high contrast", "no subtle tones"],
-    quality: ["crisp halftone dots", "clean outlines", "professional screen-print quality", "high detail", "sharp rendering", "no artifacts", "print-ready resolution"],
+    quality: ["crisp halftone dots", "clean outlines", "professional screen-print quality", "high detail", "sharp rendering", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["photorealism", "soft pastels", "gradients", "any text or script"],
   },
   "popart-freestyle": {
@@ -45,7 +45,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["Ben-Day dots, thick outlines, vivid colors", "comic book aesthetics"],
     composition: ["graphic composition", "strong central focus"],
     color: ["vibrant saturated colors", "high contrast bold palette"],
-    quality: ["clean outlines", "crisp details", "high detail", "sharp rendering", "no artifacts", "print-ready resolution"],
+    quality: ["clean outlines", "crisp details", "high detail", "sharp rendering", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["photorealism", "soft shading", "any text or script"],
   },
   lineart: {
@@ -54,7 +54,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["hatching and cross-hatching", "varying line weights", "stippling", "engraving quality"],
     composition: ["detailed focal subject", "depth through line density", "balanced space"],
     color: ["black ink on white only — monochrome", "tonal range through line density"],
-    quality: ["botanical precision", "consistent line quality", "high detail", "sharp rendering", "clean edges", "no artifacts", "print-ready resolution"],
+    quality: ["botanical precision", "consistent line quality", "high detail", "sharp rendering", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["color fills", "solid black areas", "cartoon style", "any text or script"],
   },
   "lineart-freestyle": {
@@ -63,7 +63,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["delicate ink lines with hatching", "varying weights"],
     composition: ["clear subject with detail", "depth through line density"],
     color: ["black ink on white — monochrome"],
-    quality: ["consistent crisp linework", "fine detail", "high detail", "sharp rendering", "no artifacts", "print-ready resolution"],
+    quality: ["consistent crisp linework", "fine detail", "high detail", "sharp rendering", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["color", "cartoon style", "any text or script"],
   },
   "lineart-minimal": {
@@ -72,7 +72,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["fewest lines possible", "single-weight thin black line", "one-line art style"],
     composition: ["centered with maximum negative space", "every line essential"],
     color: ["single black line on white — nothing else"],
-    quality: ["smooth continuous line", "elegant confident strokes", "high detail", "sharp rendering", "no artifacts", "print-ready resolution"],
+    quality: ["smooth continuous line", "elegant confident strokes", "high detail", "sharp rendering", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["multiple line weights", "shading", "unnecessary detail", "any text or script"],
   },
   minimalism: {
@@ -81,7 +81,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["clean geometric forms", "precise vector-like edges", "flat design"],
     composition: ["centered or rule-of-thirds", "generous negative space", "perfectly balanced"],
     color: ["limited 2-4 muted colors", "no gradients", "high contrast"],
-    quality: ["pixel-perfect edges", "professional poster quality", "high detail", "sharp rendering", "no artifacts", "print-ready resolution"],
+    quality: ["pixel-perfect edges", "professional poster quality", "high detail", "sharp rendering", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["clip-art", "visual clutter", "excessive detail", "more than 4 colors", "any text"],
   },
   "minimalism-freestyle": {
@@ -90,7 +90,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["clean simplified forms", "geometric shapes", "flat design"],
     composition: ["generous negative space", "balanced minimal layout"],
     color: ["limited muted palette of 2-4 colors"],
-    quality: ["precise clean edges", "high detail", "sharp rendering", "no artifacts", "print-ready resolution"],
+    quality: ["precise clean edges", "high detail", "sharp rendering", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["visual clutter", "excessive detail", "any text"],
   },
   graffiti: {
@@ -99,7 +99,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["spray paint with drips", "bold outlines", "stencil elements"],
     composition: ["dynamic asymmetric layout", "subject fills frame", "layered depth"],
     color: ["neon saturated spray paint colors", "fluorescent accents", "color bleeding"],
-    quality: ["realistic spray paint texture", "authentic wall texture", "high detail", "sharp rendering", "no artifacts", "print-ready resolution"],
+    quality: ["realistic spray paint texture", "authentic wall texture", "high detail", "sharp rendering", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["clean digital look", "soft pastels", "formal composition", "any readable text"],
   },
   "graffiti-freestyle": {
@@ -108,7 +108,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["spray paint effects", "urban energy"],
     composition: ["dynamic energetic layout"],
     color: ["vibrant neon tones", "spray paint palette"],
-    quality: ["authentic spray texture", "high detail", "sharp rendering", "no artifacts", "print-ready resolution"],
+    quality: ["authentic spray texture", "high detail", "sharp rendering", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["clean digital aesthetic", "muted tones", "any text"],
   },
   botanical: {
@@ -117,7 +117,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["watercolor with ink outlines", "accurate botanical detail"],
     composition: ["specimen-style centered", "multiple views if appropriate"],
     color: ["soft natural watercolor palette", "transparent layered washes"],
-    quality: ["museum-quality natural history art", "delicate brushwork", "fine ink detail", "high detail", "sharp rendering", "no artifacts", "print-ready resolution"],
+    quality: ["museum-quality natural history art", "delicate brushwork", "fine ink detail", "high detail", "sharp rendering", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["photorealism", "digital gradients", "any text or labels", "cartoonish plants"],
   },
   "botanical-freestyle": {
@@ -126,7 +126,7 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
     style: ["delicate washes and ink outlines", "scientific accuracy with artistic expression"],
     composition: ["elegant natural arrangement"],
     color: ["natural watercolor palette", "transparent washes"],
-    quality: ["museum-quality art", "fine detail", "high detail", "sharp rendering", "no artifacts", "print-ready resolution"],
+    quality: ["museum-quality art", "fine detail", "high detail", "sharp rendering", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
     avoid: ["photorealism", "any text or labels"],
   },
 };
