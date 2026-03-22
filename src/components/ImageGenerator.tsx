@@ -559,6 +559,26 @@ export default function ImageGenerator({
                   : ""}{" "}
                 ({generationMode === "print-ready" ? selectedPrintFormat.label : printSize.dimensions})
               </Button>
+              {generationMode === "print-ready" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintExport}
+                  disabled={exporting}
+                  className="font-display text-xs tracking-wider border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  {exporting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…
+                    </>
+                  ) : (
+                    <>
+                      <FileImage className="mr-2 h-4 w-4" />
+                      Export Print ({selectedPrintFormat.label})
+                    </>
+                  )}
+                </Button>
+              )}
               {!savedToGallery && isEditMode && originalImageId && (
                 <Button
                   variant="outline"
