@@ -41,6 +41,13 @@ interface GalleryImage {
   storage_path: string;
   created_at: string;
   publicUrl: string;
+  quality_mode?: string;
+  target_ppi?: number;
+  target_width_px?: number;
+  target_height_px?: number;
+  actual_width_px?: number;
+  actual_height_px?: number;
+  enhanced?: boolean;
 }
 
 export interface EditRequest {
