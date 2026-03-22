@@ -387,13 +387,9 @@ export default function BatchGenerator() {
 
       <PrintSizeSelector selected={printSize} onChange={setPrintSize} qualityTarget={qualityTarget} onQualityChange={setQualityTarget} />
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-        <div className="flex items-center gap-2">
-          <Switch id="batch-hd" checked={hdEnhance} onCheckedChange={setHdEnhance} />
-          <Label htmlFor="batch-hd" className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1">
-            <Sparkles className="h-3.5 w-3.5 text-primary" /> Print Quality Enhancement
-          </Label>
-        </div>
+      <div className="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-primary/5 border border-primary/10 w-fit">
+        <Sparkles className="h-3.5 w-3.5 text-primary" />
+        <span className="font-display text-xs text-muted-foreground">Max quality pipeline active</span>
       </div>
 
       <div className="flex items-center gap-2">

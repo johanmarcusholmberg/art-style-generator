@@ -22,17 +22,19 @@ serve(async (req) => {
 
     const ratioText = aspectRatio ? ` Maintain the ${aspectRatio} aspect ratio exactly.` : "";
 
-    const enhancePrompt = `CRITICAL UPSCALING INSTRUCTIONS:
+    const enhancePrompt = `CRITICAL UPSCALING AND ENHANCEMENT INSTRUCTIONS:
 
-You are an image enhancement specialist. Your ONLY task is to upscale and sharpen this image.
+You are an image enhancement specialist. Your ONLY task is to upscale, sharpen, and clean this image for high-quality print output.
 
 DO:
-- Sharpen all edges and fine details
+- Sharpen all edges and fine details for crisp print reproduction
 - Enhance texture clarity: paper grain, brush strokes, ink lines, fabric patterns
-- Increase overall resolution and definition
+- Increase overall resolution and definition to maximum output quality
+- Apply subtle denoising to remove compression artifacts while preserving detail
 - Deepen color richness and improve tonal range
 - Refine fine architectural elements, botanical details, and facial features if present
-- Produce a premium print-ready version
+- Ensure clean, sharp focus across the entire image
+- Produce a premium print-ready version at the highest possible resolution
 
 DO NOT:
 - Change the subject, style, composition, or color palette
@@ -40,8 +42,10 @@ DO NOT:
 - Alter the artistic style or mood
 - Regenerate or reimagine any part of the image
 - Change the background color or texture
+- Crop or reframe the image in any way
+- Remove or alter any borders, frames, or decorative edges within the artwork
 
-The output must be the EXACT same image but dramatically sharper and more detailed.${ratioText}`;
+The output must be the EXACT same image but dramatically sharper, cleaner, and more detailed — suitable for large-format print at 300 DPI.${ratioText}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
