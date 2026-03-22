@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
 import { createBatchJob, ALL_STYLES, type BatchJobConfig } from "@/lib/batch-jobs";
 import { cn } from "@/lib/utils";
+import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 
 const MAX_IMAGES_WARN = 20;
 const MAX_IMAGES_HARD = 50;
