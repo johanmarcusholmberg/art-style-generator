@@ -159,6 +159,8 @@ interface LightboxContentProps {
   bgChanging: "white" | "cream" | null;
   bgResult: { imageUrl: string; bgStyle: string } | null;
   showEdit: boolean;
+  onPrintExport: (img: GalleryImage) => void;
+  printExporting: boolean;
 }
 
 function LightboxContent({
