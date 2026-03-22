@@ -44,6 +44,14 @@ DO NOT:
 - Change the background color or texture
 - Crop or reframe the image in any way
 - Remove or alter any borders, frames, or decorative edges within the artwork
+- Trim, fade, or soften any detail near the image edges
+- Treat inner borders or edge lines as disposable margins
+
+EDGE SAFETY (CRITICAL):
+- All intentional inner borders, edge lines, and frame-like details are part of the artwork
+- Every pixel at the boundary is part of the composition and must be preserved
+- Decorative borders and internal framing elements must remain fully intact
+- Thin lines or decorative elements near the image edge must NOT be removed or blended into the background
 
 The output must be the EXACT same image but dramatically sharper, cleaner, and more detailed — suitable for large-format print at 300 DPI.${ratioText}`;
 

@@ -37,7 +37,8 @@ function buildPrompt(p: string, ar?: string, bg?: string): string {
     "",
     bgText,
     ratioText,
-    "Generate at maximum resolution with fine detail suitable for large format printing.",
+    "EDGE SAFETY: preserve all intentional inner borders, edge lines, and frame-like details. Do not trim, fade, or blend edge details into the background. Artwork edges are sacred — decorative borders and internal framing elements must remain fully intact.",
+      "Generate at maximum resolution with fine detail suitable for large format printing.",
   ].filter(Boolean).join("\n");
 }
 

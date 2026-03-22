@@ -131,6 +131,8 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
   },
 };
 
+const EDGE_SAFETY = "EDGE SAFETY: preserve all intentional inner borders, edge lines, and frame-like details. Do not trim, fade, or blend edge details into the background. Artwork edges are sacred — decorative borders and internal framing elements must remain fully intact.";
+
 // Pre-compile style prompt fragments once at module load (not per request)
 for (const [key, cfg] of Object.entries(RAW_STYLES)) {
   STYLE_CONFIGS[key] = {
@@ -141,6 +143,7 @@ for (const [key, cfg] of Object.entries(RAW_STYLES)) {
       `COMPOSITION: ${cfg.composition.join(". ")}`,
       `COLOR: ${cfg.color.join(". ")}`,
       `GLOBAL QUALITY: ${cfg.quality.join(". ")}`,
+      EDGE_SAFETY,
       `AVOID: ${cfg.avoid.join(". ")}`,
     ],
   };
@@ -164,6 +167,7 @@ function buildPrompt(subject: string, mode: string, bg: string, ratio: string, v
     parts.push(...style.prompt, "");
   } else {
     parts.push("GLOBAL QUALITY: high detail, sharp focus, clean edges, high resolution, detailed textures, professional illustration, sharp rendering, no artifacts, print-ready resolution, suitable for large format printing", "");
+    parts.push("EDGE SAFETY: preserve all intentional inner borders, edge lines, and frame-like details. Do not trim, fade, or blend edge details into the background. Artwork edges are sacred — decorative borders and internal framing elements must remain fully intact.", "");
   }
 
   parts.push(bg, ratio);
@@ -372,7 +376,7 @@ serve(async (req) => {
                 role: "user",
                 content: [
                   { type: "image_url", image_url: { url: imageUrl } },
-                  { type: "text", text: `CRITICAL UPSCALING AND ENHANCEMENT: Sharpen all edges, enhance textures, increase clarity and resolution to maximum quality. Apply subtle denoising to remove compression artifacts. Do NOT change subject, style, composition, or colors. Do NOT crop or reframe. Do NOT alter any borders or frames within the artwork. Maintain ${job.aspect_ratio} aspect ratio. Output must be suitable for large-format print at 300 DPI.` },
+                  { type: "text", text: `CRITICAL UPSCALING AND ENHANCEMENT: Sharpen all edges, enhance textures, increase clarity and resolution to maximum quality. Apply subtle denoising to remove compression artifacts. Do NOT change subject, style, composition, or colors. Do NOT crop or reframe. Do NOT alter any borders or frames within the artwork. Do NOT trim, fade, or soften any detail near image edges. All intentional inner borders, edge lines, and frame-like details must be preserved exactly. Maintain ${job.aspect_ratio} aspect ratio. Output must be suitable for large-format print at 300 DPI.` },
                 ],
               }],
               modalities: ["image", "text"],

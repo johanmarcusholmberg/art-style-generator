@@ -18,7 +18,8 @@ const RULES = {
 function buildPrompt(p: string, ar?: string, bg?: string): string {
   const bgText = bg === "cream" ? "Use a warm cream/off-white vintage paper background, like aged botanical art paper." : "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, or off-white.";
   const ratioText = ar ? `The image must have a ${ar} aspect ratio.` : "";
-  return [`PRIMARY SUBJECT: ${p}`, "", `VISUAL GOAL: ${RULES.visualGoal.join(". ")}`, "", `STYLE ANCHORS: ${RULES.styleAnchors.join(". ")}`, "", `STYLE RULES: ${RULES.style.join(". ")}`, "", `COMPOSITION: ${RULES.composition.join(". ")}`, "", `COLOR: ${RULES.color.join(". ")}`, "", `GLOBAL QUALITY: ${RULES.quality.join(". ")}`, "", `AVOID: ${RULES.avoid.join(". ")}`, "", bgText, ratioText, "Generate at maximum resolution with fine detail suitable for large format printing."].filter(Boolean).join("\n");
+  return [`PRIMARY SUBJECT: ${p}`, "", `VISUAL GOAL: ${RULES.visualGoal.join(". ")}`, "", `STYLE ANCHORS: ${RULES.styleAnchors.join(". ")}`, "", `STYLE RULES: ${RULES.style.join(". ")}`, "", `COMPOSITION: ${RULES.composition.join(". ")}`, "", `COLOR: ${RULES.color.join(". ")}`, "", `GLOBAL QUALITY: ${RULES.quality.join(". ")}`, "", `AVOID: ${RULES.avoid.join(". ")}`, "", bgText, ratioText, "EDGE SAFETY: preserve all intentional inner borders, edge lines, and frame-like details. Do not trim, fade, or blend edge details into the background. Artwork edges are sacred — decorative borders and internal framing elements must remain fully intact.",
+      "Generate at maximum resolution with fine detail suitable for large format printing."].filter(Boolean).join("\n");
 }
 
 function buildEditPrompt(p: string, ar?: string, bg?: string): string {
