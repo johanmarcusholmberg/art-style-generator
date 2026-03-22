@@ -36,13 +36,21 @@ export interface PrintExportResult {
 
 /**
  * Load an image (data-URL or remote URL) into an HTMLImageElement.
+ * Includes a timeout to avoid hanging on missing/broken assets.
  */
-function loadImage(src: string): Promise<HTMLImageElement> {
+function loadImage(src: string, timeoutMs = 30000): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = (e) => reject(new Error(`Failed to load image: ${e}`));
+    const timer = setTimeout(() => {
+      img.src = "";
+      reject(new Error("Image load timed out — the source may be unavailable"));
+    }, timeoutMs);
+    img.onload = () => { clearTimeout(timer); resolve(img); };
+    img.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error("Failed to load source image — it may have been deleted or is inaccessible"));
+    };
     img.src = src;
   });
 }
