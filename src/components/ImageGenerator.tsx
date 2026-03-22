@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,7 @@ import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 import { PRINT_FORMATS, type PrintFormat } from "@/lib/print-formats";
+import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { cn } from "@/lib/utils";
 
 type GenerationMode = "standard" | "print-ready";
@@ -83,6 +84,7 @@ export default function ImageGenerator({
   const [enhancing, setEnhancing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [replacing, setReplacing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [hdEnhance, setHdEnhance] = useState(true);
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
@@ -228,6 +230,42 @@ export default function ImageGenerator({
       toast({ title: "Replace failed", description: err.message || "Could not replace", variant: "destructive" });
     } finally {
       setReplacing(false);
+    }
+  };
+
+  const handlePrintExport = async () => {
+    if (!imageUrl || exporting) return;
+    setExporting(true);
+    try {
+      const result = await preparePrintExport({
+        imageUrl,
+        printFormatId: selectedPrintFormat.id,
+        padColor: backgroundStyle === "cream" ? "#f5f0e8" : "#ffffff",
+      });
+
+      // Upload to print-exports bucket
+      const exportFilename = `print-${selectedPrintFormat.id}-${Date.now()}.png`;
+      const { error: uploadErr } = await supabase.storage
+        .from("print-exports")
+        .upload(exportFilename, result.blob, { contentType: "image/png" });
+
+      if (uploadErr) console.warn("Print export upload skipped:", uploadErr);
+
+      // Download to user
+      downloadPrintExport(
+        result.blob,
+        `${styleConfig.downloadPrefix}-${mode}-print-${selectedPrintFormat.id}-${Date.now()}.png`,
+      );
+
+      toast({
+        title: "Print export ready",
+        description: `${result.width} × ${result.height} px (${result.tier === "preferred" ? "300 PPI" : result.tier === "fallback" ? "150 PPI" : "source"})${result.upscaleApplied ? " · Upscaled" : ""}`,
+      });
+    } catch (err: any) {
+      console.error("Print export failed:", err);
+      toast({ title: "Export failed", description: err.message || "Could not export", variant: "destructive" });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -521,6 +559,26 @@ export default function ImageGenerator({
                   : ""}{" "}
                 ({generationMode === "print-ready" ? selectedPrintFormat.label : printSize.dimensions})
               </Button>
+              {generationMode === "print-ready" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintExport}
+                  disabled={exporting}
+                  className="font-display text-xs tracking-wider border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  {exporting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…
+                    </>
+                  ) : (
+                    <>
+                      <FileImage className="mr-2 h-4 w-4" />
+                      Export Print ({selectedPrintFormat.label})
+                    </>
+                  )}
+                </Button>
+              )}
               {!savedToGallery && isEditMode && originalImageId && (
                 <Button
                   variant="outline"
