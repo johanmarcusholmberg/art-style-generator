@@ -68,6 +68,18 @@ export async function saveToGallery(opts: GallerySaveOptions) {
     actual_width_px: opts.actualWidthPx || null,
     actual_height_px: opts.actualHeightPx || null,
     enhanced: opts.enhanced || false,
+    print_format_id: opts.printFormatId || null,
+    generation_mode: opts.generationMode || null,
+    source_width: opts.sourceWidth || null,
+    source_height: opts.sourceHeight || null,
+    export_width: opts.exportWidth || null,
+    export_height: opts.exportHeight || null,
+    export_ready: opts.exportReady || false,
+    export_type: opts.exportType || null,
+    upscale_applied: opts.upscaleApplied || false,
+    upscale_method: opts.upscaleMethod || null,
+    crop_mode: opts.cropMode || null,
+    padding_mode: opts.paddingMode || null,
   } as any);
 
   if (dbError) throw dbError;
