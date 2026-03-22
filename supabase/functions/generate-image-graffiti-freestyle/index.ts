@@ -11,7 +11,7 @@ const RULES = {
   style: ["spray paint effects, bold colors, urban energy", "stencil and freehand spray techniques"],
   composition: ["dynamic energetic layout", "subject-forward with urban texture"],
   color: ["vibrant neon and saturated tones", "spray paint color palette"],
-  quality: ["authentic spray paint texture", "crisp detail in stencil areas", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
+  quality: ["authentic spray paint texture", "crisp detail in stencil areas", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
   avoid: ["clean digital aesthetic", "muted tones", "any readable text or script"],
 };
 

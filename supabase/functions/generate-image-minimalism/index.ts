@@ -11,7 +11,7 @@ const RULES = {
   style: ["clean geometric forms", "precise edges", "Scandinavian minimalism influence", "abstract simplification of natural forms"],
   composition: ["centered subject", "large negative space — at least 40% of canvas", "balanced symmetry", "every element must be intentional"],
   color: ["limited palette of 2-4 harmonious colors", "soft neutral background", "no gradients unless absolutely essential", "high contrast between subject and background"],
-  quality: ["sharp edges", "high clarity", "professional illustration finish", "pixel-perfect geometric edges", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
+  quality: ["sharp edges", "high clarity", "professional illustration finish", "pixel-perfect geometric edges", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
   avoid: ["clip-art style", "cartoon aesthetics", "inconsistent line thickness", "visual clutter", "random objects", "more than 4 colors", "any written text or script"],
 };
 

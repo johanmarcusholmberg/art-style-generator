@@ -11,7 +11,7 @@ const RULES = {
   style: ["clean simplified forms", "geometric shapes and flat design"],
   composition: ["generous negative space", "balanced minimal layout", "intentional element placement"],
   color: ["limited muted palette of 2-4 colors", "soft harmonious tones"],
-  quality: ["precise clean edges", "professional quality", "high detail", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
+  quality: ["precise clean edges", "professional quality", "high detail", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
   avoid: ["visual clutter", "excessive detail", "any written text or script"],
 };
 

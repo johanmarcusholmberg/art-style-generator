@@ -11,7 +11,7 @@ const RULES = {
   style: ["flat color areas with bold black outlines", "sumi ink details and brushwork", "woodblock print aesthetic regardless of subject"],
   composition: ["centered or asymmetric balance", "clear subject with defined background", "layered depth through overlapping planes"],
   color: ["rich limited palette of traditional pigment colors", "flat color blocks without gradients", "colors separated by bold outlines"],
-  quality: ["museum-quality woodblock print reproduction", "crisp lines and clean color registration", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
+  quality: ["museum-quality woodblock print reproduction", "crisp lines and clean color registration", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
   avoid: ["photorealistic rendering", "soft gradients", "any written text or script"],
 };
 

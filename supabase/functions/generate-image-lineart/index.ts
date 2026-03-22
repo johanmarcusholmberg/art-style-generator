@@ -11,7 +11,7 @@ const RULES = {
   style: ["delicate thin ink lines with precise control", "hatching and cross-hatching for tonal depth", "stippling for texture in selected areas", "varying line weights for emphasis and depth", "reminiscent of vintage engraving and etching"],
   composition: ["detailed focal subject with surrounding context", "depth created through line density variation", "balanced positive and negative space", "architectural drafting precision"],
   color: ["black ink on white only — strictly monochrome", "no color fills or solid black areas", "tonal range achieved through line density alone"],
-  quality: ["botanical illustration precision in linework", "consistent line quality throughout", "fine detail suitable for large-format printing", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
+  quality: ["botanical illustration precision in linework", "consistent line quality throughout", "fine detail suitable for large-format printing", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
   avoid: ["color fills or washes", "solid black areas or silhouettes", "cartoon style or simplified forms", "inconsistent line thickness", "any written text or script"],
 };
 

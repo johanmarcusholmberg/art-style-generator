@@ -11,7 +11,7 @@ const RULES = {
   style: ["precise watercolor rendering with transparent washes", "fine ink outlines with watercolor color fills", "accurate botanical detail: leaves, petals, stems, veins"],
   composition: ["specimen-style centered presentation", "multiple views if appropriate: flower, leaf, cross-section", "elegant arrangement on the page", "scientific accuracy in proportions"],
   color: ["soft natural watercolor palette", "transparent layered washes", "true-to-life botanical colors", "subtle color gradations within petals and leaves"],
-  quality: ["museum-quality natural history illustration", "visible delicate brushwork in watercolor areas", "fine ink line detail in veins and edges", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
+  quality: ["museum-quality natural history illustration", "visible delicate brushwork in watercolor areas", "fine ink line detail in veins and edges", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
   avoid: ["photorealistic rendering", "digital gradient effects", "any text, labels, or annotations", "stylized or cartoonish plants"],
 };
 

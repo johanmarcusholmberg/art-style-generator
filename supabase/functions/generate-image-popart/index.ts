@@ -11,7 +11,7 @@ const RULES = {
   style: ["Ben-Day dots pattern in backgrounds and shadows", "thick black outlines around all forms", "flat color areas with high contrast", "comic book panel aesthetic", "screen-print texture and layering"],
   composition: ["strong central subject", "graphic poster-like layout", "bold cropping for dramatic impact", "clear figure-ground separation"],
   color: ["vibrant saturated primary and secondary colors", "CMYK-inspired palette: cyan, magenta, yellow, black", "high contrast color combinations", "no subtle tones — everything bold and punchy"],
-  quality: ["crisp halftone dots at consistent size", "clean sharp outlines with uniform weight", "professional screen-print quality", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "print-ready resolution"],
+  quality: ["crisp halftone dots at consistent size", "clean sharp outlines with uniform weight", "professional screen-print quality", "high detail", "professional illustration", "sharp rendering", "balanced composition", "clean edges", "no artifacts", "sharp focus", "high resolution", "detailed textures", "print-ready resolution", "suitable for large format printing"],
   avoid: ["photorealism", "soft pastels or muted tones", "gradients or smooth shading", "visual clutter or excessive detail", "any written text or script"],
 };
 
