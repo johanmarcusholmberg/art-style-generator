@@ -53,7 +53,7 @@ serve(async (req) => {
       "",
       "Blend these styles evenly — the result should feel like a natural hybrid where elements of both styles coexist harmoniously. Do not split the image; integrate both aesthetics throughout.",
       "",
-      `GLOBAL QUALITY: high detail, professional illustration, sharp rendering, balanced composition, clean edges, no artifacts, print-ready resolution`,
+      `GLOBAL QUALITY: high detail, sharp focus, clean edges, high resolution, detailed textures, professional illustration, sharp rendering, balanced composition, no artifacts, print-ready resolution, suitable for large format printing`,
       `AVOID: any written text or script, visual clutter, inconsistent style mixing`,
       "",
       bgText,
