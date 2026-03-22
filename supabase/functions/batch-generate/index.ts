@@ -164,6 +164,7 @@ function buildPrompt(subject: string, mode: string, bg: string, ratio: string, v
     parts.push(...style.prompt, "");
   } else {
     parts.push("GLOBAL QUALITY: high detail, sharp focus, clean edges, high resolution, detailed textures, professional illustration, sharp rendering, no artifacts, print-ready resolution, suitable for large format printing", "");
+    parts.push("EDGE SAFETY: preserve all intentional inner borders, edge lines, and frame-like details. Do not trim, fade, or blend edge details into the background. Artwork edges are sacred — decorative borders and internal framing elements must remain fully intact.", "");
   }
 
   parts.push(bg, ratio);
