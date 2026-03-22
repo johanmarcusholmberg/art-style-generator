@@ -55,7 +55,10 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
   } else if (config.jobType === "matrix" && config.matrixVariables) {
     const prompts = expandMatrix(config.prompt, config.matrixVariables);
     for (const p of prompts) {
-      items.push({ prompt_variant: p, style: null });
+      // batchSize acts as variations per combination in matrix mode
+      for (let i = 0; i < config.batchSize; i++) {
+        items.push({ prompt_variant: p, style: null });
+      }
     }
   } else {
     for (let i = 0; i < config.batchSize; i++) {
