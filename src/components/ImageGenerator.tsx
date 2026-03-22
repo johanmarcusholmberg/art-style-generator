@@ -345,7 +345,6 @@ export default function ImageGenerator({
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               Print Quality Enhancement
             </Label>
-            </Label>
           </div>
         </div>
 
