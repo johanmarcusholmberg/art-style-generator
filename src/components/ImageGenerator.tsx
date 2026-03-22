@@ -187,6 +187,8 @@ export default function ImageGenerator({
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
       
+      const resolution = getResolutionForPrintSize(printSize.dimensions, qualityTarget);
+      
       await replaceInGallery({
         originalId: originalImageId,
         originalStoragePath,
@@ -195,6 +197,11 @@ export default function ImageGenerator({
         mode,
         aspectRatio: printSize.ratio,
         printSize: printSize.dimensions,
+        qualityMode: qualityTarget,
+        targetPpi: resolution?.ppi,
+        targetWidthPx: resolution?.widthPx,
+        targetHeightPx: resolution?.heightPx,
+        enhanced: hdEnhance,
       });
       setSavedToGallery(true);
       onImageSaved?.();
