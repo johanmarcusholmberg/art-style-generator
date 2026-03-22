@@ -263,7 +263,7 @@ export default function ImageGenerator({
 
       toast({
         title: "Print export ready",
-        description: `${result.width} × ${result.height} px · ${tierLabel}${upscaleNote}`,
+        description: summary,
       });
     } catch (err: any) {
       console.error("Print export failed:", err);
