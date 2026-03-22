@@ -361,30 +361,29 @@ serve(async (req) => {
         if (!imageUrl) throw new Error("No image generated");
 
         let finalImageUrl = imageUrl;
-        if (job.hd_enhance) {
-          try {
-            const upRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-              method: "POST",
-              headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-              body: JSON.stringify({
-                model: "google/gemini-3-pro-image-preview",
-                messages: [{
-                  role: "user",
-                  content: [
-                    { type: "image_url", image_url: { url: imageUrl } },
-                    { type: "text", text: `CRITICAL UPSCALING: Sharpen edges, enhance textures, increase clarity and resolution. Do NOT change subject, style, composition, or colors. Maintain ${job.aspect_ratio} aspect ratio.` },
-                  ],
-                }],
-                modalities: ["image", "text"],
-              }),
-            });
-            if (upRes.ok) {
-              const upData = await upRes.json();
-              const enhanced = upData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-              if (enhanced) finalImageUrl = enhanced;
-            }
-          } catch { /* skip upscale on error */ }
-        }
+        // Always run upscale pipeline for maximum quality
+        try {
+          const upRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "google/gemini-3-pro-image-preview",
+              messages: [{
+                role: "user",
+                content: [
+                  { type: "image_url", image_url: { url: imageUrl } },
+                  { type: "text", text: `CRITICAL UPSCALING AND ENHANCEMENT: Sharpen all edges, enhance textures, increase clarity and resolution to maximum quality. Apply subtle denoising to remove compression artifacts. Do NOT change subject, style, composition, or colors. Do NOT crop or reframe. Do NOT alter any borders or frames within the artwork. Maintain ${job.aspect_ratio} aspect ratio. Output must be suitable for large-format print at 300 DPI.` },
+                ],
+              }],
+              modalities: ["image", "text"],
+            }),
+          });
+          if (upRes.ok) {
+            const upData = await upRes.json();
+            const enhanced = upData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+            if (enhanced) finalImageUrl = enhanced;
+          }
+        } catch { /* skip upscale on error — use original */ }
 
         // Upload + gallery save
         const filename = `${mode}-batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
