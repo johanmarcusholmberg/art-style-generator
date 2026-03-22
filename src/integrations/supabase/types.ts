@@ -79,6 +79,7 @@ export type Database = {
           enhanced: boolean | null
           export_height: number | null
           export_ready: boolean | null
+          export_storage_path: string | null
           export_type: string | null
           export_width: number | null
           generation_mode: string | null
@@ -108,6 +109,7 @@ export type Database = {
           enhanced?: boolean | null
           export_height?: number | null
           export_ready?: boolean | null
+          export_storage_path?: string | null
           export_type?: string | null
           export_width?: number | null
           generation_mode?: string | null
@@ -137,6 +139,7 @@ export type Database = {
           enhanced?: boolean | null
           export_height?: number | null
           export_ready?: boolean | null
+          export_storage_path?: string | null
           export_type?: string | null
           export_width?: number | null
           generation_mode?: string | null
