@@ -570,6 +570,78 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   useEffect(() => { setBgResult(null); }, [selected?.id]);
 
+  const [printExporting, setPrintExporting] = useState(false);
+
+  const handlePrintExport = async (img: GalleryImage) => {
+    const formatId = img.print_format_id || "print_50x70";
+    const format = getPrintFormat(formatId);
+    if (!format) { toast.error("Unknown print format"); return; }
+
+    setPrintExporting(true);
+    try {
+      const result = await preparePrintExport({
+        imageUrl: img.publicUrl,
+        printFormatId: formatId,
+      });
+
+      // Upload to print-exports bucket
+      const exportFilename = `print-${img.id}-${Date.now()}.png`;
+      const { error: uploadError } = await supabase.storage
+        .from("print-exports")
+        .upload(exportFilename, result.blob, { contentType: "image/png" });
+      if (uploadError) throw uploadError;
+
+      // Update image record with export metadata
+      await supabase.from("generated_images").update({
+        export_storage_path: exportFilename,
+        export_width: result.width,
+        export_height: result.height,
+        export_ready: true,
+        export_type: format.exportType,
+        upscale_applied: result.upscaleApplied,
+        crop_mode: result.normalization.method === "crop" ? "center" : null,
+        padding_mode: result.normalization.method === "pad" ? "center" : null,
+        print_format_id: formatId,
+      } as any).eq("id", img.id);
+
+      // Update local state
+      setImages((prev) => prev.map((i) => i.id === img.id ? {
+        ...i,
+        export_storage_path: exportFilename,
+        export_width: result.width,
+        export_height: result.height,
+        export_ready: true,
+        upscale_applied: result.upscaleApplied,
+        print_format_id: formatId,
+      } : i));
+      if (selected?.id === img.id) {
+        setSelected((prev) => prev ? {
+          ...prev,
+          export_storage_path: exportFilename,
+          export_width: result.width,
+          export_height: result.height,
+          export_ready: true,
+          upscale_applied: result.upscaleApplied,
+          print_format_id: formatId,
+        } : prev);
+      }
+
+      // Trigger download
+      const downloadName = `print-${format.label.replace(/\s/g, "")}-${result.width}x${result.height}.png`;
+      downloadPrintExport(result.blob, downloadName);
+
+      toast.success(
+        `Print export ready: ${result.width}×${result.height} px (${result.tier === "preferred" ? "300 PPI" : result.tier === "fallback" ? "150 PPI" : "source"})`,
+        { duration: 5000 }
+      );
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Print export failed");
+    } finally {
+      setPrintExporting(false);
+    }
+  };
+
   if (loading) return <GallerySkeleton />;
   if (images.length === 0) return <GalleryOnboarding />;
 
@@ -584,6 +656,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     bgChanging,
     bgResult,
     showEdit: !!onEditImage,
+    onPrintExport: handlePrintExport,
+    printExporting,
   } : null;
 
   return (
