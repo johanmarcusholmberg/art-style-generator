@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
   Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
-  FolderPlus, FolderMinus,
+  FolderPlus, FolderMinus, Printer,
 } from "lucide-react";
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,8 @@ import CollectionsManager from "@/components/CollectionsManager";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Link } from "react-router-dom";
 import JSZip from "jszip";
+import { getPrintFormat, assessExportReadiness } from "@/lib/print-formats";
+import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 
 interface GalleryImage {
   id: string;
@@ -48,6 +50,14 @@ interface GalleryImage {
   actual_width_px?: number;
   actual_height_px?: number;
   enhanced?: boolean;
+  print_format_id?: string | null;
+  generation_mode?: string | null;
+  export_width?: number | null;
+  export_height?: number | null;
+  export_ready?: boolean | null;
+  export_storage_path?: string | null;
+  export_type?: string | null;
+  upscale_applied?: boolean | null;
 }
 
 export interface EditRequest {
@@ -149,13 +159,21 @@ interface LightboxContentProps {
   bgChanging: "white" | "cream" | null;
   bgResult: { imageUrl: string; bgStyle: string } | null;
   showEdit: boolean;
+  onPrintExport: (img: GalleryImage) => void;
+  printExporting: boolean;
 }
 
 function LightboxContent({
   img, onEdit, onDelete, onCopyUrl,
   onChangeBg, onSaveBg, onDiscardBg,
   bgChanging, bgResult, showEdit,
+  onPrintExport, printExporting,
 }: LightboxContentProps) {
+  const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
+  const hasExport = !!img.export_storage_path;
+  const exportReadiness = printFormat && img.actual_width_px && img.actual_height_px
+    ? assessExportReadiness(img.actual_width_px, img.actual_height_px, printFormat)
+    : null;
   return (
     <div className="space-y-4">
       <ImagePreviewMockups imageUrl={img.publicUrl} alt={img.prompt} />
@@ -176,19 +194,33 @@ function LightboxContent({
         </div>
 
         {/* Print quality info */}
-        {(img.target_ppi || img.target_width_px) && (
-          <div className="bg-muted/50 rounded-sm p-2 space-y-1">
-            {img.target_width_px && img.target_height_px && (
-              <p className="font-display text-[11px] text-foreground">
-                Target: <span className="font-bold">{img.target_width_px} × {img.target_height_px} px</span>
+        {(printFormat || img.target_ppi || img.target_width_px) && (
+          <div className="bg-muted/50 rounded-sm p-3 space-y-1.5">
+            {printFormat && (
+              <p className="font-display text-xs font-bold text-foreground">
+                🖨️ Print: {printFormat.label}
               </p>
             )}
-            {img.target_ppi && img.print_size && (
-              <p className="font-display text-[11px] text-muted-foreground">
-                {img.print_size} at {img.target_ppi} PPI
-                {img.target_ppi >= 280 && <span className="text-primary ml-1">· Print premium</span>}
-                {img.target_ppi >= 140 && img.target_ppi < 280 && <span className="text-primary ml-1">· Print standard</span>}
+            {img.export_width && img.export_height && (
+              <p className="font-display text-[11px] text-foreground">
+                Export: <span className="font-bold">{img.export_width} × {img.export_height} px</span>
               </p>
+            )}
+            {img.target_width_px && img.target_height_px && (
+              <p className="font-display text-[11px] text-muted-foreground">
+                Target: {img.target_width_px} × {img.target_height_px} px
+              </p>
+            )}
+            {exportReadiness && (
+              <p className="font-display text-[11px] text-muted-foreground">
+                {exportReadiness.description}
+              </p>
+            )}
+            {img.upscale_applied && (
+              <p className="font-display text-[11px] text-muted-foreground italic">Upscale applied</p>
+            )}
+            {hasExport && (
+              <p className="font-display text-[11px] text-primary font-medium">✓ Print export ready</p>
             )}
           </div>
         )}
@@ -198,6 +230,20 @@ function LightboxContent({
           <Button variant="outline" size="sm" onClick={() => downloadImage(img.publicUrl, `art-${img.id}.png`)} className="font-display text-xs">
             <Download className="mr-2 h-4 w-4" /> Download
           </Button>
+          {(printFormat || img.generation_mode === "print-ready") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPrintExport(img)}
+              disabled={printExporting}
+              className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+            >
+              {printExporting
+                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                : <Printer className="mr-2 h-4 w-4" />}
+              {hasExport ? "Re-export Print" : "Export Print"}
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={onCopyUrl} className="font-display text-xs">
             <Share2 className="mr-2 h-4 w-4" /> Copy URL
           </Button>
@@ -524,6 +570,78 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   useEffect(() => { setBgResult(null); }, [selected?.id]);
 
+  const [printExporting, setPrintExporting] = useState(false);
+
+  const handlePrintExport = async (img: GalleryImage) => {
+    const formatId = img.print_format_id || "print_50x70";
+    const format = getPrintFormat(formatId);
+    if (!format) { toast.error("Unknown print format"); return; }
+
+    setPrintExporting(true);
+    try {
+      const result = await preparePrintExport({
+        imageUrl: img.publicUrl,
+        printFormatId: formatId,
+      });
+
+      // Upload to print-exports bucket
+      const exportFilename = `print-${img.id}-${Date.now()}.png`;
+      const { error: uploadError } = await supabase.storage
+        .from("print-exports")
+        .upload(exportFilename, result.blob, { contentType: "image/png" });
+      if (uploadError) throw uploadError;
+
+      // Update image record with export metadata
+      await supabase.from("generated_images").update({
+        export_storage_path: exportFilename,
+        export_width: result.width,
+        export_height: result.height,
+        export_ready: true,
+        export_type: format.exportType,
+        upscale_applied: result.upscaleApplied,
+        crop_mode: result.normalization.method === "crop" ? "center" : null,
+        padding_mode: result.normalization.method === "pad" ? "center" : null,
+        print_format_id: formatId,
+      } as any).eq("id", img.id);
+
+      // Update local state
+      setImages((prev) => prev.map((i) => i.id === img.id ? {
+        ...i,
+        export_storage_path: exportFilename,
+        export_width: result.width,
+        export_height: result.height,
+        export_ready: true,
+        upscale_applied: result.upscaleApplied,
+        print_format_id: formatId,
+      } : i));
+      if (selected?.id === img.id) {
+        setSelected((prev) => prev ? {
+          ...prev,
+          export_storage_path: exportFilename,
+          export_width: result.width,
+          export_height: result.height,
+          export_ready: true,
+          upscale_applied: result.upscaleApplied,
+          print_format_id: formatId,
+        } : prev);
+      }
+
+      // Trigger download
+      const downloadName = `print-${format.label.replace(/\s/g, "")}-${result.width}x${result.height}.png`;
+      downloadPrintExport(result.blob, downloadName);
+
+      toast.success(
+        `Print export ready: ${result.width}×${result.height} px (${result.tier === "preferred" ? "300 PPI" : result.tier === "fallback" ? "150 PPI" : "source"})`,
+        { duration: 5000 }
+      );
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Print export failed");
+    } finally {
+      setPrintExporting(false);
+    }
+  };
+
   if (loading) return <GallerySkeleton />;
   if (images.length === 0) return <GalleryOnboarding />;
 
@@ -538,6 +656,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     bgChanging,
     bgResult,
     showEdit: !!onEditImage,
+    onPrintExport: handlePrintExport,
+    printExporting,
   } : null;
 
   return (
