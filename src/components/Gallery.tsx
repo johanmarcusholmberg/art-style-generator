@@ -573,6 +573,12 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const [printExporting, setPrintExporting] = useState(false);
 
   const handlePrintExport = async (img: GalleryImage) => {
+    // Guard: ensure source image exists
+    if (!img.publicUrl) {
+      toast.error("Source image is missing — cannot create print export");
+      return;
+    }
+
     const formatId = img.print_format_id || "print_50x70";
     const format = getPrintFormat(formatId);
     if (!format) { toast.error("Unknown print format"); return; }
@@ -584,46 +590,54 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         printFormatId: formatId,
       });
 
+      // Build tier description for user
+      const tierLabel = result.tier === "preferred"
+        ? "300 PPI — Full print quality"
+        : result.tier === "fallback"
+        ? "150 PPI — Standard print quality"
+        : "Source resolution — best effort";
+      const upscaleNote = result.upscaleApplied
+        ? ` · Enhanced ${result.upscaleFactor}×`
+        : " · Native resolution";
+
       // Upload to print-exports bucket
       const exportFilename = `print-${img.id}-${Date.now()}.png`;
       const { error: uploadError } = await supabase.storage
         .from("print-exports")
         .upload(exportFilename, result.blob, { contentType: "image/png" });
-      if (uploadError) throw uploadError;
 
-      // Update image record with export metadata
-      await supabase.from("generated_images").update({
-        export_storage_path: exportFilename,
+      if (uploadError) {
+        console.warn("Print export upload failed, download will still proceed:", uploadError);
+        // Still download even if storage upload fails
+      }
+
+      // Update image record (non-blocking — don't fail export if DB update fails)
+      supabase.from("generated_images").update({
+        export_storage_path: uploadError ? null : exportFilename,
         export_width: result.width,
         export_height: result.height,
-        export_ready: true,
+        export_ready: !uploadError,
         export_type: format.exportType,
         upscale_applied: result.upscaleApplied,
         crop_mode: result.normalization.method === "crop" ? "center" : null,
         padding_mode: result.normalization.method === "pad" ? "center" : null,
         print_format_id: formatId,
-      } as any).eq("id", img.id);
+      } as any).eq("id", img.id).then(({ error: dbErr }) => {
+        if (dbErr) console.warn("Failed to save export metadata:", dbErr);
+      });
 
       // Update local state
-      setImages((prev) => prev.map((i) => i.id === img.id ? {
-        ...i,
-        export_storage_path: exportFilename,
+      const exportUpdate = {
+        export_storage_path: uploadError ? null : exportFilename,
         export_width: result.width,
         export_height: result.height,
-        export_ready: true,
+        export_ready: !uploadError,
         upscale_applied: result.upscaleApplied,
         print_format_id: formatId,
-      } : i));
+      };
+      setImages((prev) => prev.map((i) => i.id === img.id ? { ...i, ...exportUpdate } : i));
       if (selected?.id === img.id) {
-        setSelected((prev) => prev ? {
-          ...prev,
-          export_storage_path: exportFilename,
-          export_width: result.width,
-          export_height: result.height,
-          export_ready: true,
-          upscale_applied: result.upscaleApplied,
-          print_format_id: formatId,
-        } : prev);
+        setSelected((prev) => prev ? { ...prev, ...exportUpdate } : prev);
       }
 
       // Trigger download
@@ -631,13 +645,26 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       downloadPrintExport(result.blob, downloadName);
 
       toast.success(
-        `Print export ready: ${result.width}×${result.height} px (${result.tier === "preferred" ? "300 PPI" : result.tier === "fallback" ? "150 PPI" : "source"})`,
-        { duration: 5000 }
+        `${result.width}×${result.height} px · ${tierLabel}${upscaleNote}`,
+        { duration: 6000 }
       );
     } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Print export failed");
+      console.error("Print export error:", err);
+      const message = err.message || "Print export failed";
+      // Provide actionable guidance
+      if (message.includes("load") || message.includes("unavailable")) {
+        toast.error("Could not load source image. It may have been deleted — try re-generating first.");
+      } else if (message.includes("too small")) {
+        toast.error(message);
+      } else if (message.includes("Canvas")) {
+        toast.error("Export rendering failed — your browser may not support this image size. Try a smaller format.");
+      } else {
+        toast.error(message);
+      }
     } finally {
+      setPrintExporting(false);
+    }
+  };
       setPrintExporting(false);
     }
   };
