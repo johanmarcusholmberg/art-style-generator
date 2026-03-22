@@ -26,6 +26,19 @@ export interface GallerySaveOptions {
   actualWidthPx?: number;
   actualHeightPx?: number;
   enhanced?: boolean;
+  /** Print format fields (Phase 1) */
+  printFormatId?: string;
+  generationMode?: string;
+  sourceWidth?: number;
+  sourceHeight?: number;
+  exportWidth?: number;
+  exportHeight?: number;
+  exportReady?: boolean;
+  exportType?: string;
+  upscaleApplied?: boolean;
+  upscaleMethod?: string;
+  cropMode?: string;
+  paddingMode?: string;
 }
 
 export async function saveToGallery(opts: GallerySaveOptions) {
