@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import {
   Loader2, CheckCircle2, XCircle, Clock, Ban, RefreshCw, Trash2,
   ChevronDown, ChevronUp, Image as ImageIcon,
