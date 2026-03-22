@@ -173,7 +173,7 @@ export default function Blend() {
 
           {/* Options row */}
           <div className="flex flex-wrap items-center gap-4">
-            <PrintSizeSelector selected={selectedSize} onChange={setSelectedSize} />
+            <PrintSizeSelector selected={selectedSize} onChange={setSelectedSize} qualityTarget={"print-300" as QualityTarget} onQualityChange={() => {}} />
             <div className="flex items-center gap-2">
               <Switch id="blend-cream" checked={useCream} onCheckedChange={setUseCream} />
               <Label htmlFor="blend-cream" className="font-display text-xs cursor-pointer">Cream BG</Label>

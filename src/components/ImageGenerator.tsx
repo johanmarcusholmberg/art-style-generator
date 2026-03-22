@@ -84,6 +84,7 @@ export default function ImageGenerator({
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
+  const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
   const { toast } = useToast();
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
