@@ -70,34 +70,55 @@ export type Database = {
       }
       generated_images: {
         Row: {
+          actual_height_px: number | null
+          actual_width_px: number | null
           aspect_ratio: string
           created_at: string
           deleted_at: string | null
+          enhanced: boolean | null
           id: string
           mode: string
           print_size: string | null
           prompt: string
+          quality_mode: string | null
           storage_path: string
+          target_height_px: number | null
+          target_ppi: number | null
+          target_width_px: number | null
         }
         Insert: {
+          actual_height_px?: number | null
+          actual_width_px?: number | null
           aspect_ratio?: string
           created_at?: string
           deleted_at?: string | null
+          enhanced?: boolean | null
           id?: string
           mode?: string
           print_size?: string | null
           prompt: string
+          quality_mode?: string | null
           storage_path: string
+          target_height_px?: number | null
+          target_ppi?: number | null
+          target_width_px?: number | null
         }
         Update: {
+          actual_height_px?: number | null
+          actual_width_px?: number | null
           aspect_ratio?: string
           created_at?: string
           deleted_at?: string | null
+          enhanced?: boolean | null
           id?: string
           mode?: string
           print_size?: string | null
           prompt?: string
+          quality_mode?: string | null
           storage_path?: string
+          target_height_px?: number | null
+          target_ppi?: number | null
+          target_width_px?: number | null
         }
         Relationships: []
       }
@@ -179,6 +200,9 @@ export type Database = {
           speed_mode: string
           status: string
           style_grid_styles: string[] | null
+          target_height_px: number | null
+          target_ppi: number | null
+          target_width_px: number | null
           total_images: number
           updated_at: string
           white_frame: boolean
@@ -200,6 +224,9 @@ export type Database = {
           speed_mode?: string
           status?: string
           style_grid_styles?: string[] | null
+          target_height_px?: number | null
+          target_ppi?: number | null
+          target_width_px?: number | null
           total_images?: number
           updated_at?: string
           white_frame?: boolean
@@ -221,6 +248,9 @@ export type Database = {
           speed_mode?: string
           status?: string
           style_grid_styles?: string[] | null
+          target_height_px?: number | null
+          target_ppi?: number | null
+          target_width_px?: number | null
           total_images?: number
           updated_at?: string
           white_frame?: boolean

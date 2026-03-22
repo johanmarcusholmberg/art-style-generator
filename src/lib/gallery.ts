@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { QualityTarget } from "@/lib/print-resolution";
 
 /**
  * Converts a base64 data URL to a Blob
@@ -12,42 +13,49 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([arr], { type: mime });
 }
 
-export async function saveToGallery({
-  imageUrl,
-  prompt,
-  mode,
-  aspectRatio,
-  printSize,
-}: {
+export interface GallerySaveOptions {
   imageUrl: string;
   prompt: string;
   mode: string;
   aspectRatio: string;
   printSize: string;
-}) {
-  const filename = `${mode}-${Date.now()}.png`;
-  const blob = dataUrlToBlob(imageUrl);
+  qualityMode?: QualityTarget;
+  targetPpi?: number;
+  targetWidthPx?: number;
+  targetHeightPx?: number;
+  actualWidthPx?: number;
+  actualHeightPx?: number;
+  enhanced?: boolean;
+}
 
-  // Upload to storage
+export async function saveToGallery(opts: GallerySaveOptions) {
+  const filename = `${opts.mode}-${Date.now()}.png`;
+  const blob = dataUrlToBlob(opts.imageUrl);
+
   const { error: uploadError } = await supabase.storage
     .from("generated-images")
     .upload(filename, blob, { contentType: "image/png" });
 
   if (uploadError) throw uploadError;
 
-  // Get public URL
   const { data: urlData } = supabase.storage
     .from("generated-images")
     .getPublicUrl(filename);
 
-  // Save metadata
   const { error: dbError } = await supabase.from("generated_images").insert({
-    prompt,
-    mode,
-    aspect_ratio: aspectRatio,
-    print_size: printSize,
+    prompt: opts.prompt,
+    mode: opts.mode,
+    aspect_ratio: opts.aspectRatio,
+    print_size: opts.printSize,
     storage_path: filename,
-  });
+    quality_mode: opts.qualityMode || "quality",
+    target_ppi: opts.targetPpi || null,
+    target_width_px: opts.targetWidthPx || null,
+    target_height_px: opts.targetHeightPx || null,
+    actual_width_px: opts.actualWidthPx || null,
+    actual_height_px: opts.actualHeightPx || null,
+    enhanced: opts.enhanced || false,
+  } as any);
 
   if (dbError) throw dbError;
 
@@ -86,10 +94,6 @@ export async function deleteFromGallery(id: string, storagePath: string) {
   if (dbError) throw dbError;
 }
 
-/**
- * Replace an existing gallery image with a new one.
- * Deletes the old storage file, uploads the new one, and updates the DB row.
- */
 export async function replaceInGallery({
   originalId,
   originalStoragePath,
@@ -98,29 +102,25 @@ export async function replaceInGallery({
   mode,
   aspectRatio,
   printSize,
-}: {
-  originalId: string;
-  originalStoragePath: string;
-  imageUrl: string;
-  prompt: string;
-  mode: string;
-  aspectRatio: string;
-  printSize: string;
-}) {
+  qualityMode,
+  targetPpi,
+  targetWidthPx,
+  targetHeightPx,
+  actualWidthPx,
+  actualHeightPx,
+  enhanced,
+}: GallerySaveOptions & { originalId: string; originalStoragePath: string }) {
   const filename = `${mode}-${Date.now()}.png`;
   const blob = dataUrlToBlob(imageUrl);
 
-  // Remove old file
   await supabase.storage.from("generated-images").remove([originalStoragePath]);
 
-  // Upload new file
   const { error: uploadError } = await supabase.storage
     .from("generated-images")
     .upload(filename, blob, { contentType: "image/png" });
 
   if (uploadError) throw uploadError;
 
-  // Update DB row
   const { error: dbError } = await supabase
     .from("generated_images")
     .update({
@@ -129,7 +129,14 @@ export async function replaceInGallery({
       aspect_ratio: aspectRatio,
       print_size: printSize,
       storage_path: filename,
-    })
+      quality_mode: qualityMode || "quality",
+      target_ppi: targetPpi || null,
+      target_width_px: targetWidthPx || null,
+      target_height_px: targetHeightPx || null,
+      actual_width_px: actualWidthPx || null,
+      actual_height_px: actualHeightPx || null,
+      enhanced: enhanced || false,
+    } as any)
     .eq("id", originalId);
 
   if (dbError) throw dbError;

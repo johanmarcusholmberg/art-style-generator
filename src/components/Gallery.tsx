@@ -41,6 +41,13 @@ interface GalleryImage {
   storage_path: string;
   created_at: string;
   publicUrl: string;
+  quality_mode?: string;
+  target_ppi?: number;
+  target_width_px?: number;
+  target_height_px?: number;
+  actual_width_px?: number;
+  actual_height_px?: number;
+  enhanced?: boolean;
 }
 
 export interface EditRequest {
@@ -160,10 +167,31 @@ function LightboxContent({
           {img.print_size && (
             <Badge variant="outline" className="font-display text-xs">{img.print_size}</Badge>
           )}
+          {img.enhanced && (
+            <Badge variant="outline" className="font-display text-xs text-primary border-primary/30">Enhanced</Badge>
+          )}
           <span className="text-xs text-muted-foreground font-display">
             {new Date(img.created_at).toLocaleDateString()}
           </span>
         </div>
+
+        {/* Print quality info */}
+        {(img.target_ppi || img.target_width_px) && (
+          <div className="bg-muted/50 rounded-sm p-2 space-y-1">
+            {img.target_width_px && img.target_height_px && (
+              <p className="font-display text-[11px] text-foreground">
+                Target: <span className="font-bold">{img.target_width_px} × {img.target_height_px} px</span>
+              </p>
+            )}
+            {img.target_ppi && img.print_size && (
+              <p className="font-display text-[11px] text-muted-foreground">
+                {img.print_size} at {img.target_ppi} PPI
+                {img.target_ppi >= 280 && <span className="text-primary ml-1">· Print premium</span>}
+                {img.target_ppi >= 140 && img.target_ppi < 280 && <span className="text-primary ml-1">· Print standard</span>}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2 pt-2">

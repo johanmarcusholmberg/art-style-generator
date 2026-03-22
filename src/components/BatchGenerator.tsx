@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
 import { createBatchJob, ALL_STYLES, type BatchJobConfig } from "@/lib/batch-jobs";
 import { cn } from "@/lib/utils";
+import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 
 const MAX_IMAGES_WARN = 20;
 const MAX_IMAGES_HARD = 50;
@@ -46,9 +47,10 @@ function parseInlineSyntax(prompt: string): { basePrompt: string; inlineVars: Ma
 export default function BatchGenerator() {
   const [prompt, setPrompt] = useState("");
   const [batchSize, setBatchSize] = useState(4);
-  const [hdEnhance, setHdEnhance] = useState(false);
+  const [hdEnhance, setHdEnhance] = useState(true);
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
-  const [speedMode, setSpeedMode] = useState<"fast" | "quality">("fast");
+  const [speedMode, setSpeedMode] = useState<"fast" | "quality">("quality");
+  const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const [selectedMode, setSelectedMode] = useState("japanese");
   const [jobType, setJobType] = useState<"batch" | "style-grid" | "matrix">("batch");
@@ -195,6 +197,8 @@ export default function BatchGenerator() {
         if (Object.keys(merged).length > 0) finalMatrixVars = merged;
       }
 
+      const resolution = getResolutionForPrintSize(printSize.dimensions, qualityTarget);
+
       const config: BatchJobConfig = {
         prompt: prompt.trim(),
         mode: selectedMode,
@@ -207,6 +211,10 @@ export default function BatchGenerator() {
         jobType,
         styleGridStyles: jobType === "style-grid" ? selectedStyles : undefined,
         matrixVariables: finalMatrixVars,
+        qualityTarget,
+        targetPpi: resolution?.ppi,
+        targetWidthPx: resolution?.widthPx,
+        targetHeightPx: resolution?.heightPx,
       };
 
       await createBatchJob(config);
@@ -377,13 +385,13 @@ export default function BatchGenerator() {
         </TabsContent>
       </Tabs>
 
-      <PrintSizeSelector selected={printSize} onChange={setPrintSize} />
+      <PrintSizeSelector selected={printSize} onChange={setPrintSize} qualityTarget={qualityTarget} onQualityChange={setQualityTarget} />
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <div className="flex items-center gap-2">
           <Switch id="batch-hd" checked={hdEnhance} onCheckedChange={setHdEnhance} />
           <Label htmlFor="batch-hd" className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1">
-            <Sparkles className="h-3.5 w-3.5 text-primary" /> HD Enhance
+            <Sparkles className="h-3.5 w-3.5 text-primary" /> Print Quality Enhancement
           </Label>
         </div>
       </div>
@@ -412,6 +420,15 @@ export default function BatchGenerator() {
               Total images: <span className={cn("font-bold", isOverLimit ? "text-destructive" : isWarning ? "text-yellow-600" : "text-primary")}>{totalImages}</span>
             </p>
             <p className="font-display text-xs text-muted-foreground">{breakdown}</p>
+            {(() => {
+              const res = getResolutionForPrintSize(printSize.dimensions, qualityTarget);
+              if (!res) return null;
+              return (
+                <p className="font-display text-[11px] text-muted-foreground mt-0.5">
+                  Target: {formatResolution(res.widthPx, res.heightPx)} · {res.ppi} PPI
+                </p>
+              );
+            })()}
           </div>
           <Button
             onClick={handleSubmit}

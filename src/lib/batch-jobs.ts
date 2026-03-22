@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { QualityTarget } from "@/lib/print-resolution";
 
 export interface BatchJobConfig {
   prompt: string;
@@ -12,6 +13,10 @@ export interface BatchJobConfig {
   jobType: "batch" | "style-grid" | "matrix";
   styleGridStyles?: string[];
   matrixVariables?: Record<string, string[]>;
+  qualityTarget?: QualityTarget;
+  targetPpi?: number;
+  targetWidthPx?: number;
+  targetHeightPx?: number;
 }
 
 function expandMatrix(basePrompt: string, variables: Record<string, string[]>): string[] {
@@ -85,7 +90,10 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
       style_grid_styles: config.styleGridStyles || null,
       matrix_variables: config.matrixVariables || null,
       status: "queued",
-    })
+      target_ppi: config.targetPpi || null,
+      target_width_px: config.targetWidthPx || null,
+      target_height_px: config.targetHeightPx || null,
+    } as any)
     .select("id")
     .single();
 

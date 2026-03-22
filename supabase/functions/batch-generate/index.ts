@@ -406,6 +406,11 @@ serve(async (req) => {
             aspect_ratio: job.aspect_ratio,
             print_size: job.print_size,
             storage_path: filename,
+            quality_mode: job.speed_mode === "fast" ? "web" : "quality",
+            target_ppi: job.target_ppi || null,
+            target_width_px: job.target_width_px || null,
+            target_height_px: job.target_height_px || null,
+            enhanced: job.hd_enhance || false,
           })
           .select("id")
           .single();

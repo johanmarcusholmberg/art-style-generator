@@ -22,6 +22,7 @@ import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/Pri
 import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
+import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -83,6 +84,7 @@ export default function ImageGenerator({
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
+  const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
   const { toast } = useToast();
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
@@ -152,12 +154,19 @@ export default function ImageGenerator({
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
       
+      const resolution = getResolutionForPrintSize(printSize.dimensions, qualityTarget);
+      
       await saveToGallery({
         imageUrl,
         prompt: finalPrompt,
         mode,
         aspectRatio: printSize.ratio,
         printSize: printSize.dimensions,
+        qualityMode: qualityTarget,
+        targetPpi: resolution?.ppi,
+        targetWidthPx: resolution?.widthPx,
+        targetHeightPx: resolution?.heightPx,
+        enhanced: hdEnhance,
       });
       setSavedToGallery(true);
       onImageSaved?.();
@@ -178,6 +187,8 @@ export default function ImageGenerator({
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
       
+      const resolution = getResolutionForPrintSize(printSize.dimensions, qualityTarget);
+      
       await replaceInGallery({
         originalId: originalImageId,
         originalStoragePath,
@@ -186,6 +197,11 @@ export default function ImageGenerator({
         mode,
         aspectRatio: printSize.ratio,
         printSize: printSize.dimensions,
+        qualityMode: qualityTarget,
+        targetPpi: resolution?.ppi,
+        targetWidthPx: resolution?.widthPx,
+        targetHeightPx: resolution?.heightPx,
+        enhanced: hdEnhance,
       });
       setSavedToGallery(true);
       onImageSaved?.();
@@ -313,7 +329,7 @@ export default function ImageGenerator({
           );
         })()}
 
-        <PrintSizeSelector selected={printSize} onChange={setPrintSize} />
+        <PrintSizeSelector selected={printSize} onChange={setPrintSize} qualityTarget={qualityTarget} onQualityChange={setQualityTarget} />
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <div className="flex items-center gap-2">
@@ -327,7 +343,7 @@ export default function ImageGenerator({
               className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1"
             >
               <Sparkles className="h-3.5 w-3.5 text-primary" />
-              HD Enhance
+              Print Quality Enhancement
             </Label>
           </div>
         </div>
