@@ -194,19 +194,33 @@ function LightboxContent({
         </div>
 
         {/* Print quality info */}
-        {(img.target_ppi || img.target_width_px) && (
-          <div className="bg-muted/50 rounded-sm p-2 space-y-1">
-            {img.target_width_px && img.target_height_px && (
-              <p className="font-display text-[11px] text-foreground">
-                Target: <span className="font-bold">{img.target_width_px} × {img.target_height_px} px</span>
+        {(printFormat || img.target_ppi || img.target_width_px) && (
+          <div className="bg-muted/50 rounded-sm p-3 space-y-1.5">
+            {printFormat && (
+              <p className="font-display text-xs font-bold text-foreground">
+                🖨️ Print: {printFormat.label}
               </p>
             )}
-            {img.target_ppi && img.print_size && (
-              <p className="font-display text-[11px] text-muted-foreground">
-                {img.print_size} at {img.target_ppi} PPI
-                {img.target_ppi >= 280 && <span className="text-primary ml-1">· Print premium</span>}
-                {img.target_ppi >= 140 && img.target_ppi < 280 && <span className="text-primary ml-1">· Print standard</span>}
+            {img.export_width && img.export_height && (
+              <p className="font-display text-[11px] text-foreground">
+                Export: <span className="font-bold">{img.export_width} × {img.export_height} px</span>
               </p>
+            )}
+            {img.target_width_px && img.target_height_px && (
+              <p className="font-display text-[11px] text-muted-foreground">
+                Target: {img.target_width_px} × {img.target_height_px} px
+              </p>
+            )}
+            {exportReadiness && (
+              <p className="font-display text-[11px] text-muted-foreground">
+                {exportReadiness.description}
+              </p>
+            )}
+            {img.upscale_applied && (
+              <p className="font-display text-[11px] text-muted-foreground italic">Upscale applied</p>
+            )}
+            {hasExport && (
+              <p className="font-display text-[11px] text-primary font-medium">✓ Print export ready</p>
             )}
           </div>
         )}
@@ -216,6 +230,20 @@ function LightboxContent({
           <Button variant="outline" size="sm" onClick={() => downloadImage(img.publicUrl, `art-${img.id}.png`)} className="font-display text-xs">
             <Download className="mr-2 h-4 w-4" /> Download
           </Button>
+          {(printFormat || img.generation_mode === "print-ready") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPrintExport(img)}
+              disabled={printExporting}
+              className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+            >
+              {printExporting
+                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                : <Printer className="mr-2 h-4 w-4" />}
+              {hasExport ? "Re-export Print" : "Export Print"}
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={onCopyUrl} className="font-display text-xs">
             <Share2 className="mr-2 h-4 w-4" /> Copy URL
           </Button>
