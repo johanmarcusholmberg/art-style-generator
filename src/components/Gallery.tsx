@@ -31,7 +31,7 @@ import CollectionsManager from "@/components/CollectionsManager";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Link } from "react-router-dom";
 import JSZip from "jszip";
-import { getPrintFormat, assessExportReadiness } from "@/lib/print-formats";
+import { getPrintFormat, assessExportReadiness, DEFAULT_PRINT_FORMAT_ID, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 
 interface GalleryImage {
@@ -579,7 +579,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       return;
     }
 
-    const formatId = img.print_format_id || "print_50x70";
+    const formatId = img.print_format_id || DEFAULT_PRINT_FORMAT_ID;
     const format = getPrintFormat(formatId);
     if (!format) { toast.error("Unknown print format"); return; }
 
@@ -590,15 +590,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         printFormatId: formatId,
       });
 
-      // Build tier description for user
-      const tierLabel = result.tier === "preferred"
-        ? "300 PPI — Full print quality"
-        : result.tier === "fallback"
-        ? "150 PPI — Standard print quality"
-        : "Source resolution — best effort";
-      const upscaleNote = result.upscaleApplied
-        ? ` · Enhanced ${result.upscaleFactor}×`
-        : " · Native resolution";
+      const { tierLabel, upscaleNote } = formatExportDescription(
+        result.tier, result.upscaleApplied, result.upscaleFactor, result.width, result.height,
+      );
 
       // Upload to print-exports bucket
       const exportFilename = `print-${img.id}-${Date.now()}.png`;

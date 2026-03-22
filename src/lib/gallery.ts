@@ -119,26 +119,13 @@ export async function deleteFromGallery(id: string, storagePath: string) {
   if (dbError) throw dbError;
 }
 
-export async function replaceInGallery({
-  originalId,
-  originalStoragePath,
-  imageUrl,
-  prompt,
-  mode,
-  aspectRatio,
-  printSize,
-  qualityMode,
-  targetPpi,
-  targetWidthPx,
-  targetHeightPx,
-  actualWidthPx,
-  actualHeightPx,
-  enhanced,
-}: GallerySaveOptions & { originalId: string; originalStoragePath: string }) {
-  const filename = `${mode}-${Date.now()}.png`;
-  const blob = dataUrlToBlob(imageUrl);
+export async function replaceInGallery(
+  opts: GallerySaveOptions & { originalId: string; originalStoragePath: string },
+) {
+  const filename = `${opts.mode}-${Date.now()}.png`;
+  const blob = dataUrlToBlob(opts.imageUrl);
 
-  await supabase.storage.from("generated-images").remove([originalStoragePath]);
+  await supabase.storage.from("generated-images").remove([opts.originalStoragePath]);
 
   const { error: uploadError } = await supabase.storage
     .from("generated-images")
@@ -149,20 +136,32 @@ export async function replaceInGallery({
   const { error: dbError } = await supabase
     .from("generated_images")
     .update({
-      prompt,
-      mode,
-      aspect_ratio: aspectRatio,
-      print_size: printSize,
+      prompt: opts.prompt,
+      mode: opts.mode,
+      aspect_ratio: opts.aspectRatio,
+      print_size: opts.printSize,
       storage_path: filename,
-      quality_mode: qualityMode || "quality",
-      target_ppi: targetPpi || null,
-      target_width_px: targetWidthPx || null,
-      target_height_px: targetHeightPx || null,
-      actual_width_px: actualWidthPx || null,
-      actual_height_px: actualHeightPx || null,
-      enhanced: enhanced || false,
+      quality_mode: opts.qualityMode || "quality",
+      target_ppi: opts.targetPpi || null,
+      target_width_px: opts.targetWidthPx || null,
+      target_height_px: opts.targetHeightPx || null,
+      actual_width_px: opts.actualWidthPx || null,
+      actual_height_px: opts.actualHeightPx || null,
+      enhanced: opts.enhanced || false,
+      print_format_id: opts.printFormatId || null,
+      generation_mode: opts.generationMode || null,
+      source_width: opts.sourceWidth || null,
+      source_height: opts.sourceHeight || null,
+      export_width: opts.exportWidth || null,
+      export_height: opts.exportHeight || null,
+      export_ready: opts.exportReady || false,
+      export_type: opts.exportType || null,
+      upscale_applied: opts.upscaleApplied || false,
+      upscale_method: opts.upscaleMethod || null,
+      crop_mode: opts.cropMode || null,
+      padding_mode: opts.paddingMode || null,
     } as any)
-    .eq("id", originalId);
+    .eq("id", opts.originalId);
 
   if (dbError) throw dbError;
 }

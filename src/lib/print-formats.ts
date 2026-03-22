@@ -46,6 +46,9 @@ export const PRINT_FORMATS: PrintFormat[] = [
   },
 ];
 
+/** Default print format id — used as fallback when none is specified */
+export const DEFAULT_PRINT_FORMAT_ID = PRINT_FORMATS[0].id;
+
 /** Look up a print format by id */
 export function getPrintFormat(id: string): PrintFormat | undefined {
   return PRINT_FORMATS.find((f) => f.id === id);
@@ -61,6 +64,33 @@ export function getPrintFormatByDimensions(
       (f.widthCm === widthCm && f.heightCm === heightCm) ||
       (f.widthCm === heightCm && f.heightCm === widthCm),
   );
+}
+
+/**
+ * Build a human-readable description of an export result tier.
+ * Centralises the tier + upscale messaging used by Gallery and ImageGenerator.
+ */
+export function formatExportDescription(
+  tier: "preferred" | "fallback" | "source",
+  upscaleApplied: boolean,
+  upscaleFactor: number,
+  width: number,
+  height: number,
+): { tierLabel: string; upscaleNote: string; summary: string } {
+  const tierLabel =
+    tier === "preferred"
+      ? "300 PPI — Full print quality"
+      : tier === "fallback"
+      ? "150 PPI — Standard print quality"
+      : "Source resolution — best effort";
+  const upscaleNote = upscaleApplied
+    ? ` · Enhanced ${upscaleFactor}×`
+    : " · Native resolution";
+  return {
+    tierLabel,
+    upscaleNote,
+    summary: `${width} × ${height} px · ${tierLabel}${upscaleNote}`,
+  };
 }
 
 /**

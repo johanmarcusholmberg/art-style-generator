@@ -23,7 +23,7 @@ import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
-import { PRINT_FORMATS, type PrintFormat } from "@/lib/print-formats";
+import { PRINT_FORMATS, type PrintFormat, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { cn } from "@/lib/utils";
 
@@ -243,14 +243,9 @@ export default function ImageGenerator({
         padColor: backgroundStyle === "cream" ? "#f5f0e8" : "#ffffff",
       });
 
-      const tierLabel = result.tier === "preferred"
-        ? "300 PPI — Full print quality"
-        : result.tier === "fallback"
-        ? "150 PPI — Standard print quality"
-        : "Source resolution — best effort";
-      const upscaleNote = result.upscaleApplied
-        ? ` · Enhanced ${result.upscaleFactor}×`
-        : " · Native resolution";
+      const { tierLabel, upscaleNote, summary } = formatExportDescription(
+        result.tier, result.upscaleApplied, result.upscaleFactor, result.width, result.height,
+      );
 
       // Upload to print-exports bucket (non-blocking failure)
       const exportFilename = `print-${selectedPrintFormat.id}-${Date.now()}.png`;
@@ -268,7 +263,7 @@ export default function ImageGenerator({
 
       toast({
         title: "Print export ready",
-        description: `${result.width} × ${result.height} px · ${tierLabel}${upscaleNote}`,
+        description: summary,
       });
     } catch (err: any) {
       console.error("Print export failed:", err);
