@@ -47,7 +47,7 @@ function parseInlineSyntax(prompt: string): { basePrompt: string; inlineVars: Ma
 export default function BatchGenerator() {
   const [prompt, setPrompt] = useState("");
   const [batchSize, setBatchSize] = useState(4);
-  const [hdEnhance, setHdEnhance] = useState(true);
+  const hdEnhance = true; // Always max quality — no toggle
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [speedMode, setSpeedMode] = useState<"fast" | "quality">("quality");
   const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
