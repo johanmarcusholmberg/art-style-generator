@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +23,10 @@ import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
+import { PRINT_FORMATS, type PrintFormat } from "@/lib/print-formats";
+import { cn } from "@/lib/utils";
+
+type GenerationMode = "standard" | "print-ready";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -63,7 +67,6 @@ export default function ImageGenerator({
   const modeLabel = isTertiary ? styleConfig.tertiaryTabLabel! : isThemed ? styleConfig.themedTabLabel : styleConfig.freestyleTabLabel;
   const generateLabel = isTertiary ? styleConfig.tertiaryGenerateLabel! : isThemed ? styleConfig.themedGenerateLabel : styleConfig.freestyleGenerateLabel;
 
-  // Use styleKey prefix for persistence to avoid collisions between styles
   const persistKey = `${styleConfig.styleKey}-${mode}` as any;
 
   const {
@@ -85,9 +88,14 @@ export default function ImageGenerator({
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
+  const [generationMode, setGenerationMode] = useState<GenerationMode>("standard");
+  const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(PRINT_FORMATS[0]);
   const { toast } = useToast();
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
+
+  // Derive the effective aspect ratio — print-ready overrides with print format ratio
+  const effectiveAspectRatio = generationMode === "print-ready" ? selectedPrintFormat.aspectRatio : printSize.ratio;
 
   const generate = async () => {
     const activePrompt = isInlineEditing ? editPrompt : prompt;
@@ -97,7 +105,11 @@ export default function ImageGenerator({
     setSavedToGallery(false);
 
     try {
-      const body: any = { prompt: activePrompt.trim(), aspectRatio: printSize.ratio, backgroundStyle };
+      const body: any = {
+        prompt: activePrompt.trim(),
+        aspectRatio: effectiveAspectRatio,
+        backgroundStyle,
+      };
       if (isInlineEditing && imageUrl) {
         body.sourceImageUrl = imageUrl;
       } else if (sourceImageUrl) {
@@ -115,7 +127,7 @@ export default function ImageGenerator({
         setEnhancing(true);
         try {
           const { data: upData, error: upError } = await supabase.functions.invoke("upscale-image", {
-            body: { imageUrl: data.imageUrl, aspectRatio: printSize.ratio },
+            body: { imageUrl: data.imageUrl, aspectRatio: effectiveAspectRatio },
           });
           if (!upError && upData?.imageUrl) {
             finalUrl = upData.imageUrl;
@@ -146,6 +158,29 @@ export default function ImageGenerator({
 
   const hasEnhanced = hdEnhance && baseImageUrl && imageUrl && baseImageUrl !== imageUrl;
 
+  /** Build shared save options including print-ready metadata when applicable */
+  const buildSaveOptions = () => {
+    const isPrint = generationMode === "print-ready";
+    const resolution = isPrint
+      ? null // we use print format data directly
+      : getResolutionForPrintSize(printSize.dimensions, qualityTarget);
+
+    return {
+      mode,
+      aspectRatio: effectiveAspectRatio,
+      printSize: isPrint ? selectedPrintFormat.label : printSize.dimensions,
+      qualityMode: qualityTarget,
+      targetPpi: isPrint ? 300 : resolution?.ppi,
+      targetWidthPx: isPrint ? selectedPrintFormat.preferredPixelWidth : resolution?.widthPx,
+      targetHeightPx: isPrint ? selectedPrintFormat.preferredPixelHeight : resolution?.heightPx,
+      enhanced: hdEnhance,
+      // Phase 1 print format fields
+      printFormatId: isPrint ? selectedPrintFormat.id : undefined,
+      generationMode: generationMode,
+      exportType: isPrint ? selectedPrintFormat.exportType : undefined,
+    };
+  };
+
   const handleSaveToGallery = async () => {
     if (!imageUrl || savedToGallery || saving) return;
     setSaving(true);
@@ -153,20 +188,11 @@ export default function ImageGenerator({
       const finalPrompt = isEditMode && initialPrompt
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
-      
-      const resolution = getResolutionForPrintSize(printSize.dimensions, qualityTarget);
-      
+
       await saveToGallery({
         imageUrl,
         prompt: finalPrompt,
-        mode,
-        aspectRatio: printSize.ratio,
-        printSize: printSize.dimensions,
-        qualityMode: qualityTarget,
-        targetPpi: resolution?.ppi,
-        targetWidthPx: resolution?.widthPx,
-        targetHeightPx: resolution?.heightPx,
-        enhanced: hdEnhance,
+        ...buildSaveOptions(),
       });
       setSavedToGallery(true);
       onImageSaved?.();
@@ -186,22 +212,13 @@ export default function ImageGenerator({
       const finalPrompt = isEditMode && initialPrompt
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
-      
-      const resolution = getResolutionForPrintSize(printSize.dimensions, qualityTarget);
-      
+
       await replaceInGallery({
         originalId: originalImageId,
         originalStoragePath,
         imageUrl,
         prompt: finalPrompt,
-        mode,
-        aspectRatio: printSize.ratio,
-        printSize: printSize.dimensions,
-        qualityMode: qualityTarget,
-        targetPpi: resolution?.ppi,
-        targetWidthPx: resolution?.widthPx,
-        targetHeightPx: resolution?.heightPx,
-        enhanced: hdEnhance,
+        ...buildSaveOptions(),
       });
       setSavedToGallery(true);
       onImageSaved?.();
@@ -329,7 +346,76 @@ export default function ImageGenerator({
           );
         })()}
 
-        <PrintSizeSelector selected={printSize} onChange={setPrintSize} qualityTarget={qualityTarget} onQualityChange={setQualityTarget} />
+        {/* Generation Mode Toggle */}
+        <div>
+          <p className="font-display font-bold text-sm text-foreground mb-2">Generation Mode</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setGenerationMode("standard")}
+              className={cn(
+                "text-xs px-3 py-1.5 rounded-sm border font-display transition-colors",
+                generationMode === "standard"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-secondary text-secondary-foreground border-border hover:bg-muted"
+              )}
+            >
+              Standard
+            </button>
+            <button
+              onClick={() => setGenerationMode("print-ready")}
+              className={cn(
+                "text-xs px-3 py-1.5 rounded-sm border font-display transition-colors flex items-center gap-1",
+                generationMode === "print-ready"
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-secondary text-secondary-foreground border-border hover:bg-muted"
+              )}
+            >
+              <Printer className="h-3 w-3" />
+              Print-Ready
+            </button>
+          </div>
+        </div>
+
+        {/* Print Format Selector — only when print-ready */}
+        {generationMode === "print-ready" && (
+          <div className="rounded-sm border border-primary/20 bg-primary/5 p-3 space-y-2">
+            <p className="font-display font-bold text-sm text-foreground">Print Format</p>
+            <div className="flex flex-wrap gap-2">
+              {PRINT_FORMATS.map((fmt) => (
+                <button
+                  key={fmt.id}
+                  onClick={() => setSelectedPrintFormat(fmt)}
+                  className={cn(
+                    "text-xs px-3 py-1.5 rounded-sm border font-display transition-colors",
+                    selectedPrintFormat.id === fmt.id
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-secondary text-secondary-foreground border-border hover:bg-muted"
+                  )}
+                >
+                  {fmt.label}
+                </button>
+              ))}
+            </div>
+            <div className="text-xs text-muted-foreground font-display space-y-0.5">
+              <p>
+                Aspect ratio: <span className="font-bold text-foreground">{selectedPrintFormat.aspectRatio}</span>
+                {" · "}
+                Target: <span className="font-bold text-foreground">{formatResolution(selectedPrintFormat.preferredPixelWidth, selectedPrintFormat.preferredPixelHeight)}</span>
+              </p>
+              <p>
+                Fallback: {formatResolution(selectedPrintFormat.fallbackPixelWidth, selectedPrintFormat.fallbackPixelHeight)}
+                {selectedPrintFormat.allowUpscale && (
+                  <span className="text-primary ml-1">· Upscale enabled</span>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Standard mode: show existing print size / quality selectors */}
+        {generationMode === "standard" && (
+          <PrintSizeSelector selected={printSize} onChange={setPrintSize} qualityTarget={qualityTarget} onQualityChange={setQualityTarget} />
+        )}
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <div className="flex items-center gap-2">
@@ -421,7 +507,7 @@ export default function ImageGenerator({
                 onClick={() =>
                   downloadImage(
                     viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl,
-                    `${styleConfig.downloadPrefix}-${mode}-${printSize.ratio.replace(":", "x")}-${Date.now()}.png`
+                    `${styleConfig.downloadPrefix}-${mode}-${effectiveAspectRatio.replace(":", "x")}-${Date.now()}.png`
                   )
                 }
                 className="font-display text-xs tracking-wider"
@@ -433,7 +519,7 @@ export default function ImageGenerator({
                     ? "(Original)"
                     : "(Enhanced)"
                   : ""}{" "}
-                ({printSize.dimensions})
+                ({generationMode === "print-ready" ? selectedPrintFormat.label : printSize.dimensions})
               </Button>
               {!savedToGallery && isEditMode && originalImageId && (
                 <Button
