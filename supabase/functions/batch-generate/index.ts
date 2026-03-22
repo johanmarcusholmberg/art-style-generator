@@ -7,7 +7,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const STYLE_CONFIGS: Record<string, { visualGoal: string[]; styleAnchors: string[]; style: string[]; composition: string[]; color: string[]; quality: string[]; avoid: string[] }> = {
+// ── Style configs (read-only, shared across all invocations) ──
+
+const STYLE_CONFIGS: Record<string, { prompt: string[] }> = {};
+
+const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[]; style: string[]; composition: string[]; color: string[]; quality: string[]; avoid: string[] }> = {
   japanese: {
     visualGoal: ["authentic museum-quality ukiyo-e woodblock print", "feels like a genuine Edo period artwork"],
     styleAnchors: ["traditional Japanese ukiyo-e woodblock print", "Hokusai and Hiroshige aesthetic"],
@@ -127,6 +131,21 @@ const STYLE_CONFIGS: Record<string, { visualGoal: string[]; styleAnchors: string
   },
 };
 
+// Pre-compile style prompt fragments once at module load (not per request)
+for (const [key, cfg] of Object.entries(RAW_STYLES)) {
+  STYLE_CONFIGS[key] = {
+    prompt: [
+      `VISUAL GOAL: ${cfg.visualGoal.join(". ")}`,
+      `STYLE ANCHORS: ${cfg.styleAnchors.join(". ")}`,
+      `STYLE RULES: ${cfg.style.join(". ")}`,
+      `COMPOSITION: ${cfg.composition.join(". ")}`,
+      `COLOR: ${cfg.color.join(". ")}`,
+      `GLOBAL QUALITY: ${cfg.quality.join(". ")}`,
+      `AVOID: ${cfg.avoid.join(". ")}`,
+    ],
+  };
+}
+
 const VARIATION_INSTRUCTIONS = [
   "alternate composition angle",
   "different lighting direction",
@@ -135,52 +154,78 @@ const VARIATION_INSTRUCTIONS = [
   "different focal emphasis",
 ];
 
-function buildPrompt(prompt: string, mode: string, backgroundStyle: string, aspectRatio: string, variationIndex?: number): string {
-  const config = STYLE_CONFIGS[mode];
-  const cream = backgroundStyle === "cream";
-  const bg = cream ? "Use a warm cream/off-white paper background." : "The background MUST be pure white (#FFFFFF).";
-  const ratio = aspectRatio ? `The image must have a ${aspectRatio} aspect ratio.` : "";
+/** Build a complete prompt. Uses pre-compiled style fragments. */
+function buildPrompt(subject: string, mode: string, bg: string, ratio: string, variationIndex: number): string {
+  const style = STYLE_CONFIGS[mode];
 
-  if (!config) {
-    return [`PRIMARY SUBJECT: ${prompt}`, "", "GLOBAL QUALITY: high detail, professional illustration, sharp rendering, clean edges, no artifacts, print-ready resolution", "", bg, ratio, "Generate at maximum resolution."].filter(Boolean).join("\n");
+  const parts = [`PRIMARY SUBJECT: ${subject}`, ""];
+
+  if (style) {
+    parts.push(...style.prompt, "");
+  } else {
+    parts.push("GLOBAL QUALITY: high detail, professional illustration, sharp rendering, clean edges, no artifacts, print-ready resolution", "");
   }
 
-  const variationText = variationIndex !== undefined && variationIndex > 0
-    ? `\nVARIATION: Apply ${VARIATION_INSTRUCTIONS[variationIndex % VARIATION_INSTRUCTIONS.length]} while maintaining the same subject and style.`
-    : "";
+  parts.push(bg, ratio);
 
-  return [
-    `PRIMARY SUBJECT: ${prompt}`,
-    "",
-    `VISUAL GOAL: ${config.visualGoal.join(". ")}`,
-    "",
-    `STYLE ANCHORS: ${config.styleAnchors.join(". ")}`,
-    "",
-    `STYLE RULES: ${config.style.join(". ")}`,
-    `COMPOSITION: ${config.composition.join(". ")}`,
-    `COLOR: ${config.color.join(". ")}`,
-    `GLOBAL QUALITY: ${config.quality.join(". ")}`,
-    `AVOID: ${config.avoid.join(". ")}`,
-    "",
-    bg,
-    ratio,
-    variationText,
-    "Generate at maximum resolution with fine detail suitable for large format printing.",
-  ].filter(Boolean).join("\n");
+  if (variationIndex > 0) {
+    parts.push(`VARIATION: Apply ${VARIATION_INSTRUCTIONS[variationIndex % VARIATION_INSTRUCTIONS.length]} while maintaining the same subject and style.`);
+  }
+
+  parts.push("Generate at maximum resolution with fine detail suitable for large format printing.");
+
+  return parts.filter(Boolean).join("\n");
 }
 
-const PARALLEL_WORKERS = 3;
+// ── Concurrency control ──
+
+const CONCURRENCY_FAST = 5;
+const CONCURRENCY_QUALITY = 3;
 
 /**
- * Atomically update job counters by re-counting from items.
- * This avoids race conditions when multiple workers finish simultaneously.
+ * Process items with a concurrency-limited pool.
+ * Unlike fixed-size batches, a pool starts new work as soon as a slot opens.
  */
+async function runPool(
+  items: any[],
+  concurrency: number,
+  worker: (item: any, index: number) => Promise<void>,
+  shouldStop: () => Promise<boolean>,
+) {
+  let nextIdx = 0;
+  let activeCount = 0;
+  let resolve: () => void;
+  const done = new Promise<void>((r) => { resolve = r; });
+
+  async function startNext() {
+    while (nextIdx < items.length && activeCount < concurrency) {
+      if (await shouldStop()) { if (activeCount === 0) resolve!(); return; }
+
+      const idx = nextIdx++;
+      activeCount++;
+
+      worker(items[idx], idx).finally(() => {
+        activeCount--;
+        if (nextIdx >= items.length && activeCount === 0) {
+          resolve!();
+        } else {
+          startNext();
+        }
+      });
+    }
+    if (nextIdx >= items.length && activeCount === 0) resolve!();
+  }
+
+  await startNext();
+  await done;
+}
+
+/** Sync job counters from items — single query, single write. */
 async function syncJobCounters(supabase: any, jobId: string) {
   const { data: allItems } = await supabase
     .from("generation_job_items")
     .select("status")
     .eq("job_id", jobId);
-
   if (!allItems) return;
 
   const completed = allItems.filter((it: any) => it.status === "completed").length;
@@ -188,24 +233,8 @@ async function syncJobCounters(supabase: any, jobId: string) {
 
   await supabase
     .from("generation_jobs")
-    .update({
-      completed_images: completed,
-      failed_images: failed,
-      updated_at: new Date().toISOString(),
-    })
+    .update({ completed_images: completed, failed_images: failed, updated_at: new Date().toISOString() })
     .eq("id", jobId);
-}
-
-/**
- * Check if job is cancelled. Used before and during processing.
- */
-async function isJobCancelled(supabase: any, jobId: string): Promise<boolean> {
-  const { data } = await supabase
-    .from("generation_jobs")
-    .select("status")
-    .eq("id", jobId)
-    .single();
-  return data?.status === "cancelled";
 }
 
 serve(async (req) => {
@@ -222,23 +251,19 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch job — validate it exists and is in a processable state
     const { data: job, error: jobError } = await supabase.from("generation_jobs").select("*").eq("id", jobId).single();
     if (jobError || !job) return new Response(JSON.stringify({ error: "Job not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    // Only process jobs that are queued or processing (idempotent: re-invocations are safe)
     if (job.status === "cancelled" || job.status === "completed") {
       return new Response(JSON.stringify({ status: job.status }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Atomically set to processing — only if still queued or processing (prevents race)
     await supabase
       .from("generation_jobs")
       .update({ status: "processing", updated_at: new Date().toISOString() })
       .eq("id", jobId)
       .in("status", ["queued", "processing"]);
 
-    // Fetch only queued items (retry-safe: already completed/failed items are skipped)
     const { data: items } = await supabase
       .from("generation_job_items")
       .select("*")
@@ -247,42 +272,80 @@ serve(async (req) => {
       .order("created_at");
 
     if (!items || items.length === 0) {
-      // Sync counters and finalize
       await syncJobCounters(supabase, jobId);
       const { data: finalItems } = await supabase.from("generation_job_items").select("status").eq("job_id", jobId);
-      const allDone = finalItems?.every((it: any) => it.status === "completed" || it.status === "failed");
+      const allDone = finalItems?.every((it: any) => it.status === "completed" || it.status === "failed" || it.status === "cancelled");
       if (allDone) {
         const failed = finalItems?.filter((it: any) => it.status === "failed").length || 0;
         const finalStatus = failed === finalItems?.length ? "failed" : "completed";
         await supabase.from("generation_jobs").update({ status: finalStatus, updated_at: new Date().toISOString() }).eq("id", jobId);
       }
-      return new Response(JSON.stringify({ status: "completed", message: "No queued items to process" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ status: "completed", message: "No queued items" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const processItem = async (item: any, itemIndex: number) => {
-      // Check cancellation before starting
-      if (await isJobCancelled(supabase, jobId)) return;
+    // Precompute shared prompt fragments
+    const bgText = job.background_style === "cream"
+      ? "Use a warm cream/off-white paper background."
+      : "The background MUST be pure white (#FFFFFF).";
+    const ratioText = job.aspect_ratio ? `The image must have a ${job.aspect_ratio} aspect ratio.` : "";
+    const model = job.speed_mode === "fast" ? "google/gemini-3.1-flash-image-preview" : "google/gemini-3-pro-image-preview";
+    const concurrency = job.speed_mode === "fast" ? CONCURRENCY_FAST : CONCURRENCY_QUALITY;
 
-      // Idempotent: only transition from queued → generating
-      const { data: transitioned, error: transErr } = await supabase
+    // Debounced counter sync — at most once per 2 seconds
+    let syncPending = false;
+    let lastSyncTime = 0;
+    const debouncedSync = async () => {
+      const now = Date.now();
+      if (now - lastSyncTime < 2000) {
+        if (!syncPending) {
+          syncPending = true;
+          setTimeout(async () => {
+            syncPending = false;
+            lastSyncTime = Date.now();
+            await syncJobCounters(supabase, jobId);
+          }, 2000);
+        }
+        return;
+      }
+      lastSyncTime = now;
+      await syncJobCounters(supabase, jobId);
+    };
+
+    // Cache cancellation status — refresh at most every 3 seconds
+    let cancelledCache = false;
+    let lastCancelCheck = 0;
+    const checkCancelled = async (): Promise<boolean> => {
+      if (cancelledCache) return true;
+      const now = Date.now();
+      if (now - lastCancelCheck < 3000) return cancelledCache;
+      lastCancelCheck = now;
+      const { data } = await supabase.from("generation_jobs").select("status").eq("id", jobId).single();
+      cancelledCache = data?.status === "cancelled";
+      return cancelledCache;
+    };
+
+    const processItem = async (item: any, itemIndex: number) => {
+      if (await checkCancelled()) return;
+
+      // Idempotent transition queued → generating
+      const { data: transitioned } = await supabase
         .from("generation_job_items")
         .update({ status: "generating", updated_at: new Date().toISOString() })
         .eq("id", item.id)
         .eq("status", "queued")
         .select("id");
 
-      // If no rows updated, item was already picked up (duplicate invocation) — skip
-      if (transErr || !transitioned || transitioned.length === 0) return;
+      if (!transitioned || transitioned.length === 0) return;
 
       try {
         const mode = item.style || job.mode;
-        const fullPrompt = buildPrompt(item.prompt_variant, mode, job.background_style, job.aspect_ratio, itemIndex);
+        const fullPrompt = buildPrompt(item.prompt_variant, mode, bgText, ratioText, itemIndex);
 
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: job.speed_mode === "fast" ? "google/gemini-3.1-flash-image-preview" : "google/gemini-3-pro-image-preview",
+            model,
             messages: [{ role: "user", content: fullPrompt }],
             modalities: ["image", "text"],
           }),
@@ -309,7 +372,7 @@ serve(async (req) => {
                   role: "user",
                   content: [
                     { type: "image_url", image_url: { url: imageUrl } },
-                    { type: "text", text: `CRITICAL UPSCALING: Sharpen edges, enhance textures, increase clarity and resolution. Do NOT change subject, style, composition, or colors. Same image but dramatically sharper. Maintain ${job.aspect_ratio} aspect ratio.` },
+                    { type: "text", text: `CRITICAL UPSCALING: Sharpen edges, enhance textures, increase clarity and resolution. Do NOT change subject, style, composition, or colors. Maintain ${job.aspect_ratio} aspect ratio.` },
                   ],
                 }],
                 modalities: ["image", "text"],
@@ -323,7 +386,7 @@ serve(async (req) => {
           } catch { /* skip upscale on error */ }
         }
 
-        // Upload to storage
+        // Upload + gallery save
         const filename = `${mode}-batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
         const base64Data = finalImageUrl.split(",")[1];
         const binaryString = atob(base64Data);
@@ -335,8 +398,7 @@ serve(async (req) => {
           .upload(filename, bytes.buffer, { contentType: "image/png" });
         if (uploadError) throw new Error("Failed to save image to storage");
 
-        // Save to gallery immediately — duplicate protection via unique storage_path
-        const { data: galleryRow, error: dbError } = await supabase
+        const { data: galleryRow } = await supabase
           .from("generated_images")
           .insert({
             prompt: item.prompt_variant,
@@ -347,9 +409,7 @@ serve(async (req) => {
           })
           .select("id")
           .single();
-        if (dbError) console.error("Gallery save error:", dbError);
 
-        // Idempotent completion: only update if still in "generating" state
         await supabase
           .from("generation_job_items")
           .update({
@@ -362,8 +422,7 @@ serve(async (req) => {
           .eq("id", item.id)
           .eq("status", "generating");
 
-        // Sync job counters after each item (real-time progress)
-        await syncJobCounters(supabase, jobId);
+        await debouncedSync();
       } catch (err: any) {
         console.error(`Item ${item.id} failed:`, err.message);
         await supabase
@@ -376,23 +435,15 @@ serve(async (req) => {
           .eq("id", item.id)
           .in("status", ["queued", "generating"]);
 
-        // Sync counters even on failure
-        await syncJobCounters(supabase, jobId);
+        await debouncedSync();
       }
     };
 
-    // Process in parallel batches
-    let globalIndex = 0;
-    for (let i = 0; i < items.length; i += PARALLEL_WORKERS) {
-      if (await isJobCancelled(supabase, jobId)) break;
+    // Run with concurrency pool
+    await runPool(items, concurrency, processItem, checkCancelled);
 
-      const batch = items.slice(i, i + PARALLEL_WORKERS);
-      await Promise.allSettled(batch.map((item, batchIdx) => processItem(item, globalIndex + batchIdx)));
-      globalIndex += batch.length;
-    }
-
-    // Final status determination
-    if (!(await isJobCancelled(supabase, jobId))) {
+    // Final accurate counter sync + status
+    if (!cancelledCache) {
       await syncJobCounters(supabase, jobId);
 
       const { data: finalItems } = await supabase
@@ -406,12 +457,7 @@ serve(async (req) => {
 
       await supabase
         .from("generation_jobs")
-        .update({
-          status: finalStatus,
-          completed_images: completed,
-          failed_images: failed,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ status: finalStatus, completed_images: completed, failed_images: failed, updated_at: new Date().toISOString() })
         .eq("id", jobId)
         .in("status", ["processing", "queued"]);
     }

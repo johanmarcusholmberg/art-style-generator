@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import {
   Loader2, CheckCircle2, XCircle, Clock, Ban, RefreshCw, Trash2,
   ChevronDown, ChevronUp, Image as ImageIcon,
@@ -37,7 +37,7 @@ const STATUS_LABELS: Record<string, string> = {
   generating: "Generating",
 };
 
-function JobCard({ job }: { job: JobRow }) {
+const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
   const [expanded, setExpanded] = useState(false);
   const { items, loading: itemsLoading } = useJobItems(expanded ? job.id : null);
 
@@ -197,7 +197,7 @@ function JobCard({ job }: { job: JobRow }) {
       )}
     </div>
   );
-}
+});
 
 export default function JobsManager() {
   const { jobs, loading } = useBatchJobs();
