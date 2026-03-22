@@ -343,7 +343,8 @@ export default function ImageGenerator({
               className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1"
             >
               <Sparkles className="h-3.5 w-3.5 text-primary" />
-              HD Enhance
+              Print Quality Enhancement
+            </Label>
             </Label>
           </div>
         </div>

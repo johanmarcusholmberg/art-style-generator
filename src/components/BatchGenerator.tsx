@@ -391,7 +391,7 @@ export default function BatchGenerator() {
         <div className="flex items-center gap-2">
           <Switch id="batch-hd" checked={hdEnhance} onCheckedChange={setHdEnhance} />
           <Label htmlFor="batch-hd" className="font-display text-sm text-muted-foreground cursor-pointer flex items-center gap-1">
-            <Sparkles className="h-3.5 w-3.5 text-primary" /> HD Enhance
+            <Sparkles className="h-3.5 w-3.5 text-primary" /> Print Quality Enhancement
           </Label>
         </div>
       </div>
