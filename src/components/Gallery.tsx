@@ -50,6 +50,14 @@ interface GalleryImage {
   actual_width_px?: number;
   actual_height_px?: number;
   enhanced?: boolean;
+  print_format_id?: string | null;
+  generation_mode?: string | null;
+  export_width?: number | null;
+  export_height?: number | null;
+  export_ready?: boolean | null;
+  export_storage_path?: string | null;
+  export_type?: string | null;
+  upscale_applied?: boolean | null;
 }
 
 export interface EditRequest {
