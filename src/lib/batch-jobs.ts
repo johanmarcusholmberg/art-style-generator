@@ -90,7 +90,10 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
       style_grid_styles: config.styleGridStyles || null,
       matrix_variables: config.matrixVariables || null,
       status: "queued",
-    })
+      target_ppi: config.targetPpi || null,
+      target_width_px: config.targetWidthPx || null,
+      target_height_px: config.targetHeightPx || null,
+    } as any)
     .select("id")
     .single();
 
