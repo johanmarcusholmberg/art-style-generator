@@ -10,15 +10,10 @@ export interface BatchJobConfig {
   backgroundStyle: "white" | "cream";
   speedMode: "fast" | "quality";
   jobType: "batch" | "style-grid" | "matrix";
-  /** For style grid: which styles to generate */
   styleGridStyles?: string[];
-  /** For matrix: variables to combine */
   matrixVariables?: Record<string, string[]>;
 }
 
-/**
- * Expand matrix variables into all combinations.
- */
 function expandMatrix(basePrompt: string, variables: Record<string, string[]>): string[] {
   const keys = Object.keys(variables);
   if (keys.length === 0) return [basePrompt];
@@ -46,6 +41,7 @@ function expandMatrix(basePrompt: string, variables: Record<string, string[]>): 
 
 /**
  * Creates a generation job with items and kicks off background processing.
+ * Returns the job ID.
  */
 export async function createBatchJob(config: BatchJobConfig): Promise<string> {
   const items: Array<{ prompt_variant: string; style: string | null }> = [];
@@ -79,7 +75,7 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
       aspect_ratio: config.aspectRatio,
       print_size: config.printSize,
       hd_enhance: config.hdEnhance,
-      white_frame: false, // deprecated but kept for DB compat
+      white_frame: false,
       background_style: config.backgroundStyle,
       speed_mode: config.speedMode,
       job_type: config.jobType,
@@ -103,6 +99,7 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
   const { error: itemsError } = await supabase.from("generation_job_items").insert(jobItems);
   if (itemsError) throw new Error(itemsError.message);
 
+  // Fire and forget — the edge function handles everything from here
   supabase.functions
     .invoke("batch-generate", { body: { jobId: job.id } })
     .catch((err) => console.error("Failed to invoke batch-generate:", err));
@@ -111,21 +108,59 @@ export async function createBatchJob(config: BatchJobConfig): Promise<string> {
 }
 
 export async function cancelJob(jobId: string) {
-  const { error } = await supabase.from("generation_jobs").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", jobId);
+  // Cancel the job — only if it's still in a cancellable state
+  const { error } = await supabase
+    .from("generation_jobs")
+    .update({ status: "cancelled", updated_at: new Date().toISOString() })
+    .eq("id", jobId)
+    .in("status", ["queued", "processing"]);
   if (error) throw error;
+
+  // Also mark any remaining queued items as cancelled
+  await supabase
+    .from("generation_job_items")
+    .update({ status: "cancelled", updated_at: new Date().toISOString() })
+    .eq("job_id", jobId)
+    .eq("status", "queued");
 }
 
 export async function retryFailedItems(jobId: string) {
-  const { error: resetError } = await supabase.from("generation_job_items").update({ status: "queued", error_message: null, updated_at: new Date().toISOString() }).eq("job_id", jobId).eq("status", "failed");
+  // Only reset failed items back to queued — completed items are untouched
+  const { error: resetError } = await supabase
+    .from("generation_job_items")
+    .update({ status: "queued", error_message: null, updated_at: new Date().toISOString() })
+    .eq("job_id", jobId)
+    .eq("status", "failed");
   if (resetError) throw resetError;
 
-  const { error: jobError } = await supabase.from("generation_jobs").update({ status: "queued", failed_images: 0, updated_at: new Date().toISOString() }).eq("id", jobId);
+  // Re-count from items to get accurate failed_images count
+  const { data: allItems } = await supabase
+    .from("generation_job_items")
+    .select("status")
+    .eq("job_id", jobId);
+
+  const failed = allItems?.filter((it) => it.status === "failed").length || 0;
+
+  // Set job back to queued for re-processing
+  const { error: jobError } = await supabase
+    .from("generation_jobs")
+    .update({
+      status: "queued",
+      failed_images: failed,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", jobId);
   if (jobError) throw jobError;
 
-  supabase.functions.invoke("batch-generate", { body: { jobId } }).catch((err) => console.error("Failed to invoke batch-generate:", err));
+  // Re-invoke the edge function
+  supabase.functions
+    .invoke("batch-generate", { body: { jobId } })
+    .catch((err) => console.error("Failed to invoke batch-generate:", err));
 }
 
 export async function deleteJob(jobId: string) {
+  // Delete items first (cascade should handle this, but be explicit)
+  await supabase.from("generation_job_items").delete().eq("job_id", jobId);
   const { error } = await supabase.from("generation_jobs").delete().eq("id", jobId);
   if (error) throw error;
 }
