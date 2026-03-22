@@ -74,51 +74,87 @@ export type Database = {
           actual_width_px: number | null
           aspect_ratio: string
           created_at: string
+          crop_mode: string | null
           deleted_at: string | null
           enhanced: boolean | null
+          export_height: number | null
+          export_ready: boolean | null
+          export_type: string | null
+          export_width: number | null
+          generation_mode: string | null
           id: string
           mode: string
+          padding_mode: string | null
+          print_format_id: string | null
           print_size: string | null
           prompt: string
           quality_mode: string | null
+          source_height: number | null
+          source_width: number | null
           storage_path: string
           target_height_px: number | null
           target_ppi: number | null
           target_width_px: number | null
+          upscale_applied: boolean | null
+          upscale_method: string | null
         }
         Insert: {
           actual_height_px?: number | null
           actual_width_px?: number | null
           aspect_ratio?: string
           created_at?: string
+          crop_mode?: string | null
           deleted_at?: string | null
           enhanced?: boolean | null
+          export_height?: number | null
+          export_ready?: boolean | null
+          export_type?: string | null
+          export_width?: number | null
+          generation_mode?: string | null
           id?: string
           mode?: string
+          padding_mode?: string | null
+          print_format_id?: string | null
           print_size?: string | null
           prompt: string
           quality_mode?: string | null
+          source_height?: number | null
+          source_width?: number | null
           storage_path: string
           target_height_px?: number | null
           target_ppi?: number | null
           target_width_px?: number | null
+          upscale_applied?: boolean | null
+          upscale_method?: string | null
         }
         Update: {
           actual_height_px?: number | null
           actual_width_px?: number | null
           aspect_ratio?: string
           created_at?: string
+          crop_mode?: string | null
           deleted_at?: string | null
           enhanced?: boolean | null
+          export_height?: number | null
+          export_ready?: boolean | null
+          export_type?: string | null
+          export_width?: number | null
+          generation_mode?: string | null
           id?: string
           mode?: string
+          padding_mode?: string | null
+          print_format_id?: string | null
           print_size?: string | null
           prompt?: string
           quality_mode?: string | null
+          source_height?: number | null
+          source_width?: number | null
           storage_path?: string
           target_height_px?: number | null
           target_ppi?: number | null
           target_width_px?: number | null
+          upscale_applied?: boolean | null
+          upscale_method?: string | null
         }
         Relationships: []
       }
