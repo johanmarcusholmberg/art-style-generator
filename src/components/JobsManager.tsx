@@ -37,7 +37,7 @@ const STATUS_LABELS: Record<string, string> = {
   generating: "Generating",
 };
 
-function JobCard({ job }: { job: JobRow }) {
+const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
   const [expanded, setExpanded] = useState(false);
   const { items, loading: itemsLoading } = useJobItems(expanded ? job.id : null);
 
