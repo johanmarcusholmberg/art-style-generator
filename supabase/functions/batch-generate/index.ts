@@ -376,7 +376,7 @@ serve(async (req) => {
                 role: "user",
                 content: [
                   { type: "image_url", image_url: { url: imageUrl } },
-                  { type: "text", text: `CRITICAL UPSCALING AND ENHANCEMENT: Sharpen all edges, enhance textures, increase clarity and resolution to maximum quality. Apply subtle denoising to remove compression artifacts. Do NOT change subject, style, composition, or colors. Do NOT crop or reframe. Do NOT alter any borders or frames within the artwork. Maintain ${job.aspect_ratio} aspect ratio. Output must be suitable for large-format print at 300 DPI.` },
+                  { type: "text", text: `CRITICAL UPSCALING AND ENHANCEMENT: Sharpen all edges, enhance textures, increase clarity and resolution to maximum quality. Apply subtle denoising to remove compression artifacts. Do NOT change subject, style, composition, or colors. Do NOT crop or reframe. Do NOT alter any borders or frames within the artwork. Do NOT trim, fade, or soften any detail near image edges. All intentional inner borders, edge lines, and frame-like details must be preserved exactly. Maintain ${job.aspect_ratio} aspect ratio. Output must be suitable for large-format print at 300 DPI.` },
                 ],
               }],
               modalities: ["image", "text"],
