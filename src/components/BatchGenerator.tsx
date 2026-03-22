@@ -197,6 +197,8 @@ export default function BatchGenerator() {
         if (Object.keys(merged).length > 0) finalMatrixVars = merged;
       }
 
+      const resolution = getResolutionForPrintSize(printSize.dimensions, qualityTarget);
+
       const config: BatchJobConfig = {
         prompt: prompt.trim(),
         mode: selectedMode,
@@ -209,6 +211,10 @@ export default function BatchGenerator() {
         jobType,
         styleGridStyles: jobType === "style-grid" ? selectedStyles : undefined,
         matrixVariables: finalMatrixVars,
+        qualityTarget,
+        targetPpi: resolution?.ppi,
+        targetWidthPx: resolution?.widthPx,
+        targetHeightPx: resolution?.heightPx,
       };
 
       await createBatchJob(config);
