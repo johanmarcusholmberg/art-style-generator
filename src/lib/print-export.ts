@@ -103,9 +103,15 @@ export async function preparePrintExport(
   const format = getPrintFormat(opts.printFormatId);
   if (!format) throw new Error(`Unknown print format: ${opts.printFormatId}`);
 
+  if (!opts.imageUrl) throw new Error("No source image provided for print export");
+
   const img = await loadImage(opts.imageUrl);
   const srcW = img.naturalWidth;
   const srcH = img.naturalHeight;
+
+  if (srcW < 64 || srcH < 64) {
+    throw new Error(`Source image is too small (${srcW}×${srcH} px). Minimum 64×64 required.`);
+  }
 
   // 1. Normalize ratio
   const norm = normalizeRatio(
