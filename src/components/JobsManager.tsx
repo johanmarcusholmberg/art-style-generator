@@ -197,7 +197,7 @@ const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
       )}
     </div>
   );
-}
+});
 
 export default function JobsManager() {
   const { jobs, loading } = useBatchJobs();
