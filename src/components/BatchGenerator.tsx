@@ -420,6 +420,15 @@ export default function BatchGenerator() {
               Total images: <span className={cn("font-bold", isOverLimit ? "text-destructive" : isWarning ? "text-yellow-600" : "text-primary")}>{totalImages}</span>
             </p>
             <p className="font-display text-xs text-muted-foreground">{breakdown}</p>
+            {(() => {
+              const res = getResolutionForPrintSize(printSize.dimensions, qualityTarget);
+              if (!res) return null;
+              return (
+                <p className="font-display text-[11px] text-muted-foreground mt-0.5">
+                  Target: {formatResolution(res.widthPx, res.heightPx)} · {res.ppi} PPI
+                </p>
+              );
+            })()}
           </div>
           <Button
             onClick={handleSubmit}
