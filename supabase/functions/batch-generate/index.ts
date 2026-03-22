@@ -131,6 +131,8 @@ const RAW_STYLES: Record<string, { visualGoal: string[]; styleAnchors: string[];
   },
 };
 
+const EDGE_SAFETY = "EDGE SAFETY: preserve all intentional inner borders, edge lines, and frame-like details. Do not trim, fade, or blend edge details into the background. Artwork edges are sacred — decorative borders and internal framing elements must remain fully intact.";
+
 // Pre-compile style prompt fragments once at module load (not per request)
 for (const [key, cfg] of Object.entries(RAW_STYLES)) {
   STYLE_CONFIGS[key] = {
@@ -141,6 +143,7 @@ for (const [key, cfg] of Object.entries(RAW_STYLES)) {
       `COMPOSITION: ${cfg.composition.join(". ")}`,
       `COLOR: ${cfg.color.join(". ")}`,
       `GLOBAL QUALITY: ${cfg.quality.join(". ")}`,
+      EDGE_SAFETY,
       `AVOID: ${cfg.avoid.join(". ")}`,
     ],
   };
