@@ -243,7 +243,16 @@ export default function ImageGenerator({
         padColor: backgroundStyle === "cream" ? "#f5f0e8" : "#ffffff",
       });
 
-      // Upload to print-exports bucket
+      const tierLabel = result.tier === "preferred"
+        ? "300 PPI — Full print quality"
+        : result.tier === "fallback"
+        ? "150 PPI — Standard print quality"
+        : "Source resolution — best effort";
+      const upscaleNote = result.upscaleApplied
+        ? ` · Enhanced ${result.upscaleFactor}×`
+        : " · Native resolution";
+
+      // Upload to print-exports bucket (non-blocking failure)
       const exportFilename = `print-${selectedPrintFormat.id}-${Date.now()}.png`;
       const { error: uploadErr } = await supabase.storage
         .from("print-exports")
@@ -259,11 +268,22 @@ export default function ImageGenerator({
 
       toast({
         title: "Print export ready",
-        description: `${result.width} × ${result.height} px (${result.tier === "preferred" ? "300 PPI" : result.tier === "fallback" ? "150 PPI" : "source"})${result.upscaleApplied ? " · Upscaled" : ""}`,
+        description: `${result.width} × ${result.height} px · ${tierLabel}${upscaleNote}`,
       });
     } catch (err: any) {
       console.error("Print export failed:", err);
-      toast({ title: "Export failed", description: err.message || "Could not export", variant: "destructive" });
+      const message = err.message || "Could not export";
+      toast({
+        title: "Export failed",
+        description: message.includes("load")
+          ? "Could not load source image — try saving to gallery first, then export."
+          : message.includes("too small")
+          ? message
+          : message.includes("Canvas")
+          ? "Your browser could not render this size. Try generating at a larger base size."
+          : message,
+        variant: "destructive",
+      });
     } finally {
       setExporting(false);
     }
