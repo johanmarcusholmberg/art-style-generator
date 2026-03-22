@@ -173,15 +173,7 @@ function JobCard({ job }: { job: JobRow }) {
                     />
                   ) : (
                     <div className="w-full aspect-square flex items-center justify-center bg-muted">
-                      {item.status === "generating" ? (
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                      ) : item.status === "failed" ? (
-                        <XCircle className="h-6 w-6 text-destructive" />
-                      ) : item.status === "queued" ? (
-                        <Clock className="h-6 w-6 text-muted-foreground" />
-                      ) : (
-                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                      )}
+                      {ITEM_STATUS_ICONS[item.status] || <ImageIcon className="h-5 w-5 text-muted-foreground" />}
                     </div>
                   )}
                   <div className="p-1.5">
