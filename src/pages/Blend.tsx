@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import type { QualityTarget } from "@/lib/print-resolution";
 import { Loader2, Download, Save, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
