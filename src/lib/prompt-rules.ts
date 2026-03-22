@@ -8,6 +8,10 @@ export interface StyleRules {
   colorRules: string[];
   qualityRules: string[];
   avoidRules: string[];
+  /** Traits that must never appear — stronger than avoidRules */
+  blockedTraits?: string[];
+  /** Edge-preservation guidance injected into every prompt */
+  edgeSafety?: string[];
 }
 
 /** Universal quality tokens appended to every generation */
@@ -23,6 +27,14 @@ export const GLOBAL_QUALITY = [
   "no artifacts",
   "print-ready resolution",
   "suitable for large format printing",
+];
+
+/** Universal edge-preservation rules appended to every generation */
+export const EDGE_SAFETY_RULES = [
+  "preserve all intentional inner borders, edge lines, and frame-like details",
+  "do not trim, fade, or blend edge details into the background",
+  "artwork edges are sacred — every pixel at the boundary is part of the composition",
+  "decorative borders and internal framing elements must remain fully intact",
 ];
 
 /** Variation instructions for batch generation */
@@ -56,6 +68,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "foreground, middle ground, background layers",
       "dramatic use of negative space",
       "natural flow guiding the eye through the scene",
+      "all composition elements must stay fully within the image boundary",
     ],
     colorRules: [
       "rich but limited palette of 5-8 traditional pigment colors",
@@ -74,6 +87,15 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "modern digital effects",
       "Japanese text, kanji, hiragana, or katakana",
       "any written script or labels",
+    ],
+    blockedTraits: [
+      "3D rendering",
+      "photographic realism",
+      "digital painting brushwork",
+    ],
+    edgeSafety: [
+      "traditional Japanese print borders and registration marks are part of the artwork",
+      "bold outline edges at image borders must be preserved completely",
     ],
   },
 
@@ -96,6 +118,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "centered or asymmetric balance",
       "clear subject with defined background",
       "layered depth through overlapping planes",
+      "all composition elements must stay fully within the image boundary",
     ],
     colorRules: [
       "rich limited palette of traditional pigment colors",
@@ -110,6 +133,13 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "photorealistic rendering",
       "soft gradients",
       "any written text or script",
+    ],
+    blockedTraits: [
+      "3D rendering",
+      "photographic realism",
+    ],
+    edgeSafety: [
+      "bold outline edges at image borders must be preserved completely",
     ],
   },
 
@@ -135,6 +165,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "graphic poster-like layout",
       "bold cropping for dramatic impact",
       "clear figure-ground separation",
+      "all composition elements must stay fully within the image boundary",
     ],
     colorRules: [
       "vibrant saturated primary and secondary colors",
@@ -153,6 +184,14 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "gradients or smooth shading",
       "visual clutter or excessive detail",
       "any written text or script",
+    ],
+    blockedTraits: [
+      "watercolor washes",
+      "pencil sketch texture",
+      "photographic realism",
+    ],
+    edgeSafety: [
+      "comic panel borders and thick outlines near edges are intentional and must be kept",
     ],
   },
 
@@ -174,6 +213,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "graphic poster-like composition",
       "strong central focus",
       "clear figure-ground separation",
+      "all composition elements must stay fully within the image boundary",
     ],
     colorRules: [
       "vibrant saturated colors",
@@ -188,6 +228,13 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "photorealism",
       "soft shading or gradients",
       "any written text or script",
+    ],
+    blockedTraits: [
+      "watercolor texture",
+      "pencil sketch style",
+    ],
+    edgeSafety: [
+      "thick outlines near edges are intentional design elements",
     ],
   },
 
@@ -213,6 +260,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "depth created through line density variation",
       "balanced positive and negative space",
       "architectural drafting precision",
+      "all line details must extend fully to image edges without fading",
     ],
     colorRules: [
       "black ink on white only — strictly monochrome",
@@ -230,6 +278,15 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "cartoon style or simplified forms",
       "inconsistent line thickness",
       "any written text or script",
+    ],
+    blockedTraits: [
+      "color of any kind",
+      "watercolor washes",
+      "digital gradient fills",
+    ],
+    edgeSafety: [
+      "ink lines, hatching, and decorative border details near edges must be preserved",
+      "do not fade or soften linework near the image boundary",
     ],
   },
 
@@ -251,6 +308,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "clear subject with supporting detail",
       "depth through line density",
       "balanced composition",
+      "all line details must extend fully to image edges without fading",
     ],
     colorRules: [
       "black ink on white — monochrome only",
@@ -264,6 +322,13 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "color or washes",
       "cartoon style",
       "any written text or script",
+    ],
+    blockedTraits: [
+      "color fills",
+      "digital painting effects",
+    ],
+    edgeSafety: [
+      "ink details at edges are part of the artwork and must not be trimmed",
     ],
   },
 
@@ -286,6 +351,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "centered subject with maximum negative space",
       "every line must be essential",
       "abstract simplification of complex forms",
+      "line strokes near edges are intentional and must be preserved",
     ],
     colorRules: [
       "single black line on white — nothing else",
@@ -301,6 +367,14 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "shading or cross-hatching",
       "unnecessary detail",
       "any written text or script",
+    ],
+    blockedTraits: [
+      "hatching or stippling",
+      "color of any kind",
+      "complex detailed rendering",
+    ],
+    edgeSafety: [
+      "line strokes that approach or touch the image edge are deliberate",
     ],
   },
 
@@ -327,6 +401,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "large negative space — at least 40% of canvas",
       "balanced symmetry",
       "every element must be intentional",
+      "geometric shapes near edges are deliberate design elements",
     ],
     colorRules: [
       "limited palette of 2-4 harmonious colors",
@@ -349,6 +424,15 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "more than 4 colors",
       "any written text or script",
     ],
+    blockedTraits: [
+      "realistic textures",
+      "complex shading",
+      "photorealism",
+      "more than 4 colors",
+    ],
+    edgeSafety: [
+      "geometric shapes touching or near edges are part of the minimalist composition",
+    ],
   },
 
   "minimalism-freestyle": {
@@ -369,6 +453,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "generous negative space",
       "balanced minimal layout",
       "intentional element placement",
+      "elements near edges are part of the composition",
     ],
     colorRules: [
       "limited muted palette of 2-4 colors",
@@ -382,6 +467,13 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "visual clutter",
       "excessive detail",
       "any written text or script",
+    ],
+    blockedTraits: [
+      "complex textures",
+      "photorealistic rendering",
+    ],
+    edgeSafety: [
+      "design elements at the image boundary are intentional",
     ],
   },
 
@@ -406,6 +498,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "subject fills the frame with energy",
       "layered depth: background texture, mid-ground tags, foreground subject",
       "controlled chaos — busy but intentional",
+      "spray paint effects and drips near edges are intentional and must be preserved",
     ],
     colorRules: [
       "neon and saturated spray paint colors",
@@ -423,6 +516,15 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "soft pastels or muted tones",
       "symmetrical or formal composition",
       "any readable text, letters, or script",
+    ],
+    blockedTraits: [
+      "clean vector graphics",
+      "watercolor effects",
+      "formal symmetrical layouts",
+    ],
+    edgeSafety: [
+      "spray paint splatters, drips, and texture at image edges are authentic details",
+      "wall texture and paint effects at the boundary must remain intact",
     ],
   },
 
@@ -443,6 +545,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
     compositionRules: [
       "dynamic energetic layout",
       "subject-forward with urban texture",
+      "spray effects at edges are part of the artwork",
     ],
     colorRules: [
       "vibrant neon and saturated tones",
@@ -456,6 +559,13 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "clean digital aesthetic",
       "muted tones",
       "any readable text or script",
+    ],
+    blockedTraits: [
+      "clean digital illustration",
+      "pastel color palette",
+    ],
+    edgeSafety: [
+      "spray splatters and urban texture at edges must be preserved",
     ],
   },
 
@@ -479,6 +589,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "multiple views if appropriate: flower, leaf, cross-section",
       "elegant arrangement on the page",
       "scientific accuracy in proportions",
+      "delicate botanical details near edges must be fully rendered",
     ],
     colorRules: [
       "soft natural watercolor palette",
@@ -496,6 +607,15 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "digital gradient effects",
       "any text, labels, or annotations",
       "stylized or cartoonish plants",
+    ],
+    blockedTraits: [
+      "cartoon or stylized plant forms",
+      "bold flat colors without wash transparency",
+      "digital airbrushing",
+    ],
+    edgeSafety: [
+      "leaf tips, petal edges, and fine botanical details near the image boundary must be fully preserved",
+      "do not crop or fade delicate botanical elements at the edges",
     ],
   },
 
@@ -516,6 +636,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
     compositionRules: [
       "elegant natural arrangement",
       "specimen presentation style",
+      "botanical details near edges must be fully rendered",
     ],
     colorRules: [
       "natural watercolor palette",
@@ -528,6 +649,13 @@ export const STYLE_RULES: Record<string, StyleRules> = {
     avoidRules: [
       "photorealism",
       "any text or labels",
+    ],
+    blockedTraits: [
+      "cartoon plant style",
+      "digital gradient fills",
+    ],
+    edgeSafety: [
+      "botanical elements at edges are part of the artwork",
     ],
   },
 };
@@ -553,6 +681,8 @@ export function compilePrompt(
       "",
       `VISUAL GOAL: professional art illustration`,
       `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
+      "",
+      `EDGE SAFETY: ${EDGE_SAFETY_RULES.join(". ")}`,
       "Generate at maximum resolution.",
     ].join("\n");
   }
@@ -560,12 +690,24 @@ export function compilePrompt(
   const { aspectRatio, backgroundStyle = "white", isEdit = false, variationIndex } = options;
   const useCream = backgroundStyle === "cream";
 
+  // Background is always OUTER presentation — never alters the artwork itself
   const bgText = useCream
-    ? "Use a warm cream/off-white vintage paper background tone."
-    : "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color.";
+    ? "Use a warm cream/off-white vintage paper background tone. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself."
+    : "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself.";
 
   const ratioText = aspectRatio
     ? `The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.`
+    : "";
+
+  // Combine style-specific and universal edge safety
+  const edgeSafetyLines = [
+    ...EDGE_SAFETY_RULES,
+    ...(rules.edgeSafety || []),
+  ];
+
+  // Blocked traits section
+  const blockedSection = rules.blockedTraits?.length
+    ? `\nBLOCKED TRAITS (must NEVER appear): ${rules.blockedTraits.join(". ")}`
     : "";
 
   if (isEdit) {
@@ -583,10 +725,12 @@ export function compilePrompt(
       "",
       `EDIT TO APPLY: ${userPrompt}`,
       "",
+      `EDGE SAFETY: ${edgeSafetyLines.join(". ")}`,
       bgText,
       ratioText,
       `GLOBAL QUALITY: ${[...rules.qualityRules, ...GLOBAL_QUALITY].join(", ")}`,
       `AVOID: ${rules.avoidRules.join(", ")}`,
+      blockedSection,
       "",
       "Generate at maximum resolution.",
     ].filter(Boolean).join("\n");
@@ -612,7 +756,10 @@ export function compilePrompt(
     "",
     `GLOBAL QUALITY: ${[...rules.qualityRules, ...GLOBAL_QUALITY].join(". ")}`,
     "",
+    `EDGE SAFETY: ${edgeSafetyLines.join(". ")}`,
+    "",
     `AVOID: ${rules.avoidRules.join(". ")}`,
+    blockedSection,
     "",
     bgText,
     ratioText,

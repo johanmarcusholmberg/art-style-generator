@@ -84,8 +84,12 @@ export interface PrintExportOptions {
   printFormatId: string;
   /** Force a specific tier instead of auto-detecting */
   forceTier?: "preferred" | "fallback";
-  /** Preferred ratio correction method */
-  ratioMethod?: "crop" | "pad" | "auto";
+  /**
+   * Ratio correction method.
+   * Always defaults to "pad" to preserve artwork integrity.
+   * "crop" is available but should only be used explicitly by the caller.
+   */
+  ratioMethod?: "crop" | "pad";
   /** Padding fill colour (CSS colour string) */
   padColor?: string;
   /** Output MIME type */
