@@ -57,16 +57,23 @@ const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
   const isActive = job.status === "queued" || job.status === "processing";
   const typeConfig = JOB_TYPE_CONFIG[job.job_type] || JOB_TYPE_CONFIG.batch;
 
-  const handleCancel = async () => {
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancel = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCancelling(true);
     try {
       await cancelJob(job.id);
       toast.success("Job cancelled");
     } catch {
       toast.error("Failed to cancel job");
+    } finally {
+      setCancelling(false);
     }
   };
 
-  const handleRetry = async () => {
+  const handleRetry = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
       await retryFailedItems(job.id);
       toast.success("Retrying failed images");
@@ -75,7 +82,8 @@ const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
       await deleteJob(job.id);
       toast.success("Job deleted");
