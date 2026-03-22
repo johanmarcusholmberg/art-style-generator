@@ -20,6 +20,14 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
   generating: <Loader2 className="h-4 w-4 animate-spin text-primary" />,
 };
 
+const ITEM_STATUS_ICONS: Record<string, React.ReactNode> = {
+  queued: <Clock className="h-5 w-5 text-muted-foreground" />,
+  generating: <Loader2 className="h-5 w-5 animate-spin text-primary" />,
+  completed: <CheckCircle2 className="h-5 w-5 text-primary" />,
+  failed: <XCircle className="h-5 w-5 text-destructive" />,
+  cancelled: <Ban className="h-5 w-5 text-muted-foreground" />,
+};
+
 const STATUS_LABELS: Record<string, string> = {
   queued: "Queued",
   processing: "Processing",
