@@ -7,7 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Structured art direction configs per mode
 const STYLE_CONFIGS: Record<string, { visualGoal: string[]; styleAnchors: string[]; style: string[]; composition: string[]; color: string[]; quality: string[]; avoid: string[] }> = {
   japanese: {
     visualGoal: ["authentic museum-quality ukiyo-e woodblock print", "feels like a genuine Edo period artwork"],
@@ -172,6 +171,43 @@ function buildPrompt(prompt: string, mode: string, backgroundStyle: string, aspe
 
 const PARALLEL_WORKERS = 3;
 
+/**
+ * Atomically update job counters by re-counting from items.
+ * This avoids race conditions when multiple workers finish simultaneously.
+ */
+async function syncJobCounters(supabase: any, jobId: string) {
+  const { data: allItems } = await supabase
+    .from("generation_job_items")
+    .select("status")
+    .eq("job_id", jobId);
+
+  if (!allItems) return;
+
+  const completed = allItems.filter((it: any) => it.status === "completed").length;
+  const failed = allItems.filter((it: any) => it.status === "failed").length;
+
+  await supabase
+    .from("generation_jobs")
+    .update({
+      completed_images: completed,
+      failed_images: failed,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", jobId);
+}
+
+/**
+ * Check if job is cancelled. Used before and during processing.
+ */
+async function isJobCancelled(supabase: any, jobId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("generation_jobs")
+    .select("status")
+    .eq("id", jobId)
+    .single();
+  return data?.status === "cancelled";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -186,24 +222,57 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Fetch job — validate it exists and is in a processable state
     const { data: job, error: jobError } = await supabase.from("generation_jobs").select("*").eq("id", jobId).single();
     if (jobError || !job) return new Response(JSON.stringify({ error: "Job not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    if (job.status === "cancelled") return new Response(JSON.stringify({ status: "cancelled" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    await supabase.from("generation_jobs").update({ status: "processing", updated_at: new Date().toISOString() }).eq("id", jobId);
+    // Only process jobs that are queued or processing (idempotent: re-invocations are safe)
+    if (job.status === "cancelled" || job.status === "completed") {
+      return new Response(JSON.stringify({ status: job.status }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
-    const { data: items } = await supabase.from("generation_job_items").select("*").eq("job_id", jobId).eq("status", "queued").order("created_at");
+    // Atomically set to processing — only if still queued or processing (prevents race)
+    await supabase
+      .from("generation_jobs")
+      .update({ status: "processing", updated_at: new Date().toISOString() })
+      .eq("id", jobId)
+      .in("status", ["queued", "processing"]);
+
+    // Fetch only queued items (retry-safe: already completed/failed items are skipped)
+    const { data: items } = await supabase
+      .from("generation_job_items")
+      .select("*")
+      .eq("job_id", jobId)
+      .eq("status", "queued")
+      .order("created_at");
 
     if (!items || items.length === 0) {
-      await supabase.from("generation_jobs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("id", jobId);
-      return new Response(JSON.stringify({ status: "completed", message: "No items to process" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Sync counters and finalize
+      await syncJobCounters(supabase, jobId);
+      const { data: finalItems } = await supabase.from("generation_job_items").select("status").eq("job_id", jobId);
+      const allDone = finalItems?.every((it: any) => it.status === "completed" || it.status === "failed");
+      if (allDone) {
+        const failed = finalItems?.filter((it: any) => it.status === "failed").length || 0;
+        const finalStatus = failed === finalItems?.length ? "failed" : "completed";
+        await supabase.from("generation_jobs").update({ status: finalStatus, updated_at: new Date().toISOString() }).eq("id", jobId);
+      }
+      return new Response(JSON.stringify({ status: "completed", message: "No queued items to process" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const processItem = async (item: any, itemIndex: number) => {
-      const { data: currentJob } = await supabase.from("generation_jobs").select("status").eq("id", jobId).single();
-      if (currentJob?.status === "cancelled") return;
+      // Check cancellation before starting
+      if (await isJobCancelled(supabase, jobId)) return;
 
-      await supabase.from("generation_job_items").update({ status: "generating", updated_at: new Date().toISOString() }).eq("id", item.id);
+      // Idempotent: only transition from queued → generating
+      const { data: transitioned, error: transErr } = await supabase
+        .from("generation_job_items")
+        .update({ status: "generating", updated_at: new Date().toISOString() })
+        .eq("id", item.id)
+        .eq("status", "queued")
+        .select("id");
+
+      // If no rows updated, item was already picked up (duplicate invocation) — skip
+      if (transErr || !transitioned || transitioned.length === 0) return;
 
       try {
         const mode = item.style || job.mode;
@@ -219,7 +288,10 @@ serve(async (req) => {
           }),
         });
 
-        if (!aiResponse.ok) { const errText = await aiResponse.text(); throw new Error(`AI gateway ${aiResponse.status}: ${errText.slice(0, 200)}`); }
+        if (!aiResponse.ok) {
+          const errText = await aiResponse.text();
+          throw new Error(`AI gateway ${aiResponse.status}: ${errText.slice(0, 200)}`);
+        }
 
         const aiData = await aiResponse.json();
         const imageUrl = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
@@ -251,50 +323,97 @@ serve(async (req) => {
           } catch { /* skip upscale on error */ }
         }
 
+        // Upload to storage
         const filename = `${mode}-batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
         const base64Data = finalImageUrl.split(",")[1];
         const binaryString = atob(base64Data);
         const bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
 
-        const { error: uploadError } = await supabase.storage.from("generated-images").upload(filename, bytes.buffer, { contentType: "image/png" });
+        const { error: uploadError } = await supabase.storage
+          .from("generated-images")
+          .upload(filename, bytes.buffer, { contentType: "image/png" });
         if (uploadError) throw new Error("Failed to save image to storage");
 
-        const { data: galleryRow, error: dbError } = await supabase.from("generated_images").insert({ prompt: item.prompt_variant, mode, aspect_ratio: job.aspect_ratio, print_size: job.print_size, storage_path: filename }).select("id").single();
-        if (dbError) console.error("DB error:", dbError);
+        // Save to gallery immediately — duplicate protection via unique storage_path
+        const { data: galleryRow, error: dbError } = await supabase
+          .from("generated_images")
+          .insert({
+            prompt: item.prompt_variant,
+            mode,
+            aspect_ratio: job.aspect_ratio,
+            print_size: job.print_size,
+            storage_path: filename,
+          })
+          .select("id")
+          .single();
+        if (dbError) console.error("Gallery save error:", dbError);
 
-        await supabase.from("generation_job_items").update({ status: "completed", image_url: finalImageUrl, storage_path: filename, gallery_image_id: galleryRow?.id || null, updated_at: new Date().toISOString() }).eq("id", item.id);
+        // Idempotent completion: only update if still in "generating" state
+        await supabase
+          .from("generation_job_items")
+          .update({
+            status: "completed",
+            image_url: finalImageUrl,
+            storage_path: filename,
+            gallery_image_id: galleryRow?.id || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", item.id)
+          .eq("status", "generating");
+
+        // Sync job counters after each item (real-time progress)
+        await syncJobCounters(supabase, jobId);
       } catch (err: any) {
         console.error(`Item ${item.id} failed:`, err.message);
-        await supabase.from("generation_job_items").update({ status: "failed", error_message: err.message || "Unknown error", updated_at: new Date().toISOString() }).eq("id", item.id);
+        await supabase
+          .from("generation_job_items")
+          .update({
+            status: "failed",
+            error_message: err.message || "Unknown error",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", item.id)
+          .in("status", ["queued", "generating"]);
+
+        // Sync counters even on failure
+        await syncJobCounters(supabase, jobId);
       }
     };
 
+    // Process in parallel batches
     let globalIndex = 0;
     for (let i = 0; i < items.length; i += PARALLEL_WORKERS) {
-      const { data: checkJob } = await supabase.from("generation_jobs").select("status").eq("id", jobId).single();
-      if (checkJob?.status === "cancelled") break;
+      if (await isJobCancelled(supabase, jobId)) break;
 
       const batch = items.slice(i, i + PARALLEL_WORKERS);
       await Promise.allSettled(batch.map((item, batchIdx) => processItem(item, globalIndex + batchIdx)));
       globalIndex += batch.length;
-
-      const { data: updatedItems } = await supabase.from("generation_job_items").select("status").eq("job_id", jobId);
-      if (updatedItems) {
-        const completed = updatedItems.filter((it: any) => it.status === "completed").length;
-        const failed = updatedItems.filter((it: any) => it.status === "failed").length;
-        await supabase.from("generation_jobs").update({ completed_images: completed, failed_images: failed, updated_at: new Date().toISOString() }).eq("id", jobId);
-      }
     }
 
-    const { data: finalItems } = await supabase.from("generation_job_items").select("status").eq("job_id", jobId);
-    const { data: finalJob } = await supabase.from("generation_jobs").select("status").eq("id", jobId).single();
+    // Final status determination
+    if (!(await isJobCancelled(supabase, jobId))) {
+      await syncJobCounters(supabase, jobId);
 
-    if (finalJob?.status !== "cancelled") {
+      const { data: finalItems } = await supabase
+        .from("generation_job_items")
+        .select("status")
+        .eq("job_id", jobId);
+
       const completed = finalItems?.filter((it: any) => it.status === "completed").length || 0;
       const failed = finalItems?.filter((it: any) => it.status === "failed").length || 0;
       const finalStatus = failed === finalItems?.length ? "failed" : "completed";
-      await supabase.from("generation_jobs").update({ status: finalStatus, completed_images: completed, failed_images: failed, updated_at: new Date().toISOString() }).eq("id", jobId);
+
+      await supabase
+        .from("generation_jobs")
+        .update({
+          status: finalStatus,
+          completed_images: completed,
+          failed_images: failed,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", jobId)
+        .in("status", ["processing", "queued"]);
     }
 
     return new Response(JSON.stringify({ status: "done" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
