@@ -163,7 +163,7 @@ function buildPrompt(subject: string, mode: string, bg: string, ratio: string, v
   if (style) {
     parts.push(...style.prompt, "");
   } else {
-    parts.push("GLOBAL QUALITY: high detail, professional illustration, sharp rendering, clean edges, no artifacts, print-ready resolution", "");
+    parts.push("GLOBAL QUALITY: high detail, sharp focus, clean edges, high resolution, detailed textures, professional illustration, sharp rendering, no artifacts, print-ready resolution, suitable for large format printing", "");
   }
 
   parts.push(bg, ratio);
