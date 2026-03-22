@@ -315,7 +315,7 @@ export default function ImageGenerator({
           );
         })()}
 
-        <PrintSizeSelector selected={printSize} onChange={setPrintSize} />
+        <PrintSizeSelector selected={printSize} onChange={setPrintSize} qualityTarget={qualityTarget} onQualityChange={setQualityTarget} />
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <div className="flex items-center gap-2">
