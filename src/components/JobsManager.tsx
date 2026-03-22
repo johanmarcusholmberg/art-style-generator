@@ -172,8 +172,8 @@ const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
       {(isActive || job.failed_images > 0 || !isActive) && (
         <div className="flex items-center gap-2 px-4 pb-3">
           {isActive && (
-            <Button variant="outline" size="sm" onClick={handleCancel} className="font-display text-xs h-7">
-              <Ban className="mr-1 h-3 w-3" /> Cancel
+            <Button variant="outline" size="sm" onClick={handleCancel} disabled={cancelling} className="font-display text-xs h-7">
+              {cancelling ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Ban className="mr-1 h-3 w-3" />} Cancel
             </Button>
           )}
           {job.failed_images > 0 && !isActive && (
