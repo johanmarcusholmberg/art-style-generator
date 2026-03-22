@@ -167,7 +167,13 @@ function LightboxContent({
   img, onEdit, onDelete, onCopyUrl,
   onChangeBg, onSaveBg, onDiscardBg,
   bgChanging, bgResult, showEdit,
+  onPrintExport, printExporting,
 }: LightboxContentProps) {
+  const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
+  const hasExport = !!img.export_storage_path;
+  const exportReadiness = printFormat && img.actual_width_px && img.actual_height_px
+    ? assessExportReadiness(img.actual_width_px, img.actual_height_px, printFormat)
+    : null;
   return (
     <div className="space-y-4">
       <ImagePreviewMockups imageUrl={img.publicUrl} alt={img.prompt} />
