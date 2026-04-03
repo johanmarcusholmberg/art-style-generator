@@ -34,6 +34,7 @@ const App = () => (
             <Route path="/graffiti" element={<Graffiti />} />
             <Route path="/botanical" element={<Botanical />} />
             <Route path="/blend" element={<Blend />} />
+            <Route path="/compare" element={<StyleCompare />} />
             <Route path="/batch" element={<BatchStudio />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
