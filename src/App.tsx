@@ -11,6 +11,14 @@ import LineArt from "./pages/LineArt";
 import Minimalism from "./pages/Minimalism";
 import Graffiti from "./pages/Graffiti";
 import Botanical from "./pages/Botanical";
+import UrbanNoir from "./pages/UrbanNoir";
+import ScreenPrint from "./pages/ScreenPrint";
+import Risograph from "./pages/Risograph";
+import RetroComic from "./pages/RetroComic";
+import PulpMagazine from "./pages/PulpMagazine";
+import TattooFlash from "./pages/TattooFlash";
+import BrutalistPoster from "./pages/BrutalistPoster";
+import XeroxZine from "./pages/XeroxZine";
 import Blend from "./pages/Blend";
 import StyleCompare from "./pages/StyleCompare";
 import BatchStudio from "./pages/BatchStudio";
@@ -33,6 +41,14 @@ const App = () => (
             <Route path="/minimalism" element={<Minimalism />} />
             <Route path="/graffiti" element={<Graffiti />} />
             <Route path="/botanical" element={<Botanical />} />
+            <Route path="/urbannoir" element={<UrbanNoir />} />
+            <Route path="/screenprint" element={<ScreenPrint />} />
+            <Route path="/risograph" element={<Risograph />} />
+            <Route path="/retrocomic" element={<RetroComic />} />
+            <Route path="/pulpmagazine" element={<PulpMagazine />} />
+            <Route path="/tattooflash" element={<TattooFlash />} />
+            <Route path="/brutalistposter" element={<BrutalistPoster />} />
+            <Route path="/xeroxzine" element={<XeroxZine />} />
             <Route path="/blend" element={<Blend />} />
             <Route path="/compare" element={<StyleCompare />} />
             <Route path="/batch" element={<BatchStudio />} />
