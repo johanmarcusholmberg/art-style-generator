@@ -345,3 +345,363 @@ export const BOTANICAL_STYLE: StyleConfig = {
   themedRules: STYLE_RULES["botanical"],
   freestyleRules: STYLE_RULES["botanical-freestyle"],
 };
+
+export const URBANNOIR_STYLE: StyleConfig = {
+  styleKey: "urbannoir",
+  themedEdgeFn: "generate-image-urbannoir",
+  freestyleEdgeFn: "generate-image-urbannoir-freestyle",
+  themedTabLabel: "🖤 Urban Noir",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Urban Noir",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your scene… e.g. 'A stray cat under a flickering streetlight in a rain-soaked alley'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A lone figure walking through fog on an empty highway at night'",
+  prompts: {
+    themed: {
+      generate: [
+        "A stray cat perched on a fire escape above a rain-soaked alley with harsh shadows and gritty textures",
+        "A street corner at 3am with a flickering neon sign reflected in wet pavement and deep urban shadows",
+        "An old boombox on a concrete stoop in a gritty neighborhood with dramatic flash photography lighting",
+      ],
+      edit: [
+        "Increase the film grain and push the contrast harder",
+        "Add rain and wet reflections on all surfaces",
+        "Make the shadows deeper and more dramatic",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A wolf howling on a rooftop silhouetted against a full moon in raw monochrome",
+        "A vintage motorcycle parked in a dark garage with a single harsh light source",
+        "A woman's portrait with dramatic side lighting and heavy film grain texture",
+      ],
+      edit: [
+        "Add more grain and noise throughout the image",
+        "Push the contrast to be more extreme — crush the blacks",
+        "Add harsh directional flash lighting",
+      ],
+    },
+  },
+  themedModeValue: "urbannoir",
+  freestyleModeValue: "urbannoir-freestyle",
+  themedBadge: "🖤",
+  freestyleBadge: "🎨",
+  downloadPrefix: "urbannoir",
+  themedRules: STYLE_RULES["urbannoir"],
+  freestyleRules: STYLE_RULES["urbannoir-freestyle"],
+};
+
+export const SCREENPRINT_STYLE: StyleConfig = {
+  styleKey: "screenprint",
+  themedEdgeFn: "generate-image-screenprint",
+  freestyleEdgeFn: "generate-image-screenprint-freestyle",
+  themedTabLabel: "🖨️ Screen Print",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Screen Print",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your scene… e.g. 'A roaring bear with layered ink halftone texture on vintage paper'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A mountain landscape with limited colors and worn print texture'",
+  prompts: {
+    themed: {
+      generate: [
+        "A roaring bear with bold graphic shapes and layered halftone ink texture on aged paper",
+        "A vintage surfboard leaning against a VW van with retro screen print color separation",
+        "A soaring eagle with spread wings rendered in bold limited-color screen print layers",
+      ],
+      edit: [
+        "Add more visible halftone dot texture throughout",
+        "Make the ink bleed and registration misalignment more visible",
+        "Reduce to fewer colors with stronger print texture",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A city skyline at sunset with bold graphic shapes and vintage screen print ink layers",
+        "A portrait in profile with halftone shading and limited retro color palette",
+        "A classic hot rod with flames rendered in bold screen print poster style",
+      ],
+      edit: [
+        "Add worn print texture and slight ink imperfections",
+        "Push the halftone dots to be larger and more visible",
+        "Make it look more like a vintage concert poster",
+      ],
+    },
+  },
+  themedModeValue: "screenprint",
+  freestyleModeValue: "screenprint-freestyle",
+  themedBadge: "🖨️",
+  freestyleBadge: "🎨",
+  downloadPrefix: "screenprint",
+  themedRules: STYLE_RULES["screenprint"],
+  freestyleRules: STYLE_RULES["screenprint-freestyle"],
+};
+
+export const RISOGRAPH_STYLE: StyleConfig = {
+  styleKey: "risograph",
+  themedEdgeFn: "generate-image-risograph",
+  freestyleEdgeFn: "generate-image-risograph-freestyle",
+  themedTabLabel: "📠 Risograph",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Risograph",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your scene… e.g. 'A fox sitting in a forest clearing with layered riso ink colors'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A coffee cup on a table with morning light in riso print style'",
+  prompts: {
+    themed: {
+      generate: [
+        "A fox sitting in a forest clearing with layered spot-color riso inks and slight misregistration",
+        "An indoor plant collection on a windowsill with grainy riso texture and warm paper base",
+        "A sleeping cat curled up on a cushion rendered in bold simplified riso print forms",
+      ],
+      edit: [
+        "Increase the misregistration between color layers",
+        "Add more visible grain from the ink drum texture",
+        "Simplify the forms further and reduce to fewer colors",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A bicycle leaning against a wall with afternoon shadows in layered riso spot colors",
+        "A portrait with bold simplified features in fluorescent riso ink tones on warm paper",
+        "A still life of fruit on a table with overlapping riso color layers creating mixed tones",
+      ],
+      edit: [
+        "Make the riso grain more prominent throughout",
+        "Add more color overlap areas where inks mix",
+        "Push the misregistration for a more authentic riso feel",
+      ],
+    },
+  },
+  themedModeValue: "risograph",
+  freestyleModeValue: "risograph-freestyle",
+  themedBadge: "📠",
+  freestyleBadge: "🎨",
+  downloadPrefix: "risograph",
+  themedRules: STYLE_RULES["risograph"],
+  freestyleRules: STYLE_RULES["risograph-freestyle"],
+};
+
+export const RETROCOMIC_STYLE: StyleConfig = {
+  styleKey: "retrocomic",
+  themedEdgeFn: "generate-image-retrocomic",
+  freestyleEdgeFn: "generate-image-retrocomic-freestyle",
+  themedTabLabel: "💥 Comic Scenes",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Retro Comic",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your scene… e.g. 'A superhero landing on a rooftop with the city below in dramatic perspective'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A detective in a trench coat walking through rain-soaked streets'",
+  prompts: {
+    themed: {
+      generate: [
+        "A masked hero standing on a rooftop with cape billowing against a halftone-dotted sky",
+        "A dramatic car chase through city streets with speed lines and vintage comic color treatment",
+        "A femme fatale in a noir setting with dramatic shadows and bold ink outlines",
+      ],
+      edit: [
+        "Add larger halftone dots to all shaded areas",
+        "Make the outlines bolder and more dramatic",
+        "Age the colors to look more like a vintage comic page",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A rocket ship blasting through space with halftone star trails and bold comic outlines",
+        "A giant octopus attacking a ship in dramatic pulp comic style with vintage page colors",
+        "A samurai in battle stance with speed lines and retro comic halftone shading",
+      ],
+      edit: [
+        "Add more dramatic speed lines and action energy",
+        "Push the vintage color treatment — more yellowed page feel",
+        "Thicken all outlines to classic comic book weight",
+      ],
+    },
+  },
+  themedModeValue: "retrocomic",
+  freestyleModeValue: "retrocomic-freestyle",
+  themedBadge: "💥",
+  freestyleBadge: "🎨",
+  downloadPrefix: "retrocomic",
+  themedRules: STYLE_RULES["retrocomic"],
+  freestyleRules: STYLE_RULES["retrocomic-freestyle"],
+};
+
+export const PULPMAGAZINE_STYLE: StyleConfig = {
+  styleKey: "pulpmagazine",
+  themedEdgeFn: "generate-image-pulpmagazine",
+  freestyleEdgeFn: "generate-image-pulpmagazine-freestyle",
+  themedTabLabel: "📕 Pulp Scenes",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Pulp Art",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your scene… e.g. 'An adventurer facing a giant serpent in a lost jungle temple'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A woman in a red dress on a moonlit balcony with dramatic shadows'",
+  prompts: {
+    themed: {
+      generate: [
+        "An adventurer with a torch facing a giant serpent in a vine-covered jungle temple",
+        "A detective in a fedora aiming a revolver in a smoky noir office with dramatic lighting",
+        "A rocket pilot in a retro spacesuit standing before a massive alien landscape",
+      ],
+      edit: [
+        "Make the lighting more dramatic with deeper shadows",
+        "Add a more vintage painted illustration feel",
+        "Increase the color saturation and drama",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A pirate ship in a stormy sea with dramatic waves and cinematic painted lighting",
+        "A woman scientist in a retro lab with glowing experiments and dramatic shadows",
+        "A lone cowboy on horseback silhouetted against a painted desert sunset",
+      ],
+      edit: [
+        "Push the chiaroscuro lighting for more drama",
+        "Add more visible brushwork and paint texture",
+        "Make it feel more like a vintage magazine cover",
+      ],
+    },
+  },
+  themedModeValue: "pulpmagazine",
+  freestyleModeValue: "pulpmagazine-freestyle",
+  themedBadge: "📕",
+  freestyleBadge: "🎨",
+  downloadPrefix: "pulpmagazine",
+  themedRules: STYLE_RULES["pulpmagazine"],
+  freestyleRules: STYLE_RULES["pulpmagazine-freestyle"],
+};
+
+export const TATTOOFLASH_STYLE: StyleConfig = {
+  styleKey: "tattooflash",
+  themedEdgeFn: "generate-image-tattooflash",
+  freestyleEdgeFn: "generate-image-tattooflash-freestyle",
+  themedTabLabel: "🔥 Flash Designs",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Tattoo Flash",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your design… e.g. 'A traditional eagle with spread wings clutching a banner'",
+  freestylePlaceholder: "Describe any design… e.g. 'A lighthouse in a storm with bold outlines and flat colors'",
+  prompts: {
+    themed: {
+      generate: [
+        "A traditional eagle with spread wings and bold black outlines in classic flash sheet style",
+        "A dagger through a rose with a coiled snake in bold traditional tattoo design",
+        "A sailing ship on stormy waves in vintage American traditional tattoo flash style",
+      ],
+      edit: [
+        "Make the outlines bolder and more consistent",
+        "Simplify to flatter color fills with no gradients",
+        "Add more traditional tattoo design symmetry",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A wolf head with geometric framing in bold traditional tattoo flash style",
+        "A lighthouse in a storm with crashing waves in classic flash sheet design",
+        "A hummingbird with flowers in traditional bold-outline tattoo art style",
+      ],
+      edit: [
+        "Push to a more traditional tattoo color palette",
+        "Make all outlines thicker and bolder",
+        "Flatten all shading to solid color fills",
+      ],
+    },
+  },
+  themedModeValue: "tattooflash",
+  freestyleModeValue: "tattooflash-freestyle",
+  themedBadge: "🔥",
+  freestyleBadge: "🎨",
+  downloadPrefix: "tattooflash",
+  themedRules: STYLE_RULES["tattooflash"],
+  freestyleRules: STYLE_RULES["tattooflash-freestyle"],
+};
+
+export const BRUTALISTPOSTER_STYLE: StyleConfig = {
+  styleKey: "brutalistposter",
+  themedEdgeFn: "generate-image-brutalistposter",
+  freestyleEdgeFn: "generate-image-brutalistposter-freestyle",
+  themedTabLabel: "⬛ Brutalist",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Brutalist Poster",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your scene… e.g. 'A massive concrete structure with harsh shadows and bold graphic shapes'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A figure standing in an empty industrial space with stark contrast'",
+  prompts: {
+    themed: {
+      generate: [
+        "A massive concrete building facade with dramatic shadows and heavy bold graphic black shapes",
+        "An industrial crane against a stark sky with raw graphic brutalist composition",
+        "A subway entrance with harsh lighting and bold geometric brutalist poster treatment",
+      ],
+      edit: [
+        "Push the contrast harder — more stark black and white",
+        "Make the shapes heavier and more bold",
+        "Remove any subtle details — keep only bold graphic elements",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A portrait reduced to stark bold graphic shapes with heavy black masses and raw contrast",
+        "An animal rendered as a bold brutalist graphic with minimal detail and maximum impact",
+        "A landscape reduced to heavy geometric shapes with stark industrial poster energy",
+      ],
+      edit: [
+        "Strip away detail — make it more raw and graphic",
+        "Push to higher contrast with heavier black shapes",
+        "Make it feel more like a stark brutalist poster",
+      ],
+    },
+  },
+  themedModeValue: "brutalistposter",
+  freestyleModeValue: "brutalistposter-freestyle",
+  themedBadge: "⬛",
+  freestyleBadge: "🎨",
+  downloadPrefix: "brutalistposter",
+  themedRules: STYLE_RULES["brutalistposter"],
+  freestyleRules: STYLE_RULES["brutalistposter-freestyle"],
+};
+
+export const XEROXZINE_STYLE: StyleConfig = {
+  styleKey: "xeroxzine",
+  themedEdgeFn: "generate-image-xeroxzine",
+  freestyleEdgeFn: "generate-image-xeroxzine-freestyle",
+  themedTabLabel: "📋 Zine Pages",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Xerox Zine",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your scene… e.g. 'A punk band playing in a basement with harsh photocopy contrast'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A cat sleeping on a stack of books in rough photocopy style'",
+  prompts: {
+    themed: {
+      generate: [
+        "A punk band playing in a dark basement with harsh photocopy contrast and copier grain artifacts",
+        "A protest march scene with collage-style layered figures and rough xerox texture",
+        "A skateboard trick captured in harsh black and white with photocopy noise and grain",
+      ],
+      edit: [
+        "Crush the blacks harder — more photocopy contrast",
+        "Add more copier noise and grain artifacts",
+        "Make it look more like a rough DIY zine page",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A cat sleeping on books rendered in harsh photocopy black and white with copier grain",
+        "A flower arrangement in rough xerox contrast with collage-style layering",
+        "A cityscape at night crushed to harsh black and white photocopy texture",
+      ],
+      edit: [
+        "Add more photocopy artifacts and noise",
+        "Push the contrast to pure black and white — lose the mid-tones",
+        "Add collage cut-and-paste energy to the composition",
+      ],
+    },
+  },
+  themedModeValue: "xeroxzine",
+  freestyleModeValue: "xeroxzine-freestyle",
+  themedBadge: "📋",
+  freestyleBadge: "🎨",
+  downloadPrefix: "xeroxzine",
+  themedRules: STYLE_RULES["xeroxzine"],
+  freestyleRules: STYLE_RULES["xeroxzine-freestyle"],
+};

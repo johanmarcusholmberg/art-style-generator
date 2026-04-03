@@ -33,13 +33,29 @@ const STYLE_TO_EDGE_FN: Record<string, string> = {
   "graffiti-freestyle": "generate-image-graffiti-freestyle",
   botanical: "generate-image-botanical",
   "botanical-freestyle": "generate-image-botanical-freestyle",
+  urbannoir: "generate-image-urbannoir",
+  "urbannoir-freestyle": "generate-image-urbannoir-freestyle",
+  screenprint: "generate-image-screenprint",
+  "screenprint-freestyle": "generate-image-screenprint-freestyle",
+  risograph: "generate-image-risograph",
+  "risograph-freestyle": "generate-image-risograph-freestyle",
+  retrocomic: "generate-image-retrocomic",
+  "retrocomic-freestyle": "generate-image-retrocomic-freestyle",
+  pulpmagazine: "generate-image-pulpmagazine",
+  "pulpmagazine-freestyle": "generate-image-pulpmagazine-freestyle",
+  tattooflash: "generate-image-tattooflash",
+  "tattooflash-freestyle": "generate-image-tattooflash-freestyle",
+  brutalistposter: "generate-image-brutalistposter",
+  "brutalistposter-freestyle": "generate-image-brutalistposter-freestyle",
+  xeroxzine: "generate-image-xeroxzine",
+  "xeroxzine-freestyle": "generate-image-xeroxzine-freestyle",
 };
 
 type StyleCount = "4" | "8" | "all";
 
 const PRESETS: Record<StyleCount, string[]> = {
-  "4": ["japanese", "popart", "lineart", "botanical"],
-  "8": ["japanese", "popart", "lineart", "minimalism", "graffiti", "botanical", "freestyle", "lineart-minimal"],
+  "4": ["japanese", "popart", "lineart", "urbannoir"],
+  "8": ["japanese", "popart", "lineart", "minimalism", "botanical", "urbannoir", "retrocomic", "tattooflash"],
   all: ALL_STYLES.map((s) => s.value),
 };
 
