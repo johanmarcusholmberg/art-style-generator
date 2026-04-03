@@ -658,6 +658,770 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "botanical elements at edges are part of the artwork",
     ],
   },
+
+  urbannoir: {
+    visualGoal: [
+      "gritty black-and-white urban print",
+      "raw documentary street photography feel",
+      "underground zine or hip-hop poster aesthetic",
+    ],
+    styleAnchors: [
+      "gritty black and white street photography",
+      "analog film look",
+      "heavy grain",
+      "high contrast",
+      "raw urban realism",
+      "underground zine aesthetic",
+      "documentary flash photography",
+      "cinematic shadows",
+      "monochrome street print",
+    ],
+    styleRules: [
+      "strictly monochrome — black, white, and grey only",
+      "heavy film grain texture throughout",
+      "high contrast with deep blacks and blown-out whites",
+      "raw unpolished documentary aesthetic",
+      "analog camera flash harshness when appropriate",
+    ],
+    compositionRules: [
+      "urban street-level perspective",
+      "dynamic framing with gritty energy",
+      "subject fills frame with presence",
+      "all edge details and grain textures must be preserved fully",
+    ],
+    colorRules: [
+      "strictly black and white — no color whatsoever",
+      "full tonal range from pure black to pure white",
+      "grain and noise as textural elements",
+    ],
+    qualityRules: [
+      "authentic analog film grain quality",
+      "sharp detail in focus areas",
+      "professional print-ready monochrome",
+    ],
+    avoidRules: [
+      "any color or tinted tones",
+      "clean digital look",
+      "soft or dreamy aesthetics",
+      "any text, watermarks, or script",
+    ],
+    blockedTraits: [
+      "color of any kind",
+      "digital smoothness",
+      "watercolor or painterly effects",
+    ],
+    edgeSafety: [
+      "film grain and edge textures are authentic and must be preserved",
+    ],
+  },
+
+  "urbannoir-freestyle": {
+    visualGoal: [
+      "raw monochrome urban art print",
+      "underground street aesthetic applied to any subject",
+    ],
+    styleAnchors: [
+      "gritty black and white photography style",
+      "analog film grain",
+      "high contrast monochrome",
+      "underground zine print",
+    ],
+    styleRules: [
+      "strictly monochrome with heavy grain",
+      "high contrast analog film look",
+      "raw documentary aesthetic",
+    ],
+    compositionRules: [
+      "dynamic urban-energy framing",
+      "subject-forward with gritty texture",
+      "edge grain and textures must be preserved",
+    ],
+    colorRules: [
+      "black and white only — no color",
+      "deep blacks and bright whites",
+    ],
+    qualityRules: [
+      "authentic film grain quality",
+      "sharp where it matters",
+    ],
+    avoidRules: [
+      "any color",
+      "clean digital aesthetic",
+      "any text or script",
+    ],
+    blockedTraits: [
+      "color tints",
+      "soft focus effects",
+    ],
+    edgeSafety: [
+      "grain and edge texture are part of the artwork",
+    ],
+  },
+
+  screenprint: {
+    visualGoal: [
+      "authentic vintage screen-printed poster",
+      "retro merch and t-shirt print aesthetic",
+    ],
+    styleAnchors: [
+      "vintage screen print poster",
+      "halftone texture",
+      "ink bleed",
+      "limited color palette",
+      "bold graphic shapes",
+      "retro t-shirt print aesthetic",
+      "worn print texture",
+    ],
+    styleRules: [
+      "visible halftone dot patterns in mid-tones",
+      "ink bleed and slight registration misalignment",
+      "limited palette of 3-5 spot colors",
+      "bold graphic simplified shapes",
+      "worn and slightly imperfect print texture",
+    ],
+    compositionRules: [
+      "bold poster-style composition",
+      "strong central graphic element",
+      "layered ink impression feel",
+      "print imperfections near edges are authentic",
+    ],
+    colorRules: [
+      "limited spot color palette — maximum 5 colors",
+      "ink-on-paper color mixing where overlaps occur",
+      "slightly desaturated retro tones",
+      "visible paper texture through thin ink areas",
+    ],
+    qualityRules: [
+      "authentic screen print reproduction quality",
+      "visible ink texture and halftone dots",
+      "professional vintage poster finish",
+    ],
+    avoidRules: [
+      "photorealism",
+      "smooth digital gradients",
+      "more than 5 colors",
+      "any text, letters, or script",
+    ],
+    blockedTraits: [
+      "digital smoothness",
+      "photographic rendering",
+      "watercolor effects",
+    ],
+    edgeSafety: [
+      "ink bleed and print texture at edges are authentic details",
+    ],
+  },
+
+  "screenprint-freestyle": {
+    visualGoal: [
+      "retro screen print art applied to any subject",
+      "vintage poster print quality",
+    ],
+    styleAnchors: [
+      "vintage screen print style",
+      "halftone and ink bleed texture",
+      "limited color retro poster",
+    ],
+    styleRules: [
+      "halftone dots, ink bleed, limited colors",
+      "bold graphic simplification",
+    ],
+    compositionRules: [
+      "poster-style bold layout",
+      "strong graphic presence",
+      "print imperfections at edges are authentic",
+    ],
+    colorRules: [
+      "limited spot color palette",
+      "slightly desaturated retro tones",
+    ],
+    qualityRules: [
+      "authentic print texture quality",
+      "visible ink and halftone detail",
+    ],
+    avoidRules: [
+      "photorealism",
+      "smooth digital gradients",
+      "any text or script",
+    ],
+    blockedTraits: [
+      "digital smoothness",
+      "photographic rendering",
+    ],
+    edgeSafety: [
+      "ink texture at edges is part of the artwork",
+    ],
+  },
+
+  risograph: {
+    visualGoal: [
+      "authentic risograph print artwork",
+      "indie art poster with layered inks",
+    ],
+    styleAnchors: [
+      "risograph print",
+      "layered spot colors",
+      "grainy ink texture",
+      "slight misregistration",
+      "indie art poster aesthetic",
+      "bold simplified forms",
+    ],
+    styleRules: [
+      "visible grain from ink drum texture",
+      "layered spot colors with overlap creating new tones",
+      "slight registration misalignment between color layers",
+      "bold simplified graphic forms",
+      "paper texture visible through ink",
+    ],
+    compositionRules: [
+      "bold graphic composition suited for poster format",
+      "simplified forms with clear silhouettes",
+      "layered color planes creating depth",
+      "grain and misregistration at edges are authentic",
+    ],
+    colorRules: [
+      "limited spot color palette — 2-4 riso ink colors",
+      "color overlap creates mixed tones naturally",
+      "fluorescent or soy-based ink color feel",
+      "warm paper base visible in light areas",
+    ],
+    qualityRules: [
+      "authentic risograph texture and grain",
+      "professional indie print quality",
+      "visible ink layering detail",
+    ],
+    avoidRules: [
+      "photorealism",
+      "smooth digital rendering",
+      "complex detailed rendering",
+      "any text or script",
+    ],
+    blockedTraits: [
+      "digital smoothness",
+      "photographic detail",
+      "watercolor washes",
+    ],
+    edgeSafety: [
+      "riso grain and ink misregistration at edges are authentic print artifacts",
+    ],
+  },
+
+  "risograph-freestyle": {
+    visualGoal: [
+      "risograph print style applied to any subject",
+      "indie art print quality",
+    ],
+    styleAnchors: [
+      "risograph print aesthetic",
+      "grainy layered inks",
+      "slight misregistration",
+      "bold simplified forms",
+    ],
+    styleRules: [
+      "grainy ink texture with layered spot colors",
+      "slight misregistration between layers",
+      "bold graphic simplification",
+    ],
+    compositionRules: [
+      "bold poster-style layout",
+      "simplified graphic forms",
+      "grain at edges is authentic",
+    ],
+    colorRules: [
+      "limited spot color palette",
+      "overlap mixing creates tones",
+    ],
+    qualityRules: [
+      "authentic riso print quality",
+      "visible grain and layering",
+    ],
+    avoidRules: [
+      "photorealism",
+      "smooth digital rendering",
+      "any text or script",
+    ],
+    blockedTraits: [
+      "digital smoothness",
+      "photographic detail",
+    ],
+    edgeSafety: [
+      "riso grain at edges is part of the artwork",
+    ],
+  },
+
+  retrocomic: {
+    visualGoal: [
+      "classic retro comic book print panel",
+      "vintage pulp comic page quality",
+    ],
+    styleAnchors: [
+      "retro comic print",
+      "halftone dots",
+      "bold ink outlines",
+      "vintage comic page colors",
+      "graphic panel energy",
+      "pulp print texture",
+    ],
+    styleRules: [
+      "bold black ink outlines with consistent weight",
+      "halftone dot patterns for shading and color",
+      "vintage four-color process comic palette",
+      "action-oriented dynamic energy",
+      "slightly aged paper color treatment",
+    ],
+    compositionRules: [
+      "dynamic action-oriented composition",
+      "strong figure-ground separation",
+      "dramatic perspective and foreshortening",
+      "panel-like framing energy",
+      "bold outlines at edges are intentional comic framing",
+    ],
+    colorRules: [
+      "vintage CMYK four-color process palette",
+      "halftone dots for mid-tones and shadows",
+      "slightly warm aged-paper base",
+      "bold primary and secondary colors",
+    ],
+    qualityRules: [
+      "crisp bold ink outlines",
+      "consistent halftone dot pattern",
+      "professional vintage comic print quality",
+    ],
+    avoidRules: [
+      "photorealism",
+      "soft shading or smooth gradients",
+      "modern digital comic style",
+      "any readable text, speech bubbles, or script",
+    ],
+    blockedTraits: [
+      "smooth digital coloring",
+      "photographic rendering",
+      "manga style",
+    ],
+    edgeSafety: [
+      "bold ink outlines and panel borders at edges are intentional framing",
+    ],
+  },
+
+  "retrocomic-freestyle": {
+    visualGoal: [
+      "retro comic print style applied to any subject",
+      "vintage comic book aesthetic",
+    ],
+    styleAnchors: [
+      "retro comic book style",
+      "halftone dots and bold outlines",
+      "vintage comic print",
+    ],
+    styleRules: [
+      "bold ink outlines with halftone shading",
+      "vintage four-color process palette",
+      "action-energy composition",
+    ],
+    compositionRules: [
+      "dynamic graphic composition",
+      "strong figure-ground separation",
+      "bold outlines at edges are intentional",
+    ],
+    colorRules: [
+      "vintage CMYK comic palette",
+      "halftone dot patterns",
+    ],
+    qualityRules: [
+      "crisp outlines and consistent halftones",
+      "professional comic print quality",
+    ],
+    avoidRules: [
+      "photorealism",
+      "smooth digital rendering",
+      "any text or script",
+    ],
+    blockedTraits: [
+      "smooth digital coloring",
+      "photographic detail",
+    ],
+    edgeSafety: [
+      "comic outlines at edges are intentional framing",
+    ],
+  },
+
+  pulpmagazine: {
+    visualGoal: [
+      "dramatic vintage pulp magazine cover illustration",
+      "classic painted action poster quality",
+    ],
+    styleAnchors: [
+      "pulp magazine cover illustration",
+      "dramatic composition",
+      "vintage print poster",
+      "painted cover art",
+      "strong shadows",
+      "mid-century print aesthetic",
+    ],
+    styleRules: [
+      "dramatic painted illustration style",
+      "rich oil-paint or gouache-like rendering",
+      "strong chiaroscuro lighting with deep shadows",
+      "vintage mid-century illustration techniques",
+      "slightly idealized heroic proportions",
+    ],
+    compositionRules: [
+      "dramatic diagonal composition for energy",
+      "strong central figure or action moment",
+      "cinematic depth and atmosphere",
+      "vintage magazine cover framing",
+      "painted details near edges must be preserved",
+    ],
+    colorRules: [
+      "rich saturated vintage palette",
+      "warm tones with dramatic cool shadow accents",
+      "slightly aged or printed color feel",
+      "bold color contrasts for visual punch",
+    ],
+    qualityRules: [
+      "professional painted illustration quality",
+      "visible brushwork and paint texture",
+      "dramatic lighting execution",
+    ],
+    avoidRules: [
+      "photorealism",
+      "digital vector look",
+      "flat or minimal design",
+      "any text, titles, or script",
+    ],
+    blockedTraits: [
+      "flat vector illustration",
+      "minimalist design",
+      "digital smoothness",
+    ],
+    edgeSafety: [
+      "painted details and atmosphere at edges are part of the illustration",
+    ],
+  },
+
+  "pulpmagazine-freestyle": {
+    visualGoal: [
+      "pulp illustration style applied to any subject",
+      "dramatic vintage painted artwork",
+    ],
+    styleAnchors: [
+      "pulp magazine illustration",
+      "dramatic painted cover art",
+      "vintage mid-century print",
+    ],
+    styleRules: [
+      "dramatic painted illustration with rich rendering",
+      "strong chiaroscuro lighting",
+      "vintage mid-century aesthetic",
+    ],
+    compositionRules: [
+      "dramatic cinematic composition",
+      "strong central subject",
+      "painted details at edges must be preserved",
+    ],
+    colorRules: [
+      "rich saturated vintage palette",
+      "dramatic lighting contrasts",
+    ],
+    qualityRules: [
+      "professional painted illustration quality",
+      "visible paint texture",
+    ],
+    avoidRules: [
+      "photorealism",
+      "flat design",
+      "any text or script",
+    ],
+    blockedTraits: [
+      "flat vector style",
+      "digital smoothness",
+    ],
+    edgeSafety: [
+      "painted atmosphere at edges is part of the artwork",
+    ],
+  },
+
+  tattooflash: {
+    visualGoal: [
+      "authentic traditional tattoo flash sheet illustration",
+      "classic tattoo parlor wall art quality",
+    ],
+    styleAnchors: [
+      "traditional tattoo flash",
+      "bold black outlines",
+      "flat limited colors",
+      "vintage flash sheet design",
+      "graphic icon composition",
+    ],
+    styleRules: [
+      "bold consistent black outlines — thicker than normal illustration",
+      "flat solid color fills — no gradients within shapes",
+      "classic American traditional tattoo vocabulary",
+      "symbolic graphic icon composition",
+      "slight vintage paper aging feel",
+    ],
+    compositionRules: [
+      "centered iconic presentation like a flash sheet",
+      "clean graphic isolation of the subject",
+      "symmetry and balance in design",
+      "bold outlines at edges are part of the tattoo design",
+    ],
+    colorRules: [
+      "limited traditional tattoo palette: red, green, yellow, blue, black",
+      "flat solid fills with no blending",
+      "warm cream or aged paper background",
+      "bold color contrast against thick outlines",
+    ],
+    qualityRules: [
+      "crisp bold outlines with consistent weight",
+      "clean flat color fills",
+      "professional tattoo flash quality",
+    ],
+    avoidRules: [
+      "photorealism",
+      "soft shading or gradients within shapes",
+      "modern tattoo realism style",
+      "any text, banners with words, or script",
+    ],
+    blockedTraits: [
+      "realistic shading",
+      "photographic rendering",
+      "watercolor tattoo style",
+    ],
+    edgeSafety: [
+      "bold tattoo outlines at edges are intentional design elements",
+    ],
+  },
+
+  "tattooflash-freestyle": {
+    visualGoal: [
+      "tattoo flash style applied to any subject",
+      "bold graphic tattoo art quality",
+    ],
+    styleAnchors: [
+      "traditional tattoo flash style",
+      "bold outlines and flat colors",
+      "vintage flash sheet design",
+    ],
+    styleRules: [
+      "bold thick black outlines",
+      "flat solid color fills",
+      "graphic icon-style composition",
+    ],
+    compositionRules: [
+      "centered iconic presentation",
+      "clean graphic isolation",
+      "bold outlines at edges are intentional",
+    ],
+    colorRules: [
+      "limited traditional tattoo colors",
+      "flat fills without gradients",
+    ],
+    qualityRules: [
+      "crisp bold outlines",
+      "clean flat fills",
+    ],
+    avoidRules: [
+      "photorealism",
+      "soft gradients",
+      "any text or script",
+    ],
+    blockedTraits: [
+      "realistic shading",
+      "watercolor effects",
+    ],
+    edgeSafety: [
+      "tattoo outlines at edges are part of the design",
+    ],
+  },
+
+  brutalistposter: {
+    visualGoal: [
+      "harsh bold brutalist poster design",
+      "raw contemporary graphic art",
+    ],
+    styleAnchors: [
+      "brutalist poster design",
+      "bold typography-inspired composition",
+      "stark contrast",
+      "raw graphic layout",
+      "heavy black shapes",
+      "modern print design aesthetic",
+    ],
+    styleRules: [
+      "heavy bold graphic shapes and stark contrasts",
+      "raw unrefined design energy",
+      "large bold masses of black and color",
+      "grid-breaking asymmetric layout",
+      "industrial print aesthetic",
+    ],
+    compositionRules: [
+      "bold asymmetric graphic layout",
+      "heavy visual weight distribution",
+      "dramatic scale contrasts",
+      "raw edges and bold shapes are intentional design",
+    ],
+    colorRules: [
+      "stark high-contrast palette — often black + 1-2 accent colors",
+      "no subtle tones — everything bold and uncompromising",
+      "industrial color feeling",
+    ],
+    qualityRules: [
+      "crisp bold graphic edges",
+      "professional print design quality",
+      "intentional rawness in execution",
+    ],
+    avoidRules: [
+      "photorealism",
+      "soft or pretty aesthetics",
+      "decorative ornament",
+      "any text, typography, or script",
+    ],
+    blockedTraits: [
+      "soft watercolor",
+      "decorative illustration",
+      "photographic rendering",
+    ],
+    edgeSafety: [
+      "heavy shapes and bold elements at edges are intentional brutalist design",
+    ],
+  },
+
+  "brutalistposter-freestyle": {
+    visualGoal: [
+      "brutalist graphic design applied to any subject",
+      "raw bold poster art",
+    ],
+    styleAnchors: [
+      "brutalist poster design",
+      "stark contrast and bold shapes",
+      "modern raw graphic aesthetic",
+    ],
+    styleRules: [
+      "heavy bold graphic shapes",
+      "stark contrast and raw energy",
+      "industrial design aesthetic",
+    ],
+    compositionRules: [
+      "bold asymmetric layout",
+      "dramatic scale and weight",
+      "raw edges are intentional",
+    ],
+    colorRules: [
+      "high-contrast limited palette",
+      "bold uncompromising tones",
+    ],
+    qualityRules: [
+      "crisp graphic edges",
+      "professional print quality",
+    ],
+    avoidRules: [
+      "soft pretty aesthetics",
+      "decorative ornament",
+      "any text or script",
+    ],
+    blockedTraits: [
+      "soft watercolor",
+      "decorative style",
+    ],
+    edgeSafety: [
+      "bold shapes at edges are intentional design elements",
+    ],
+  },
+
+  xeroxzine: {
+    visualGoal: [
+      "authentic photocopied underground zine page",
+      "DIY punk zine print aesthetic",
+    ],
+    styleAnchors: [
+      "xerox zine aesthetic",
+      "photocopy texture",
+      "rough black and white contrast",
+      "collage print style",
+      "underground punk zine",
+      "grainy copier artifacts",
+    ],
+    styleRules: [
+      "harsh photocopy contrast — crushed blacks and blown whites",
+      "visible copier noise, grain, and artifacts",
+      "collage cut-and-paste energy",
+      "rough unpolished DIY feel",
+      "slightly skewed or imperfect alignment",
+    ],
+    compositionRules: [
+      "raw collage-style layout",
+      "cut-and-paste layered elements",
+      "intentional imperfection and asymmetry",
+      "copier artifacts at edges are authentic",
+    ],
+    colorRules: [
+      "strictly black and white — photocopy monochrome",
+      "harsh contrast with lost mid-tones",
+      "copier grain as texture",
+    ],
+    qualityRules: [
+      "authentic photocopy reproduction quality",
+      "visible copier noise and artifacts",
+      "intentional lo-fi print aesthetic",
+    ],
+    avoidRules: [
+      "any color",
+      "clean digital rendering",
+      "polished professional look",
+      "any readable text or script",
+    ],
+    blockedTraits: [
+      "color of any kind",
+      "digital smoothness",
+      "high-fidelity rendering",
+    ],
+    edgeSafety: [
+      "copier artifacts and rough edges are authentic zine details",
+    ],
+  },
+
+  "xeroxzine-freestyle": {
+    visualGoal: [
+      "xerox zine style applied to any subject",
+      "underground DIY print aesthetic",
+    ],
+    styleAnchors: [
+      "xerox photocopy zine style",
+      "rough black and white contrast",
+      "collage punk print",
+    ],
+    styleRules: [
+      "harsh photocopy contrast",
+      "copier noise and grain artifacts",
+      "DIY collage energy",
+    ],
+    compositionRules: [
+      "raw collage layout",
+      "intentional imperfection",
+      "copier artifacts at edges are authentic",
+    ],
+    colorRules: [
+      "black and white only",
+      "harsh crushed contrast",
+    ],
+    qualityRules: [
+      "authentic photocopy quality",
+      "intentional lo-fi aesthetic",
+    ],
+    avoidRules: [
+      "any color",
+      "clean digital look",
+      "any text or script",
+    ],
+    blockedTraits: [
+      "color of any kind",
+      "digital smoothness",
+    ],
+    edgeSafety: [
+      "copier artifacts at edges are part of the artwork",
+    ],
+  },
 };
 
 /**
