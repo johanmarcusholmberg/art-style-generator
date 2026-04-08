@@ -33,6 +33,7 @@ import { Link } from "react-router-dom";
 import JSZip from "jszip";
 import { getPrintFormat, assessExportReadiness, DEFAULT_PRINT_FORMAT_ID, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
+import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 
 interface GalleryImage {
   id: string;
