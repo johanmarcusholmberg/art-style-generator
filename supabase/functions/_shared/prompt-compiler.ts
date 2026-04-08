@@ -19,6 +19,29 @@ export const EDGE_SAFETY_RULES = [
   "decorative borders and internal framing elements must remain fully intact",
 ];
 
+/** Print optimization rules — activated only in print mode */
+export const PRINT_RULES = [
+  "extremely sharp detail at all scales",
+  "preserve micro textures: paper grain, ink splatter, brush fiber, canvas weave",
+  "clean crisp edges on all forms and outlines",
+  "no blur artifacts or soft focus anywhere",
+  "avoid oversmoothing — retain natural texture variation",
+  "high frequency detail retention for large format reproduction",
+  "crisp line clarity even at finest stroke widths",
+  "individual texture elements must remain distinct and separable",
+];
+
+/** Print-specific avoid rules — activated only in print mode */
+export const AVOID_PRINT_ARTIFACTS = [
+  "soft gradients that lose definition at print scale",
+  "washed out textures or faded detail areas",
+  "melted edges where forms blur into each other",
+  "plastic smoothing or waxy skin-like surfaces",
+  "low frequency detail that appears blurry when enlarged",
+  "interpolated or upscaled appearance",
+  "banding in color transitions",
+];
+
 const VARIATION_INSTRUCTIONS = [
   "alternate composition angle",
   "different lighting direction",
@@ -369,16 +392,23 @@ export const STYLE_RULES: Record<string, StyleRules> = {
 
 export interface CompileOptions {
   aspectRatio?: string;
+  /** Artwork background — used inside the generated image */
   backgroundStyle?: string;
   isEdit?: boolean;
   variationIndex?: number;
+  /** When true, injects print optimization rules */
+  printMode?: boolean;
 }
 
-function buildBgText(bg?: string): string {
+/**
+ * Build artwork background instruction — this is the GENERATED background color.
+ * It explicitly states that the background must not interfere with artwork borders.
+ */
+function buildArtworkBgText(bg?: string): string {
   if (bg === "cream") {
-    return "Use a warm cream/off-white vintage paper background tone. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself.";
+    return "ARTWORK BACKGROUND: Use a warm cream/off-white vintage paper background tone within the artwork. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself. Inner borders, outlines, and frame-like elements are PART of the artwork, not part of the background.";
   }
-  return "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself.";
+  return "ARTWORK BACKGROUND: The background within the artwork MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself. Inner borders, outlines, and frame-like elements are PART of the artwork, not part of the background.";
 }
 
 /**
@@ -392,20 +422,27 @@ export function compilePrompt(
 ): string {
   const rules = STYLE_RULES[styleKey];
   if (!rules) {
-    return [
+    const sections = [
       `PRIMARY SUBJECT: ${userPrompt}`,
       "",
       `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
       "",
       `EDGE SAFETY: ${EDGE_SAFETY_RULES.join(". ")}`,
+    ];
+    if (options.printMode) {
+      sections.push("", `PRINT OPTIMIZATION: ${PRINT_RULES.join(". ")}`);
+      sections.push("", `AVOID PRINT ARTIFACTS: ${AVOID_PRINT_ARTIFACTS.join(". ")}`);
+    }
+    sections.push(
       "",
       options.aspectRatio ? `The image must have a ${options.aspectRatio} aspect ratio.` : "",
-      buildBgText(options.backgroundStyle),
+      buildArtworkBgText(options.backgroundStyle),
       "Generate at maximum resolution with fine detail suitable for large format printing.",
-    ].filter(Boolean).join("\n");
+    );
+    return sections.filter(Boolean).join("\n");
   }
 
-  const { aspectRatio, backgroundStyle, isEdit = false, variationIndex } = options;
+  const { aspectRatio, backgroundStyle, isEdit = false, variationIndex, printMode = false } = options;
 
   const edgeSafetyLines = [...EDGE_SAFETY_RULES, ...(rules.edgeSafety || [])];
 
@@ -413,8 +450,12 @@ export function compilePrompt(
     ? `\nBLOCKED TRAITS (must NEVER appear): ${rules.blockedTraits.join(". ")}`
     : "";
 
-  const bgText = buildBgText(backgroundStyle);
+  const bgText = buildArtworkBgText(backgroundStyle);
   const ratioText = aspectRatio ? `The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
+
+  const printSection = printMode
+    ? `\nPRINT OPTIMIZATION: ${PRINT_RULES.join(". ")}\n\nAVOID PRINT ARTIFACTS: ${AVOID_PRINT_ARTIFACTS.join(". ")}`
+    : "";
 
   if (isEdit) {
     return [
@@ -437,6 +478,7 @@ export function compilePrompt(
       `GLOBAL QUALITY: ${[...rules.qualityRules, ...GLOBAL_QUALITY].join(", ")}`,
       `AVOID: ${rules.avoidRules.join(", ")}`,
       blockedSection,
+      printSection,
       "",
       "Generate at maximum resolution.",
     ].filter(Boolean).join("\n");
@@ -466,6 +508,7 @@ export function compilePrompt(
     "",
     `AVOID: ${rules.avoidRules.join(". ")}`,
     blockedSection,
+    printSection,
     "",
     bgText,
     ratioText,
@@ -496,7 +539,7 @@ export function createStyleHandler(styleKey: string) {
     }
 
     try {
-      const { prompt, aspectRatio, sourceImageUrl, backgroundStyle } = await req.json();
+      const { prompt, aspectRatio, sourceImageUrl, backgroundStyle, printMode } = await req.json();
 
       if (!prompt || typeof prompt !== "string") {
         return new Response(
@@ -521,6 +564,7 @@ export function createStyleHandler(styleKey: string) {
         aspectRatio,
         backgroundStyle,
         isEdit,
+        printMode: !!printMode,
       });
 
       const messages = isEdit

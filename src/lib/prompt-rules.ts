@@ -29,6 +29,29 @@ export const GLOBAL_QUALITY = [
   "suitable for large format printing",
 ];
 
+/** Print optimization rules — activated only in print mode */
+export const PRINT_RULES = [
+  "extremely sharp detail at all scales",
+  "preserve micro textures: paper grain, ink splatter, brush fiber, canvas weave",
+  "clean crisp edges on all forms and outlines",
+  "no blur artifacts or soft focus anywhere",
+  "avoid oversmoothing — retain natural texture variation",
+  "high frequency detail retention for large format reproduction",
+  "crisp line clarity even at finest stroke widths",
+  "individual texture elements must remain distinct and separable",
+];
+
+/** Print-specific avoid rules — activated only in print mode */
+export const AVOID_PRINT_ARTIFACTS = [
+  "soft gradients that lose definition at print scale",
+  "washed out textures or faded detail areas",
+  "melted edges where forms blur into each other",
+  "plastic smoothing or waxy skin-like surfaces",
+  "low frequency detail that appears blurry when enlarged",
+  "interpolated or upscaled appearance",
+  "banding in color transitions",
+];
+
 /** Universal edge-preservation rules appended to every generation */
 export const EDGE_SAFETY_RULES = [
   "preserve all intentional inner borders, edge lines, and frame-like details",
