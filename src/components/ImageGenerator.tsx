@@ -253,7 +253,7 @@ export default function ImageGenerator({
       const result = await preparePrintExport({
         imageUrl,
         printFormatId: selectedPrintFormat.id,
-        padColor: backgroundStyle === "cream" ? "#f5f0e8" : "#ffffff",
+        padColor: paperColor === "cream" ? "#f5f0e8" : "#ffffff",
       });
 
       const { tierLabel, upscaleNote, summary } = formatExportDescription(
