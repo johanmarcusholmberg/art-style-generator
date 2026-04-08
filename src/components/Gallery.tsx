@@ -194,7 +194,16 @@ function LightboxContent({
           </span>
         </div>
 
-        {/* Print quality info */}
+        {/* Print quality indicator — always visible when image has dimensions */}
+        {img.actual_width_px && img.actual_height_px && (
+          <PrintQualityIndicator
+            actualWidthPx={img.actual_width_px}
+            actualHeightPx={img.actual_height_px}
+            printFormatId={img.print_format_id}
+          />
+        )}
+
+        {/* Print metadata details */}
         {(printFormat || img.target_ppi || img.target_width_px) && (
           <div className="bg-muted/50 rounded-sm p-3 space-y-1.5">
             {printFormat && (
