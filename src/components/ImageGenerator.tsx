@@ -488,22 +488,44 @@ export default function ImageGenerator({
           <span className="font-display text-xs text-muted-foreground">Max quality pipeline active</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Label className="font-display text-sm text-muted-foreground">Background:</Label>
-          <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
-            <button
-              onClick={() => setBackgroundStyle("white")}
-              className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "white" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Pure White
-            </button>
-            <button
-              onClick={() => setBackgroundStyle("cream")}
-              className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "cream" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Cream Paper
-            </button>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Label className="font-display text-sm text-muted-foreground">Artwork BG:</Label>
+            <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
+              <button
+                onClick={() => setBackgroundStyle("white")}
+                className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "white" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                White
+              </button>
+              <button
+                onClick={() => setBackgroundStyle("cream")}
+                className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "cream" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                Cream
+              </button>
+            </div>
           </div>
+
+          {generationMode === "print-ready" && (
+            <div className="flex items-center gap-2">
+              <Label className="font-display text-sm text-muted-foreground">Paper:</Label>
+              <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
+                <button
+                  onClick={() => setPaperColor("white")}
+                  className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${paperColor === "white" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Pure White
+                </button>
+                <button
+                  onClick={() => setPaperColor("cream")}
+                  className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${paperColor === "cream" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Cream
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <Button
