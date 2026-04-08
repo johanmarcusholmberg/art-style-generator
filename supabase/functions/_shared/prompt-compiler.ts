@@ -539,7 +539,7 @@ export function createStyleHandler(styleKey: string) {
     }
 
     try {
-      const { prompt, aspectRatio, sourceImageUrl, backgroundStyle } = await req.json();
+      const { prompt, aspectRatio, sourceImageUrl, backgroundStyle, printMode } = await req.json();
 
       if (!prompt || typeof prompt !== "string") {
         return new Response(
@@ -564,6 +564,7 @@ export function createStyleHandler(styleKey: string) {
         aspectRatio,
         backgroundStyle,
         isEdit,
+        printMode: !!printMode,
       });
 
       const messages = isEdit
