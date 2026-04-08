@@ -128,8 +128,19 @@ export default function ImageGenerator({
       if (hdEnhance) {
         setEnhancing(true);
         try {
+          const upscaleBody: Record<string, unknown> = {
+            imageUrl: data.imageUrl,
+            aspectRatio: effectiveAspectRatio,
+          };
+          // Pass print target resolution for resolution-aware enhancement
+          if (generationMode === "print-ready") {
+            upscaleBody.targetWidthPx = selectedPrintFormat.preferredPixelWidth;
+            upscaleBody.targetHeightPx = selectedPrintFormat.preferredPixelHeight;
+            upscaleBody.targetPpi = 300;
+            upscaleBody.printFormatId = selectedPrintFormat.id;
+          }
           const { data: upData, error: upError } = await supabase.functions.invoke("upscale-image", {
-            body: { imageUrl: data.imageUrl, aspectRatio: effectiveAspectRatio },
+            body: upscaleBody,
           });
           if (!upError && upData?.imageUrl) {
             finalUrl = upData.imageUrl;

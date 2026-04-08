@@ -9,7 +9,14 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { imageUrl, aspectRatio } = await req.json();
+    const {
+      imageUrl,
+      aspectRatio,
+      targetWidthPx,
+      targetHeightPx,
+      targetPpi,
+      printFormatId,
+    } = await req.json();
 
     if (!imageUrl || typeof imageUrl !== "string") {
       return new Response(JSON.stringify({ error: "Missing imageUrl" }), {
@@ -22,9 +29,30 @@ serve(async (req) => {
 
     const ratioText = aspectRatio ? ` Maintain the ${aspectRatio} aspect ratio exactly.` : "";
 
+    // Build resolution-aware enhancement prompt
+    let resolutionDirective = "";
+    if (targetWidthPx && targetHeightPx) {
+      const ppiLabel = targetPpi ? ` at ${targetPpi} PPI` : "";
+      const formatLabel = printFormatId ? ` (format: ${printFormatId.replace(/_/g, " ")})` : "";
+      resolutionDirective = `
+
+TARGET RESOLUTION (CRITICAL):
+The final image must be optimized for ${targetWidthPx} × ${targetHeightPx} pixels${ppiLabel}${formatLabel}.
+This is a large-format print target — every detail matters at this scale.
+Generate TRUE fine detail at full resolution:
+- Individual brush strokes, ink lines, and texture grain must be crisp and distinct
+- Architectural elements must show clean edges at full zoom
+- Botanical details must show leaf veins, petal texture, and fiber clarity
+- Fabric and material textures must be individually resolved
+- No detail should appear blurred, smudged, or interpolated at the target resolution
+- Avoid any plastic, waxy, or over-smoothed appearance
+- Preserve paper grain, canvas texture, and print imperfections where they exist in the original`;
+    }
+
     const enhancePrompt = `CRITICAL UPSCALING AND ENHANCEMENT INSTRUCTIONS:
 
 You are an image enhancement specialist. Your ONLY task is to upscale, sharpen, and clean this image for high-quality print output.
+${resolutionDirective}
 
 DO:
 - Sharpen all edges and fine details for crisp print reproduction
@@ -35,6 +63,8 @@ DO:
 - Refine fine architectural elements, botanical details, and facial features if present
 - Ensure clean, sharp focus across the entire image
 - Produce a premium print-ready version at the highest possible resolution
+- Generate true detail — not interpolated blur
+- Preserve the character and grain of the original medium
 
 DO NOT:
 - Change the subject, style, composition, or color palette
@@ -46,6 +76,8 @@ DO NOT:
 - Remove or alter any borders, frames, or decorative edges within the artwork
 - Trim, fade, or soften any detail near the image edges
 - Treat inner borders or edge lines as disposable margins
+- Apply plastic smoothing or wax-like texture
+- Blur fine lines or merge adjacent details
 
 EDGE SAFETY (CRITICAL):
 - All intentional inner borders, edge lines, and frame-like details are part of the artwork
