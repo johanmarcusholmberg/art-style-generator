@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, Zap, Crown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +15,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
@@ -26,8 +25,26 @@ import { type QualityTarget, getResolutionForPrintSize, formatResolution } from 
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { cn } from "@/lib/utils";
+import { ENHANCEMENT_PRESETS, ENHANCEMENT_MODES, type EnhancementMode, ENHANCEMENT_PROVIDER } from "@/lib/enhancement-config";
+import { Progress } from "@/components/ui/progress";
 
 type GenerationMode = "standard" | "print-ready";
+
+type GenerationStage = "idle" | "generating" | "enhancing" | "saving-gallery";
+
+const STAGE_LABELS: Record<GenerationStage, string> = {
+  idle: "",
+  generating: "Generating artwork…",
+  enhancing: "Enhancing quality…",
+  "saving-gallery": "Finalizing…",
+};
+
+const STAGE_PROGRESS: Record<GenerationStage, number> = {
+  idle: 0,
+  generating: 35,
+  enhancing: 70,
+  "saving-gallery": 90,
+};
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -81,11 +98,11 @@ export default function ImageGenerator({
   const [isInlineEditing, setIsInlineEditing] = useState(false);
   const [editPrompt, setEditPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [enhancing, setEnhancing] = useState(false);
+  const [stage, setStage] = useState<GenerationStage>("idle");
   const [saving, setSaving] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const hdEnhance = true; // Always max quality — no toggle
+  const [enhancementMode, setEnhancementMode] = useState<EnhancementMode>("hd");
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [paperColor, setPaperColor] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
@@ -96,14 +113,14 @@ export default function ImageGenerator({
   const { toast } = useToast();
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
-
-  // Derive the effective aspect ratio — print-ready overrides with print format ratio
   const effectiveAspectRatio = generationMode === "print-ready" ? selectedPrintFormat.aspectRatio : printSize.ratio;
+  const preset = ENHANCEMENT_PRESETS[enhancementMode];
 
   const generate = async () => {
     const activePrompt = isInlineEditing ? editPrompt : prompt;
     if (!activePrompt.trim()) return;
     setLoading(true);
+    setStage("generating");
     setViewVersion("enhanced");
     setSavedToGallery(false);
 
@@ -112,7 +129,7 @@ export default function ImageGenerator({
         prompt: activePrompt.trim(),
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
-        printMode: generationMode === "print-ready",
+        printMode: generationMode === "print-ready" || enhancementMode === "print-hd",
       };
       if (isInlineEditing && imageUrl) {
         body.sourceImageUrl = imageUrl;
@@ -127,33 +144,41 @@ export default function ImageGenerator({
       let finalUrl = data.imageUrl;
       setBaseImageUrl(data.imageUrl);
 
-      if (hdEnhance) {
-        setEnhancing(true);
+      // Run enhancement if mode requires it
+      if (preset.runUpscale) {
+        setStage("enhancing");
         try {
           const upscaleBody: Record<string, unknown> = {
             imageUrl: data.imageUrl,
             aspectRatio: effectiveAspectRatio,
+            strength: preset.strength,
           };
           // Pass print target resolution for resolution-aware enhancement
-          if (generationMode === "print-ready") {
+          if (generationMode === "print-ready" || enhancementMode === "print-hd") {
             upscaleBody.targetWidthPx = selectedPrintFormat.preferredPixelWidth;
             upscaleBody.targetHeightPx = selectedPrintFormat.preferredPixelHeight;
             upscaleBody.targetPpi = 300;
             upscaleBody.printFormatId = selectedPrintFormat.id;
           }
-          const { data: upData, error: upError } = await supabase.functions.invoke("upscale-image", {
-            body: upscaleBody,
-          });
+          const { data: upData, error: upError } = await supabase.functions.invoke(
+            ENHANCEMENT_PROVIDER.edgeFunction,
+            { body: upscaleBody },
+          );
           if (!upError && upData?.imageUrl) {
             finalUrl = upData.imageUrl;
+          } else {
+            console.warn("Enhancement returned no result, using base image");
           }
         } catch (upErr) {
-          console.warn("Upscale pass skipped:", upErr);
-        } finally {
-          setEnhancing(false);
+          console.warn("Enhancement failed, falling back to base image:", upErr);
+          toast({
+            title: "Enhancement skipped",
+            description: "Could not enhance — using the base image instead.",
+          });
         }
       }
 
+      setStage("saving-gallery");
       setImageUrl(finalUrl);
       if (isInlineEditing) {
         setPrompt(activePrompt.trim());
@@ -168,16 +193,16 @@ export default function ImageGenerator({
       });
     } finally {
       setLoading(false);
+      setStage("idle");
     }
   };
 
-  const hasEnhanced = hdEnhance && baseImageUrl && imageUrl && baseImageUrl !== imageUrl;
+  const hasEnhanced = preset.runUpscale && baseImageUrl && imageUrl && baseImageUrl !== imageUrl;
 
-  /** Build shared save options including print-ready metadata when applicable */
   const buildSaveOptions = () => {
     const isPrint = generationMode === "print-ready";
     const resolution = isPrint
-      ? null // we use print format data directly
+      ? null
       : getResolutionForPrintSize(printSize.dimensions, qualityTarget);
 
     return {
@@ -188,8 +213,7 @@ export default function ImageGenerator({
       targetPpi: isPrint ? 300 : resolution?.ppi,
       targetWidthPx: isPrint ? selectedPrintFormat.preferredPixelWidth : resolution?.widthPx,
       targetHeightPx: isPrint ? selectedPrintFormat.preferredPixelHeight : resolution?.heightPx,
-      enhanced: hdEnhance,
-      // Phase 1 print format fields
+      enhanced: preset.runUpscale,
       printFormatId: isPrint ? selectedPrintFormat.id : undefined,
       generationMode: generationMode,
       exportType: isPrint ? selectedPrintFormat.exportType : undefined,
@@ -256,11 +280,10 @@ export default function ImageGenerator({
         padColor: paperColor === "cream" ? "#f5f0e8" : "#ffffff",
       });
 
-      const { tierLabel, upscaleNote, summary } = formatExportDescription(
+      const { summary } = formatExportDescription(
         result.tier, result.upscaleApplied, result.upscaleFactor, result.width, result.height,
       );
 
-      // Upload to print-exports bucket (non-blocking failure)
       const exportFilename = `print-${selectedPrintFormat.id}-${Date.now()}.png`;
       const { error: uploadErr } = await supabase.storage
         .from("print-exports")
@@ -268,16 +291,12 @@ export default function ImageGenerator({
 
       if (uploadErr) console.warn("Print export upload skipped:", uploadErr);
 
-      // Download to user
       downloadPrintExport(
         result.blob,
         `${styleConfig.downloadPrefix}-${mode}-print-${selectedPrintFormat.id}-${Date.now()}.png`,
       );
 
-      toast({
-        title: "Print export ready",
-        description: summary,
-      });
+      toast({ title: "Print export ready", description: summary });
     } catch (err: any) {
       console.error("Print export failed:", err);
       const message = err.message || "Could not export";
@@ -296,6 +315,8 @@ export default function ImageGenerator({
       setExporting(false);
     }
   };
+
+  const isActive = loading || stage !== "idle";
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
@@ -317,12 +338,7 @@ export default function ImageGenerator({
               </p>
             </div>
             {onExitEdit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onExitEdit}
-                className="font-display text-xs flex-shrink-0"
-              >
+              <Button variant="ghost" size="sm" onClick={onExitEdit} className="font-display text-xs flex-shrink-0">
                 <X className="h-4 w-4 mr-1" />
                 Cancel
               </Button>
@@ -341,16 +357,11 @@ export default function ImageGenerator({
                       Describe the changes you want to make:
                     </p>
                     <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setIsInlineEditing(false);
-                        setEditPrompt("");
-                      }}
+                      variant="ghost" size="sm"
+                      onClick={() => { setIsInlineEditing(false); setEditPrompt(""); }}
                       className="font-display text-xs h-7"
                     >
-                      <X className="h-3 w-3 mr-1" />
-                      Cancel Edit
+                      <X className="h-3 w-3 mr-1" /> Cancel Edit
                     </Button>
                   </div>
                   <Textarea
@@ -363,11 +374,8 @@ export default function ImageGenerator({
                   <p className="font-display font-bold text-sm text-foreground">Edit suggestions</p>
                   <div className="flex flex-wrap gap-2">
                     {suggestions.edit.map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setEditPrompt(p)}
-                        className="text-xs px-3 py-1.5 rounded-sm bg-secondary text-secondary-foreground hover:bg-muted transition-colors font-display"
-                      >
+                      <button key={p} onClick={() => setEditPrompt(p)}
+                        className="text-xs px-3 py-1.5 rounded-sm bg-secondary text-secondary-foreground hover:bg-muted transition-colors font-display">
                         {p.length > 40 ? p.slice(0, 40) + "…" : p}
                       </button>
                     ))}
@@ -380,28 +388,19 @@ export default function ImageGenerator({
                     onChange={(e) => setPrompt(e.target.value)}
                     disabled={promptLocked}
                     placeholder={
-                      isEditMode
-                        ? "Describe the changes you want…"
-                        : isTertiary && styleConfig.tertiaryPlaceholder
-                          ? styleConfig.tertiaryPlaceholder
-                          : isThemed
-                            ? styleConfig.themedPlaceholder
-                            : styleConfig.freestylePlaceholder
+                      isEditMode ? "Describe the changes you want…"
+                        : isTertiary && styleConfig.tertiaryPlaceholder ? styleConfig.tertiaryPlaceholder
+                        : isThemed ? styleConfig.themedPlaceholder : styleConfig.freestylePlaceholder
                     }
                     className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary disabled:opacity-60"
                   />
-
                   <p className="font-display font-bold text-sm text-foreground">
                     {isEditMode ? "Edit suggestions" : "Suggestions"}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {(isEditMode ? suggestions.edit : suggestions.generate).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setPrompt(p)}
-                        disabled={promptLocked}
-                        className="text-xs px-3 py-1.5 rounded-sm bg-secondary text-secondary-foreground hover:bg-muted transition-colors font-display disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
+                      <button key={p} onClick={() => setPrompt(p)} disabled={promptLocked}
+                        className="text-xs px-3 py-1.5 rounded-sm bg-secondary text-secondary-foreground hover:bg-muted transition-colors font-display disabled:opacity-50 disabled:cursor-not-allowed">
                         {p.length > 40 ? p.slice(0, 40) + "…" : p}
                       </button>
                     ))}
@@ -411,6 +410,39 @@ export default function ImageGenerator({
             </>
           );
         })()}
+
+        {/* Quality Mode Selector */}
+        <div>
+          <p className="font-display font-bold text-sm text-foreground mb-2">Image Quality</p>
+          <div className="grid grid-cols-3 gap-2">
+            {ENHANCEMENT_MODES.map((m) => {
+              const p = ENHANCEMENT_PRESETS[m];
+              const isSelected = enhancementMode === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => setEnhancementMode(m)}
+                  className={cn(
+                    "flex flex-col items-start gap-0.5 p-2.5 rounded-sm border font-display transition-colors text-left",
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-secondary text-secondary-foreground border-border hover:bg-muted"
+                  )}
+                >
+                  <span className="flex items-center gap-1 text-xs font-bold">
+                    {m === "standard" && <Zap className="h-3 w-3" />}
+                    {m === "hd" && <Sparkles className="h-3 w-3" />}
+                    {m === "print-hd" && <Crown className="h-3 w-3" />}
+                    {p.label}
+                  </span>
+                  <span className={cn("text-[10px] leading-tight", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                    {p.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Generation Mode Toggle */}
         <div>
@@ -442,7 +474,7 @@ export default function ImageGenerator({
           </div>
         </div>
 
-        {/* Print Format Selector — only when print-ready */}
+        {/* Print Format Selector */}
         {generationMode === "print-ready" && (
           <div className="rounded-sm border border-primary/20 bg-primary/5 p-3 space-y-2">
             <p className="font-display font-bold text-sm text-foreground">Print Format</p>
@@ -468,40 +500,25 @@ export default function ImageGenerator({
                 {" · "}
                 Target: <span className="font-bold text-foreground">{formatResolution(selectedPrintFormat.preferredPixelWidth, selectedPrintFormat.preferredPixelHeight)}</span>
               </p>
-              <p>
-                Fallback: {formatResolution(selectedPrintFormat.fallbackPixelWidth, selectedPrintFormat.fallbackPixelHeight)}
-                {selectedPrintFormat.allowUpscale && (
-                  <span className="text-primary ml-1">· Upscale enabled</span>
-                )}
-              </p>
             </div>
           </div>
         )}
 
-        {/* Standard mode: show existing print size / quality selectors */}
+        {/* Standard mode selectors */}
         {generationMode === "standard" && (
           <PrintSizeSelector selected={printSize} onChange={setPrintSize} qualityTarget={qualityTarget} onQualityChange={setQualityTarget} />
         )}
-
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-sm bg-primary/5 border border-primary/10 w-fit">
-          <Sparkles className="h-3.5 w-3.5 text-primary" />
-          <span className="font-display text-xs text-muted-foreground">Max quality pipeline active</span>
-        </div>
 
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Label className="font-display text-sm text-muted-foreground">Artwork BG:</Label>
             <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
-              <button
-                onClick={() => setBackgroundStyle("white")}
-                className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "white" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
+              <button onClick={() => setBackgroundStyle("white")}
+                className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "white" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                 White
               </button>
-              <button
-                onClick={() => setBackgroundStyle("cream")}
-                className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "cream" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
+              <button onClick={() => setBackgroundStyle("cream")}
+                className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "cream" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                 Cream
               </button>
             </div>
@@ -511,16 +528,12 @@ export default function ImageGenerator({
             <div className="flex items-center gap-2">
               <Label className="font-display text-sm text-muted-foreground">Paper:</Label>
               <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
-                <button
-                  onClick={() => setPaperColor("white")}
-                  className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${paperColor === "white" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                >
+                <button onClick={() => setPaperColor("white")}
+                  className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${paperColor === "white" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                   Pure White
                 </button>
-                <button
-                  onClick={() => setPaperColor("cream")}
-                  className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${paperColor === "cream" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                >
+                <button onClick={() => setPaperColor("cream")}
+                  className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${paperColor === "cream" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                   Cream
                 </button>
               </div>
@@ -545,16 +558,20 @@ export default function ImageGenerator({
       </div>
 
       <div className="relative min-h-[300px] flex items-center justify-center rounded-sm border border-border bg-card paper-texture">
-        {(loading || enhancing) && (
-          <div className="flex flex-col items-center gap-4 text-muted-foreground">
+        {isActive && stage !== "idle" && (
+          <div className="flex flex-col items-center gap-4 text-muted-foreground w-full max-w-xs px-4">
             <Loader2 className="h-8 w-8 animate-spin" />
-            <p className="font-display text-sm">
-              {enhancing ? "Enhancing details…" : "The artist is at work…"}
-            </p>
+            <p className="font-display text-sm text-center">{STAGE_LABELS[stage]}</p>
+            <Progress value={STAGE_PROGRESS[stage]} className="h-1.5 w-full" />
+            {stage === "enhancing" && (
+              <p className="font-display text-[10px] text-muted-foreground/70">
+                {preset.label} enhancement in progress
+              </p>
+            )}
           </div>
         )}
 
-        {!loading && !enhancing && imageUrl && (
+        {!isActive && imageUrl && (
           <div className="flex flex-col items-center gap-4 p-4 w-full">
             <ImagePreviewMockups
               imageUrl={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
@@ -565,123 +582,66 @@ export default function ImageGenerator({
               {hasEnhanced && (
                 <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
                   {(["enhanced", "original", "compare"] as const).map((v) => (
-                    <Button
-                      key={v}
-                      variant={viewVersion === v ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewVersion(v)}
-                      className="font-display text-xs h-7 px-2"
-                    >
+                    <Button key={v} variant={viewVersion === v ? "default" : "ghost"} size="sm"
+                      onClick={() => setViewVersion(v)} className="font-display text-xs h-7 px-2">
                       {v === "enhanced" ? "Enhanced" : v === "original" ? "Original" : "Compare"}
                     </Button>
                   ))}
                 </div>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  downloadImage(
-                    viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl,
-                    `${styleConfig.downloadPrefix}-${mode}-${effectiveAspectRatio.replace(":", "x")}-${Date.now()}.png`
-                  )
-                }
-                className="font-display text-xs tracking-wider"
-              >
+              <Button variant="outline" size="sm"
+                onClick={() => downloadImage(
+                  viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl,
+                  `${styleConfig.downloadPrefix}-${mode}-${effectiveAspectRatio.replace(":", "x")}-${Date.now()}.png`
+                )}
+                className="font-display text-xs tracking-wider">
                 <Download className="mr-2 h-4 w-4" />
-                Download{" "}
-                {hasEnhanced
-                  ? viewVersion === "original"
-                    ? "(Original)"
-                    : "(Enhanced)"
-                  : ""}{" "}
+                Download{hasEnhanced ? (viewVersion === "original" ? " (Original)" : " (Enhanced)") : ""}{" "}
                 ({generationMode === "print-ready" ? selectedPrintFormat.label : printSize.dimensions})
               </Button>
               {generationMode === "print-ready" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePrintExport}
-                  disabled={exporting}
-                  className="font-display text-xs tracking-wider border-primary/30 text-primary hover:bg-primary/10"
-                >
+                <Button variant="outline" size="sm" onClick={handlePrintExport} disabled={exporting}
+                  className="font-display text-xs tracking-wider border-primary/30 text-primary hover:bg-primary/10">
                   {exporting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…
-                    </>
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…</>
                   ) : (
-                    <>
-                      <FileImage className="mr-2 h-4 w-4" />
-                      Export Print ({selectedPrintFormat.label})
-                    </>
+                    <><FileImage className="mr-2 h-4 w-4" /> Export Print ({selectedPrintFormat.label})</>
                   )}
                 </Button>
               )}
               {!savedToGallery && isEditMode && originalImageId && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleReplaceOriginal}
-                  disabled={replacing || saving}
-                  className="font-display text-xs tracking-wider"
-                >
+                <Button variant="outline" size="sm" onClick={handleReplaceOriginal} disabled={replacing || saving}
+                  className="font-display text-xs tracking-wider">
                   {replacing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Replacing…
-                    </>
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Replacing…</>
                   ) : (
-                    <>
-                      <Replace className="mr-2 h-4 w-4" /> Replace Original
-                    </>
+                    <><Replace className="mr-2 h-4 w-4" /> Replace Original</>
                   )}
                 </Button>
               )}
               {!savedToGallery && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSaveToGallery}
-                  disabled={saving || replacing}
-                  className="font-display text-xs tracking-wider"
-                >
+                <Button variant="outline" size="sm" onClick={handleSaveToGallery} disabled={saving || replacing}
+                  className="font-display text-xs tracking-wider">
                   {saving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…
-                    </>
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
                   ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />{" "}
-                      {isEditMode ? "Save as New" : "Save to Gallery"}
-                    </>
+                    <><Save className="mr-2 h-4 w-4" /> {isEditMode ? "Save as New" : "Save to Gallery"}</>
                   )}
                 </Button>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setIsInlineEditing(true);
-                  setEditPrompt("");
-                }}
-                className="font-display text-xs tracking-wider"
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit Image
+              <Button variant="outline" size="sm"
+                onClick={() => { setIsInlineEditing(true); setEditPrompt(""); }}
+                className="font-display text-xs tracking-wider">
+                <Pencil className="mr-2 h-4 w-4" /> Edit Image
               </Button>
               {savedToGallery && (
-                <span className="text-xs text-primary flex items-center gap-1 font-display">
-                  ✓ Saved to gallery
-                </span>
+                <span className="text-xs text-primary flex items-center gap-1 font-display">✓ Saved to gallery</span>
               )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="font-display text-xs tracking-wider text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remove
+                  <Button variant="outline" size="sm"
+                    className="font-display text-xs tracking-wider text-destructive hover:text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" /> Remove
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -711,10 +671,8 @@ export default function ImageGenerator({
           </div>
         )}
 
-        {!loading && !enhancing && !imageUrl && (
-          <p className="font-display text-muted-foreground text-sm">
-            Your artwork will appear here
-          </p>
+        {!isActive && !imageUrl && (
+          <p className="font-display text-muted-foreground text-sm">Your artwork will appear here</p>
         )}
       </div>
     </div>
