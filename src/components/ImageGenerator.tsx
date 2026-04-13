@@ -565,9 +565,9 @@ export default function ImageGenerator({
             <Loader2 className="h-8 w-8 animate-spin" />
             <p className="font-display text-sm text-center">{STAGE_LABELS[stage]}</p>
             <Progress value={STAGE_PROGRESS[stage]} className="h-1.5 w-full" />
-            {stage === "enhancing" && (
+            {(stage === "cleanup" || stage === "upscaling") && (
               <p className="font-display text-[10px] text-muted-foreground/70">
-                {preset.label} enhancement in progress
+                {preset.label} — {stage === "cleanup" ? "artifact cleanup" : `${preset.scaleFactor}× super-resolution`}
               </p>
             )}
           </div>
