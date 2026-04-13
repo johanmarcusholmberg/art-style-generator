@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
 import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, Zap, Crown } from "lucide-react";
 import {
@@ -30,22 +30,18 @@ import { Progress } from "@/components/ui/progress";
 
 type GenerationMode = "standard" | "print-ready";
 
-type GenerationStage = "idle" | "generating" | "cleanup" | "upscaling" | "saving-gallery";
+/** Stage only for the initial generation request (blocking) */
+type GenerationStage = "idle" | "generating";
 
-const STAGE_LABELS: Record<GenerationStage, string> = {
+/** Async enhancement status (non-blocking, runs after base image is shown) */
+type EnhancementStatus = "idle" | "cleanup" | "upscaling" | "done" | "failed";
+
+const ENHANCEMENT_LABELS: Record<EnhancementStatus, string> = {
   idle: "",
-  generating: "Generating artwork…",
   cleanup: "Cleaning artifacts…",
   upscaling: "Super-resolution upscaling…",
-  "saving-gallery": "Finalizing…",
-};
-
-const STAGE_PROGRESS: Record<GenerationStage, number> = {
-  idle: 0,
-  generating: 25,
-  cleanup: 50,
-  upscaling: 70,
-  "saving-gallery": 90,
+  done: "Enhancement complete",
+  failed: "Enhancement skipped",
 };
 
 const downloadImage = async (dataUrl: string, filename: string) => {
@@ -101,6 +97,7 @@ export default function ImageGenerator({
   const [editPrompt, setEditPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState<GenerationStage>("idle");
+  const [enhancementStatus, setEnhancementStatus] = useState<EnhancementStatus>("idle");
   const [saving, setSaving] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -114,9 +111,81 @@ export default function ImageGenerator({
   const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(PRINT_FORMATS[0]);
   const { toast } = useToast();
 
+  // Ref to track the current enhancement run so stale ones don't overwrite
+  const enhancementRunId = useRef(0);
+
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
   const effectiveAspectRatio = generationMode === "print-ready" ? selectedPrintFormat.aspectRatio : printSize.ratio;
   const preset = ENHANCEMENT_PRESETS[enhancementMode];
+
+  /**
+   * Runs the enhancement pipeline asynchronously.
+   * Updates enhancementStatus and swaps imageUrl when done.
+   * Does NOT block the UI — the base image is already visible.
+   */
+  const runEnhancementAsync = useCallback(async (baseUrl: string, currentPreset: typeof preset, runId: number) => {
+    setEnhancementStatus("cleanup");
+    try {
+      const upscaleBody: Record<string, unknown> = {
+        imageUrl: baseUrl,
+        strength: currentPreset.strength,
+        scaleFactor: currentPreset.scaleFactor,
+      };
+
+      const { data: upData, error: upError } = await supabase.functions.invoke(
+        ENHANCEMENT_PROVIDER.edgeFunction,
+        { body: upscaleBody },
+      );
+
+      // Check if this run is still current
+      if (enhancementRunId.current !== runId) return;
+
+      if (upData?.pipeline) {
+        console.log("Enhancement pipeline result:", upData.pipeline);
+        if (upData.pipeline.superResolution) {
+          setEnhancementStatus("upscaling");
+        }
+      }
+
+      if (!upError && upData?.imageUrl) {
+        // Still the current run? Replace the preview with enhanced version
+        if (enhancementRunId.current === runId) {
+          setImageUrl(upData.imageUrl);
+          setEnhancementStatus("done");
+          // Auto-clear the "done" badge after a few seconds
+          setTimeout(() => {
+            if (enhancementRunId.current === runId) {
+              setEnhancementStatus("idle");
+            }
+          }, 4000);
+        }
+      } else {
+        console.warn("Enhancement returned no result, keeping base image");
+        if (enhancementRunId.current === runId) {
+          setEnhancementStatus("failed");
+          toast({
+            title: "Enhancement skipped",
+            description: "Could not enhance — using the base image instead.",
+          });
+          setTimeout(() => {
+            if (enhancementRunId.current === runId) setEnhancementStatus("idle");
+          }, 5000);
+        }
+      }
+    } catch (upErr) {
+      console.warn("Enhancement failed, falling back to base image:", upErr);
+      if (enhancementRunId.current === runId) {
+        setEnhancementStatus("failed");
+        toast({
+          title: "Enhancement skipped",
+          description: "Could not enhance — using the base image instead.",
+        });
+        setTimeout(() => {
+          if (enhancementRunId.current === runId) setEnhancementStatus("idle");
+        }, 5000);
+      }
+    }
+  }, [setImageUrl, toast]);
 
   const generate = async () => {
     const activePrompt = isInlineEditing ? editPrompt : prompt;
@@ -125,13 +194,16 @@ export default function ImageGenerator({
     setStage("generating");
     setViewVersion("enhanced");
     setSavedToGallery(false);
+    setEnhancementStatus("idle");
+
+    // Bump the enhancement run id so any in-flight enhancement is ignored
+    const runId = ++enhancementRunId.current;
 
     try {
       const body: any = {
         prompt: activePrompt.trim(),
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
-        // Always request maximum quality — print rules are now always-on in the compiler
         printMode: true,
       };
       if (isInlineEditing && imageUrl) {
@@ -144,48 +216,24 @@ export default function ImageGenerator({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      let finalUrl = data.imageUrl;
-      setBaseImageUrl(data.imageUrl);
+      // Immediately show the base image — unblock the UI
+      const baseUrl = data.imageUrl;
+      setBaseImageUrl(baseUrl);
+      setImageUrl(baseUrl);
 
-      // Run enhancement if mode requires it
-      if (preset.runUpscale) {
-        setStage("cleanup");
-        try {
-          const upscaleBody: Record<string, unknown> = {
-            imageUrl: data.imageUrl,
-            strength: preset.strength,
-            scaleFactor: preset.scaleFactor,
-          };
-          const { data: upData, error: upError } = await supabase.functions.invoke(
-            ENHANCEMENT_PROVIDER.edgeFunction,
-            { body: upscaleBody },
-          );
-
-          if (upData?.pipeline) {
-            console.log("Enhancement pipeline result:", upData.pipeline);
-            if (upData.pipeline.superResolution) setStage("upscaling");
-          }
-
-          if (!upError && upData?.imageUrl) {
-            finalUrl = upData.imageUrl;
-          } else {
-            console.warn("Enhancement returned no result, using base image");
-          }
-        } catch (upErr) {
-          console.warn("Enhancement failed, falling back to base image:", upErr);
-          toast({
-            title: "Enhancement skipped",
-            description: "Could not enhance — using the base image instead.",
-          });
-        }
-      }
-
-      setStage("saving-gallery");
-      setImageUrl(finalUrl);
       if (isInlineEditing) {
         setPrompt(activePrompt.trim());
         setIsInlineEditing(false);
         setEditPrompt("");
+      }
+
+      // Finish the blocking generation stage
+      setLoading(false);
+      setStage("idle");
+
+      // Fire enhancement asynchronously (non-blocking)
+      if (preset.runUpscale && enhancementRunId.current === runId) {
+        runEnhancementAsync(baseUrl, preset, runId);
       }
     } catch (err: any) {
       toast({
@@ -193,12 +241,12 @@ export default function ImageGenerator({
         description: err.message || "Something went wrong",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
       setStage("idle");
     }
   };
 
+  const isEnhancing = enhancementStatus === "cleanup" || enhancementStatus === "upscaling";
   const hasEnhanced = preset.runUpscale && baseImageUrl && imageUrl && baseImageUrl !== imageUrl;
 
   const buildSaveOptions = () => {
@@ -215,7 +263,7 @@ export default function ImageGenerator({
       targetPpi: isPrint ? 300 : resolution?.ppi,
       targetWidthPx: isPrint ? selectedPrintFormat.preferredPixelWidth : resolution?.widthPx,
       targetHeightPx: isPrint ? selectedPrintFormat.preferredPixelHeight : resolution?.heightPx,
-      enhanced: preset.runUpscale,
+      enhanced: preset.runUpscale && hasEnhanced,
       printFormatId: isPrint ? selectedPrintFormat.id : undefined,
       generationMode: generationMode,
       exportType: isPrint ? selectedPrintFormat.exportType : undefined,
@@ -318,7 +366,7 @@ export default function ImageGenerator({
     }
   };
 
-  const isActive = loading || stage !== "idle";
+  const isGenerating = loading || stage !== "idle";
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
@@ -560,21 +608,58 @@ export default function ImageGenerator({
       </div>
 
       <div className="relative min-h-[300px] flex items-center justify-center rounded-sm border border-border bg-card paper-texture">
-        {isActive && stage !== "idle" && (
+        {/* Blocking generation spinner — only during base image generation */}
+        {isGenerating && (
           <div className="flex flex-col items-center gap-4 text-muted-foreground w-full max-w-xs px-4">
             <Loader2 className="h-8 w-8 animate-spin" />
-            <p className="font-display text-sm text-center">{STAGE_LABELS[stage]}</p>
-            <Progress value={STAGE_PROGRESS[stage]} className="h-1.5 w-full" />
-            {(stage === "cleanup" || stage === "upscaling") && (
-              <p className="font-display text-[10px] text-muted-foreground/70">
-                {preset.label} — {stage === "cleanup" ? "artifact cleanup" : `${preset.scaleFactor}× super-resolution`}
-              </p>
-            )}
+            <p className="font-display text-sm text-center">Generating artwork…</p>
+            <Progress value={40} className="h-1.5 w-full" />
           </div>
         )}
 
-        {!isActive && imageUrl && (
-          <div className="flex flex-col items-center gap-4 p-4 w-full">
+        {/* Image preview — visible immediately after generation, even during enhancement */}
+        {!isGenerating && imageUrl && (
+          <div className="flex flex-col items-center gap-4 p-4 w-full relative">
+            {/* Async enhancement overlay — non-blocking */}
+            {isEnhancing && (
+              <div className="absolute top-2 left-2 right-2 z-10">
+                <div className="flex items-center gap-2 bg-card/90 backdrop-blur-sm border border-primary/30 rounded-sm px-3 py-2 shadow-sm">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display text-xs text-foreground">
+                      {ENHANCEMENT_LABELS[enhancementStatus]}
+                    </p>
+                    <Progress
+                      value={enhancementStatus === "cleanup" ? 40 : 75}
+                      className="h-1 w-full mt-1"
+                    />
+                  </div>
+                  <span className="font-display text-[10px] text-muted-foreground flex-shrink-0">
+                    {preset.label} · {enhancementStatus === "cleanup" ? "artifact cleanup" : `${preset.scaleFactor}× upscale`}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Enhancement complete badge */}
+            {enhancementStatus === "done" && (
+              <div className="absolute top-2 left-2 z-10">
+                <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/30 rounded-sm px-2.5 py-1.5 shadow-sm animate-in fade-in duration-300">
+                  <Sparkles className="h-3 w-3 text-primary" />
+                  <span className="font-display text-[10px] text-primary font-bold">Enhanced · {preset.scaleFactor}× resolution</span>
+                </div>
+              </div>
+            )}
+
+            {/* Enhancement failed badge */}
+            {enhancementStatus === "failed" && (
+              <div className="absolute top-2 left-2 z-10">
+                <div className="flex items-center gap-1.5 bg-muted border border-border rounded-sm px-2.5 py-1.5 shadow-sm animate-in fade-in duration-300">
+                  <span className="font-display text-[10px] text-muted-foreground">Using base image</span>
+                </div>
+              </div>
+            )}
+
             <ImagePreviewMockups
               imageUrl={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
               alt={prompt}
@@ -658,10 +743,12 @@ export default function ImageGenerator({
                     <AlertDialogAction
                       className="font-display bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={() => {
+                        enhancementRunId.current++;
                         setImageUrl(null);
                         setBaseImageUrl(null);
                         setSavedToGallery(false);
                         setViewVersion("enhanced");
+                        setEnhancementStatus("idle");
                       }}
                     >
                       Remove
@@ -673,7 +760,7 @@ export default function ImageGenerator({
           </div>
         )}
 
-        {!isActive && !imageUrl && (
+        {!isGenerating && !imageUrl && (
           <p className="font-display text-muted-foreground text-sm">Your artwork will appear here</p>
         )}
       </div>
