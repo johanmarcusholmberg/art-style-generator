@@ -6,10 +6,36 @@
 // ── Universal constants ──
 
 export const GLOBAL_QUALITY = [
-  "high detail", "sharp focus", "clean edges", "high resolution",
-  "detailed textures", "professional illustration", "sharp rendering",
-  "balanced composition", "no artifacts", "print-ready resolution",
-  "suitable for large format printing",
+  "extremely sharp focus throughout the entire image",
+  "crisp clean edges on all forms and outlines",
+  "maximum native resolution",
+  "rich detailed textures with visible micro-detail",
+  "professional gallery-quality illustration",
+  "razor-sharp rendering with no softness",
+  "no compression artifacts or noise",
+  "print-ready resolution suitable for large format wall art",
+  "every detail must remain crisp when viewed at 300 PPI on large paper",
+];
+
+/** Wall-art composition rules — always applied */
+export const WALL_ART_COMPOSITION = [
+  "compose with large readable shapes that remain impactful at poster scale",
+  "use balanced negative space — avoid overcrowded compositions",
+  "establish a clear focal point that draws the eye immediately",
+  "favor bold graphic forms over intricate tiny details that break when enlarged",
+  "ensure strong subject separation from background",
+  "design as if this will be printed at 50×70 cm and hung on a wall",
+];
+
+/** Base technical quality — always injected */
+export const BASE_QUALITY_RULES = [
+  "generate at the highest possible native resolution",
+  "preserve micro textures: paper grain, ink splatter, brush fiber, canvas weave",
+  "maintain crisp line clarity at all stroke widths",
+  "avoid oversmoothing — retain natural texture variation",
+  "high frequency detail retention for large format reproduction",
+  "individual texture elements must remain distinct and separable",
+  "clean crisp edges on all forms and outlines — no blur artifacts",
 ];
 
 export const EDGE_SAFETY_RULES = [
@@ -421,6 +447,15 @@ export function compilePrompt(
   options: CompileOptions = {},
 ): string {
   const rules = STYLE_RULES[styleKey];
+
+  // Always-on quality block (print rules + base quality + wall art composition)
+  const alwaysOnQuality = [
+    `\nTECHNICAL QUALITY: ${BASE_QUALITY_RULES.join(". ")}`,
+    `\nPRINT OPTIMIZATION: ${PRINT_RULES.join(". ")}`,
+    `\nAVOID ARTIFACTS: ${AVOID_PRINT_ARTIFACTS.join(". ")}`,
+    `\nWALL ART COMPOSITION: ${WALL_ART_COMPOSITION.join(". ")}`,
+  ].join("\n");
+
   if (!rules) {
     const sections = [
       `PRIMARY SUBJECT: ${userPrompt}`,
@@ -428,21 +463,16 @@ export function compilePrompt(
       `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
       "",
       `EDGE SAFETY: ${EDGE_SAFETY_RULES.join(". ")}`,
-    ];
-    if (options.printMode) {
-      sections.push("", `PRINT OPTIMIZATION: ${PRINT_RULES.join(". ")}`);
-      sections.push("", `AVOID PRINT ARTIFACTS: ${AVOID_PRINT_ARTIFACTS.join(". ")}`);
-    }
-    sections.push(
+      alwaysOnQuality,
       "",
       options.aspectRatio ? `The image must have a ${options.aspectRatio} aspect ratio.` : "",
       buildArtworkBgText(options.backgroundStyle),
-      "Generate at maximum resolution with fine detail suitable for large format printing.",
-    );
+      "Generate at maximum native resolution. Output the highest fidelity image possible.",
+    ];
     return sections.filter(Boolean).join("\n");
   }
 
-  const { aspectRatio, backgroundStyle, isEdit = false, variationIndex, printMode = false } = options;
+  const { aspectRatio, backgroundStyle, isEdit = false, variationIndex } = options;
 
   const edgeSafetyLines = [...EDGE_SAFETY_RULES, ...(rules.edgeSafety || [])];
 
@@ -452,10 +482,6 @@ export function compilePrompt(
 
   const bgText = buildArtworkBgText(backgroundStyle);
   const ratioText = aspectRatio ? `The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
-
-  const printSection = printMode
-    ? `\nPRINT OPTIMIZATION: ${PRINT_RULES.join(". ")}\n\nAVOID PRINT ARTIFACTS: ${AVOID_PRINT_ARTIFACTS.join(". ")}`
-    : "";
 
   if (isEdit) {
     return [
@@ -475,12 +501,13 @@ export function compilePrompt(
       `EDGE SAFETY: ${edgeSafetyLines.join(". ")}`,
       bgText,
       ratioText,
-      `GLOBAL QUALITY: ${[...rules.qualityRules, ...GLOBAL_QUALITY].join(", ")}`,
+      `STYLE QUALITY: ${rules.qualityRules.join(". ")}`,
+      `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
       `AVOID: ${rules.avoidRules.join(", ")}`,
       blockedSection,
-      printSection,
+      alwaysOnQuality,
       "",
-      "Generate at maximum resolution.",
+      "Generate at maximum native resolution. Output the highest fidelity image possible.",
     ].filter(Boolean).join("\n");
   }
 
@@ -502,19 +529,21 @@ export function compilePrompt(
     "",
     `COLOR: ${rules.colorRules.join(". ")}`,
     "",
-    `GLOBAL QUALITY: ${[...rules.qualityRules, ...GLOBAL_QUALITY].join(". ")}`,
+    `STYLE QUALITY: ${rules.qualityRules.join(". ")}`,
+    "",
+    `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
     "",
     `EDGE SAFETY: ${edgeSafetyLines.join(". ")}`,
     "",
     `AVOID: ${rules.avoidRules.join(". ")}`,
     blockedSection,
-    printSection,
+    alwaysOnQuality,
     "",
     bgText,
     ratioText,
     variationText,
     "",
-    "Generate at maximum resolution with fine detail suitable for large format printing.",
+    "Generate at maximum native resolution. Output the highest fidelity image possible.",
   ].filter(Boolean).join("\n");
 }
 

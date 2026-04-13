@@ -129,7 +129,8 @@ export default function ImageGenerator({
         prompt: activePrompt.trim(),
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
-        printMode: generationMode === "print-ready" || enhancementMode === "print-hd",
+        // Always request maximum quality — print rules are now always-on in the compiler
+        printMode: true,
       };
       if (isInlineEditing && imageUrl) {
         body.sourceImageUrl = imageUrl;

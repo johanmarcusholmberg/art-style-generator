@@ -16,17 +16,36 @@ export interface StyleRules {
 
 /** Universal quality tokens appended to every generation */
 export const GLOBAL_QUALITY = [
-  "high detail",
-  "sharp focus",
-  "clean edges",
-  "high resolution",
-  "detailed textures",
-  "professional illustration",
-  "sharp rendering",
-  "balanced composition",
-  "no artifacts",
-  "print-ready resolution",
-  "suitable for large format printing",
+  "extremely sharp focus throughout the entire image",
+  "crisp clean edges on all forms and outlines",
+  "maximum native resolution",
+  "rich detailed textures with visible micro-detail",
+  "professional gallery-quality illustration",
+  "razor-sharp rendering with no softness",
+  "no compression artifacts or noise",
+  "print-ready resolution suitable for large format wall art",
+  "every detail must remain crisp when viewed at 300 PPI on large paper",
+];
+
+/** Wall-art composition rules — always applied to encourage print-suitable layouts */
+export const WALL_ART_COMPOSITION = [
+  "compose with large readable shapes that remain impactful at poster scale",
+  "use balanced negative space — avoid overcrowded compositions",
+  "establish a clear focal point that draws the eye immediately",
+  "favor bold graphic forms over intricate tiny details that break when enlarged",
+  "ensure strong subject separation from background",
+  "design as if this will be printed at 50×70 cm and hung on a wall",
+];
+
+/** Base technical quality rules — always injected regardless of mode */
+export const BASE_QUALITY_RULES = [
+  "generate at the highest possible native resolution",
+  "preserve micro textures: paper grain, ink splatter, brush fiber, canvas weave",
+  "maintain crisp line clarity at all stroke widths",
+  "avoid oversmoothing — retain natural texture variation",
+  "high frequency detail retention for large format reproduction",
+  "individual texture elements must remain distinct and separable",
+  "clean crisp edges on all forms and outlines — no blur artifacts",
 ];
 
 /** Print optimization rules — activated only in print mode */
@@ -1462,6 +1481,15 @@ export function compilePrompt(
   } = {}
 ): string {
   const rules = STYLE_RULES[styleKey];
+
+  // Always-on quality block
+  const alwaysOnQuality = [
+    `\nTECHNICAL QUALITY: ${BASE_QUALITY_RULES.join(". ")}`,
+    `\nPRINT OPTIMIZATION: ${PRINT_RULES.join(". ")}`,
+    `\nAVOID ARTIFACTS: ${AVOID_PRINT_ARTIFACTS.join(". ")}`,
+    `\nWALL ART COMPOSITION: ${WALL_ART_COMPOSITION.join(". ")}`,
+  ].join("\n");
+
   if (!rules) {
     return [
       `PRIMARY SUBJECT: ${userPrompt}`,
@@ -1470,29 +1498,28 @@ export function compilePrompt(
       `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
       "",
       `EDGE SAFETY: ${EDGE_SAFETY_RULES.join(". ")}`,
-      "Generate at maximum resolution.",
+      alwaysOnQuality,
+      "",
+      "Generate at maximum native resolution. Output the highest fidelity image possible.",
     ].join("\n");
   }
 
   const { aspectRatio, backgroundStyle = "white", isEdit = false, variationIndex } = options;
   const useCream = backgroundStyle === "cream";
 
-  // Background is always OUTER presentation — never alters the artwork itself
   const bgText = useCream
-    ? "Use a warm cream/off-white vintage paper background tone. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself."
-    : "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself.";
+    ? "ARTWORK BACKGROUND: Use a warm cream/off-white vintage paper background tone within the artwork. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself."
+    : "ARTWORK BACKGROUND: The background within the artwork MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself.";
 
   const ratioText = aspectRatio
     ? `The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.`
     : "";
 
-  // Combine style-specific and universal edge safety
   const edgeSafetyLines = [
     ...EDGE_SAFETY_RULES,
     ...(rules.edgeSafety || []),
   ];
 
-  // Blocked traits section
   const blockedSection = rules.blockedTraits?.length
     ? `\nBLOCKED TRAITS (must NEVER appear): ${rules.blockedTraits.join(". ")}`
     : "";
@@ -1515,15 +1542,16 @@ export function compilePrompt(
       `EDGE SAFETY: ${edgeSafetyLines.join(". ")}`,
       bgText,
       ratioText,
-      `GLOBAL QUALITY: ${[...rules.qualityRules, ...GLOBAL_QUALITY].join(", ")}`,
+      `STYLE QUALITY: ${rules.qualityRules.join(". ")}`,
+      `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
       `AVOID: ${rules.avoidRules.join(", ")}`,
       blockedSection,
+      alwaysOnQuality,
       "",
-      "Generate at maximum resolution.",
+      "Generate at maximum native resolution. Output the highest fidelity image possible.",
     ].filter(Boolean).join("\n");
   }
 
-  // Variation instruction for batch generation
   const variationText = variationIndex !== undefined && variationIndex > 0
     ? `\nVARIATION: Apply ${VARIATION_INSTRUCTIONS[variationIndex % VARIATION_INSTRUCTIONS.length]} while maintaining the same subject and style.`
     : "";
@@ -1541,18 +1569,21 @@ export function compilePrompt(
     "",
     `COLOR: ${rules.colorRules.join(". ")}`,
     "",
-    `GLOBAL QUALITY: ${[...rules.qualityRules, ...GLOBAL_QUALITY].join(". ")}`,
+    `STYLE QUALITY: ${rules.qualityRules.join(". ")}`,
+    "",
+    `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
     "",
     `EDGE SAFETY: ${edgeSafetyLines.join(". ")}`,
     "",
     `AVOID: ${rules.avoidRules.join(". ")}`,
     blockedSection,
+    alwaysOnQuality,
     "",
     bgText,
     ratioText,
     variationText,
     "",
-    "Generate at maximum resolution with fine detail suitable for large format printing.",
+    "Generate at maximum native resolution. Output the highest fidelity image possible.",
   ].filter(Boolean).join("\n");
 }
 
