@@ -2,101 +2,169 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-/**
- * Build enhancement prompt based on strength level.
- * "medium" = general HD sharpening.
- * "strong" = print-optimized with resolution-aware detail generation.
- */
-function buildEnhancePrompt(opts: {
-  strength: string;
-  aspectRatio?: string;
-  targetWidthPx?: number;
-  targetHeightPx?: number;
-  targetPpi?: number;
-  printFormatId?: string;
-}): string {
-  const { strength, aspectRatio, targetWidthPx, targetHeightPx, targetPpi, printFormatId } = opts;
+/* ------------------------------------------------------------------ */
+/*  Stage 1 — AI Artifact Cleanup (Gemini vision)                     */
+/*  Focuses ONLY on cleaning artifacts, NOT on upscaling.             */
+/* ------------------------------------------------------------------ */
 
-  const ratioText = aspectRatio ? ` Maintain the ${aspectRatio} aspect ratio exactly.` : "";
+function buildCleanupPrompt(): string {
+  return `CRITICAL IMAGE CLEANUP INSTRUCTIONS:
 
-  // Resolution directive for print-hd mode
-  let resolutionDirective = "";
-  if (targetWidthPx && targetHeightPx) {
-    const ppiLabel = targetPpi ? ` at ${targetPpi} PPI` : "";
-    const formatLabel = printFormatId ? ` (format: ${printFormatId.replace(/_/g, " ")})` : "";
-    resolutionDirective = `
-
-TARGET RESOLUTION (CRITICAL):
-The final image must be optimized for ${targetWidthPx} × ${targetHeightPx} pixels${ppiLabel}${formatLabel}.
-This is a large-format print target — every detail matters at this scale.
-Generate TRUE fine detail at full resolution:
-- Individual brush strokes, ink lines, and texture grain must be crisp and distinct
-- Architectural elements must show clean edges at full zoom
-- Botanical details must show leaf veins, petal texture, and fiber clarity
-- Fabric and material textures must be individually resolved
-- No detail should appear blurred, smudged, or interpolated at the target resolution
-- Avoid any plastic, waxy, or over-smoothed appearance
-- Preserve paper grain, canvas texture, and print imperfections where they exist in the original`;
-  }
-
-  // Strength-specific directives
-  const strengthDirective = strength === "strong"
-    ? `
-ENHANCEMENT LEVEL: MAXIMUM (Print HD)
-- Apply the strongest possible detail enhancement
-- Generate new micro-detail where the source lacks it: texture grain, fine lines, surface variation
-- Push sharpness and edge clarity to the limit without introducing ringing artifacts
-- Treat this as preparing a museum-quality large-format print
-- Every square centimeter of the final output must hold up under close inspection`
-    : `
-ENHANCEMENT LEVEL: HIGH DEFINITION
-- Apply clear sharpening and detail improvement
-- Enhance texture clarity and edge definition
-- Remove compression artifacts while preserving artistic detail
-- Produce a noticeably cleaner, crisper version of the original`;
-
-  return `CRITICAL UPSCALING AND ENHANCEMENT INSTRUCTIONS:
-
-You are an image enhancement specialist. Your ONLY task is to upscale, sharpen, and clean this image for high-quality output.
-${resolutionDirective}
-${strengthDirective}
+You are an image artifact cleanup specialist. Your ONLY task is to clean this image — do NOT upscale, resize, or change composition.
 
 DO:
-- Sharpen all edges and fine details for crisp reproduction
-- Enhance texture clarity: paper grain, brush strokes, ink lines, fabric patterns
-- Increase overall resolution and definition to maximum output quality
-- Apply subtle denoising to remove compression artifacts while preserving detail
-- Deepen color richness and improve tonal range
-- Refine fine architectural elements, botanical details, and facial features if present
-- Ensure clean, sharp focus across the entire image
-- Produce a premium print-ready version at the highest possible resolution
-- Generate true detail — not interpolated blur
-- Preserve the character and grain of the original medium
+- Remove compression artifacts (JPEG blocking, color banding, mosquito noise)
+- Clean up halos and ringing around edges
+- Smooth out noise in flat color areas while preserving intended texture
+- Sharpen soft edges and improve line clarity
+- Stabilize textures that appear grainy or inconsistent
+- Fix color posterization in gradients
+- Clean up any halftone or moiré patterns that are artifacts (not intentional)
 
 DO NOT:
 - Change the subject, style, composition, or color palette
 - Add new elements or remove existing ones
-- Alter the artistic style or mood
-- Regenerate or reimagine any part of the image
-- Change the background color or texture
-- Crop or reframe the image in any way
-- Remove or alter any borders, frames, or decorative edges within the artwork
-- Trim, fade, or soften any detail near the image edges
-- Treat inner borders or edge lines as disposable margins
-- Apply plastic smoothing or wax-like texture
-- Blur fine lines or merge adjacent details
+- Upscale or resize the image
+- Alter the artistic style, mood, or framing
+- Remove intentional textures (paper grain, brush strokes, screen print dots)
+- Crop, reframe, or alter borders/frames within the artwork
+- Apply plastic smoothing or over-sharpen
 
-EDGE SAFETY (CRITICAL):
-- All intentional inner borders, edge lines, and frame-like details are part of the artwork
-- Every pixel at the boundary is part of the composition and must be preserved
-- Decorative borders and internal framing elements must remain fully intact
-- Thin lines or decorative elements near the image edge must NOT be removed or blended into the background
+EDGE SAFETY:
+- All intentional borders, edge lines, and frame elements are part of the artwork
+- Every pixel at the boundary must be preserved
+- Thin lines near image edges must NOT be removed
 
-The output must be the EXACT same image but dramatically sharper, cleaner, and more detailed — suitable for large-format print at 300 DPI.${ratioText}`;
+Output the EXACT same image, same size, but with cleaner detail and fewer artifacts.`;
 }
+
+async function runArtifactCleanup(imageUrl: string, apiKey: string): Promise<string | null> {
+  console.log("Stage 1: Running artifact cleanup…");
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-3-pro-image-preview",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: imageUrl } },
+            { type: "text", text: buildCleanupPrompt() },
+          ],
+        },
+      ],
+      modalities: ["image", "text"],
+    }),
+  });
+
+  if (!response.ok) {
+    const t = await response.text();
+    console.error("Cleanup API error:", response.status, t);
+    return null;
+  }
+
+  const data = await response.json();
+  const cleanedUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+  if (!cleanedUrl) {
+    console.warn("Cleanup returned no image, skipping cleanup stage");
+    return null;
+  }
+
+  console.log("Stage 1: Artifact cleanup complete");
+  return cleanedUrl;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Stage 2 — True Super-Resolution via Replicate Real-ESRGAN         */
+/* ------------------------------------------------------------------ */
+
+async function runSuperResolution(
+  imageUrl: string,
+  scaleFactor: number,
+  apiToken: string,
+): Promise<string | null> {
+  console.log(`Stage 2: Running Real-ESRGAN super-resolution (${scaleFactor}x)…`);
+
+  // Create prediction
+  const createRes = await fetch("https://api.replicate.com/v1/predictions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      "Content-Type": "application/json",
+      Prefer: "wait",
+    },
+    body: JSON.stringify({
+      version: "f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa",
+      input: {
+        image: imageUrl,
+        scale: scaleFactor,
+        face_enhance: false,
+      },
+    }),
+  });
+
+  if (!createRes.ok) {
+    const t = await createRes.text();
+    console.error("Replicate create error:", createRes.status, t);
+    return null;
+  }
+
+  let prediction = await createRes.json();
+
+  // If the Prefer: wait header worked, we may already have output
+  if (prediction.status === "succeeded" && prediction.output) {
+    console.log("Stage 2: Super-resolution complete (immediate)");
+    return prediction.output;
+  }
+
+  // Otherwise poll for completion (max ~120s)
+  const predictionId = prediction.id;
+  const pollUrl = `https://api.replicate.com/v1/predictions/${predictionId}`;
+  const maxAttempts = 60;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+
+    const pollRes = await fetch(pollUrl, {
+      headers: { Authorization: `Bearer ${apiToken}` },
+    });
+
+    if (!pollRes.ok) {
+      const t = await pollRes.text();
+      console.error("Replicate poll error:", pollRes.status, t);
+      return null;
+    }
+
+    prediction = await pollRes.json();
+
+    if (prediction.status === "succeeded") {
+      console.log("Stage 2: Super-resolution complete");
+      return prediction.output;
+    }
+
+    if (prediction.status === "failed" || prediction.status === "canceled") {
+      console.error("Replicate prediction failed:", prediction.error);
+      return null;
+    }
+  }
+
+  console.error("Replicate prediction timed out");
+  return null;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main handler                                                       */
+/* ------------------------------------------------------------------ */
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -104,71 +172,78 @@ serve(async (req) => {
   try {
     const {
       imageUrl,
-      aspectRatio,
-      targetWidthPx,
-      targetHeightPx,
-      targetPpi,
-      printFormatId,
       strength = "medium",
+      scaleFactor: requestedScale,
     } = await req.json();
 
     if (!imageUrl || typeof imageUrl !== "string") {
-      return new Response(JSON.stringify({ error: "Missing imageUrl" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Missing imageUrl" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const enhancePrompt = buildEnhancePrompt({
-      strength,
-      aspectRatio,
-      targetWidthPx,
-      targetHeightPx,
-      targetPpi,
-      printFormatId,
-    });
+    const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN");
+    if (!REPLICATE_API_TOKEN) throw new Error("REPLICATE_API_TOKEN is not configured");
 
-    console.log(`Enhancement request: strength=${strength}, target=${targetWidthPx}x${targetHeightPx}, ppi=${targetPpi}`);
+    // Determine scale factor from strength or explicit request
+    const scale = requestedScale ?? (strength === "strong" ? 4 : 2);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-pro-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "image_url", image_url: { url: imageUrl } },
-              { type: "text", text: enhancePrompt },
-            ],
-          },
-        ],
-        modalities: ["image", "text"],
-      }),
-    });
+    console.log(`Enhancement pipeline: strength=${strength}, scale=${scale}x`);
 
-    if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Usage limit reached. Please add credits." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "Failed to enhance image" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // ---- Stage 1: Artifact Cleanup ----
+    let cleanedUrl: string | null = null;
+    try {
+      cleanedUrl = await runArtifactCleanup(imageUrl, LOVABLE_API_KEY);
+    } catch (err) {
+      console.warn("Artifact cleanup failed, continuing with original:", err);
     }
 
-    const data = await response.json();
-    const enhancedUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const upscaleInput = cleanedUrl || imageUrl;
 
-    if (!enhancedUrl) return new Response(JSON.stringify({ error: "Enhancement failed. Try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // ---- Stage 2: True Super-Resolution ----
+    let enhancedUrl: string | null = null;
+    try {
+      enhancedUrl = await runSuperResolution(upscaleInput, scale, REPLICATE_API_TOKEN);
+    } catch (err) {
+      console.warn("Super-resolution failed:", err);
+    }
 
-    return new Response(JSON.stringify({ imageUrl: enhancedUrl }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Return the best available result
+    const finalUrl = enhancedUrl || cleanedUrl || imageUrl;
+
+    if (!enhancedUrl) {
+      console.warn("Super-resolution unavailable — returning cleanup-only or original");
+    }
+
+    return new Response(
+      JSON.stringify({
+        imageUrl: finalUrl,
+        pipeline: {
+          cleanup: !!cleanedUrl,
+          superResolution: !!enhancedUrl,
+          scale: enhancedUrl ? scale : 1,
+          provider: enhancedUrl ? "replicate/real-esrgan" : "none",
+        },
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e) {
     console.error("upscale-image error:", e);
-    return new Response(JSON.stringify({ error: "An unexpected error occurred. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    if (e.message?.includes("REPLICATE_API_TOKEN")) {
+      return new Response(
+        JSON.stringify({ error: "Upscaling service not configured. Please add your Replicate API token." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 });
