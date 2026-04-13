@@ -32,20 +32,20 @@ export const ENHANCEMENT_PRESETS: Record<EnhancementMode, EnhancementPreset> = {
   hd: {
     id: "hd",
     label: "HD",
-    description: "Enhanced sharpness and detail",
+    description: "Cleanup + 2× super-resolution",
     runUpscale: true,
     strength: "medium",
     scaleFactor: 2,
-    timeoutMs: 60_000,
+    timeoutMs: 120_000,
   },
   "print-hd": {
     id: "print-hd",
     label: "Print HD",
-    description: "Maximum detail for large-format printing",
+    description: "Cleanup + 4× super-resolution for large prints",
     runUpscale: true,
     strength: "strong",
     scaleFactor: 4,
-    timeoutMs: 90_000,
+    timeoutMs: 180_000,
   },
 };
 
@@ -59,6 +59,6 @@ export interface ProviderConfig {
 }
 
 export const ENHANCEMENT_PROVIDER: ProviderConfig = {
-  name: "lovable-ai-gateway",
+  name: "replicate/real-esrgan",
   edgeFunction: "upscale-image",
 };
