@@ -209,6 +209,8 @@ export default function ImageGenerator({
     setViewVersion("enhanced");
     setSavedToGallery(false);
     setEnhancementStatus("idle");
+    setEnhancedImageUrl(null);
+    savedGalleryIdRef.current = null;
 
     // Bump the enhancement run id so any in-flight enhancement is ignored
     const runId = ++enhancementRunId.current;
