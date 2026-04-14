@@ -93,6 +93,8 @@ export default function ImageGenerator({
   } = usePersistedGeneration(persistKey, isEditMode ? undefined : initialPrompt);
 
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
+  // Store the enhanced URL separately from the displayed imageUrl
+  const [enhancedImageUrl, setEnhancedImageUrl] = useState<string | null>(null);
   const [isInlineEditing, setIsInlineEditing] = useState(false);
   const [editPrompt, setEditPrompt] = useState("");
   const [loading, setLoading] = useState(false);
