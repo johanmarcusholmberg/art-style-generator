@@ -305,6 +305,7 @@ export default function ImageGenerator({
         prompt: finalPrompt,
         ...saveOpts,
       });
+      // Note: result is the master public URL
       setSavedToGallery(true);
       onImageSaved?.();
       toast({ title: "Saved to gallery", description: "Your artwork has been saved." });
