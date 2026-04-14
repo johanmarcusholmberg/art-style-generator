@@ -13,6 +13,34 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([arr], { type: mime });
 }
 
+/**
+ * Upload an image (data-URL or remote URL) to the generated-images bucket
+ * and return the storage filename + public URL.
+ */
+async function uploadImage(imageUrl: string, prefix: string): Promise<{ filename: string; publicUrl: string }> {
+  const filename = `${prefix}-${Date.now()}.png`;
+  let blob: Blob;
+
+  if (imageUrl.startsWith("data:")) {
+    blob = dataUrlToBlob(imageUrl);
+  } else {
+    const res = await fetch(imageUrl);
+    blob = await res.blob();
+  }
+
+  const { error } = await supabase.storage
+    .from("generated-images")
+    .upload(filename, blob, { contentType: "image/png" });
+
+  if (error) throw error;
+
+  const { data: urlData } = supabase.storage
+    .from("generated-images")
+    .getPublicUrl(filename);
+
+  return { filename, publicUrl: urlData.publicUrl };
+}
+
 export interface GallerySaveOptions {
   imageUrl: string;
   prompt: string;
@@ -39,35 +67,45 @@ export interface GallerySaveOptions {
   upscaleMethod?: string;
   cropMode?: string;
   paddingMode?: string;
+  /** Asset model fields */
+  enhancedImageUrl?: string;
+  enhancementModel?: string;
+  upscaleFactor?: number;
+  baseWidthPx?: number;
+  baseHeightPx?: number;
+  enhancedWidthPx?: number;
+  enhancedHeightPx?: number;
 }
 
 export async function saveToGallery(opts: GallerySaveOptions) {
-  const filename = `${opts.mode}-${Date.now()}.png`;
-  const blob = dataUrlToBlob(opts.imageUrl);
+  // Upload the base image
+  const base = await uploadImage(opts.imageUrl, opts.mode);
 
-  const { error: uploadError } = await supabase.storage
-    .from("generated-images")
-    .upload(filename, blob, { contentType: "image/png" });
+  // Upload enhanced image if provided
+  let enhancedPath: string | null = null;
+  if (opts.enhancedImageUrl && opts.enhancedImageUrl !== opts.imageUrl) {
+    const enh = await uploadImage(opts.enhancedImageUrl, `${opts.mode}-enh`);
+    enhancedPath = enh.filename;
+  }
 
-  if (uploadError) throw uploadError;
-
-  const { data: urlData } = supabase.storage
-    .from("generated-images")
-    .getPublicUrl(filename);
+  // Master = enhanced if available, otherwise base
+  const masterPath = enhancedPath || base.filename;
 
   const { error: dbError } = await supabase.from("generated_images").insert({
     prompt: opts.prompt,
     mode: opts.mode,
     aspect_ratio: opts.aspectRatio,
     print_size: opts.printSize,
-    storage_path: filename,
+    storage_path: base.filename,
+    enhanced_storage_path: enhancedPath,
+    master_storage_path: masterPath,
     quality_mode: opts.qualityMode || "quality",
     target_ppi: opts.targetPpi || null,
     target_width_px: opts.targetWidthPx || null,
     target_height_px: opts.targetHeightPx || null,
     actual_width_px: opts.actualWidthPx || null,
     actual_height_px: opts.actualHeightPx || null,
-    enhanced: opts.enhanced || false,
+    enhanced: opts.enhanced || !!enhancedPath,
     print_format_id: opts.printFormatId || null,
     generation_mode: opts.generationMode || null,
     source_width: opts.sourceWidth || null,
@@ -76,15 +114,32 @@ export async function saveToGallery(opts: GallerySaveOptions) {
     export_height: opts.exportHeight || null,
     export_ready: opts.exportReady || false,
     export_type: opts.exportType || null,
-    upscale_applied: opts.upscaleApplied || false,
+    upscale_applied: opts.upscaleApplied || !!enhancedPath,
     upscale_method: opts.upscaleMethod || null,
     crop_mode: opts.cropMode || null,
     padding_mode: opts.paddingMode || null,
+    enhancement_model: opts.enhancementModel || null,
+    upscale_factor: opts.upscaleFactor || null,
+    base_width_px: opts.baseWidthPx || null,
+    base_height_px: opts.baseHeightPx || null,
+    enhanced_width_px: opts.enhancedWidthPx || null,
+    enhanced_height_px: opts.enhancedHeightPx || null,
   } as any);
 
   if (dbError) throw dbError;
 
-  return urlData.publicUrl;
+  // Return the master public URL
+  const { data: masterUrlData } = supabase.storage
+    .from("generated-images")
+    .getPublicUrl(masterPath);
+
+  return masterUrlData.publicUrl;
+}
+
+/** Helper to resolve a storage path to a public URL */
+function storageUrl(path: string | null): string | null {
+  if (!path) return null;
+  return supabase.storage.from("generated-images").getPublicUrl(path).data.publicUrl;
 }
 
 export async function fetchGalleryImages() {
@@ -96,18 +151,36 @@ export async function fetchGalleryImages() {
 
   if (error) throw error;
 
-  return (data || []).map((img: any) => ({
-    ...img,
-    publicUrl: supabase.storage
-      .from("generated-images")
-      .getPublicUrl(img.storage_path).data.publicUrl,
-  }));
+  return (data || []).map((img: any) => {
+    const masterPath = img.master_storage_path || img.storage_path;
+    return {
+      ...img,
+      // Preview = base storage path (lightweight for grid)
+      publicUrl: storageUrl(img.storage_path)!,
+      // Master = best available (for detail view & export)
+      masterUrl: storageUrl(masterPath)!,
+      // Enhanced URL (if it exists)
+      enhancedUrl: storageUrl(img.enhanced_storage_path),
+    };
+  });
 }
 
 export async function deleteFromGallery(id: string, storagePath: string) {
+  // Also fetch enhanced path to clean up
+  const { data: row } = await supabase
+    .from("generated_images")
+    .select("enhanced_storage_path, master_storage_path")
+    .eq("id", id)
+    .single();
+
+  const pathsToRemove = [storagePath];
+  if (row?.enhanced_storage_path && row.enhanced_storage_path !== storagePath) {
+    pathsToRemove.push(row.enhanced_storage_path);
+  }
+
   const { error: storageError } = await supabase.storage
     .from("generated-images")
-    .remove([storagePath]);
+    .remove(pathsToRemove);
 
   if (storageError) throw storageError;
 
@@ -122,16 +195,18 @@ export async function deleteFromGallery(id: string, storagePath: string) {
 export async function replaceInGallery(
   opts: GallerySaveOptions & { originalId: string; originalStoragePath: string },
 ) {
-  const filename = `${opts.mode}-${Date.now()}.png`;
-  const blob = dataUrlToBlob(opts.imageUrl);
+  const base = await uploadImage(opts.imageUrl, opts.mode);
 
+  let enhancedPath: string | null = null;
+  if (opts.enhancedImageUrl && opts.enhancedImageUrl !== opts.imageUrl) {
+    const enh = await uploadImage(opts.enhancedImageUrl, `${opts.mode}-enh`);
+    enhancedPath = enh.filename;
+  }
+
+  const masterPath = enhancedPath || base.filename;
+
+  // Remove old files
   await supabase.storage.from("generated-images").remove([opts.originalStoragePath]);
-
-  const { error: uploadError } = await supabase.storage
-    .from("generated-images")
-    .upload(filename, blob, { contentType: "image/png" });
-
-  if (uploadError) throw uploadError;
 
   const { error: dbError } = await supabase
     .from("generated_images")
@@ -140,14 +215,16 @@ export async function replaceInGallery(
       mode: opts.mode,
       aspect_ratio: opts.aspectRatio,
       print_size: opts.printSize,
-      storage_path: filename,
+      storage_path: base.filename,
+      enhanced_storage_path: enhancedPath,
+      master_storage_path: masterPath,
       quality_mode: opts.qualityMode || "quality",
       target_ppi: opts.targetPpi || null,
       target_width_px: opts.targetWidthPx || null,
       target_height_px: opts.targetHeightPx || null,
       actual_width_px: opts.actualWidthPx || null,
       actual_height_px: opts.actualHeightPx || null,
-      enhanced: opts.enhanced || false,
+      enhanced: opts.enhanced || !!enhancedPath,
       print_format_id: opts.printFormatId || null,
       generation_mode: opts.generationMode || null,
       source_width: opts.sourceWidth || null,
@@ -156,12 +233,52 @@ export async function replaceInGallery(
       export_height: opts.exportHeight || null,
       export_ready: opts.exportReady || false,
       export_type: opts.exportType || null,
-      upscale_applied: opts.upscaleApplied || false,
+      upscale_applied: opts.upscaleApplied || !!enhancedPath,
       upscale_method: opts.upscaleMethod || null,
       crop_mode: opts.cropMode || null,
       padding_mode: opts.paddingMode || null,
+      enhancement_model: opts.enhancementModel || null,
+      upscale_factor: opts.upscaleFactor || null,
+      base_width_px: opts.baseWidthPx || null,
+      base_height_px: opts.baseHeightPx || null,
+      enhanced_width_px: opts.enhancedWidthPx || null,
+      enhanced_height_px: opts.enhancedHeightPx || null,
     } as any)
     .eq("id", opts.originalId);
 
   if (dbError) throw dbError;
+}
+
+/**
+ * Update enhanced asset for an existing gallery image after async enhancement completes.
+ */
+export async function updateEnhancedAsset(
+  imageId: string,
+  enhancedImageUrl: string,
+  metadata?: {
+    enhancementModel?: string;
+    upscaleFactor?: number;
+    enhancedWidthPx?: number;
+    enhancedHeightPx?: number;
+  },
+) {
+  const enh = await uploadImage(enhancedImageUrl, "enh");
+
+  const { error } = await supabase
+    .from("generated_images")
+    .update({
+      enhanced_storage_path: enh.filename,
+      master_storage_path: enh.filename,
+      enhanced: true,
+      upscale_applied: true,
+      enhancement_model: metadata?.enhancementModel || null,
+      upscale_factor: metadata?.upscaleFactor || null,
+      enhanced_width_px: metadata?.enhancedWidthPx || null,
+      enhanced_height_px: metadata?.enhancedHeightPx || null,
+    } as any)
+    .eq("id", imageId);
+
+  if (error) throw error;
+
+  return enh.publicUrl;
 }
