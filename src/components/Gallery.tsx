@@ -684,7 +684,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     img: selected,
     onEdit: onEditImage ? () => handleEdit(selected) : undefined,
     onDelete: () => setDeleteTarget(selected),
-    onCopyUrl: () => handleCopyUrl(selected.publicUrl),
+    onCopyUrl: () => handleCopyUrl(selected.masterUrl),
     onChangeBg: (style: "white" | "cream") => handleChangeBackground(selected, style),
     onSaveBg: (replace: boolean) => handleSaveBgResult(selected, replace),
     onDiscardBg: () => setBgResult(null),
