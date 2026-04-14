@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
-import { saveToGallery, replaceInGallery } from "@/lib/gallery";
+import { saveToGallery, replaceInGallery, updateEnhancedAsset } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
@@ -93,6 +93,8 @@ export default function ImageGenerator({
   } = usePersistedGeneration(persistKey, isEditMode ? undefined : initialPrompt);
 
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
+  // Store the enhanced URL separately from the displayed imageUrl
+  const [enhancedImageUrl, setEnhancedImageUrl] = useState<string | null>(null);
   const [isInlineEditing, setIsInlineEditing] = useState(false);
   const [editPrompt, setEditPrompt] = useState("");
   const [loading, setLoading] = useState(false);
@@ -113,6 +115,8 @@ export default function ImageGenerator({
 
   // Ref to track the current enhancement run so stale ones don't overwrite
   const enhancementRunId = useRef(0);
+  // Track the saved gallery image ID for async enhancement updates
+  const savedGalleryIdRef = useRef<string | null>(null);
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
   const effectiveAspectRatio = generationMode === "print-ready" ? selectedPrintFormat.aspectRatio : printSize.ratio;
@@ -150,8 +154,18 @@ export default function ImageGenerator({
       if (!upError && upData?.imageUrl) {
         // Still the current run? Replace the preview with enhanced version
         if (enhancementRunId.current === runId) {
+          setEnhancedImageUrl(upData.imageUrl);
           setImageUrl(upData.imageUrl);
           setEnhancementStatus("done");
+
+          // If already saved to gallery, update the enhanced asset in background
+          if (savedGalleryIdRef.current) {
+            updateEnhancedAsset(savedGalleryIdRef.current, upData.imageUrl, {
+              enhancementModel: upData.pipeline?.provider || "replicate/real-esrgan",
+              upscaleFactor: upData.pipeline?.scale || currentPreset.scaleFactor,
+            }).catch((err) => console.warn("Failed to update enhanced asset in gallery:", err));
+          }
+
           // Auto-clear the "done" badge after a few seconds
           setTimeout(() => {
             if (enhancementRunId.current === runId) {
@@ -195,6 +209,8 @@ export default function ImageGenerator({
     setViewVersion("enhanced");
     setSavedToGallery(false);
     setEnhancementStatus("idle");
+    setEnhancedImageUrl(null);
+    savedGalleryIdRef.current = null;
 
     // Bump the enhancement run id so any in-flight enhancement is ignored
     const runId = ++enhancementRunId.current;
@@ -267,6 +283,10 @@ export default function ImageGenerator({
       printFormatId: isPrint ? selectedPrintFormat.id : undefined,
       generationMode: generationMode,
       exportType: isPrint ? selectedPrintFormat.exportType : undefined,
+      // Pass enhanced image URL separately so gallery stores both base + enhanced
+      enhancedImageUrl: enhancedImageUrl || undefined,
+      enhancementModel: enhancedImageUrl ? "replicate/real-esrgan" : undefined,
+      upscaleFactor: enhancedImageUrl ? preset.scaleFactor : undefined,
     };
   };
 
@@ -278,11 +298,14 @@ export default function ImageGenerator({
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
 
-      await saveToGallery({
-        imageUrl,
+      // Always save using baseImageUrl as the primary source
+      const saveOpts = buildSaveOptions();
+      const result = await saveToGallery({
+        imageUrl: baseImageUrl || imageUrl,
         prompt: finalPrompt,
-        ...buildSaveOptions(),
+        ...saveOpts,
       });
+      // Note: result is the master public URL
       setSavedToGallery(true);
       onImageSaved?.();
       toast({ title: "Saved to gallery", description: "Your artwork has been saved." });
@@ -305,7 +328,7 @@ export default function ImageGenerator({
       await replaceInGallery({
         originalId: originalImageId,
         originalStoragePath,
-        imageUrl,
+        imageUrl: baseImageUrl || imageUrl,
         prompt: finalPrompt,
         ...buildSaveOptions(),
       });

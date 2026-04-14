@@ -73,10 +73,16 @@ export type Database = {
           actual_height_px: number | null
           actual_width_px: number | null
           aspect_ratio: string
+          base_height_px: number | null
+          base_width_px: number | null
           created_at: string
           crop_mode: string | null
           deleted_at: string | null
           enhanced: boolean | null
+          enhanced_height_px: number | null
+          enhanced_storage_path: string | null
+          enhanced_width_px: number | null
+          enhancement_model: string | null
           export_height: number | null
           export_ready: boolean | null
           export_storage_path: string | null
@@ -84,6 +90,7 @@ export type Database = {
           export_width: number | null
           generation_mode: string | null
           id: string
+          master_storage_path: string | null
           mode: string
           padding_mode: string | null
           print_format_id: string | null
@@ -97,16 +104,23 @@ export type Database = {
           target_ppi: number | null
           target_width_px: number | null
           upscale_applied: boolean | null
+          upscale_factor: number | null
           upscale_method: string | null
         }
         Insert: {
           actual_height_px?: number | null
           actual_width_px?: number | null
           aspect_ratio?: string
+          base_height_px?: number | null
+          base_width_px?: number | null
           created_at?: string
           crop_mode?: string | null
           deleted_at?: string | null
           enhanced?: boolean | null
+          enhanced_height_px?: number | null
+          enhanced_storage_path?: string | null
+          enhanced_width_px?: number | null
+          enhancement_model?: string | null
           export_height?: number | null
           export_ready?: boolean | null
           export_storage_path?: string | null
@@ -114,6 +128,7 @@ export type Database = {
           export_width?: number | null
           generation_mode?: string | null
           id?: string
+          master_storage_path?: string | null
           mode?: string
           padding_mode?: string | null
           print_format_id?: string | null
@@ -127,16 +142,23 @@ export type Database = {
           target_ppi?: number | null
           target_width_px?: number | null
           upscale_applied?: boolean | null
+          upscale_factor?: number | null
           upscale_method?: string | null
         }
         Update: {
           actual_height_px?: number | null
           actual_width_px?: number | null
           aspect_ratio?: string
+          base_height_px?: number | null
+          base_width_px?: number | null
           created_at?: string
           crop_mode?: string | null
           deleted_at?: string | null
           enhanced?: boolean | null
+          enhanced_height_px?: number | null
+          enhanced_storage_path?: string | null
+          enhanced_width_px?: number | null
+          enhancement_model?: string | null
           export_height?: number | null
           export_ready?: boolean | null
           export_storage_path?: string | null
@@ -144,6 +166,7 @@ export type Database = {
           export_width?: number | null
           generation_mode?: string | null
           id?: string
+          master_storage_path?: string | null
           mode?: string
           padding_mode?: string | null
           print_format_id?: string | null
@@ -157,6 +180,7 @@ export type Database = {
           target_ppi?: number | null
           target_width_px?: number | null
           upscale_applied?: boolean | null
+          upscale_factor?: number | null
           upscale_method?: string | null
         }
         Relationships: []
