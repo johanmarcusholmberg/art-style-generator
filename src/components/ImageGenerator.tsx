@@ -113,6 +113,8 @@ export default function ImageGenerator({
 
   // Ref to track the current enhancement run so stale ones don't overwrite
   const enhancementRunId = useRef(0);
+  // Track the saved gallery image ID for async enhancement updates
+  const savedGalleryIdRef = useRef<string | null>(null);
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
   const effectiveAspectRatio = generationMode === "print-ready" ? selectedPrintFormat.aspectRatio : printSize.ratio;
