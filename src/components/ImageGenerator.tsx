@@ -328,7 +328,7 @@ export default function ImageGenerator({
       await replaceInGallery({
         originalId: originalImageId,
         originalStoragePath,
-        imageUrl,
+        imageUrl: baseImageUrl || imageUrl,
         prompt: finalPrompt,
         ...buildSaveOptions(),
       });
