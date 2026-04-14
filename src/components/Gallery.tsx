@@ -43,7 +43,12 @@ interface GalleryImage {
   print_size: string | null;
   storage_path: string;
   created_at: string;
+  /** Base image URL (for grid thumbnails) */
   publicUrl: string;
+  /** Best available image URL (for detail view & export) */
+  masterUrl: string;
+  /** Enhanced image URL if upscaling succeeded */
+  enhancedUrl: string | null;
   quality_mode?: string;
   target_ppi?: number;
   target_width_px?: number;
@@ -59,6 +64,8 @@ interface GalleryImage {
   export_storage_path?: string | null;
   export_type?: string | null;
   upscale_applied?: boolean | null;
+  enhancement_model?: string | null;
+  upscale_factor?: number | null;
 }
 
 export interface EditRequest {
