@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, Zap, Crown } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,31 +18,17 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
-import { saveToGallery, replaceInGallery, updateEnhancedAsset } from "@/lib/gallery";
+import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { cn } from "@/lib/utils";
-import { ENHANCEMENT_PRESETS, ENHANCEMENT_MODES, type EnhancementMode, ENHANCEMENT_PROVIDER } from "@/lib/enhancement-config";
+import { ENHANCEMENT_PRESETS } from "@/lib/enhancement-config";
 import { Progress } from "@/components/ui/progress";
-
-type GenerationMode = "standard" | "print-ready";
-
-/** Stage only for the initial generation request (blocking) */
-type GenerationStage = "idle" | "generating";
-
-/** Async enhancement status (non-blocking, runs after base image is shown) */
-type EnhancementStatus = "idle" | "cleanup" | "upscaling" | "done" | "failed";
-
-const ENHANCEMENT_LABELS: Record<EnhancementStatus, string> = {
-  idle: "",
-  cleanup: "Cleaning artifacts…",
-  upscaling: "Super-resolution upscaling…",
-  done: "Enhancement complete",
-  failed: "Enhancement skipped",
-};
+import { Switch } from "@/components/ui/switch";
+import { useUpscale, UPSCALE_LABELS } from "@/hooks/use-upscale";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -98,122 +84,55 @@ export default function ImageGenerator({
   const [isInlineEditing, setIsInlineEditing] = useState(false);
   const [editPrompt, setEditPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [stage, setStage] = useState<GenerationStage>("idle");
-  const [enhancementStatus, setEnhancementStatus] = useState<EnhancementStatus>("idle");
   const [saving, setSaving] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [enhancementMode, setEnhancementMode] = useState<EnhancementMode>("hd");
+  const [autoUpscale, setAutoUpscale] = useState(false);
+  const enhancementMode = "hd" as const;
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [paperColor, setPaperColor] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
-  const [generationMode, setGenerationMode] = useState<GenerationMode>("standard");
+  const [generationMode, setGenerationMode] = useState<"standard" | "print-ready">("standard");
   const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(PRINT_FORMATS[0]);
   const { toast } = useToast();
 
-  // Ref to track the current enhancement run so stale ones don't overwrite
-  const enhancementRunId = useRef(0);
-  // Track the saved gallery image ID for async enhancement updates
+  // Shared upscale hook
+  const { status: upscaleStatus, isRunning: isUpscaling, upscale, reset: resetUpscale } = useUpscale();
+
   const savedGalleryIdRef = useRef<string | null>(null);
+  const upscaleRunId = useRef(0);
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
   const effectiveAspectRatio = generationMode === "print-ready" ? selectedPrintFormat.aspectRatio : printSize.ratio;
   const preset = ENHANCEMENT_PRESETS[enhancementMode];
 
-  /**
-   * Runs the enhancement pipeline asynchronously.
-   * Updates enhancementStatus and swaps imageUrl when done.
-   * Does NOT block the UI — the base image is already visible.
-   */
-  const runEnhancementAsync = useCallback(async (baseUrl: string, currentPreset: typeof preset, runId: number) => {
-    setEnhancementStatus("cleanup");
-    try {
-      const upscaleBody: Record<string, unknown> = {
-        imageUrl: baseUrl,
-        strength: currentPreset.strength,
-        scaleFactor: currentPreset.scaleFactor,
-      };
-
-      const { data: upData, error: upError } = await supabase.functions.invoke(
-        ENHANCEMENT_PROVIDER.edgeFunction,
-        { body: upscaleBody },
-      );
-
-      // Check if this run is still current
-      if (enhancementRunId.current !== runId) return;
-
-      if (upData?.pipeline) {
-        console.log("Enhancement pipeline result:", upData.pipeline);
-        if (upData.pipeline.superResolution) {
-          setEnhancementStatus("upscaling");
-        }
-      }
-
-      if (!upError && upData?.imageUrl) {
-        // Still the current run? Replace the preview with enhanced version
-        if (enhancementRunId.current === runId) {
-          setEnhancedImageUrl(upData.imageUrl);
-          setImageUrl(upData.imageUrl);
-          setEnhancementStatus("done");
-
-          // If already saved to gallery, update the enhanced asset in background
-          if (savedGalleryIdRef.current) {
-            updateEnhancedAsset(savedGalleryIdRef.current, upData.imageUrl, {
-              enhancementModel: upData.pipeline?.provider || "replicate/real-esrgan",
-              upscaleFactor: upData.pipeline?.scale || currentPreset.scaleFactor,
-            }).catch((err) => console.warn("Failed to update enhanced asset in gallery:", err));
-          }
-
-          // Auto-clear the "done" badge after a few seconds
-          setTimeout(() => {
-            if (enhancementRunId.current === runId) {
-              setEnhancementStatus("idle");
-            }
-          }, 4000);
-        }
-      } else {
-        console.warn("Enhancement returned no result, keeping base image");
-        if (enhancementRunId.current === runId) {
-          setEnhancementStatus("failed");
-          toast({
-            title: "Enhancement skipped",
-            description: "Could not enhance — using the base image instead.",
-          });
-          setTimeout(() => {
-            if (enhancementRunId.current === runId) setEnhancementStatus("idle");
-          }, 5000);
-        }
-      }
-    } catch (upErr) {
-      console.warn("Enhancement failed, falling back to base image:", upErr);
-      if (enhancementRunId.current === runId) {
-        setEnhancementStatus("failed");
-        toast({
-          title: "Enhancement skipped",
-          description: "Could not enhance — using the base image instead.",
-        });
-        setTimeout(() => {
-          if (enhancementRunId.current === runId) setEnhancementStatus("idle");
-        }, 5000);
-      }
+  /** Trigger upscale (shared for auto and manual) */
+  const runUpscale = async (sourceUrl: string, galleryId?: string | null) => {
+    const runId = ++upscaleRunId.current;
+    const result = await upscale(sourceUrl, {
+      galleryImageId: galleryId || undefined,
+    });
+    if (upscaleRunId.current === runId && result) {
+      setEnhancedImageUrl(result);
+      setImageUrl(result);
+      toast({ title: "Upscale complete", description: "Image enhanced to 4× resolution." });
+    } else if (upscaleRunId.current === runId && !result) {
+      toast({ title: "Upscale skipped", description: "Could not upscale — using original image." });
     }
-  }, [setImageUrl, toast]);
+  };
 
   const generate = async () => {
     const activePrompt = isInlineEditing ? editPrompt : prompt;
     if (!activePrompt.trim()) return;
     setLoading(true);
-    setStage("generating");
     setViewVersion("enhanced");
     setSavedToGallery(false);
-    setEnhancementStatus("idle");
+    resetUpscale();
     setEnhancedImageUrl(null);
     savedGalleryIdRef.current = null;
-
-    // Bump the enhancement run id so any in-flight enhancement is ignored
-    const runId = ++enhancementRunId.current;
+    upscaleRunId.current++;
 
     try {
       const body: any = {
@@ -232,7 +151,6 @@ export default function ImageGenerator({
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // Immediately show the base image — unblock the UI
       const baseUrl = data.imageUrl;
       setBaseImageUrl(baseUrl);
       setImageUrl(baseUrl);
@@ -243,13 +161,11 @@ export default function ImageGenerator({
         setEditPrompt("");
       }
 
-      // Finish the blocking generation stage
       setLoading(false);
-      setStage("idle");
 
-      // Fire enhancement asynchronously (non-blocking)
-      if (preset.runUpscale && enhancementRunId.current === runId) {
-        runEnhancementAsync(baseUrl, preset, runId);
+      // Auto-upscale if toggled on
+      if (autoUpscale) {
+        runUpscale(baseUrl, savedGalleryIdRef.current);
       }
     } catch (err: any) {
       toast({
@@ -258,12 +174,11 @@ export default function ImageGenerator({
         variant: "destructive",
       });
       setLoading(false);
-      setStage("idle");
     }
   };
 
-  const isEnhancing = enhancementStatus === "cleanup" || enhancementStatus === "upscaling";
-  const hasEnhanced = preset.runUpscale && baseImageUrl && imageUrl && baseImageUrl !== imageUrl;
+  const hasEnhanced = baseImageUrl && enhancedImageUrl && baseImageUrl !== enhancedImageUrl;
+  const canManualUpscale = !!imageUrl && !isUpscaling && !hasEnhanced && !loading;
 
   const buildSaveOptions = () => {
     const isPrint = generationMode === "print-ready";
@@ -389,7 +304,7 @@ export default function ImageGenerator({
     }
   };
 
-  const isGenerating = loading || stage !== "idle";
+  const isGenerating = loading;
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
@@ -484,37 +399,16 @@ export default function ImageGenerator({
           );
         })()}
 
-        {/* Quality Mode Selector */}
-        <div>
-          <p className="font-display font-bold text-sm text-foreground mb-2">Image Quality</p>
-          <div className="grid grid-cols-3 gap-2">
-            {ENHANCEMENT_MODES.map((m) => {
-              const p = ENHANCEMENT_PRESETS[m];
-              const isSelected = enhancementMode === m;
-              return (
-                <button
-                  key={m}
-                  onClick={() => setEnhancementMode(m)}
-                  className={cn(
-                    "flex flex-col items-start gap-0.5 p-2.5 rounded-sm border font-display transition-colors text-left",
-                    isSelected
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-secondary text-secondary-foreground border-border hover:bg-muted"
-                  )}
-                >
-                  <span className="flex items-center gap-1 text-xs font-bold">
-                    {m === "standard" && <Zap className="h-3 w-3" />}
-                    {m === "hd" && <Sparkles className="h-3 w-3" />}
-                    {m === "print-hd" && <Crown className="h-3 w-3" />}
-                    {p.label}
-                  </span>
-                  <span className={cn("text-[10px] leading-tight", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                    {p.description}
-                  </span>
-                </button>
-              );
-            })}
+        {/* Upscale 4× Toggle */}
+        <div className="flex items-center justify-between rounded-sm border border-border bg-card p-3">
+          <div className="flex items-center gap-2">
+            <ArrowUpCircle className="h-4 w-4 text-primary" />
+            <div>
+              <p className="font-display text-sm font-bold text-foreground">Upscale 4×</p>
+              <p className="font-display text-[10px] text-muted-foreground">Auto-run Real-ESRGAN after generation</p>
+            </div>
           </div>
+          <Switch checked={autoUpscale} onCheckedChange={setAutoUpscale} />
         </div>
 
         {/* Generation Mode Toggle */}
@@ -643,42 +537,42 @@ export default function ImageGenerator({
         {/* Image preview — visible immediately after generation, even during enhancement */}
         {!isGenerating && imageUrl && (
           <div className="flex flex-col items-center gap-4 p-4 w-full relative">
-            {/* Async enhancement overlay — non-blocking */}
-            {isEnhancing && (
+            {/* Upscaling overlay — non-blocking */}
+            {isUpscaling && (
               <div className="absolute top-2 left-2 right-2 z-10">
                 <div className="flex items-center gap-2 bg-card/90 backdrop-blur-sm border border-primary/30 rounded-sm px-3 py-2 shadow-sm">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-primary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-display text-xs text-foreground">
-                      {ENHANCEMENT_LABELS[enhancementStatus]}
+                      {UPSCALE_LABELS[upscaleStatus]}
                     </p>
                     <Progress
-                      value={enhancementStatus === "cleanup" ? 40 : 75}
+                      value={upscaleStatus === "cleanup" ? 40 : 75}
                       className="h-1 w-full mt-1"
                     />
                   </div>
                   <span className="font-display text-[10px] text-muted-foreground flex-shrink-0">
-                    {preset.label} · {enhancementStatus === "cleanup" ? "artifact cleanup" : `${preset.scaleFactor}× upscale`}
+                    4× upscale
                   </span>
                 </div>
               </div>
             )}
 
-            {/* Enhancement complete badge */}
-            {enhancementStatus === "done" && (
+            {/* Upscale complete badge */}
+            {upscaleStatus === "done" && (
               <div className="absolute top-2 left-2 z-10">
                 <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/30 rounded-sm px-2.5 py-1.5 shadow-sm animate-in fade-in duration-300">
                   <Sparkles className="h-3 w-3 text-primary" />
-                  <span className="font-display text-[10px] text-primary font-bold">Enhanced · {preset.scaleFactor}× resolution</span>
+                  <span className="font-display text-[10px] text-primary font-bold">Upscaled · 4× resolution</span>
                 </div>
               </div>
             )}
 
-            {/* Enhancement failed badge */}
-            {enhancementStatus === "failed" && (
+            {/* Upscale failed badge */}
+            {upscaleStatus === "failed" && (
               <div className="absolute top-2 left-2 z-10">
                 <div className="flex items-center gap-1.5 bg-muted border border-border rounded-sm px-2.5 py-1.5 shadow-sm animate-in fade-in duration-300">
-                  <span className="font-display text-[10px] text-muted-foreground">Using base image</span>
+                  <span className="font-display text-[10px] text-muted-foreground">Upscale skipped</span>
                 </div>
               </div>
             )}
@@ -718,6 +612,21 @@ export default function ImageGenerator({
                     <><FileImage className="mr-2 h-4 w-4" /> Export Print ({selectedPrintFormat.label})</>
                   )}
                 </Button>
+              )}
+              {/* Manual Upscale 4× button */}
+              {canManualUpscale && (
+                <Button
+                  variant="outline" size="sm"
+                  onClick={() => runUpscale(baseImageUrl || imageUrl, savedGalleryIdRef.current)}
+                  className="font-display text-xs tracking-wider border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <ArrowUpCircle className="mr-2 h-4 w-4" /> Upscale 4×
+                </Button>
+              )}
+              {hasEnhanced && (
+                <span className="text-xs text-primary flex items-center gap-1 font-display">
+                  <Sparkles className="h-3 w-3" /> Upscaled
+                </span>
               )}
               {!savedToGallery && isEditMode && originalImageId && (
                 <Button variant="outline" size="sm" onClick={handleReplaceOriginal} disabled={replacing || saving}
@@ -766,12 +675,13 @@ export default function ImageGenerator({
                     <AlertDialogAction
                       className="font-display bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={() => {
-                        enhancementRunId.current++;
+                        upscaleRunId.current++;
+                        resetUpscale();
                         setImageUrl(null);
                         setBaseImageUrl(null);
                         setSavedToGallery(false);
                         setViewVersion("enhanced");
-                        setEnhancementStatus("idle");
+                        setEnhancedImageUrl(null);
                       }}
                     >
                       Remove

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
   Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
-  FolderPlus, FolderMinus, Printer,
+  FolderPlus, FolderMinus, Printer, ArrowUpCircle,
 } from "lucide-react";
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,8 @@ import JSZip from "jszip";
 import { getPrintFormat, assessExportReadiness, DEFAULT_PRINT_FORMAT_ID, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
+import { useUpscale, UPSCALE_LABELS } from "@/hooks/use-upscale";
+import { Progress } from "@/components/ui/progress";
 
 interface GalleryImage {
   id: string;
@@ -169,6 +171,8 @@ interface LightboxContentProps {
   showEdit: boolean;
   onPrintExport: (img: GalleryImage) => void;
   printExporting: boolean;
+  onUpscale: (img: GalleryImage) => void;
+  upscaling: boolean;
 }
 
 function LightboxContent({
@@ -176,6 +180,7 @@ function LightboxContent({
   onChangeBg, onSaveBg, onDiscardBg,
   bgChanging, bgResult, showEdit,
   onPrintExport, printExporting,
+  onUpscale, upscaling,
 }: LightboxContentProps) {
   const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
   const hasExport = !!img.export_storage_path;
@@ -259,6 +264,25 @@ function LightboxContent({
               : <Printer className="mr-2 h-4 w-4" />}
             {hasExport ? "Re-export Print" : "Export Print"}
           </Button>
+          {/* Upscale 4× */}
+          {!img.upscale_applied && (
+            <Button
+              variant="outline" size="sm"
+              onClick={() => onUpscale(img)}
+              disabled={upscaling}
+              className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+            >
+              {upscaling
+                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                : <ArrowUpCircle className="mr-2 h-4 w-4" />}
+              {upscaling ? "Upscaling…" : "Upscale 4×"}
+            </Button>
+          )}
+          {img.upscale_applied && (
+            <Badge variant="outline" className="font-display text-xs text-primary border-primary/30">
+              <Sparkles className="mr-1 h-3 w-3" /> Upscaled
+            </Badge>
+          )}
           <Button variant="outline" size="sm" onClick={onCopyUrl} className="font-display text-xs">
             <Share2 className="mr-2 h-4 w-4" /> Copy URL
           </Button>
@@ -586,6 +610,24 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   useEffect(() => { setBgResult(null); }, [selected?.id]);
 
   const [printExporting, setPrintExporting] = useState(false);
+  const { isRunning: galleryUpscaling, upscale: galleryUpscale, reset: resetGalleryUpscale } = useUpscale();
+
+  const handleGalleryUpscale = async (img: GalleryImage) => {
+    const sourceUrl = img.masterUrl || img.publicUrl;
+    const result = await galleryUpscale(sourceUrl, { galleryImageId: img.id });
+    if (result) {
+      // Update local state with upscaled info
+      const update = { upscale_applied: true, enhanced: true, masterUrl: result, enhancedUrl: result };
+      setImages((prev) => prev.map((i) => i.id === img.id ? { ...i, ...update } : i));
+      if (selected?.id === img.id) setSelected((prev) => prev ? { ...prev, ...update } : prev);
+      toast.success("Image upscaled to 4× resolution", { duration: 4000 });
+    } else {
+      toast.error("Upscale failed — original image preserved");
+    }
+  };
+
+  // Reset upscale state when changing selected image
+  useEffect(() => { resetGalleryUpscale(); }, [selected?.id]);
 
   const handlePrintExport = async (img: GalleryImage) => {
     // Guard: ensure source image exists
@@ -693,6 +735,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     showEdit: !!onEditImage,
     onPrintExport: handlePrintExport,
     printExporting,
+    onUpscale: handleGalleryUpscale,
+    upscaling: galleryUpscaling,
   } : null;
 
   return (
