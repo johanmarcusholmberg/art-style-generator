@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, Zap, Crown } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, Zap, Crown, ArrowUpCircle } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,31 +18,17 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
-import { saveToGallery, replaceInGallery, updateEnhancedAsset } from "@/lib/gallery";
+import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { cn } from "@/lib/utils";
-import { ENHANCEMENT_PRESETS, ENHANCEMENT_MODES, type EnhancementMode, ENHANCEMENT_PROVIDER } from "@/lib/enhancement-config";
+import { ENHANCEMENT_PRESETS, ENHANCEMENT_MODES, type EnhancementMode } from "@/lib/enhancement-config";
 import { Progress } from "@/components/ui/progress";
-
-type GenerationMode = "standard" | "print-ready";
-
-/** Stage only for the initial generation request (blocking) */
-type GenerationStage = "idle" | "generating";
-
-/** Async enhancement status (non-blocking, runs after base image is shown) */
-type EnhancementStatus = "idle" | "cleanup" | "upscaling" | "done" | "failed";
-
-const ENHANCEMENT_LABELS: Record<EnhancementStatus, string> = {
-  idle: "",
-  cleanup: "Cleaning artifacts…",
-  upscaling: "Super-resolution upscaling…",
-  done: "Enhancement complete",
-  failed: "Enhancement skipped",
-};
+import { Switch } from "@/components/ui/switch";
+import { useUpscale, UPSCALE_LABELS } from "@/hooks/use-upscale";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
