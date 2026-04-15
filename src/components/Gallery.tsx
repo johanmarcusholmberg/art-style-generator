@@ -169,6 +169,8 @@ interface LightboxContentProps {
   showEdit: boolean;
   onPrintExport: (img: GalleryImage) => void;
   printExporting: boolean;
+  onUpscale: (img: GalleryImage) => void;
+  upscaling: boolean;
 }
 
 function LightboxContent({
