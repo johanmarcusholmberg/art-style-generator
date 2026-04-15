@@ -94,7 +94,7 @@ export default function ImageGenerator({
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
-  const [generationMode, setGenerationMode] = useState<GenerationMode>("standard");
+  const [generationMode, setGenerationMode] = useState<"standard" | "print-ready">("standard");
   const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(PRINT_FORMATS[0]);
   const { toast } = useToast();
 
