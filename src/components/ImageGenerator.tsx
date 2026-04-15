@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, Zap, Crown, ArrowUpCircle } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +25,7 @@ import { type QualityTarget, getResolutionForPrintSize, formatResolution } from 
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { cn } from "@/lib/utils";
-import { ENHANCEMENT_PRESETS, ENHANCEMENT_MODES, type EnhancementMode } from "@/lib/enhancement-config";
+import { ENHANCEMENT_PRESETS } from "@/lib/enhancement-config";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { useUpscale, UPSCALE_LABELS } from "@/hooks/use-upscale";
