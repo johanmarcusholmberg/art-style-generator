@@ -264,6 +264,25 @@ function LightboxContent({
               : <Printer className="mr-2 h-4 w-4" />}
             {hasExport ? "Re-export Print" : "Export Print"}
           </Button>
+          {/* Upscale 4× */}
+          {!img.upscale_applied && (
+            <Button
+              variant="outline" size="sm"
+              onClick={() => onUpscale(img)}
+              disabled={upscaling}
+              className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+            >
+              {upscaling
+                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                : <ArrowUpCircle className="mr-2 h-4 w-4" />}
+              {upscaling ? "Upscaling…" : "Upscale 4×"}
+            </Button>
+          )}
+          {img.upscale_applied && (
+            <Badge variant="outline" className="font-display text-xs text-primary border-primary/30">
+              <Sparkles className="mr-1 h-3 w-3" /> Upscaled
+            </Badge>
+          )}
           <Button variant="outline" size="sm" onClick={onCopyUrl} className="font-display text-xs">
             <Share2 className="mr-2 h-4 w-4" /> Copy URL
           </Button>
