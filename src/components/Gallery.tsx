@@ -178,6 +178,7 @@ function LightboxContent({
   onChangeBg, onSaveBg, onDiscardBg,
   bgChanging, bgResult, showEdit,
   onPrintExport, printExporting,
+  onUpscale, upscaling,
 }: LightboxContentProps) {
   const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
   const hasExport = !!img.export_storage_path;
