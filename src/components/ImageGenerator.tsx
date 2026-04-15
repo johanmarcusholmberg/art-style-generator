@@ -304,7 +304,7 @@ export default function ImageGenerator({
     }
   };
 
-  const isGenerating = loading || stage !== "idle";
+  const isGenerating = loading;
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4">
@@ -558,42 +558,42 @@ export default function ImageGenerator({
         {/* Image preview — visible immediately after generation, even during enhancement */}
         {!isGenerating && imageUrl && (
           <div className="flex flex-col items-center gap-4 p-4 w-full relative">
-            {/* Async enhancement overlay — non-blocking */}
-            {isEnhancing && (
+            {/* Upscaling overlay — non-blocking */}
+            {isUpscaling && (
               <div className="absolute top-2 left-2 right-2 z-10">
                 <div className="flex items-center gap-2 bg-card/90 backdrop-blur-sm border border-primary/30 rounded-sm px-3 py-2 shadow-sm">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-primary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-display text-xs text-foreground">
-                      {ENHANCEMENT_LABELS[enhancementStatus]}
+                      {UPSCALE_LABELS[upscaleStatus]}
                     </p>
                     <Progress
-                      value={enhancementStatus === "cleanup" ? 40 : 75}
+                      value={upscaleStatus === "cleanup" ? 40 : 75}
                       className="h-1 w-full mt-1"
                     />
                   </div>
                   <span className="font-display text-[10px] text-muted-foreground flex-shrink-0">
-                    {preset.label} · {enhancementStatus === "cleanup" ? "artifact cleanup" : `${preset.scaleFactor}× upscale`}
+                    4× upscale
                   </span>
                 </div>
               </div>
             )}
 
-            {/* Enhancement complete badge */}
-            {enhancementStatus === "done" && (
+            {/* Upscale complete badge */}
+            {upscaleStatus === "done" && (
               <div className="absolute top-2 left-2 z-10">
                 <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/30 rounded-sm px-2.5 py-1.5 shadow-sm animate-in fade-in duration-300">
                   <Sparkles className="h-3 w-3 text-primary" />
-                  <span className="font-display text-[10px] text-primary font-bold">Enhanced · {preset.scaleFactor}× resolution</span>
+                  <span className="font-display text-[10px] text-primary font-bold">Upscaled · 4× resolution</span>
                 </div>
               </div>
             )}
 
-            {/* Enhancement failed badge */}
-            {enhancementStatus === "failed" && (
+            {/* Upscale failed badge */}
+            {upscaleStatus === "failed" && (
               <div className="absolute top-2 left-2 z-10">
                 <div className="flex items-center gap-1.5 bg-muted border border-border rounded-sm px-2.5 py-1.5 shadow-sm animate-in fade-in duration-300">
-                  <span className="font-display text-[10px] text-muted-foreground">Using base image</span>
+                  <span className="font-display text-[10px] text-muted-foreground">Upscale skipped</span>
                 </div>
               </div>
             )}
@@ -681,12 +681,13 @@ export default function ImageGenerator({
                     <AlertDialogAction
                       className="font-display bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={() => {
-                        enhancementRunId.current++;
+                        upscaleRunId.current++;
+                        resetUpscale();
                         setImageUrl(null);
                         setBaseImageUrl(null);
                         setSavedToGallery(false);
                         setViewVersion("enhanced");
-                        setEnhancementStatus("idle");
+                        setEnhancedImageUrl(null);
                       }}
                     >
                       Remove
