@@ -636,17 +636,42 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   useEffect(() => { setBgResult(null); }, [selected?.id]);
 
   const [printExporting, setPrintExporting] = useState(false);
-  const { isRunning: galleryUpscaling, upscale: galleryUpscale, reset: resetGalleryUpscale } = useUpscale();
+  const {
+    isRunning: galleryUpscaling,
+    upscale: galleryUpscale,
+    reset: resetGalleryUpscale,
+    stageLabel: galleryUpscaleStageLabel,
+    progress: galleryUpscaleProgress,
+  } = useUpscale();
 
-  const handleGalleryUpscale = async (img: GalleryImage) => {
-    const sourceUrl = img.masterUrl || img.publicUrl;
-    const result = await galleryUpscale(sourceUrl, { galleryImageId: img.id });
+  const handleGalleryUpscale = async (img: GalleryImage, mode: UpscaleMode) => {
+    if (mode === "none") return;
+    // ALWAYS reprocess from the original/base image — never from an
+    // already-upscaled derivative. Falls back through original → base → master
+    // for backwards compatibility with older gallery items.
+    const basePath = (img as any).original_storage_path || img.storage_path;
+    const baseUrl = supabase.storage.from("generated-images").getPublicUrl(basePath).data.publicUrl;
+    const sourceUrl = baseUrl || img.publicUrl || img.masterUrl;
+    const result = await galleryUpscale(sourceUrl, { galleryImageId: img.id, mode });
     if (result) {
-      // Update local state with upscaled info
-      const update = { upscale_applied: true, enhanced: true, masterUrl: result, enhancedUrl: result };
+      const update: Partial<GalleryImage> = {
+        upscale_applied: true,
+        enhanced: true,
+        masterUrl: result.imageUrl,
+        enhancedUrl: result.imageUrl,
+        upscale_mode: result.mode,
+        upscale_factor: result.scale,
+        enhancement_model: result.provider,
+      };
       setImages((prev) => prev.map((i) => i.id === img.id ? { ...i, ...update } : i));
       if (selected?.id === img.id) setSelected((prev) => prev ? { ...prev, ...update } : prev);
-      toast.success("Image upscaled to 4× resolution", { duration: 4000 });
+      const label = UPSCALE_MODES[result.mode]?.shortLabel ?? "Upscale";
+      toast.success(
+        result.downshifted
+          ? `Downshifted to tile 4× (8× too large) — saved.`
+          : `Image upscaled via ${label} (${result.scale}×)`,
+        { duration: 4000 },
+      );
     } else {
       toast.error("Upscale failed — original image preserved");
     }
@@ -656,8 +681,12 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   useEffect(() => { resetGalleryUpscale(); }, [selected?.id]);
 
   const handlePrintExport = async (img: GalleryImage) => {
-    // Guard: ensure source image exists
-    if (!img.masterUrl) {
+    // Source selection: prefer the best available asset.
+    //   1. enhanced/tiled (masterUrl already points here when present)
+    //   2. base/original
+    //   3. preview
+    const exportSourceUrl = img.enhancedUrl || img.masterUrl || img.publicUrl;
+    if (!exportSourceUrl) {
       toast.error("Source image is missing — cannot create print export");
       return;
     }
@@ -669,7 +698,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     setPrintExporting(true);
     try {
       const result = await preparePrintExport({
-        imageUrl: img.masterUrl,
+        imageUrl: exportSourceUrl,
         printFormatId: formatId,
       });
 
@@ -763,6 +792,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     printExporting,
     onUpscale: handleGalleryUpscale,
     upscaling: galleryUpscaling,
+    upscalingStageLabel: galleryUpscaleStageLabel,
+    upscalingProgress: galleryUpscaleProgress,
   } : null;
 
   return (
