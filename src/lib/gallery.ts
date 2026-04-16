@@ -251,6 +251,11 @@ export async function replaceInGallery(
 
 /**
  * Update enhanced asset for an existing gallery image after async enhancement completes.
+ *
+ * IMPORTANT: this never overwrites `storage_path` (the original/base asset) —
+ * it only writes the enhanced asset and points `master_storage_path` at it.
+ * `original_storage_path` is also preserved so re-upscaling always works from
+ * the original image, never from an already-upscaled derivative.
  */
 export async function updateEnhancedAsset(
   imageId: string,
@@ -258,19 +263,34 @@ export async function updateEnhancedAsset(
   metadata?: {
     enhancementModel?: string;
     upscaleFactor?: number;
+    upscaleMode?: string;
     enhancedWidthPx?: number;
     enhancedHeightPx?: number;
   },
 ) {
   const enh = await uploadImage(enhancedImageUrl, "enh");
 
+  // Make sure original_storage_path is set on first enhancement so future
+  // re-upscales can always source the original/base asset.
+  const { data: existing } = await supabase
+    .from("generated_images")
+    .select("storage_path, original_storage_path")
+    .eq("id", imageId)
+    .single();
+
+  const originalPath =
+    (existing as any)?.original_storage_path || (existing as any)?.storage_path || null;
+
   const { error } = await supabase
     .from("generated_images")
     .update({
       enhanced_storage_path: enh.filename,
       master_storage_path: enh.filename,
+      original_storage_path: originalPath,
       enhanced: true,
       upscale_applied: true,
+      upscale_mode: metadata?.upscaleMode || null,
+      upscaled_at: new Date().toISOString(),
       enhancement_model: metadata?.enhancementModel || null,
       upscale_factor: metadata?.upscaleFactor || null,
       enhanced_width_px: metadata?.enhancedWidthPx || null,
