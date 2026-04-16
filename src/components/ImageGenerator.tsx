@@ -661,15 +661,26 @@ export default function ImageGenerator({
                   )}
                 </Button>
               )}
-              {/* Manual Upscale 4× button */}
+              {/* Manual Upscale buttons — let users run any of the upscale modes
+                  on demand (always re-running from the base image). If an
+                  enhanced asset already exists, allow re-running with a different
+                  mode for higher quality. */}
               {canManualUpscale && (
-                <Button
-                  variant="outline" size="sm"
-                  onClick={() => runUpscale(baseImageUrl || imageUrl, savedGalleryIdRef.current)}
-                  className="font-display text-xs tracking-wider border-primary/30 text-primary hover:bg-primary/10"
-                >
-                  <ArrowUpCircle className="mr-2 h-4 w-4" /> Upscale 4×
-                </Button>
+                <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
+                  {UPSCALE_MODE_OPTIONS.filter((o) => o.runs).map((opt) => (
+                    <Button
+                      key={opt.id}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => runUpscale(opt.id, savedGalleryIdRef.current)}
+                      className="font-display text-xs h-7 px-2 text-primary hover:bg-primary/10"
+                      title={opt.description}
+                    >
+                      <ArrowUpCircle className="mr-1 h-3 w-3" />
+                      {opt.shortLabel}
+                    </Button>
+                  ))}
+                </div>
               )}
               {hasEnhanced && (
                 <span className="text-xs text-primary flex items-center gap-1 font-display">
