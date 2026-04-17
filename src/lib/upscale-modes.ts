@@ -87,6 +87,7 @@ export const TILE_8X_MAX_LONG_SIDE = 8192;
 export type UpscaleStage =
   | "idle"
   | "preparing"
+  | "optimizing"
   | "cleanup"
   | "tiling"
   | "upscaling"
@@ -99,6 +100,7 @@ export type UpscaleStage =
 export const UPSCALE_STAGE_LABELS: Record<UpscaleStage, string> = {
   idle: "",
   preparing: "Preparing upscale…",
+  optimizing: "Optimizing source for 8× upscale…",
   cleanup: "Cleaning artifacts…",
   tiling: "Preparing tiles…",
   upscaling: "Upscaling…",
@@ -113,8 +115,9 @@ export const UPSCALE_STAGE_LABELS: Record<UpscaleStage, string> = {
 export const UPSCALE_STAGE_PROGRESS: Record<UpscaleStage, number> = {
   idle: 0,
   preparing: 10,
-  cleanup: 25,
-  tiling: 40,
+  optimizing: 20,
+  cleanup: 30,
+  tiling: 45,
   upscaling: 65,
   stitching: 85,
   saving: 95,
