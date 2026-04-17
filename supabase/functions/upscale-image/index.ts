@@ -29,22 +29,8 @@ const TILE_8X_MAX_LONG_SIDE = 12288;
 const TILE_8X_MIN_SHORT_SIDE = 512;
 
 /* ------------------------------------------------------------------ */
-/*  ImageMagick init (one-shot, cached at module scope)               */
+/*  (No external init needed — imagescript is pure TS/Wasm)            */
 /* ------------------------------------------------------------------ */
-
-let magickReady: Promise<void> | null = null;
-async function ensureMagick(): Promise<void> {
-  if (!magickReady) {
-    magickReady = (async () => {
-      const wasmRes = await fetch(
-        "https://esm.sh/@imagemagick/magick-wasm@0.0.30/dist/magick.wasm",
-      );
-      const wasmBytes = new Uint8Array(await wasmRes.arrayBuffer());
-      await initialize(wasmBytes);
-    })();
-  }
-  return magickReady;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
