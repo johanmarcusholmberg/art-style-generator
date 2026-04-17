@@ -132,7 +132,7 @@ export function useUpscale() {
     [],
   );
 
-  const isRunning = ["preparing", "cleanup", "tiling", "upscaling", "stitching", "saving"].includes(stage);
+  const isRunning = ["preparing", "optimizing", "cleanup", "tiling", "upscaling", "stitching", "saving"].includes(stage);
   const stageLabel = UPSCALE_STAGE_LABELS[stage];
   const progress = UPSCALE_STAGE_PROGRESS[stage];
 
