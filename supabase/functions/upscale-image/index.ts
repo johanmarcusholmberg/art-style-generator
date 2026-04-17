@@ -1,4 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import {
+  ImageMagick,
+  initialize,
+  MagickFormat,
+} from "https://esm.sh/@imagemagick/magick-wasm@0.0.30";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,14 +17,38 @@ const corsHeaders = {
  * Modes:
  *   - realesrgan_4x  → Replicate Real-ESRGAN x4 (fast, single-pass super-resolution)
  *   - tile_4x        → Replicate Clarity Upscaler (SDXL + ControlNet tile, 4x)
- *   - tile_8x        → Clarity Upscaler at 8x (with ~8K hard cap → downshift to 4x)
+ *   - tile_8x        → Clarity Upscaler at 8x (with ~12K hard cap + pre-downscale path)
  *
  * The frontend always sends one shared body: { imageUrl, mode }
  */
 
 type UpscaleMode = "none" | "realesrgan_4x" | "tile_4x" | "tile_8x";
 
-const TILE_8X_MAX_LONG_SIDE = 8192;
+// Raised from 8192 → 12288. Clarity Upscaler can handle outputs up to ~12K px
+// on the long side, so this allows 8× to actually run on typical 1024–1536 px
+// generated sources without silently downshifting.
+const TILE_8X_MAX_LONG_SIDE = 12288;
+// Clarity's practical minimum short-side after pre-downscale. Below this we
+// fall back to 4× rather than producing mush.
+const TILE_8X_MIN_SHORT_SIDE = 512;
+
+/* ------------------------------------------------------------------ */
+/*  ImageMagick init (one-shot, cached at module scope)               */
+/* ------------------------------------------------------------------ */
+
+let magickReady: Promise<void> | null = null;
+async function ensureMagick(): Promise<void> {
+  if (!magickReady) {
+    magickReady = (async () => {
+      const wasmRes = await fetch(
+        "https://esm.sh/@imagemagick/magick-wasm@0.0.30/dist/magick.wasm",
+      );
+      const wasmBytes = new Uint8Array(await wasmRes.arrayBuffer());
+      await initialize(wasmBytes);
+    })();
+  }
+  return magickReady;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -85,6 +114,68 @@ async function fetchImageDimensions(url: string): Promise<{ w: number; h: number
     console.warn("Could not read image dimensions:", err);
   }
   return null;
+}
+
+/**
+ * Pre-downscale a source image to fit within `targetLongSide` on its longest
+ * dimension, using Lanczos resampling (sharpest reasonable filter for downscale).
+ *
+ * Returns a public data URL (PNG) suitable for handing to Replicate, plus the
+ * new dimensions. Returns null on failure (caller should fall back).
+ */
+async function preDownscaleToFit(
+  sourceUrl: string,
+  targetLongSide: number,
+): Promise<{ dataUrl: string; w: number; h: number } | null> {
+  try {
+    await ensureMagick();
+    const res = await fetch(sourceUrl);
+    if (!res.ok) {
+      console.error("[predownscale] failed to fetch source:", res.status);
+      return null;
+    }
+    const inputBytes = new Uint8Array(await res.arrayBuffer());
+
+    return await new Promise((resolve) => {
+      ImageMagick.read(inputBytes, (img) => {
+        const srcW = img.width;
+        const srcH = img.height;
+        const longSide = Math.max(srcW, srcH);
+        const ratio = targetLongSide / longSide;
+        const newW = Math.max(1, Math.round(srcW * ratio));
+        const newH = Math.max(1, Math.round(srcH * ratio));
+
+        // Lanczos = sharpest standard downscale filter. magick-wasm exposes
+        // it via FilterType.Lanczos (numeric 22 in ImageMagick's enum).
+        // Using the numeric form avoids importing the FilterType binding.
+        try {
+          (img as any).filterType = 22; // Lanczos
+        } catch { /* ignore — resize will still pick a sane default */ }
+        img.resize(newW, newH);
+
+        img.write(MagickFormat.Png, (data) => {
+          // Build a data URL Replicate can fetch.
+          let binary = "";
+          const chunk = 0x8000;
+          for (let i = 0; i < data.length; i += chunk) {
+            binary += String.fromCharCode.apply(
+              null,
+              data.subarray(i, i + chunk) as unknown as number[],
+            );
+          }
+          const b64 = btoa(binary);
+          resolve({
+            dataUrl: `data:image/png;base64,${b64}`,
+            w: newW,
+            h: newH,
+          });
+        });
+      });
+    });
+  } catch (err) {
+    console.error("[predownscale] error:", err);
+    return null;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -239,6 +330,7 @@ serve(async (req) => {
     }
 
     let downshifted = false;
+    let preDownscaled = false;
     let appliedScale = 4;
     let provider = "replicate/real-esrgan";
     let outputUrl: string | null = null;
@@ -253,18 +345,61 @@ serve(async (req) => {
       outputUrl = await runClarityUpscaler(imageUrl, 4, REPLICATE_API_TOKEN);
     } else if (mode === "tile_8x") {
       provider = "replicate/clarity-upscaler";
-      // Pre-flight size check: if 8x would exceed our 8K long-side cap,
-      // safely downshift to 4x rather than hang or crash.
+
+      // Decide between three paths:
+      //   (a) source small enough → run 8× directly
+      //   (b) source too large but pre-downscale leaves short-side >= 512 → pre-downscale, then 8×
+      //   (c) source too large AND pre-downscale would shrink it below 512 short-side → fallback to 4×
       const dims = await fetchImageDimensions(imageUrl);
       const longSide = dims ? Math.max(dims.w, dims.h) : 0;
-      if (longSide && longSide * 8 > TILE_8X_MAX_LONG_SIDE) {
-        console.log(`[tile_8x] source ${dims!.w}x${dims!.h} → 8x would exceed ${TILE_8X_MAX_LONG_SIDE}px, downshifting to 4x`);
-        downshifted = true;
-        appliedScale = 4;
-        outputUrl = await runClarityUpscaler(imageUrl, 4, REPLICATE_API_TOKEN);
-      } else {
+      const shortSide = dims ? Math.min(dims.w, dims.h) : 0;
+      const projected8x = longSide * 8;
+
+      if (!dims || projected8x <= TILE_8X_MAX_LONG_SIDE) {
+        // (a) Direct 8× — source is small enough (or unknown; trust caller).
         appliedScale = 8;
+        console.log(
+          `[tile_8x] ran at 8× (source ${dims ? `${dims.w}x${dims.h}` : "unknown"}, projected ${projected8x || "?"}px)`,
+        );
         outputUrl = await runClarityUpscaler(imageUrl, 8, REPLICATE_API_TOKEN);
+      } else {
+        // Source is too large for direct 8×. Compute the largest source size
+        // that keeps 8× output under the cap.
+        const targetLongSide = Math.floor(TILE_8X_MAX_LONG_SIDE / 8); // e.g. 1536
+        const downscaleRatio = targetLongSide / longSide;
+        const projectedShortSide = Math.round(shortSide * downscaleRatio);
+
+        if (projectedShortSide >= TILE_8X_MIN_SHORT_SIDE) {
+          // (b) Pre-downscale path
+          const newTargetW = Math.round(dims.w * downscaleRatio);
+          const newTargetH = Math.round(dims.h * downscaleRatio);
+          console.log(
+            `[tile_8x] pre-downscaling source from ${dims.w}x${dims.h} to ${newTargetW}x${newTargetH} then running at 8×`,
+          );
+          const downscaled = await preDownscaleToFit(imageUrl, targetLongSide);
+          if (downscaled) {
+            preDownscaled = true;
+            appliedScale = 8;
+            console.log(
+              `[tile_8x] pre-downscaled source from ${dims.w}x${dims.h} to ${downscaled.w}x${downscaled.h} then ran at 8×`,
+            );
+            outputUrl = await runClarityUpscaler(downscaled.dataUrl, 8, REPLICATE_API_TOKEN);
+          } else {
+            // Pre-downscale failed → safe fallback to 4× on the original
+            console.warn("[tile_8x] pre-downscale failed, falling back to 4× on original");
+            downshifted = true;
+            appliedScale = 4;
+            outputUrl = await runClarityUpscaler(imageUrl, 4, REPLICATE_API_TOKEN);
+          }
+        } else {
+          // (c) Source too small after pre-downscale → 4× fallback
+          console.log(
+            `[tile_8x] source too small (would shrink to ${projectedShortSide}px short-side, < ${TILE_8X_MIN_SHORT_SIDE}), downshifted to 4×`,
+          );
+          downshifted = true;
+          appliedScale = 4;
+          outputUrl = await runClarityUpscaler(imageUrl, 4, REPLICATE_API_TOKEN);
+        }
       }
     } else {
       return new Response(
@@ -293,6 +428,7 @@ serve(async (req) => {
           scale: appliedScale,
           provider,
           downshifted,
+          preDownscaled,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
