@@ -1,9 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import {
-  ImageMagick,
-  initialize,
-  MagickFormat,
-} from "https://esm.sh/@imagemagick/magick-wasm@0.0.30";
+import { Image } from "https://deno.land/x/imagescript@1.2.17/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
