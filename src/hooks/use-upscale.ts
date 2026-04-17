@@ -65,9 +65,14 @@ export function useUpscale() {
       // Drive a soft-progress staged animation while the edge function runs.
       // The backend reports a single final result, so we simulate progressive
       // stages so the UI never feels frozen.
-      const stages: UpscaleStage[] = UPSCALE_MODES[mode].tiled
-        ? ["preparing", "cleanup", "tiling", "upscaling", "stitching"]
-        : ["preparing", "cleanup", "upscaling"];
+      // For tile_8x we include an "optimizing" stage to surface the
+      // pre-downscale path (the backend may resize the source before sending
+      // it to Clarity at 8×). For other modes the stage is skipped.
+      const stages: UpscaleStage[] = mode === "tile_8x"
+        ? ["preparing", "optimizing", "cleanup", "tiling", "upscaling", "stitching"]
+        : UPSCALE_MODES[mode].tiled
+          ? ["preparing", "cleanup", "tiling", "upscaling", "stitching"]
+          : ["preparing", "cleanup", "upscaling"];
       let stageIdx = 0;
       stageTimer.current = setInterval(() => {
         stageIdx = Math.min(stageIdx + 1, stages.length - 1);
