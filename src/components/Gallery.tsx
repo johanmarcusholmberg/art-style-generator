@@ -35,7 +35,8 @@ import { getPrintFormat, assessExportReadiness, DEFAULT_PRINT_FORMAT_ID, formatE
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { useUpscale } from "@/hooks/use-upscale";
-import { UPSCALE_MODE_OPTIONS, UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
+import { UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
+import UpscaleBadge from "@/components/UpscaleBadge";
 import { Progress } from "@/components/ui/progress";
 
 interface GalleryImage {
@@ -273,37 +274,20 @@ function LightboxContent({
               : <Printer className="mr-2 h-4 w-4" />}
             {hasExport ? "Re-export Print" : "Export Print"}
           </Button>
-          {/* Upscale 4× / tiled. Always reprocesses from the base image. */}
-          {!upscaling && (
-            <div className="flex items-center gap-1 border border-primary/30 rounded-sm p-0.5">
-              {UPSCALE_MODE_OPTIONS.filter((o) => o.runs).map((opt) => (
-                <Button
-                  key={opt.id}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onUpscale(img, opt.id)}
-                  className="font-display text-xs h-7 px-2 text-primary hover:bg-primary/10"
-                  title={
-                    img.upscale_applied
-                      ? `Re-run upscale from the original/base image using ${opt.label}`
-                      : opt.description
-                  }
-                >
-                  <ArrowUpCircle className="mr-1 h-3 w-3" />
-                  {opt.shortLabel}
-                </Button>
-              ))}
-            </div>
-          )}
-          {upscaling && (
-            <div className="flex items-center gap-2 border border-primary/30 rounded-sm px-2 py-1 min-w-[180px]">
-              <Loader2 className="h-3 w-3 animate-spin text-primary" />
-              <div className="flex-1">
-                <span className="font-display text-[10px] text-foreground">{upscalingStageLabel}</span>
-                <Progress value={upscalingProgress} className="h-0.5 mt-0.5" />
-              </div>
-            </div>
-          )}
+          {/* Unified Upscale badge — same component used during generation.
+              Picking a mode immediately re-runs the upscale on the original
+              base asset (never on the already-upscaled derivative). */}
+          <UpscaleBadge
+            value={(img.upscale_mode as UpscaleMode) || "none"}
+            onChange={() => { /* no-op — badge runs on pick */ }}
+            surface="gallery"
+            onRun={(m) => onUpscale(img, m)}
+            isRunning={upscaling}
+            stageLabel={upscalingStageLabel}
+            progress={upscalingProgress}
+            appliedMode={(img.upscale_mode as UpscaleMode) || null}
+            compact
+          />
           {img.upscale_applied && currentModeLabel && (
             <Badge variant="outline" className="font-display text-xs text-primary border-primary/30">
               <Sparkles className="mr-1 h-3 w-3" /> {currentModeLabel}
