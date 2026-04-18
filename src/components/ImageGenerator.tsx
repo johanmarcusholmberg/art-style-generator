@@ -29,11 +29,11 @@ import { Progress } from "@/components/ui/progress";
 import { useUpscale } from "@/hooks/use-upscale";
 import {
   UPSCALE_MODES,
-  UPSCALE_MODE_OPTIONS,
   DEFAULT_UPSCALE_MODE,
   type UpscaleMode,
 } from "@/lib/upscale-modes";
 import GeneratorBadge from "@/components/GeneratorBadge";
+import UpscaleBadge from "@/components/UpscaleBadge";
 import {
   type GeneratorPreference,
   loadGeneratorPreference,
@@ -474,33 +474,23 @@ export default function ImageGenerator({
           );
         })()}
 
-        {/* Upscale Mode Selector — replaces hardcoded HD enhancement.
-            Modes: none, Real-ESRGAN 4x, Tiled 4x, Tiled 8x. */}
-        <div className="rounded-sm border border-border bg-card p-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <ArrowUpCircle className="h-4 w-4 text-primary" />
-            <p className="font-display text-sm font-bold text-foreground">Upscale</p>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {UPSCALE_MODE_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => setUpscaleMode(opt.id)}
-                className={cn(
-                  "text-xs px-2.5 py-1 rounded-sm border font-display transition-colors",
-                  upscaleMode === opt.id
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-secondary text-secondary-foreground border-border hover:bg-muted",
-                )}
-                title={opt.description}
-              >
-                {opt.shortLabel}
-              </button>
-            ))}
-          </div>
-          <p className="font-display text-[10px] text-muted-foreground">
-            {upscaleConfig.description}
-          </p>
+        {/* Upscale Mode — unified badge (Phase 2). Replaces old chip selector
+            AND the manual upscale button row below. Same component is reused
+            on the Gallery lightbox. */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <UpscaleBadge
+            value={upscaleMode}
+            onChange={setUpscaleMode}
+            surface="automatic"
+            isRunning={isUpscaling}
+            stageLabel={upscaleStageLabel}
+            progress={upscaleProgress}
+            appliedMode={hasEnhanced ? upscaleMode : null}
+            disabled={loading}
+          />
+          <span className="font-display text-[10px] text-muted-foreground">
+            {upscaleConfig.intendedUse}
+          </span>
         </div>
 
         {/* Generation Mode Toggle */}
