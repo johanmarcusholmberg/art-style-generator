@@ -10,6 +10,9 @@
 
 export type UpscaleMode = "none" | "realesrgan_4x" | "tile_4x" | "tile_8x";
 
+export type UpscaleCategory = "off" | "fast" | "print";
+export type UpscaleCostTier = "free" | "low" | "medium" | "high";
+
 export interface UpscaleModeConfig {
   id: UpscaleMode;
   label: string;
@@ -23,6 +26,24 @@ export interface UpscaleModeConfig {
   tiled: boolean;
   /** Provider tag stored in DB (enhancement_model column) */
   provider: string;
+  /** Grouping for the unified UI */
+  category: UpscaleCategory;
+  /** Approx wall-clock duration shown in the UI */
+  estimatedTime: string;
+  /** Coarse cost tier shown in the UI */
+  estimatedCost: UpscaleCostTier;
+  /** One-line UX intent — "best for print", "fast web", etc. */
+  intendedUse: string;
+  /** Available as auto-after-generation choice */
+  isAutomaticCapable: boolean;
+  /** Available as manual-after-generation choice */
+  isManualCapable: boolean;
+  /** Available from the gallery lightbox */
+  isGalleryCapable: boolean;
+  /** Re-running this mode requires the original/base asset (we always do this anyway) */
+  requiresOriginalAsset: boolean;
+  /** Globally enabled */
+  enabled: boolean;
 }
 
 export const UPSCALE_MODES: Record<UpscaleMode, UpscaleModeConfig> = {
@@ -35,6 +56,15 @@ export const UPSCALE_MODES: Record<UpscaleMode, UpscaleModeConfig> = {
     scaleFactor: 1,
     tiled: false,
     provider: "none",
+    category: "off",
+    estimatedTime: "Instant",
+    estimatedCost: "free",
+    intendedUse: "Quick previews and iteration",
+    isAutomaticCapable: true,
+    isManualCapable: false,
+    isGalleryCapable: false,
+    requiresOriginalAsset: false,
+    enabled: true,
   },
   realesrgan_4x: {
     id: "realesrgan_4x",
@@ -45,6 +75,15 @@ export const UPSCALE_MODES: Record<UpscaleMode, UpscaleModeConfig> = {
     scaleFactor: 4,
     tiled: false,
     provider: "replicate/real-esrgan",
+    category: "fast",
+    estimatedTime: "~10–20s",
+    estimatedCost: "low",
+    intendedUse: "Best for web & smaller prints",
+    isAutomaticCapable: true,
+    isManualCapable: true,
+    isGalleryCapable: true,
+    requiresOriginalAsset: true,
+    enabled: true,
   },
   tile_4x: {
     id: "tile_4x",
@@ -55,17 +94,55 @@ export const UPSCALE_MODES: Record<UpscaleMode, UpscaleModeConfig> = {
     scaleFactor: 4,
     tiled: true,
     provider: "replicate/clarity-upscaler",
+    category: "print",
+    estimatedTime: "~1–2 min",
+    estimatedCost: "medium",
+    intendedUse: "Best for medium / large prints",
+    isAutomaticCapable: true,
+    isManualCapable: true,
+    isGalleryCapable: true,
+    requiresOriginalAsset: true,
+    enabled: true,
   },
   tile_8x: {
     id: "tile_8x",
     label: "Print 8× (Tiled)",
     shortLabel: "Tile 8×",
-    description: "Tiled SDXL refinement at 8×. May downshift to 4× if output exceeds 8K.",
+    description: "Tiled SDXL refinement at 8×. May downshift to 4× if output exceeds 12K.",
     runs: true,
     scaleFactor: 8,
     tiled: true,
     provider: "replicate/clarity-upscaler",
+    category: "print",
+    estimatedTime: "~3–5 min",
+    estimatedCost: "high",
+    intendedUse: "Best for very large / gallery prints",
+    isAutomaticCapable: true,
+    isManualCapable: true,
+    isGalleryCapable: true,
+    requiresOriginalAsset: true,
+    enabled: true,
   },
+};
+
+/** Filter options by the surface they appear in (auto / manual / gallery). */
+export type UpscaleSurface = "automatic" | "manual" | "gallery";
+
+export function getUpscaleOptionsForSurface(surface: UpscaleSurface): UpscaleModeConfig[] {
+  return UPSCALE_MODE_OPTIONS.filter((o) => {
+    if (!o.enabled) return false;
+    if (surface === "automatic") return o.isAutomaticCapable;
+    if (surface === "manual") return o.isManualCapable;
+    if (surface === "gallery") return o.isGalleryCapable;
+    return true;
+  });
+}
+
+export const UPSCALE_COST_LABEL: Record<UpscaleCostTier, string> = {
+  free: "Free",
+  low: "$",
+  medium: "$$",
+  high: "$$$",
 };
 
 export const UPSCALE_MODE_OPTIONS: UpscaleModeConfig[] = [
