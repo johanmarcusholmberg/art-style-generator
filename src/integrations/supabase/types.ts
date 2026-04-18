@@ -89,7 +89,10 @@ export type Database = {
           export_storage_path: string | null
           export_type: string | null
           export_width: number | null
+          fallback_used: boolean | null
           generation_mode: string | null
+          generation_model: string | null
+          generation_provider: string | null
           id: string
           master_storage_path: string | null
           mode: string
@@ -98,6 +101,7 @@ export type Database = {
           print_format_id: string | null
           print_size: string | null
           prompt: string
+          provider_strategy: string | null
           quality_mode: string | null
           source_height: number | null
           source_width: number | null
@@ -131,7 +135,10 @@ export type Database = {
           export_storage_path?: string | null
           export_type?: string | null
           export_width?: number | null
+          fallback_used?: boolean | null
           generation_mode?: string | null
+          generation_model?: string | null
+          generation_provider?: string | null
           id?: string
           master_storage_path?: string | null
           mode?: string
@@ -140,6 +147,7 @@ export type Database = {
           print_format_id?: string | null
           print_size?: string | null
           prompt: string
+          provider_strategy?: string | null
           quality_mode?: string | null
           source_height?: number | null
           source_width?: number | null
@@ -173,7 +181,10 @@ export type Database = {
           export_storage_path?: string | null
           export_type?: string | null
           export_width?: number | null
+          fallback_used?: boolean | null
           generation_mode?: string | null
+          generation_model?: string | null
+          generation_provider?: string | null
           id?: string
           master_storage_path?: string | null
           mode?: string
@@ -182,6 +193,7 @@ export type Database = {
           print_format_id?: string | null
           print_size?: string | null
           prompt?: string
+          provider_strategy?: string | null
           quality_mode?: string | null
           source_height?: number | null
           source_width?: number | null

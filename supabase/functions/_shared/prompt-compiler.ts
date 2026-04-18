@@ -559,7 +559,11 @@ export { corsHeaders };
 
 /**
  * Creates a standard image-generation handler for a given style key.
- * Eliminates all boilerplate from individual edge functions.
+ *
+ * Phase 1: this handler now consults the generator resolver and runs the
+ * preferred provider (Gemini or SDXL), with Auto fallback. The returned
+ * payload always includes provider metadata so the client can record
+ * which generator actually produced the image.
  */
 export function createStyleHandler(styleKey: string) {
   return async (req: Request): Promise<Response> => {
@@ -568,7 +572,15 @@ export function createStyleHandler(styleKey: string) {
     }
 
     try {
-      const { prompt, aspectRatio, sourceImageUrl, backgroundStyle, printMode } = await req.json();
+      const body = await req.json();
+      const {
+        prompt,
+        aspectRatio,
+        sourceImageUrl,
+        backgroundStyle,
+        printMode,
+        generatorPreference,
+      } = body || {};
 
       if (!prompt || typeof prompt !== "string") {
         return new Response(
@@ -585,91 +597,58 @@ export function createStyleHandler(styleKey: string) {
         );
       }
 
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+      // Lazy import so this file doesn't break unused-edge-fn deploys.
+      const { runWithResolver, ProviderError } = await import("./generators.ts");
+
+      const pref =
+        generatorPreference === "sdxl" ||
+        generatorPreference === "gemini" ||
+        generatorPreference === "auto"
+          ? generatorPreference
+          : "auto";
 
       const isEdit = !!sourceImageUrl;
-      const compiledPrompt = compilePrompt(trimmedPrompt, styleKey, {
-        aspectRatio,
-        backgroundStyle,
-        isEdit,
-        printMode: !!printMode,
-      });
 
-      const messages = isEdit
-        ? [{
-            role: "user",
-            content: [
-              { type: "image_url", image_url: { url: sourceImageUrl } },
-              { type: "text", text: compiledPrompt },
-            ],
-          }]
-        : [{ role: "user", content: compiledPrompt }];
+      // Image edits force Gemini (only provider that supports image input in Phase 1)
+      const effectivePref = isEdit && pref !== "gemini" ? "auto" : pref;
 
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-pro-image-preview",
-          messages,
-          modalities: ["image", "text"],
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 429) {
-          return new Response(
-            JSON.stringify({ error: "Too many requests." }),
-            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
-        }
-        if (response.status === 402) {
-          return new Response(
-            JSON.stringify({ error: "Usage limit reached." }),
-            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
-        }
-        const t = await response.text();
-        console.error(`generate-image-${styleKey} error:`, response.status, t);
-        return new Response(
-          JSON.stringify({ error: "Failed to generate image" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
-      const responseText = await response.text();
-      if (!responseText) {
-        return new Response(
-          JSON.stringify({ error: "Empty response from AI." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
-      let data;
       try {
-        data = JSON.parse(responseText);
-      } catch {
-        return new Response(
-          JSON.stringify({ error: "Invalid response from AI." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
+        const outcome = await runWithResolver(effectivePref, {
+          userPrompt: trimmedPrompt,
+          styleKey,
+          aspectRatio,
+          backgroundStyle,
+          printMode: !!printMode,
+          isEdit,
+          sourceImageUrl,
+        });
 
-      const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-      if (!imageUrl) {
         return new Response(
-          JSON.stringify({ error: "No image was generated." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          JSON.stringify({
+            imageUrl: outcome.imageUrl,
+            provider: outcome.providerId,
+            model: outcome.modelId,
+            strategy: outcome.strategy,
+            fallbackUsed: outcome.fallbackUsed,
+            width: outcome.width,
+            height: outcome.height,
+            attempted: outcome.attempted,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
+      } catch (err) {
+        if (err instanceof ProviderError) {
+          const status = err.httpStatus ?? 500;
+          return new Response(
+            JSON.stringify({
+              error: err.message,
+              code: err.code,
+            }),
+            { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        throw err;
       }
-
-      return new Response(
-        JSON.stringify({ imageUrl }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
     } catch (e) {
       console.error(`generate-image-${styleKey} error:`, e);
       return new Response(

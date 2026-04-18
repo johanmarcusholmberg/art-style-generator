@@ -75,6 +75,11 @@ export interface GallerySaveOptions {
   baseHeightPx?: number;
   enhancedWidthPx?: number;
   enhancedHeightPx?: number;
+  /** Phase 1: generator provider metadata */
+  generationProvider?: string;
+  generationModel?: string;
+  providerStrategy?: string;
+  fallbackUsed?: boolean;
 }
 
 export async function saveToGallery(opts: GallerySaveOptions) {
@@ -124,6 +129,10 @@ export async function saveToGallery(opts: GallerySaveOptions) {
     base_height_px: opts.baseHeightPx || null,
     enhanced_width_px: opts.enhancedWidthPx || null,
     enhanced_height_px: opts.enhancedHeightPx || null,
+    generation_provider: opts.generationProvider || null,
+    generation_model: opts.generationModel || null,
+    provider_strategy: opts.providerStrategy || null,
+    fallback_used: opts.fallbackUsed || false,
   } as any);
 
   if (dbError) throw dbError;
@@ -243,6 +252,10 @@ export async function replaceInGallery(
       base_height_px: opts.baseHeightPx || null,
       enhanced_width_px: opts.enhancedWidthPx || null,
       enhanced_height_px: opts.enhancedHeightPx || null,
+      generation_provider: opts.generationProvider || null,
+      generation_model: opts.generationModel || null,
+      provider_strategy: opts.providerStrategy || null,
+      fallback_used: opts.fallbackUsed || false,
     } as any)
     .eq("id", opts.originalId);
 

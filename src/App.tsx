@@ -23,6 +23,7 @@ import Blend from "./pages/Blend";
 import StyleCompare from "./pages/StyleCompare";
 import BatchStudio from "./pages/BatchStudio";
 import NotFound from "./pages/NotFound";
+import ProviderDebug from "./pages/ProviderDebug";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/blend" element={<Blend />} />
             <Route path="/compare" element={<StyleCompare />} />
             <Route path="/batch" element={<BatchStudio />} />
+            <Route path="/debug/providers" element={<ProviderDebug />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

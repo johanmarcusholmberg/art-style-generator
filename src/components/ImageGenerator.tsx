@@ -33,6 +33,11 @@ import {
   DEFAULT_UPSCALE_MODE,
   type UpscaleMode,
 } from "@/lib/upscale-modes";
+import GeneratorBadge from "@/components/GeneratorBadge";
+import {
+  type GeneratorPreference,
+  loadGeneratorPreference,
+} from "@/lib/generators";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -101,6 +106,12 @@ export default function ImageGenerator({
   const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
   const [generationMode, setGenerationMode] = useState<"standard" | "print-ready">("standard");
   const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(PRINT_FORMATS[0]);
+  // Phase 1: generator provider preference (auto/sdxl/gemini), persisted in sessionStorage
+  const [generatorPref, setGeneratorPref] = useState<GeneratorPreference>(() => loadGeneratorPreference());
+  const [lastProviderUsed, setLastProviderUsed] = useState<string | null>(null);
+  const [lastModelUsed, setLastModelUsed] = useState<string | null>(null);
+  const [lastFallbackUsed, setLastFallbackUsed] = useState<boolean>(false);
+  const [lastStrategyUsed, setLastStrategyUsed] = useState<"auto" | "manual" | null>(null);
   const { toast } = useToast();
 
   // Shared upscale hook
@@ -174,6 +185,7 @@ export default function ImageGenerator({
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
         printMode: true,
+        generatorPreference: generatorPref,
       };
       if (isInlineEditing && imageUrl) {
         body.sourceImageUrl = imageUrl;
@@ -189,6 +201,28 @@ export default function ImageGenerator({
       setBaseImageUrl(baseUrl);
       setImageUrl(baseUrl);
 
+      // Capture provider metadata so we can store it on save and display it.
+      const usedProvider: string | null = data?.provider || null;
+      const usedModel: string | null = data?.model || null;
+      const usedFallback: boolean = !!data?.fallbackUsed;
+      const usedStrategy: "auto" | "manual" | null = data?.strategy || null;
+      setLastProviderUsed(usedProvider);
+      setLastModelUsed(usedModel);
+      setLastFallbackUsed(usedFallback);
+      setLastStrategyUsed(usedStrategy);
+
+      if (usedProvider) {
+        console.log(
+          `[ImageGenerator] generated with provider=${usedProvider} model=${usedModel} strategy=${usedStrategy} fallback=${usedFallback}`,
+        );
+        if (usedFallback) {
+          toast({
+            title: "Used fallback generator",
+            description: `Primary generator failed — image was created with ${usedProvider}.`,
+          });
+        }
+      }
+
       if (isInlineEditing) {
         setPrompt(activePrompt.trim());
         setIsInlineEditing(false);
@@ -202,9 +236,11 @@ export default function ImageGenerator({
         runUpscale(upscaleMode, savedGalleryIdRef.current);
       }
     } catch (err: any) {
+      const desc = err?.message || "Something went wrong";
+      // If user manually picked a provider that failed, surface the explicit message
       toast({
         title: "Generation failed",
-        description: err.message || "Something went wrong",
+        description: desc,
         variant: "destructive",
       });
       setLoading(false);
@@ -236,6 +272,11 @@ export default function ImageGenerator({
       enhancedImageUrl: enhancedImageUrl || undefined,
       enhancementModel: enhancedImageUrl ? upscaleConfig.provider : undefined,
       upscaleFactor: enhancedImageUrl ? upscaleConfig.scaleFactor : undefined,
+      // Phase 1: generator provider metadata
+      generationProvider: lastProviderUsed || undefined,
+      generationModel: lastModelUsed || undefined,
+      providerStrategy: lastStrategyUsed || undefined,
+      fallbackUsed: lastFallbackUsed,
     };
   };
 
@@ -556,6 +597,22 @@ export default function ImageGenerator({
                 </button>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Phase 1: Generator selector (compact badge → popover) */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <GeneratorBadge
+            value={generatorPref}
+            onChange={setGeneratorPref}
+            lastUsedProvider={lastProviderUsed}
+            lastFallbackUsed={lastFallbackUsed}
+          />
+          {lastProviderUsed && (
+            <span className="font-display text-[10px] text-muted-foreground">
+              Last: <span className="text-foreground">{lastProviderUsed}</span>
+              {lastFallbackUsed ? " · fallback" : ""}
+            </span>
           )}
         </div>
 
