@@ -562,6 +562,105 @@ export function compilePrompt(
   ].filter(Boolean).join("\n");
 }
 
+// ── SDXL-specialized compiler ──────────────────────────────────────────
+//
+// SDXL weights early tokens heavily and ignores long descriptive prose.
+// We front-load: subject + style anchors + reinforcement, then composition,
+// then a tail "STYLE LOCK" repeating the visual constraints.
+
+export function compilePromptForSDXL(
+  userPrompt: string,
+  styleKey: string,
+  options: CompileOptions = {},
+): CompiledPrompt {
+  const rules = STYLE_RULES[styleKey];
+  const sdxl = getSdxlParts(styleKey);
+  const { aspectRatio, backgroundStyle } = options;
+
+  // Style anchors (from existing style def) + provider reinforcement
+  const anchors = rules?.styleAnchors ?? [];
+  const colorRules = rules?.colorRules ?? [];
+
+  // Background hint kept short — long sentences hurt SDXL
+  const bgHint =
+    backgroundStyle === "cream"
+      ? "warm cream paper background"
+      : "pure white background";
+
+  // Front-loaded subject (SDXL responds best to subject first)
+  const head = [
+    userPrompt,
+    ...anchors,
+    ...sdxl.reinforcement,
+  ].join(", ");
+
+  const composition = sdxl.composition.join(", ");
+
+  // Compress color rules into short tokens (drop long descriptive rules)
+  const colorTokens = colorRules
+    .filter((r) => r.length < 80)
+    .slice(0, 3)
+    .join(", ");
+
+  // Tail "style lock" — repeats the most important constraints so they
+  // re-influence later sampling steps.
+  const styleLock = [
+    ...sdxl.reinforcement.slice(0, 6),
+    bgHint,
+  ].join(", ");
+
+  const prompt = [
+    head,
+    composition,
+    colorTokens,
+    bgHint,
+    `style lock: ${styleLock}`,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  // Negative prompt: provider profile + style avoidRules (compressed)
+  const styleAvoid = [
+    ...(rules?.avoidRules ?? []),
+    ...(rules?.blockedTraits ?? []),
+  ]
+    .filter((r) => r.length < 60)
+    .slice(0, 8);
+
+  const negativePrompt = [...sdxl.negative, ...styleAvoid].join(", ");
+
+  // Aspect ratio is communicated via width/height in the SDXL request,
+  // not the prompt — so we omit it here intentionally.
+  void aspectRatio;
+
+  return {
+    prompt,
+    negativePrompt,
+    provider: "sdxl",
+    category: sdxl.category,
+  };
+}
+
+/**
+ * Provider-aware entry point.
+ * - For Gemini: returns the existing rich descriptive prompt (string in `.prompt`).
+ * - For SDXL: returns front-loaded constraint prompt + dedicated negative.
+ */
+export function compilePromptForProvider(
+  userPrompt: string,
+  styleKey: string,
+  options: CompileOptions = {},
+): CompiledPrompt {
+  const provider: ResolvedProviderId = options.provider ?? "gemini";
+  if (provider === "sdxl") {
+    return compilePromptForSDXL(userPrompt, styleKey, options);
+  }
+  return {
+    prompt: compilePrompt(userPrompt, styleKey, options),
+    provider: "gemini",
+  };
+}
+
 // ── Shared handler ──
 
 const corsHeaders = {
