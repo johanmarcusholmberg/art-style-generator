@@ -1,12 +1,49 @@
 import { useEffect, useState } from "react";
-import { Loader2, Play, CheckCircle2, XCircle, KeyRound } from "lucide-react";
+import { Loader2, Play, CheckCircle2, XCircle, KeyRound, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import StyleNav from "@/components/StyleNav";
 import { GENERATOR_PROVIDERS, type ResolvedProviderId } from "@/lib/generators";
 import { cn } from "@/lib/utils";
+
+interface PromptDebugResult {
+  style: string;
+  subject: string;
+  category: string;
+  gemini: { prompt: string; length: number };
+  sdxl: {
+    prompt: string;
+    negativePrompt?: string;
+    length: number;
+    negativeLength: number;
+    category: string;
+  };
+}
+
+const DEBUG_STYLE_KEYS = [
+  "popart",
+  "popart-freestyle",
+  "minimalism",
+  "minimalism-freestyle",
+  "lineart",
+  "lineart-minimal",
+  "screenprint",
+  "risograph",
+  "brutalistposter",
+  "retrocomic",
+  "pulpmagazine",
+  "tattooflash",
+  "japanese",
+  "freestyle",
+  "graffiti",
+  "botanical",
+  "urbannoir",
+  "xeroxzine",
+];
 
 interface HealthRow {
   providerId: ResolvedProviderId;
@@ -30,6 +67,34 @@ export default function ProviderDebug() {
     gemini: false,
   });
   const [loadingQuick, setLoadingQuick] = useState(true);
+
+  // Prompt comparison state
+  const [promptStyle, setPromptStyle] = useState<string>("popart");
+  const [promptSubject, setPromptSubject] = useState<string>(
+    "A lone fisherman in a small boat at sunset",
+  );
+  const [promptResult, setPromptResult] = useState<PromptDebugResult | null>(null);
+  const [comparingPrompt, setComparingPrompt] = useState(false);
+
+  const comparePrompts = async () => {
+    setComparingPrompt(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("prompt-debug", {
+        method: "POST",
+        body: { style: promptStyle, prompt: promptSubject },
+      });
+      if (error) throw error;
+      setPromptResult(data as PromptDebugResult);
+    } catch (e: any) {
+      toast({
+        title: "Prompt compare failed",
+        description: e.message || String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setComparingPrompt(false);
+    }
+  };
 
   const fetchQuick = async () => {
     setLoadingQuick(true);
@@ -189,6 +254,94 @@ export default function ProviderDebug() {
             <span className="font-bold text-foreground">Gemini</span>. Manually-selected providers never
             silently fall back — failures surface as clear errors.
           </p>
+        </Card>
+
+        {/* ── Provider-aware prompt comparison ─────────────────────── */}
+        <Card className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" />
+            <h2 className="font-display text-lg font-bold text-foreground">
+              Compare prompts (Gemini vs SDXL)
+            </h2>
+          </div>
+          <p className="font-display text-xs text-muted-foreground">
+            Inspect how the same style + subject is translated for each provider.
+            SDXL gets front-loaded constraints + a dedicated negative prompt;
+            Gemini gets the rich descriptive prompt.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-[200px,1fr,auto] gap-2 items-start">
+            <Select value={promptStyle} onValueChange={setPromptStyle}>
+              <SelectTrigger className="font-display text-xs">
+                <SelectValue placeholder="Style" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                {DEBUG_STYLE_KEYS.map((s) => (
+                  <SelectItem key={s} value={s} className="font-display text-xs">
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Textarea
+              value={promptSubject}
+              onChange={(e) => setPromptSubject(e.target.value)}
+              placeholder="Subject prompt…"
+              className="font-display text-xs min-h-[40px]"
+              rows={2}
+            />
+            <Button
+              size="sm"
+              onClick={comparePrompts}
+              disabled={comparingPrompt || !promptSubject.trim()}
+              className="font-display text-xs"
+            >
+              {comparingPrompt ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <Play className="h-3 w-3 mr-1" />
+              )}
+              Compile
+            </Button>
+          </div>
+
+          {promptResult && (
+            <div className="space-y-3 pt-2 border-t border-border">
+              <p className="font-display text-[11px] text-muted-foreground">
+                Style: <span className="text-foreground">{promptResult.style}</span> · Category:{" "}
+                <span className="text-foreground">{promptResult.category}</span>
+              </p>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Gemini · {promptResult.gemini.length} chars
+                  </p>
+                  <pre className="bg-muted/50 border border-border rounded-sm p-2 text-[10px] leading-snug whitespace-pre-wrap break-words max-h-80 overflow-y-auto font-mono text-foreground">
+                    {promptResult.gemini.prompt}
+                  </pre>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                    SDXL · {promptResult.sdxl.length} chars
+                  </p>
+                  <pre className="bg-muted/50 border border-border rounded-sm p-2 text-[10px] leading-snug whitespace-pre-wrap break-words max-h-80 overflow-y-auto font-mono text-foreground">
+                    {promptResult.sdxl.prompt}
+                  </pre>
+                  {promptResult.sdxl.negativePrompt && (
+                    <>
+                      <p className="font-display text-[10px] uppercase tracking-wider text-destructive mt-2">
+                        SDXL Negative · {promptResult.sdxl.negativeLength} chars
+                      </p>
+                      <pre className="bg-destructive/5 border border-destructive/30 rounded-sm p-2 text-[10px] leading-snug whitespace-pre-wrap break-words max-h-48 overflow-y-auto font-mono text-foreground">
+                        {promptResult.sdxl.negativePrompt}
+                      </pre>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </Card>
       </main>
     </div>

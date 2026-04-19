@@ -5,7 +5,7 @@
  * a single `generate()` function that returns a normalized response.
  */
 
-import { compilePrompt } from "./prompt-compiler.ts";
+import { compilePrompt, compilePromptForSDXL } from "./prompt-compiler.ts";
 
 export type ResolvedProviderId = "gemini" | "sdxl";
 export type GeneratorPreference = "auto" | ResolvedProviderId;
@@ -123,12 +123,18 @@ export async function generateWithSDXL(args: GenerateArgs): Promise<ProviderResu
     );
   }
 
-  const compiled = compilePrompt(args.userPrompt, args.styleKey, {
+  const compiled = compilePromptForSDXL(args.userPrompt, args.styleKey, {
     aspectRatio: args.aspectRatio,
     backgroundStyle: args.backgroundStyle,
     isEdit: false,
     printMode: !!args.printMode,
+    provider: "sdxl",
   });
+
+  console.log(
+    `[sdxl] style=${args.styleKey} category=${compiled.category} ` +
+      `prompt_len=${compiled.prompt.length} neg_len=${(compiled.negativePrompt ?? "").length}`,
+  );
 
   const { width, height } = sdxlSize(args.aspectRatio);
 
@@ -143,7 +149,7 @@ export async function generateWithSDXL(args: GenerateArgs): Promise<ProviderResu
     body: JSON.stringify({
       version: REPLICATE_SDXL_VERSION,
       input: {
-        prompt: compiled,
+        prompt: compiled.prompt,
         width,
         height,
         num_inference_steps: 40,
@@ -153,6 +159,7 @@ export async function generateWithSDXL(args: GenerateArgs): Promise<ProviderResu
         high_noise_frac: 0.8,
         apply_watermark: false,
         negative_prompt:
+          compiled.negativePrompt ||
           "low quality, blurry, soft focus, jpeg artifacts, watermark, signature, text, words, letters, ugly deformed",
       },
     }),
