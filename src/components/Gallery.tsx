@@ -285,6 +285,7 @@ function LightboxContent({
             isRunning={upscaling}
             stageLabel={upscalingStageLabel}
             progress={upscalingProgress}
+            jobStatus={upscalingJobStatus}
             appliedMode={(img.upscale_mode as UpscaleMode) || null}
             compact
           />
@@ -626,6 +627,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     reset: resetGalleryUpscale,
     stageLabel: galleryUpscaleStageLabel,
     progress: galleryUpscaleProgress,
+    jobStatus: galleryUpscaleJobStatus,
   } = useUpscale();
 
   const handleGalleryUpscale = async (img: GalleryImage, mode: UpscaleMode) => {
