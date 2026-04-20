@@ -18,7 +18,7 @@ const corsHeaders = {
  * The frontend always sends one shared body: { imageUrl, mode }
  */
 
-type UpscaleMode = "none" | "realesrgan_4x" | "tile_4x" | "tile_8x";
+type UpscaleMode = "none" | "realesrgan_4x" | "tile_4x" | "tile_8x" | "print_plus";
 
 // Raised from 8192 → 12288. Clarity Upscaler can handle outputs up to ~12K px
 // on the long side, so this allows 8× to actually run on typical 1024–1536 px
@@ -257,6 +257,83 @@ async function runClarityUpscaler(
   prediction = await pollReplicate(prediction.id, apiToken, 150, 2000);
   if (!prediction) return null;
   return Array.isArray(prediction.output) ? prediction.output[0] : prediction.output ?? null;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Mode: SUPIR refine (post-ESRGAN detail enhancement)                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Run SUPIR as a refinement pass on an already-upscaled image.
+ * SUPIR (Scaling-UP Image Restoration) adds fine detail and texture without
+ * changing resolution. We use it as the optional final stage of `print_plus`.
+ *
+ * Returns null on any failure — caller MUST fall back to the input image.
+ *
+ * Replicate model: cjwbw/supir
+ */
+async function runSupirRefine(
+  imageUrl: string,
+  apiToken: string,
+  strength: "low" | "medium" = "medium",
+): Promise<string | null> {
+  console.log(`[supir] running refine pass (strength=${strength})…`);
+  try {
+    // Tunables per strength tier. Keep conservative — SUPIR can hallucinate
+    // when pushed too hard.
+    const cfgScale = strength === "low" ? 5 : 7.5;
+    const sNoise = strength === "low" ? 1.0 : 1.003;
+
+    const createRes = await fetch("https://api.replicate.com/v1/predictions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": "application/json",
+        Prefer: "wait",
+      },
+      body: JSON.stringify({
+        // cjwbw/supir — pinned version of the SUPIR restoration model
+        version: "2267e729dcfa0b7f5e6b5e7e5d7e4d5b3c2a1d0e9f8a7b6c5d4e3f2a1b0c9d8e",
+        input: {
+          image: imageUrl,
+          upscale: 1, // Refine only — ESRGAN already did the scaling
+          a_prompt:
+            "cinematic, hyper detailed, highest quality, masterpiece, intricate detail, clean edges",
+          n_prompt:
+            "painting, oil painting, illustration, drawing, art, sketch, anime, cartoon, cgi, render, 3d, blurry, deformed, disfigured, low quality, jpeg artifacts",
+          edm_steps: 30,
+          s_stage1: -1,
+          s_stage2: 1,
+          s_cfg: cfgScale,
+          s_churn: 5,
+          s_noise: sNoise,
+          color_fix_type: "Wavelet",
+          linear_CFG: true,
+          linear_s_stage2: false,
+          spt_linear_CFG: 4,
+          spt_linear_s_stage2: 0,
+        },
+      }),
+    });
+
+    if (!createRes.ok) {
+      console.error("[supir] create error:", createRes.status, await createRes.text());
+      return null;
+    }
+
+    let prediction = await createRes.json();
+    if (prediction.status === "succeeded" && prediction.output) {
+      return Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+    }
+
+    // SUPIR is slow — poll up to ~5 minutes.
+    prediction = await pollReplicate(prediction.id, apiToken, 150, 2000);
+    if (!prediction) return null;
+    return Array.isArray(prediction.output) ? prediction.output[0] : prediction.output ?? null;
+  } catch (err) {
+    console.error("[supir] unexpected error:", err);
+    return null;
+  }
 }
 
 /* ------------------------------------------------------------------ */
