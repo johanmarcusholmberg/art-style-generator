@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { Image } from "https://deno.land/x/imagescript@1.2.17/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -346,6 +347,7 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const imageUrl: string | undefined = body.imageUrl;
+    const galleryImageId: string | undefined = body.galleryImageId;
 
     // Accept new mode-based API + legacy fields for backwards compatibility.
     let mode: UpscaleMode = body.mode ?? "realesrgan_4x";
@@ -364,7 +366,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           imageUrl,
-          pipeline: { mode: "none", scale: 1, provider: "none", downshifted: false },
+          pipeline: { mode: "none", scale: 1, provider: "none", downshifted: false, async: false },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -378,158 +380,221 @@ serve(async (req) => {
       );
     }
 
-    let downshifted = false;
-    let preDownscaled = false;
-    let appliedScale = 4;
-    let provider = "replicate/real-esrgan";
-    let outputUrl: string | null = null;
-    // Print+ telemetry
-    let supirAttempted = false;
-    let supirSucceeded = false;
-    let esrganIntermediateUrl: string | null = null;
-
-    // Forward-compat: callers may pass explicit SUPIR flags. By default
-    // SUPIR only runs when mode === "print_plus".
-    const explicitUseSupir: boolean | undefined = body.use_supir;
-    const supirStrength: "low" | "medium" =
-      body.supir_strength === "low" ? "low" : "medium";
-
+    /* ---------------------------------------------------------------- */
+    /*  SYNC PATH — fast modes only (realesrgan_4x).                     */
+    /* ---------------------------------------------------------------- */
     if (mode === "realesrgan_4x") {
-      appliedScale = 4;
-      provider = "replicate/real-esrgan";
-      outputUrl = await runRealESRGAN(imageUrl, 4, REPLICATE_API_TOKEN);
-    } else if (mode === "tile_4x") {
-      appliedScale = 4;
-      provider = "replicate/clarity-upscaler";
-      outputUrl = await runClarityUpscaler(imageUrl, 4, REPLICATE_API_TOKEN);
-    } else if (mode === "print_plus") {
-      // Stage 1: Real-ESRGAN 4× (always runs — never replaced by SUPIR).
-      appliedScale = 4;
-      provider = "replicate/real-esrgan+supir";
-      console.log("[print_plus] stage 1: Real-ESRGAN 4×…");
-      const esrganUrl = await runRealESRGAN(imageUrl, 4, REPLICATE_API_TOKEN);
-      esrganIntermediateUrl = esrganUrl;
-      outputUrl = esrganUrl;
+      console.log(`[sync] mode=realesrgan_4x src=${imageUrl}`);
+      const t0 = Date.now();
+      const outputUrl = await runRealESRGAN(imageUrl, 4, REPLICATE_API_TOKEN);
+      console.log(`[sync] realesrgan_4x finished in ${Date.now() - t0}ms`);
 
-      // Stage 2: SUPIR refine (optional final step). Only runs if ESRGAN
-      // succeeded. Failure is non-fatal — we keep the ESRGAN output.
-      if (esrganUrl) {
-        supirAttempted = true;
-        console.log("[print_plus] stage 2: SUPIR refine…");
-        const refined = await runSupirRefine(esrganUrl, REPLICATE_API_TOKEN, supirStrength);
-        if (refined) {
-          supirSucceeded = true;
-          outputUrl = refined;
-          console.log("[print_plus] SUPIR refine succeeded");
-        } else {
-          console.warn("[print_plus] SUPIR refine failed — keeping ESRGAN result");
-        }
-      }
-    } else if (mode === "tile_8x") {
-      provider = "replicate/clarity-upscaler";
-
-      // Decide between three paths:
-      //   (a) source small enough → run 8× directly
-      //   (b) source too large but pre-downscale leaves short-side >= 512 → pre-downscale, then 8×
-      //   (c) source too large AND pre-downscale would shrink it below 512 short-side → fallback to 4×
-      const dims = await fetchImageDimensions(imageUrl);
-      const longSide = dims ? Math.max(dims.w, dims.h) : 0;
-      const shortSide = dims ? Math.min(dims.w, dims.h) : 0;
-      const projected8x = longSide * 8;
-
-      if (!dims || projected8x <= TILE_8X_MAX_LONG_SIDE) {
-        // (a) Direct 8× — source is small enough (or unknown; trust caller).
-        appliedScale = 8;
-        console.log(
-          `[tile_8x] ran at 8× (source ${dims ? `${dims.w}x${dims.h}` : "unknown"}, projected ${projected8x || "?"}px)`,
+      if (!outputUrl) {
+        return new Response(
+          JSON.stringify({
+            error: "Upscale failed — original image preserved.",
+            imageUrl,
+            pipeline: { mode, scale: 1, provider: "replicate/real-esrgan", failed: true, async: false },
+          }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
-        outputUrl = await runClarityUpscaler(imageUrl, 8, REPLICATE_API_TOKEN);
-      } else {
-        // Source is too large for direct 8×. Compute the largest source size
-        // that keeps 8× output under the cap.
-        const targetLongSide = Math.floor(TILE_8X_MAX_LONG_SIDE / 8); // e.g. 1536
-        const downscaleRatio = targetLongSide / longSide;
-        const projectedShortSide = Math.round(shortSide * downscaleRatio);
-
-        if (projectedShortSide >= TILE_8X_MIN_SHORT_SIDE) {
-          // (b) Pre-downscale path
-          const newTargetW = Math.round(dims.w * downscaleRatio);
-          const newTargetH = Math.round(dims.h * downscaleRatio);
-          console.log(
-            `[tile_8x] pre-downscaling source from ${dims.w}x${dims.h} to ${newTargetW}x${newTargetH} then running at 8×`,
-          );
-          const downscaled = await preDownscaleToFit(imageUrl, targetLongSide);
-          if (downscaled) {
-            preDownscaled = true;
-            appliedScale = 8;
-            console.log(
-              `[tile_8x] pre-downscaled source from ${dims.w}x${dims.h} to ${downscaled.w}x${downscaled.h} then ran at 8×`,
-            );
-            outputUrl = await runClarityUpscaler(downscaled.dataUrl, 8, REPLICATE_API_TOKEN);
-          } else {
-            // Pre-downscale failed → safe fallback to 4× on the original
-            console.warn("[tile_8x] pre-downscale failed, falling back to 4× on original");
-            downshifted = true;
-            appliedScale = 4;
-            outputUrl = await runClarityUpscaler(imageUrl, 4, REPLICATE_API_TOKEN);
-          }
-        } else {
-          // (c) Source too small after pre-downscale → 4× fallback
-          console.log(
-            `[tile_8x] source too small (would shrink to ${projectedShortSide}px short-side, < ${TILE_8X_MIN_SHORT_SIDE}), downshifted to 4×`,
-          );
-          downshifted = true;
-          appliedScale = 4;
-          outputUrl = await runClarityUpscaler(imageUrl, 4, REPLICATE_API_TOKEN);
-        }
       }
 
-      // Forward-compat: also allow explicit use_supir on tile_8x.
-      if (explicitUseSupir && outputUrl) {
-        supirAttempted = true;
-        const refined = await runSupirRefine(outputUrl, REPLICATE_API_TOKEN, supirStrength);
-        if (refined) {
-          supirSucceeded = true;
-          outputUrl = refined;
-        }
-      }
-    } else {
       return new Response(
-        JSON.stringify({ error: `Unknown upscale mode: ${mode}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({
+          imageUrl: outputUrl,
+          pipeline: {
+            mode,
+            appliedMode: mode,
+            scale: 4,
+            provider: "replicate/real-esrgan",
+            downshifted: false,
+            async: false,
+          },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    if (!outputUrl) {
+    /* ---------------------------------------------------------------- */
+    /*  ASYNC PATH — heavy modes (tile_4x, tile_8x, print_plus).         */
+    /*  Returns 202 immediately with a job id; webhook delivers result.  */
+    /* ---------------------------------------------------------------- */
+    if (mode === "tile_4x" || mode === "tile_8x" || mode === "print_plus") {
+      const supabaseAdmin = createSupabaseAdmin();
+
+      // Decide first-stage provider/inputs by mode.
+      // print_plus → first stage is ESRGAN, then webhook chains SUPIR.
+      // tile_4x / tile_8x → single Clarity stage at the requested scale.
+      let firstStageProvider: string;
+      let predictionBody: Record<string, unknown>;
+      let nextStage: string | undefined;
+      let appliedScale = 4;
+      let downshifted = false;
+      let preDownscaled = false;
+      let sourceForReplicate = imageUrl;
+
+      if (mode === "print_plus") {
+        firstStageProvider = "replicate/real-esrgan+supir";
+        nextStage = "supir_refine";
+        appliedScale = 4;
+        predictionBody = {
+          version: "f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa",
+          input: {
+            image: imageUrl,
+            scale: 4,
+            face_enhance: false,
+          },
+        };
+      } else if (mode === "tile_4x") {
+        firstStageProvider = "replicate/clarity-upscaler";
+        appliedScale = 4;
+        predictionBody = clarityPredictionBody(imageUrl, 4);
+      } else {
+        // tile_8x — apply the same 12K cap / pre-downscale logic as before.
+        firstStageProvider = "replicate/clarity-upscaler";
+        const dims = await fetchImageDimensions(imageUrl);
+        const longSide = dims ? Math.max(dims.w, dims.h) : 0;
+        const shortSide = dims ? Math.min(dims.w, dims.h) : 0;
+        const projected8x = longSide * 8;
+
+        if (!dims || projected8x <= TILE_8X_MAX_LONG_SIDE) {
+          appliedScale = 8;
+          console.log(
+            `[async tile_8x] direct 8× (source ${dims ? `${dims.w}x${dims.h}` : "unknown"})`,
+          );
+        } else {
+          const targetLongSide = Math.floor(TILE_8X_MAX_LONG_SIDE / 8);
+          const downscaleRatio = targetLongSide / longSide;
+          const projectedShortSide = Math.round(shortSide * downscaleRatio);
+
+          if (projectedShortSide >= TILE_8X_MIN_SHORT_SIDE) {
+            const downscaled = await preDownscaleToFit(imageUrl, targetLongSide);
+            if (downscaled) {
+              preDownscaled = true;
+              appliedScale = 8;
+              sourceForReplicate = downscaled.dataUrl;
+              console.log(
+                `[async tile_8x] pre-downscaled ${dims.w}x${dims.h} → ${downscaled.w}x${downscaled.h}`,
+              );
+            } else {
+              downshifted = true;
+              appliedScale = 4;
+              console.warn("[async tile_8x] pre-downscale failed → 4× fallback");
+            }
+          } else {
+            downshifted = true;
+            appliedScale = 4;
+            console.log(
+              `[async tile_8x] source too small for 8× (would shrink to ${projectedShortSide}px) → 4× fallback`,
+            );
+          }
+        }
+        predictionBody = clarityPredictionBody(sourceForReplicate, appliedScale);
+      }
+
+      // 1) Insert the job row first so we have a stable id for the webhook URL.
+      const { data: jobRow, error: insertErr } = await supabaseAdmin
+        .from("upscale_jobs")
+        .insert({
+          image_id: galleryImageId ?? null,
+          mode,
+          status: "queued",
+          source_url: imageUrl,
+          pipeline: {
+            mode,
+            scale: appliedScale,
+            provider: firstStageProvider,
+            next: nextStage,
+            downshifted,
+            preDownscaled,
+            async: true,
+            ...(mode === "print_plus" ? { supirAttempted: false } : {}),
+          },
+        })
+        .select("id")
+        .single();
+
+      if (insertErr || !jobRow) {
+        console.error("[async] failed to insert upscale_jobs row:", insertErr);
+        return new Response(
+          JSON.stringify({ error: "Failed to create upscale job" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      // 2) Create the Replicate prediction with our webhook URL.
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const webhookUrl = `${supabaseUrl}/functions/v1/upscale-webhook?token=${jobRow.id}`;
+      const t0 = Date.now();
+      let predictionId: string | null = null;
+      try {
+        const createRes = await fetch("https://api.replicate.com/v1/predictions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...predictionBody,
+            webhook: webhookUrl,
+            webhook_events_filter: ["start", "completed"],
+          }),
+        });
+        if (!createRes.ok) {
+          const txt = await createRes.text();
+          throw new Error(`Replicate create failed [${createRes.status}]: ${txt}`);
+        }
+        const created = await createRes.json();
+        predictionId = created.id;
+        console.log(
+          `[async] mode=${mode} job=${jobRow.id} prediction=${predictionId} created in ${Date.now() - t0}ms`,
+        );
+      } catch (err) {
+        console.error("[async] failed to create Replicate prediction:", err);
+        await supabaseAdmin
+          .from("upscale_jobs")
+          .update({
+            status: "failed",
+            error_message: String(err),
+            finished_at: new Date().toISOString(),
+          })
+          .eq("id", jobRow.id);
+        return new Response(
+          JSON.stringify({ error: "Failed to start remote upscale", jobId: jobRow.id }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      await supabaseAdmin
+        .from("upscale_jobs")
+        .update({
+          status: "processing",
+          replicate_prediction_id: predictionId,
+          started_at: new Date().toISOString(),
+        })
+        .eq("id", jobRow.id);
+
       return new Response(
         JSON.stringify({
-          error: "Upscale failed — original image preserved.",
-          imageUrl,
-          pipeline: { mode, scale: 1, provider, downshifted: false, failed: true },
+          jobId: jobRow.id,
+          status: "processing",
+          pipeline: {
+            mode,
+            scale: appliedScale,
+            provider: firstStageProvider,
+            downshifted,
+            preDownscaled,
+            async: true,
+          },
         }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     return new Response(
-      JSON.stringify({
-        imageUrl: outputUrl,
-        pipeline: {
-          mode,
-          appliedMode: downshifted ? "tile_4x" : mode,
-          scale: appliedScale,
-          provider,
-          downshifted,
-          preDownscaled,
-          supirAttempted,
-          supirSucceeded,
-          // Surface the ESRGAN intermediate so callers can persist it as
-          // the base/master if they want. Never null when print_plus ran ESRGAN OK.
-          esrganIntermediateUrl,
-          refineFailed: supirAttempted && !supirSucceeded,
-        },
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ error: `Unknown upscale mode: ${mode}` }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e: any) {
     console.error("upscale-image error:", e);
@@ -539,3 +604,48 @@ serve(async (req) => {
     );
   }
 });
+
+/* ------------------------------------------------------------------ */
+/*  Helpers for async path                                             */
+/* ------------------------------------------------------------------ */
+
+function clarityPredictionBody(image: string, scaleFactor: number) {
+  return {
+    version: "dfad41707589d68ecdccd1dfa600d55a208f9310748e44bfe35b4a6291453d5e",
+    input: {
+      image,
+      scale_factor: scaleFactor,
+      creativity: 0.3,
+      resemblance: 0.75,
+      dynamic: 6,
+      sharpen: 0,
+      handfix: "disabled",
+      pattern: false,
+      tiling_width: 112,
+      tiling_height: 144,
+      sd_model: "juggernaut_reborn.safetensors [338b85bc4f]",
+      scheduler: "DPM++ 3M SDE Karras",
+      num_inference_steps: 18,
+      seed: 1337,
+      downscaling: false,
+      downscaling_resolution: 768,
+      lora_links: "",
+      custom_sd_model: "",
+      negative_prompt:
+        "(worst quality, low quality, normal quality:2), text, watermark, signature, blurry, deformed, jpeg artifacts",
+      prompt:
+        "masterpiece, best quality, highres, intricate detail, clean edges, preserve composition",
+    },
+  };
+}
+
+let _adminClient: ReturnType<typeof createClient> | null = null;
+function createSupabaseAdmin() {
+  if (_adminClient) return _adminClient;
+  _adminClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } },
+  );
+  return _adminClient;
+}

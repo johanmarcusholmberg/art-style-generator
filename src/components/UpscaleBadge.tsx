@@ -5,9 +5,12 @@ import { cn } from "@/lib/utils";
 import {
   UPSCALE_MODES,
   UPSCALE_COST_LABEL,
+  UPSCALE_JOB_STATUS_LABEL,
   getUpscaleOptionsForSurface,
+  isAsyncUpscaleMode,
   type UpscaleMode,
   type UpscaleSurface,
+  type UpscaleJobStatus,
 } from "@/lib/upscale-modes";
 import { Progress } from "@/components/ui/progress";
 
@@ -23,6 +26,8 @@ interface UpscaleBadgeProps {
   isRunning?: boolean;
   stageLabel?: string;
   progress?: number;
+  /** Async-only: live job status from useUpscale (queued/processing/...) */
+  jobStatus?: UpscaleJobStatus | null;
   /** Mode that produced the asset currently shown (for the "current" badge). */
   appliedMode?: UpscaleMode | string | null;
   /** Compact variant — used inline in dense toolbars. */
@@ -46,6 +51,7 @@ export default function UpscaleBadge({
   isRunning,
   stageLabel,
   progress,
+  jobStatus,
   appliedMode,
   compact,
   disabled,
@@ -53,9 +59,10 @@ export default function UpscaleBadge({
   const [open, setOpen] = useState(false);
   const options = getUpscaleOptionsForSurface(surface);
   const current = UPSCALE_MODES[value];
+  const liveLabel = jobStatus ? UPSCALE_JOB_STATUS_LABEL[jobStatus] : stageLabel;
 
   const triggerLabel = isRunning
-    ? stageLabel || "Upscaling…"
+    ? liveLabel || "Upscaling…"
     : surface === "automatic"
     ? `Upscale: ${current.shortLabel}`
     : current.shortLabel;
@@ -114,13 +121,18 @@ export default function UpscaleBadge({
           <div className="rounded-sm border border-primary/30 bg-primary/5 px-2 py-1.5">
             <div className="flex items-center justify-between gap-2">
               <span className="font-display text-[11px] text-foreground">
-                {stageLabel || "Upscaling…"}
+                {liveLabel || "Upscaling…"}
               </span>
               <span className="font-display text-[10px] text-muted-foreground">
-                {Math.round(progress ?? 0)}%
+                {jobStatus === "processing" ? "remote GPU" : `${Math.round(progress ?? 0)}%`}
               </span>
             </div>
             <Progress value={progress ?? 0} className="h-1 mt-1" />
+            {jobStatus && isAsyncUpscaleMode(value) && (
+              <p className="font-display text-[10px] text-muted-foreground mt-1">
+                Runs in the background — you can leave this page and come back.
+              </p>
+            )}
           </div>
         )}
 

@@ -180,6 +180,7 @@ interface LightboxContentProps {
   upscaling: boolean;
   upscalingStageLabel: string;
   upscalingProgress: number;
+  upscalingJobStatus?: import("@/lib/upscale-modes").UpscaleJobStatus | null;
 }
 
 function LightboxContent({
@@ -187,7 +188,7 @@ function LightboxContent({
   onChangeBg, onSaveBg, onDiscardBg,
   bgChanging, bgResult, showEdit,
   onPrintExport, printExporting,
-  onUpscale, upscaling, upscalingStageLabel, upscalingProgress,
+  onUpscale, upscaling, upscalingStageLabel, upscalingProgress, upscalingJobStatus,
 }: LightboxContentProps) {
   const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
   const hasExport = !!img.export_storage_path;
@@ -285,6 +286,7 @@ function LightboxContent({
             isRunning={upscaling}
             stageLabel={upscalingStageLabel}
             progress={upscalingProgress}
+            jobStatus={upscalingJobStatus}
             appliedMode={(img.upscale_mode as UpscaleMode) || null}
             compact
           />
@@ -626,6 +628,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     reset: resetGalleryUpscale,
     stageLabel: galleryUpscaleStageLabel,
     progress: galleryUpscaleProgress,
+    jobStatus: galleryUpscaleJobStatus,
   } = useUpscale();
 
   const handleGalleryUpscale = async (img: GalleryImage, mode: UpscaleMode) => {
@@ -778,6 +781,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     upscaling: galleryUpscaling,
     upscalingStageLabel: galleryUpscaleStageLabel,
     upscalingProgress: galleryUpscaleProgress,
+    upscalingJobStatus: galleryUpscaleJobStatus,
   } : null;
 
   return (

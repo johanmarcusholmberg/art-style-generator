@@ -178,6 +178,36 @@ export const DEFAULT_UPSCALE_MODE: UpscaleMode = "none";
 export const TILE_8X_MAX_LONG_SIDE = 8192;
 
 /* ------------------------------------------------------------------ */
+/*  Sync vs Async classification                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Modes that can finish reliably inside a single 150s edge fn request.
+ * Everything else goes through the async job flow (upscale_jobs table +
+ * Replicate webhook).
+ */
+const SYNC_MODES: ReadonlySet<UpscaleMode> = new Set(["none", "realesrgan_4x"]);
+
+export function isAsyncUpscaleMode(mode: UpscaleMode): boolean {
+  return UPSCALE_MODES[mode].runs && !SYNC_MODES.has(mode);
+}
+
+export type UpscaleJobStatus =
+  | "queued"
+  | "processing"
+  | "succeeded"
+  | "failed"
+  | "cancelled";
+
+export const UPSCALE_JOB_STATUS_LABEL: Record<UpscaleJobStatus, string> = {
+  queued: "Queued — starting upscale…",
+  processing: "Processing on remote GPU…",
+  succeeded: "Upscale complete",
+  failed: "Upscale failed",
+  cancelled: "Cancelled",
+};
+
+/* ------------------------------------------------------------------ */
 /*  Staged status                                                      */
 /* ------------------------------------------------------------------ */
 

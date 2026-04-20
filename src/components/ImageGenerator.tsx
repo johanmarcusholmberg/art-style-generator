@@ -120,6 +120,7 @@ export default function ImageGenerator({
     isRunning: isUpscaling,
     stageLabel: upscaleStageLabel,
     progress: upscaleProgress,
+    jobStatus: upscaleJobStatus,
     upscale,
     reset: resetUpscale,
   } = useUpscale();
@@ -485,6 +486,7 @@ export default function ImageGenerator({
             isRunning={isUpscaling}
             stageLabel={upscaleStageLabel}
             progress={upscaleProgress}
+            jobStatus={upscaleJobStatus}
             appliedMode={hasEnhanced ? upscaleMode : null}
             disabled={loading}
           />
@@ -719,6 +721,7 @@ export default function ImageGenerator({
                   isRunning={isUpscaling}
                   stageLabel={upscaleStageLabel}
                   progress={upscaleProgress}
+                  jobStatus={upscaleJobStatus}
                   appliedMode={hasEnhanced ? upscaleMode : null}
                   compact
                 />

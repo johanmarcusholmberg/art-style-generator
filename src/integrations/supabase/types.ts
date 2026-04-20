@@ -344,6 +344,62 @@ export type Database = {
         }
         Relationships: []
       }
+      upscale_jobs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          image_id: string | null
+          mode: string
+          output_url: string | null
+          pipeline: Json | null
+          replicate_prediction_id: string | null
+          source_url: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          image_id?: string | null
+          mode: string
+          output_url?: string | null
+          pipeline?: Json | null
+          replicate_prediction_id?: string | null
+          source_url: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          image_id?: string | null
+          mode?: string
+          output_url?: string | null
+          pipeline?: Json | null
+          replicate_prediction_id?: string | null
+          source_url?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upscale_jobs_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "generated_images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

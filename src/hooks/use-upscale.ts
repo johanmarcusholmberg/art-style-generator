@@ -1,12 +1,14 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { updateEnhancedAsset } from "@/lib/gallery";
 import {
   UPSCALE_MODES,
   UPSCALE_STAGE_LABELS,
   UPSCALE_STAGE_PROGRESS,
+  isAsyncUpscaleMode,
   type UpscaleMode,
   type UpscaleStage,
+  type UpscaleJobStatus,
 } from "@/lib/upscale-modes";
 
 // Backwards-compatible re-exports (older callers expect these symbols)
@@ -20,6 +22,10 @@ export interface UpscaleResult {
   provider: string;
   /** True if the requested mode was downshifted (e.g. 8x → 4x for size cap) */
   downshifted: boolean;
+  /** True when this completed via the async job path */
+  async?: boolean;
+  /** Async job id (only set when async) */
+  jobId?: string;
 }
 
 interface UpscaleOptions {
@@ -32,49 +38,75 @@ interface UpscaleOptions {
 /**
  * Shared upscale abstraction.
  *
- * One frontend entry point used by:
- *   - automatic post-generation upscale
- *   - manual upscale after generation
- *   - manual upscale from gallery
- *
- * Always re-runs from the source URL provided (callers must pass the original/base
- * image, never an already-upscaled derivative).
+ * Two execution paths:
+ *   - SYNC: `none`, `realesrgan_4x` — finishes within the edge fn request.
+ *   - ASYNC: `tile_4x`, `tile_8x`, `print_plus` — edge fn returns 202 with a
+ *     job id; we subscribe to the `upscale_jobs` row via Realtime and update
+ *     the UI when the webhook marks the job succeeded/failed.
  */
 export function useUpscale() {
   const [stage, setStage] = useState<UpscaleStage>("idle");
   const [activeMode, setActiveMode] = useState<UpscaleMode>("none");
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<UpscaleJobStatus | null>(null);
   const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const asyncResolverRef = useRef<((r: UpscaleResult | null) => void) | null>(null);
 
-  const reset = useCallback(() => {
+  const cleanupTimers = useCallback(() => {
     if (stageTimer.current) {
       clearInterval(stageTimer.current);
       stageTimer.current = null;
     }
+  }, []);
+
+  const cleanupChannel = useCallback(() => {
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+  }, []);
+
+  const reset = useCallback(() => {
+    cleanupTimers();
+    cleanupChannel();
     setStage("idle");
     setActiveMode("none");
-  }, []);
+    setJobId(null);
+    setJobStatus(null);
+  }, [cleanupTimers, cleanupChannel]);
+
+  useEffect(() => () => {
+    cleanupTimers();
+    cleanupChannel();
+  }, [cleanupTimers, cleanupChannel]);
 
   const upscale = useCallback(
     async (sourceUrl: string, opts?: UpscaleOptions): Promise<UpscaleResult | null> => {
       const mode: UpscaleMode = opts?.mode ?? "realesrgan_4x";
       if (mode === "none") return null;
 
+      cleanupTimers();
+      cleanupChannel();
       setActiveMode(mode);
       setStage("preparing");
+      setJobId(null);
+      setJobStatus(null);
 
-      // Drive a soft-progress staged animation while the edge function runs.
-      // The backend reports a single final result, so we simulate progressive
-      // stages so the UI never feels frozen.
-      // For tile_8x we include an "optimizing" stage to surface the
-      // pre-downscale path (the backend may resize the source before sending
-      // it to Clarity at 8×). For other modes the stage is skipped.
-      const stages: UpscaleStage[] = mode === "tile_8x"
-        ? ["preparing", "optimizing", "cleanup", "tiling", "upscaling", "stitching"]
-        : mode === "print_plus"
-          ? ["preparing", "cleanup", "upscaling", "refining"]
-          : UPSCALE_MODES[mode].tiled
-            ? ["preparing", "cleanup", "tiling", "upscaling", "stitching"]
-            : ["preparing", "cleanup", "upscaling"];
+      const isAsync = isAsyncUpscaleMode(mode);
+
+      // Drive a soft staged animation while we wait for either the sync
+      // result or the async webhook. For async modes we cap progress at the
+      // "upscaling" stage and let Realtime drive the rest.
+      const stages: UpscaleStage[] = isAsync
+        ? ["preparing", "upscaling"]
+        : mode === "tile_8x"
+          ? ["preparing", "optimizing", "cleanup", "tiling", "upscaling", "stitching"]
+          : mode === "print_plus"
+            ? ["preparing", "cleanup", "upscaling", "refining"]
+            : UPSCALE_MODES[mode].tiled
+              ? ["preparing", "cleanup", "tiling", "upscaling", "stitching"]
+              : ["preparing", "cleanup", "upscaling"];
       let stageIdx = 0;
       stageTimer.current = setInterval(() => {
         stageIdx = Math.min(stageIdx + 1, stages.length - 1);
@@ -83,15 +115,80 @@ export function useUpscale() {
 
       try {
         const { data, error } = await supabase.functions.invoke("upscale-image", {
-          body: { imageUrl: sourceUrl, mode },
+          body: { imageUrl: sourceUrl, mode, galleryImageId: opts?.galleryImageId },
         });
 
-        if (stageTimer.current) {
-          clearInterval(stageTimer.current);
-          stageTimer.current = null;
+        if (error) throw error;
+
+        /* ---------------- ASYNC PATH ---------------- */
+        if (data?.jobId && data?.pipeline?.async) {
+          const newJobId: string = data.jobId;
+          setJobId(newJobId);
+          setJobStatus("processing");
+          setStage("upscaling");
+
+          // Subscribe to job row updates via Realtime, and resolve the
+          // outer promise when the row reaches a terminal status.
+          return await new Promise<UpscaleResult | null>((resolve) => {
+            asyncResolverRef.current = resolve;
+
+            const channel = supabase
+              .channel(`upscale-job-${newJobId}`)
+              .on(
+                "postgres_changes",
+                {
+                  event: "UPDATE",
+                  schema: "public",
+                  table: "upscale_jobs",
+                  filter: `id=eq.${newJobId}`,
+                },
+                (payload) => {
+                  const row = payload.new as {
+                    status: UpscaleJobStatus;
+                    output_url: string | null;
+                    pipeline: any;
+                    error_message: string | null;
+                  };
+                  setJobStatus(row.status);
+
+                  // Surface SUPIR mid-flight transitions
+                  if (row.pipeline?.next === undefined && row.pipeline?.supirAttempted && row.status === "processing") {
+                    setStage("refining");
+                  }
+
+                  if (row.status === "succeeded" && row.output_url) {
+                    cleanupTimers();
+                    const result: UpscaleResult = {
+                      imageUrl: row.output_url,
+                      mode,
+                      scale: row.pipeline?.scale ?? UPSCALE_MODES[mode].scaleFactor,
+                      provider: row.pipeline?.provider ?? UPSCALE_MODES[mode].provider,
+                      downshifted: !!row.pipeline?.downshifted,
+                      async: true,
+                      jobId: newJobId,
+                    };
+                    setStage(row.pipeline?.refineFailed ? "refine_failed" : "done");
+                    asyncResolverRef.current?.(result);
+                    asyncResolverRef.current = null;
+                    cleanupChannel();
+                  } else if (row.status === "failed" || row.status === "cancelled") {
+                    cleanupTimers();
+                    console.error("Async upscale failed:", row.error_message);
+                    setStage("failed");
+                    asyncResolverRef.current?.(null);
+                    asyncResolverRef.current = null;
+                    cleanupChannel();
+                  }
+                },
+              )
+              .subscribe();
+
+            channelRef.current = channel;
+          });
         }
 
-        if (error) throw error;
+        /* ---------------- SYNC PATH ---------------- */
+        cleanupTimers();
         if (!data?.imageUrl) {
           setStage("failed");
           return null;
@@ -103,9 +200,11 @@ export function useUpscale() {
           scale: data.pipeline?.scale ?? UPSCALE_MODES[mode].scaleFactor,
           provider: data.pipeline?.provider ?? UPSCALE_MODES[mode].provider,
           downshifted: !!data.pipeline?.downshifted,
+          async: false,
         };
 
-        // Persist to gallery record if requested
+        // Persist to gallery record if requested (sync path only — async
+        // path persists from the webhook with service-role).
         if (opts?.galleryImageId) {
           setStage("saving");
           try {
@@ -119,8 +218,6 @@ export function useUpscale() {
           }
         }
 
-        // Surface SUPIR partial-failure as a non-fatal end state so the UI
-        // can display "kept ESRGAN result" instead of a generic "done".
         if (data.pipeline?.refineFailed) {
           setStage("refine_failed");
         } else if (result.downshifted) {
@@ -130,16 +227,14 @@ export function useUpscale() {
         }
         return result;
       } catch (err) {
-        if (stageTimer.current) {
-          clearInterval(stageTimer.current);
-          stageTimer.current = null;
-        }
+        cleanupTimers();
+        cleanupChannel();
         console.error("Upscale failed:", err);
         setStage("failed");
         return null;
       }
     },
-    [],
+    [cleanupTimers, cleanupChannel],
   );
 
   const isRunning = ["preparing", "optimizing", "cleanup", "tiling", "upscaling", "stitching", "refining", "saving"].includes(stage);
@@ -154,6 +249,9 @@ export function useUpscale() {
     isRunning,
     stageLabel,
     progress,
+    /** Async-only — present while a heavy upscale is running on Replicate */
+    jobId,
+    jobStatus,
     upscale,
     reset,
     setStage,
