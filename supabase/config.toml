@@ -1,1 +1,4 @@
 project_id = "zlmwkixldukpwaqdsfyw"
+
+[functions.upscale-webhook]
+verify_jwt = false
