@@ -70,9 +70,11 @@ export function useUpscale() {
       // it to Clarity at 8×). For other modes the stage is skipped.
       const stages: UpscaleStage[] = mode === "tile_8x"
         ? ["preparing", "optimizing", "cleanup", "tiling", "upscaling", "stitching"]
-        : UPSCALE_MODES[mode].tiled
-          ? ["preparing", "cleanup", "tiling", "upscaling", "stitching"]
-          : ["preparing", "cleanup", "upscaling"];
+        : mode === "print_plus"
+          ? ["preparing", "cleanup", "upscaling", "refining"]
+          : UPSCALE_MODES[mode].tiled
+            ? ["preparing", "cleanup", "tiling", "upscaling", "stitching"]
+            : ["preparing", "cleanup", "upscaling"];
       let stageIdx = 0;
       stageTimer.current = setInterval(() => {
         stageIdx = Math.min(stageIdx + 1, stages.length - 1);
