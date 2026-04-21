@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
 import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle } from "lucide-react";
 import {
@@ -38,6 +38,10 @@ import {
   type GeneratorPreference,
   loadGeneratorPreference,
 } from "@/lib/generators";
+import {
+  resolveUpscaleRecipe,
+  generatorFamilyFromProvider,
+} from "@/lib/upscale-recipes";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -131,6 +135,19 @@ export default function ImageGenerator({
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
   const effectiveAspectRatio = generationMode === "print-ready" ? selectedPrintFormat.aspectRatio : printSize.ratio;
   const upscaleConfig = UPSCALE_MODES[upscaleMode];
+
+  // Style + provider-aware recipe recommendation. Recomputes whenever the
+  // style, provider, or print intent changes.
+  const recommendedRecipe = useMemo(
+    () =>
+      resolveUpscaleRecipe({
+        styleKey: styleConfig.styleKey,
+        mode,
+        generatorFamily: generatorFamilyFromProvider(lastProviderUsed),
+        printIntent: generationMode === "print-ready",
+      }),
+    [styleConfig.styleKey, mode, lastProviderUsed, generationMode],
+  );
 
   /**
    * Trigger upscale (shared for auto + manual + re-upscale).
