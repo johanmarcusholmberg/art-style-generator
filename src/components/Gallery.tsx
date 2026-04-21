@@ -258,6 +258,27 @@ function LightboxContent({
                 {exportReadiness.description}
               </p>
             )}
+            {/* Master-aware print readiness — uses the canonical master asset
+                dimensions, not preview/DOM size. */}
+            {(() => {
+              const r = getPrintReadiness(img, img.print_format_id);
+              if (r.level === "unknown") return null;
+              const cls =
+                r.level === "ready-300" ? "text-primary" :
+                r.level === "ready-150" ? "text-foreground" :
+                r.level === "soft" ? "text-orange-500" :
+                "text-destructive";
+              return (
+                <p className={cn("font-display text-[11px] font-medium", cls)}>
+                  {r.summary}
+                  {r.recommendation && r.level !== "ready-300" && (
+                    <span className="block text-muted-foreground italic font-normal">
+                      {r.recommendation}
+                    </span>
+                  )}
+                </p>
+              );
+            })()}
             {img.upscale_applied && (
               <p className="font-display text-[11px] text-muted-foreground italic">Upscale applied</p>
             )}
