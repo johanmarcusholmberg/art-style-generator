@@ -36,6 +36,7 @@ import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { useUpscale } from "@/hooks/use-upscale";
 import { UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
+import { resolveUpscaleRecipe, generatorFamilyFromProvider, type UpscaleRecipe } from "@/lib/upscale-recipes";
 import UpscaleBadge from "@/components/UpscaleBadge";
 import { Progress } from "@/components/ui/progress";
 
@@ -73,6 +74,7 @@ interface GalleryImage {
   upscaled_at?: string | null;
   enhancement_model?: string | null;
   upscale_factor?: number | null;
+  generation_provider?: string | null;
 }
 
 export interface EditRequest {
@@ -176,11 +178,12 @@ interface LightboxContentProps {
   showEdit: boolean;
   onPrintExport: (img: GalleryImage) => void;
   printExporting: boolean;
-  onUpscale: (img: GalleryImage, mode: UpscaleMode) => void;
+  onUpscale: (img: GalleryImage, mode: UpscaleMode, recipe?: UpscaleRecipe | null) => void;
   upscaling: boolean;
   upscalingStageLabel: string;
   upscalingProgress: number;
   upscalingJobStatus?: import("@/lib/upscale-modes").UpscaleJobStatus | null;
+  recommendedRecipe?: UpscaleRecipe | null;
 }
 
 function LightboxContent({
@@ -189,6 +192,7 @@ function LightboxContent({
   bgChanging, bgResult, showEdit,
   onPrintExport, printExporting,
   onUpscale, upscaling, upscalingStageLabel, upscalingProgress, upscalingJobStatus,
+  recommendedRecipe,
 }: LightboxContentProps) {
   const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
   const hasExport = !!img.export_storage_path;
@@ -282,12 +286,13 @@ function LightboxContent({
             value={(img.upscale_mode as UpscaleMode) || "none"}
             onChange={() => { /* no-op — badge runs on pick */ }}
             surface="gallery"
-            onRun={(m) => onUpscale(img, m)}
+            onRun={(m, recipe) => onUpscale(img, m, recipe ?? null)}
             isRunning={upscaling}
             stageLabel={upscalingStageLabel}
             progress={upscalingProgress}
             jobStatus={upscalingJobStatus}
             appliedMode={(img.upscale_mode as UpscaleMode) || null}
+            recommendedRecipe={recommendedRecipe}
             compact
           />
           {img.upscale_applied && currentModeLabel && (
@@ -631,7 +636,11 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     jobStatus: galleryUpscaleJobStatus,
   } = useUpscale();
 
-  const handleGalleryUpscale = async (img: GalleryImage, mode: UpscaleMode) => {
+  const handleGalleryUpscale = async (
+    img: GalleryImage,
+    mode: UpscaleMode,
+    recipe?: UpscaleRecipe | null,
+  ) => {
     if (mode === "none") return;
     // ALWAYS reprocess from the original/base image — never from an
     // already-upscaled derivative. Falls back through original → base → master
@@ -639,7 +648,13 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     const basePath = (img as any).original_storage_path || img.storage_path;
     const baseUrl = supabase.storage.from("generated-images").getPublicUrl(basePath).data.publicUrl;
     const sourceUrl = baseUrl || img.publicUrl || img.masterUrl;
-    const result = await galleryUpscale(sourceUrl, { galleryImageId: img.id, mode });
+    const result = await galleryUpscale(sourceUrl, {
+      galleryImageId: img.id,
+      mode,
+      recipe: recipe
+        ? { id: recipe.id, label: recipe.label, reason: recipe.reason }
+        : undefined,
+    });
     if (result) {
       const update: Partial<GalleryImage> = {
         upscale_applied: true,
@@ -782,6 +797,12 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     upscalingStageLabel: galleryUpscaleStageLabel,
     upscalingProgress: galleryUpscaleProgress,
     upscalingJobStatus: galleryUpscaleJobStatus,
+    recommendedRecipe: resolveUpscaleRecipe({
+      styleKey: selected.mode,
+      mode: selected.mode,
+      generatorFamily: generatorFamilyFromProvider(selected.generation_provider),
+      printIntent: selected.generation_mode === "print-ready" || !!selected.print_format_id,
+    }),
   } : null;
 
   return (
