@@ -33,6 +33,11 @@ import { Link } from "react-router-dom";
 import JSZip from "jszip";
 import { getPrintFormat, assessExportReadiness, DEFAULT_PRINT_FORMAT_ID, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
+import {
+  getExportSourceAssetForImage,
+  getReprocessSourceAssetForImage,
+  getPrintReadiness,
+} from "@/lib/image-assets";
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { useUpscale } from "@/hooks/use-upscale";
 import { UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
