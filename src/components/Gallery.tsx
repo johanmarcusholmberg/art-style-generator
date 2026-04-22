@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
   Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
-  FolderPlus, FolderMinus, Printer, ArrowUpCircle,
+  FolderPlus, FolderMinus, Printer, ArrowUpCircle, ShoppingBag,
 } from "lucide-react";
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ import { UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
 import { resolveUpscaleRecipe, generatorFamilyFromProvider, type UpscaleRecipe } from "@/lib/upscale-recipes";
 import UpscaleBadge from "@/components/UpscaleBadge";
 import { Progress } from "@/components/ui/progress";
+import EtsyExportDialog from "@/components/EtsyExportDialog";
 
 interface GalleryImage {
   id: string;
@@ -184,6 +185,7 @@ interface LightboxContentProps {
   showEdit: boolean;
   onPrintExport: (img: GalleryImage) => void;
   printExporting: boolean;
+  onEtsyExport: (img: GalleryImage) => void;
   onUpscale: (img: GalleryImage, mode: UpscaleMode, recipe?: UpscaleRecipe | null) => void;
   upscaling: boolean;
   upscalingStageLabel: string;
@@ -197,6 +199,7 @@ function LightboxContent({
   onChangeBg, onSaveBg, onDiscardBg,
   bgChanging, bgResult, showEdit,
   onPrintExport, printExporting,
+  onEtsyExport,
   onUpscale, upscaling, upscalingStageLabel, upscalingProgress, upscalingJobStatus,
   recommendedRecipe,
 }: LightboxContentProps) {
@@ -305,6 +308,15 @@ function LightboxContent({
               ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               : <Printer className="mr-2 h-4 w-4" />}
             {hasExport ? "Re-export Print" : "Export Print"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEtsyExport(img)}
+            className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+          >
+            <ShoppingBag className="mr-2 h-4 w-4" />
+            Export for Etsy
           </Button>
           {/* Unified Upscale badge — same component used during generation.
               Picking a mode immediately re-runs the upscale on the original
@@ -654,6 +666,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   useEffect(() => { setBgResult(null); }, [selected?.id]);
 
   const [printExporting, setPrintExporting] = useState(false);
+  const [etsyExportImage, setEtsyExportImage] = useState<GalleryImage | null>(null);
   const {
     isRunning: galleryUpscaling,
     upscale: galleryUpscale,
@@ -820,6 +833,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     showEdit: !!onEditImage,
     onPrintExport: handlePrintExport,
     printExporting,
+    onEtsyExport: (img: GalleryImage) => setEtsyExportImage(img),
     onUpscale: handleGalleryUpscale,
     upscaling: galleryUpscaling,
     upscalingStageLabel: galleryUpscaleStageLabel,
@@ -1017,6 +1031,27 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           </div>
         )
       )}
+
+
+      {/* Etsy export dialog */}
+      <EtsyExportDialog
+        open={!!etsyExportImage}
+        onOpenChange={(o) => { if (!o) setEtsyExportImage(null); }}
+        masterUrl={etsyExportImage ? getExportSourceAssetForImage(etsyExportImage) : null}
+        masterWidth={
+          etsyExportImage?.actual_width_px ??
+          (etsyExportImage as any)?.enhanced_width_px ??
+          (etsyExportImage as any)?.base_width_px ??
+          null
+        }
+        masterHeight={
+          etsyExportImage?.actual_height_px ??
+          (etsyExportImage as any)?.enhanced_height_px ??
+          (etsyExportImage as any)?.base_height_px ??
+          null
+        }
+        sourceLabel={etsyExportImage?.prompt}
+      />
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
