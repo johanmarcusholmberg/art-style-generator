@@ -309,6 +309,15 @@ function LightboxContent({
               : <Printer className="mr-2 h-4 w-4" />}
             {hasExport ? "Re-export Print" : "Export Print"}
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEtsyExport(img)}
+            className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+          >
+            <ShoppingBag className="mr-2 h-4 w-4" />
+            Export for Etsy
+          </Button>
           {/* Unified Upscale badge — same component used during generation.
               Picking a mode immediately re-runs the upscale on the original
               base asset (never on the already-upscaled derivative). */}
@@ -657,6 +666,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   useEffect(() => { setBgResult(null); }, [selected?.id]);
 
   const [printExporting, setPrintExporting] = useState(false);
+  const [etsyExportImage, setEtsyExportImage] = useState<GalleryImage | null>(null);
   const {
     isRunning: galleryUpscaling,
     upscale: galleryUpscale,
