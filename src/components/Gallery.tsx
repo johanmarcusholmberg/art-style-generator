@@ -185,6 +185,7 @@ interface LightboxContentProps {
   showEdit: boolean;
   onPrintExport: (img: GalleryImage) => void;
   printExporting: boolean;
+  onEtsyExport: (img: GalleryImage) => void;
   onUpscale: (img: GalleryImage, mode: UpscaleMode, recipe?: UpscaleRecipe | null) => void;
   upscaling: boolean;
   upscalingStageLabel: string;
@@ -198,6 +199,7 @@ function LightboxContent({
   onChangeBg, onSaveBg, onDiscardBg,
   bgChanging, bgResult, showEdit,
   onPrintExport, printExporting,
+  onEtsyExport,
   onUpscale, upscaling, upscalingStageLabel, upscalingProgress, upscalingJobStatus,
   recommendedRecipe,
 }: LightboxContentProps) {
