@@ -217,47 +217,49 @@ export default function ImageGenerator({
     upscaleRunId.current++;
 
     try {
-      const body: any = {
+      // Phase 2: route through the unified generation router. The Lovable
+      // adapter still calls the existing per-style edge function under
+      // the hood — current backend behavior (prompt compilation,
+      // SDXL/Gemini resolver, fallback) is unchanged.
+      const referenceImageUrl =
+        isInlineEditing && imageUrl ? imageUrl : sourceImageUrl || undefined;
+
+      const { generateImage } = await import("@/lib/generation-router");
+      const { response: gen, diagnostics } = await generateImage({
         prompt: activePrompt.trim(),
+        styleKey: styleConfig.styleKey,
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
         printMode: true,
-        generatorPreference: generatorPref,
-      };
-      if (isInlineEditing && imageUrl) {
-        body.sourceImageUrl = imageUrl;
-      } else if (sourceImageUrl) {
-        body.sourceImageUrl = sourceImageUrl;
-      }
-      const { data, error } = await supabase.functions.invoke(edgeFn, { body });
+        providerPreference: generatorPref,
+        referenceImageUrl,
+        isEdit: !!referenceImageUrl,
+      });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      const baseUrl = data.imageUrl;
+      const baseUrl = gen.imageUrl;
       setBaseImageUrl(baseUrl);
       setImageUrl(baseUrl);
 
-      // Capture provider metadata so we can store it on save and display it.
-      const usedProvider: string | null = data?.provider || null;
-      const usedModel: string | null = data?.model || null;
-      const usedFallback: boolean = !!data?.fallbackUsed;
-      const usedStrategy: "auto" | "manual" | null = data?.strategy || null;
-      setLastProviderUsed(usedProvider);
-      setLastModelUsed(usedModel);
-      setLastFallbackUsed(usedFallback);
-      setLastStrategyUsed(usedStrategy);
+      setLastProviderUsed(gen.generationProvider);
+      setLastModelUsed(gen.generationModel);
+      setLastFallbackUsed(gen.fallbackUsed);
+      setLastStrategyUsed(gen.strategy);
 
-      if (usedProvider) {
-        console.log(
-          `[ImageGenerator] generated with provider=${usedProvider} model=${usedModel} strategy=${usedStrategy} fallback=${usedFallback}`,
-        );
-        if (usedFallback) {
-          toast({
-            title: "Used fallback generator",
-            description: `Primary generator failed — image was created with ${usedProvider}.`,
-          });
-        }
+      console.log(
+        `[ImageGenerator] generated provider=${gen.generationProvider} model=${gen.generationModel} ` +
+          `strategy=${gen.strategy} fallback=${gen.fallbackUsed} ` +
+          `adapters=${diagnostics.attemptedAdapters.map((a) => a.id).join(",")}`,
+      );
+      if (diagnostics.fallbackTriggered) {
+        toast({
+          title: "Used fallback adapter",
+          description: `Primary adapter failed — image was created via ${gen.generationProvider}.`,
+        });
+      } else if (gen.fallbackUsed) {
+        toast({
+          title: "Used fallback generator",
+          description: `Primary generator failed — image was created with ${gen.generationProvider}.`,
+        });
       }
 
       if (isInlineEditing) {
