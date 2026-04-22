@@ -693,8 +693,9 @@ export default function ImageGenerator({
               isEdit: !!(isInlineEditing && imageUrl) || !!sourceImageUrl,
             }}
             adapters={[
-              { id: "lovable", label: "SDXL (via Lovable)" },
+              { id: "replicate", label: "SDXL (direct Replicate)" },
               { id: "gemini", label: "Gemini (direct)" },
+              { id: "lovable", label: "SDXL (via Lovable)" },
             ]}
             onPick={({ imageUrl: pickedUrl, response }) => {
               setBaseImageUrl(pickedUrl);
