@@ -13,26 +13,11 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
-import { STYLE_CONFIGS } from "@/lib/style-config";
+import { resolveEdgeFnForStyle } from "@/lib/generation-providers/_resolve-edge-fn";
 import type {
   NormalizedGenerationRequest,
   NormalizedGenerationResponse,
 } from "@/lib/generation-types";
-
-/** Resolve the per-style edge function that should handle a styleKey. */
-function resolveEdgeFnForStyle(styleKey: string): string {
-  // STYLE_CONFIGS is keyed by style id and exposes themedEdgeFn / freestyleEdgeFn.
-  // For freestyle variants the styleKey itself encodes "<base>-freestyle".
-  const isFreestyleVariant = styleKey.endsWith("-freestyle");
-  const baseKey = isFreestyleVariant ? styleKey.replace(/-freestyle$/, "") : styleKey;
-  const cfg = (STYLE_CONFIGS as Record<string, any>)[baseKey];
-  if (!cfg) {
-    // Fallback to the universal japanese handler — matches generate-image/index.ts.
-    return "generate-image";
-  }
-  if (isFreestyleVariant && cfg.freestyleEdgeFn) return cfg.freestyleEdgeFn;
-  return cfg.themedEdgeFn || cfg.freestyleEdgeFn || "generate-image";
-}
 
 export async function generateWithLovableAdapter(
   req: NormalizedGenerationRequest,

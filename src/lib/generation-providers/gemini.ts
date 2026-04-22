@@ -14,20 +14,11 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
-import { STYLE_CONFIGS } from "@/lib/style-config";
+import { resolveEdgeFnForStyle } from "@/lib/generation-providers/_resolve-edge-fn";
 import type {
   NormalizedGenerationRequest,
   NormalizedGenerationResponse,
 } from "@/lib/generation-types";
-
-function resolveEdgeFnForStyle(styleKey: string): string {
-  const isFreestyleVariant = styleKey.endsWith("-freestyle");
-  const baseKey = isFreestyleVariant ? styleKey.replace(/-freestyle$/, "") : styleKey;
-  const cfg = (STYLE_CONFIGS as Record<string, any>)[baseKey];
-  if (!cfg) return "generate-image";
-  if (isFreestyleVariant && cfg.freestyleEdgeFn) return cfg.freestyleEdgeFn;
-  return cfg.themedEdgeFn || cfg.freestyleEdgeFn || "generate-image";
-}
 
 export async function generateWithGeminiAdapter(
   req: NormalizedGenerationRequest,
