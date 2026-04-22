@@ -789,6 +789,17 @@ export default function ImageGenerator({
               alt={prompt}
               compareUrl={viewVersion === "compare" && hasEnhanced ? baseImageUrl! : undefined}
             />
+            {lastProviderUsed && (
+              <ResultRouteRow
+                provider={lastProviderUsed}
+                model={lastModelUsed}
+                route={lastExecutionRoute}
+                fallback={lastFallbackUsed}
+                routingReason={lastRoutingReason}
+                prompt={prompt}
+                styleKey={styleConfig.styleKey}
+              />
+            )}
             <div className="flex flex-wrap gap-2 items-center justify-center">
               {hasEnhanced && (
                 <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
