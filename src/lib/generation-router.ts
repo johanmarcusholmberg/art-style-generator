@@ -1,16 +1,21 @@
 /**
- * Generation router (Phase: cost-aware routing + execution route visibility).
+ * Generation router (Phase: direct Replicate + feedback-driven routing).
  *
  * Single frontend entry point for image generation. Resolves the user's
  * provider preference into a concrete adapter chain, runs it, and falls
- * back to the Lovable adapter on failure when (and only when) Auto was
+ * back to the next adapter on failure when (and only when) Auto was
  * selected. Manual selections fail loudly so users can see what broke.
  *
- * Auto routing is deterministic — the picked primary adapter is decided
- * by `decideRoute()` in `src/lib/style-routing.ts` based on style + intent.
+ * Key changes vs. previous phase:
+ *   - "sdxl" preference now hits **direct Replicate first**, falling back
+ *     to the Lovable gateway only on failure.
+ *   - "auto" consults the deterministic style-routing rules AND the local
+ *     👍/👎 feedback signal — providers with consistently bad ratings for
+ *     the current styleKey are deprioritized in the chain.
+ *   - Lovable is the safety net. It is always at the end of an Auto chain
+ *     so we never fail outright when the direct providers misbehave.
  *
- * Downstream code should call `generateImage()` from here instead of
- * invoking edge functions or adapters directly.
+ * All routing remains deterministic and easy to log / debug.
  */
 
 import type { GeneratorPreference } from "@/lib/generators";
@@ -20,9 +25,11 @@ import type {
 } from "@/lib/generation-types";
 import { generateWithLovableAdapter } from "@/lib/generation-providers/lovable";
 import { generateWithGeminiAdapter } from "@/lib/generation-providers/gemini";
+import { generateWithReplicateAdapter } from "@/lib/generation-providers/replicate";
 import { decideRoute, type RouteFamily } from "@/lib/style-routing";
+import { getFeedbackSignal } from "@/hooks/use-image-feedback";
 
-export type AdapterId = "lovable" | "gemini";
+export type AdapterId = "lovable" | "gemini" | "replicate";
 
 interface AdapterRun {
   id: AdapterId;
@@ -32,10 +39,26 @@ interface AdapterRun {
 const ADAPTERS: Record<AdapterId, AdapterRun> = {
   lovable: { id: "lovable", run: generateWithLovableAdapter },
   gemini: { id: "gemini", run: generateWithGeminiAdapter },
+  replicate: { id: "replicate", run: generateWithReplicateAdapter },
 };
 
+/** Provider id used in the feedback store, derived from adapter id. */
+function feedbackProviderForAdapter(id: AdapterId): "gemini" | "sdxl" {
+  return id === "gemini" ? "gemini" : "sdxl";
+}
+
 function adapterForFamily(family: RouteFamily): AdapterRun {
-  return family === "direct_gemini" ? ADAPTERS.gemini : ADAPTERS.lovable;
+  // Prefer the direct adapter for each family; the router below will
+  // append Lovable as a safety-net fallback for Auto.
+  switch (family) {
+    case "direct_gemini":
+      return ADAPTERS.gemini;
+    case "direct_replicate":
+      return ADAPTERS.replicate;
+    case "lovable_sdxl":
+    default:
+      return ADAPTERS.lovable;
+  }
 }
 
 export interface RouterDiagnostics {
@@ -43,17 +66,25 @@ export interface RouterDiagnostics {
   fallbackTriggered: boolean;
   /** Why the router picked the primary adapter (Auto only). */
   routingReason?: string;
+  /** Feedback signal that influenced routing (Auto only). */
+  feedbackOverride?: string;
+}
+
+interface ResolvedChain {
+  chain: AdapterRun[];
+  reason?: string;
+  feedbackOverride?: string;
 }
 
 /**
  * Resolve a user-facing provider preference into an ordered list of adapters
- * to try. Auto consults the deterministic style-routing rules; manual
- * preferences are honored exactly.
+ * to try. Auto consults the deterministic style-routing rules AND local
+ * feedback; manual preferences are honored exactly (no silent switching).
  */
 export function resolveAdapterChain(
   pref: GeneratorPreference,
   req: NormalizedGenerationRequest,
-): { chain: AdapterRun[]; reason?: string } {
+): ResolvedChain {
   // Image edits ALWAYS go through the Lovable adapter — only it has a
   // working image-to-image dispatch today.
   const isEdit = !!req.referenceImageUrl || !!req.isEdit;
@@ -66,11 +97,17 @@ export function resolveAdapterChain(
 
   switch (pref) {
     case "gemini":
-      return { chain: [ADAPTERS.gemini], reason: "manual: gemini" };
+      return { chain: [ADAPTERS.gemini], reason: "manual: gemini (direct)" };
+
     case "sdxl":
-      // SDXL runs through the Lovable adapter (which respects
-      // `providerPreference: "sdxl"` on the backend).
-      return { chain: [ADAPTERS.lovable], reason: "manual: sdxl (via Lovable)" };
+      // SDXL preference now means "direct Replicate first, Lovable as
+      // a safety fallback". This shifts SDXL traffic off Lovable while
+      // keeping a working escape hatch.
+      return {
+        chain: [ADAPTERS.replicate, ADAPTERS.lovable],
+        reason: "manual: sdxl → direct Replicate, fallback Lovable",
+      };
+
     case "auto":
     default: {
       const decision = decideRoute({
@@ -78,41 +115,96 @@ export function resolveAdapterChain(
         isEdit,
         printIntent: !!req.printMode,
       });
-      const primary = adapterForFamily(decision.primary);
-      // Auto fallback chain: if primary is Gemini, fall back to Lovable;
-      // if primary is Lovable, fall back to Gemini (covers SDXL outages).
-      const fallback =
-        primary.id === "gemini" ? ADAPTERS.lovable : ADAPTERS.gemini;
-      return { chain: [primary, fallback], reason: decision.reason };
+      // Build a 3-step chain: primary → secondary direct provider → Lovable safety net.
+      let primary = adapterForFamily(decision.primary);
+      let secondary: AdapterRun =
+        primary.id === "gemini" ? ADAPTERS.replicate : ADAPTERS.gemini;
+      const safetyNet = ADAPTERS.lovable;
+
+      // Feedback-driven re-ordering — deterministic, conservative.
+      // If the primary direct provider is consistently rated 👎 for this
+      // style, swap primary and secondary so we try the other direct
+      // provider first. Lovable always stays last.
+      let feedbackOverride: string | undefined;
+      if (primary.id !== "lovable") {
+        const sig = getFeedbackSignal(
+          req.styleKey,
+          feedbackProviderForAdapter(primary.id),
+        );
+        if (sig.deprioritized) {
+          feedbackOverride =
+            `style=${req.styleKey} primary=${primary.id} ` +
+            `down=${sig.down} up=${sig.up} → swap to ${secondary.id}`;
+          [primary, secondary] = [secondary, primary];
+        }
+      }
+
+      return {
+        chain: [primary, secondary, safetyNet].filter(
+          // De-dup if primary === safetyNet (defensive)
+          (a, i, arr) => arr.findIndex((b) => b.id === a.id) === i,
+        ),
+        reason: decision.reason,
+        feedbackOverride,
+      };
     }
   }
+}
+
+/**
+ * Mark a fallback response with the right execution-route variant so the
+ * UI can show a clear "🔁 fallback via X" badge. Pure transform — never
+ * mutates the original response.
+ */
+function annotateFallback(
+  response: NormalizedGenerationResponse,
+  rescuerId: AdapterId,
+  routingReason?: string,
+): NormalizedGenerationResponse {
+  const route =
+    rescuerId === "gemini"
+      ? "direct_gemini_fallback"
+      : rescuerId === "replicate"
+      ? "direct_replicate_fallback"
+      : "lovable_gateway_fallback";
+  return {
+    ...response,
+    executionRoute: route,
+    fallbackUsed: true,
+    routingReason,
+  };
 }
 
 /**
  * Main entry point. Returns a normalized response plus diagnostics.
  *
  * Routing rules (deterministic):
- *   1. Resolve adapter chain from preference + style.
+ *   1. Resolve adapter chain from preference + style + feedback.
  *   2. Try primary; if it succeeds, return.
  *   3. If preference === "auto" and primary failed, try the next adapter.
- *      The fallback annotates the response with execution_route =
- *      "lovable_gateway_fallback" when Lovable rescued a Gemini failure.
- *   4. If preference is manual, never silently switch — propagate the error.
+ *      The fallback annotates the response with the matching `_fallback`
+ *      execution route so the UI/DB reflects reality.
+ *   4. If preference is manual (gemini), never silently switch.
+ *      For "sdxl", the chain explicitly includes Lovable as a fallback —
+ *      this is documented behavior (manual SDXL ≈ "any SDXL path that works").
  */
 export async function generateImage(
   req: NormalizedGenerationRequest,
 ): Promise<{ response: NormalizedGenerationResponse; diagnostics: RouterDiagnostics }> {
   const pref = req.providerPreference ?? "auto";
-  const { chain: effectiveChain, reason: routingReason } = resolveAdapterChain(
-    pref,
-    req,
-  );
+  const { chain: effectiveChain, reason: routingReason, feedbackOverride } =
+    resolveAdapterChain(pref, req);
   const attempts: RouterDiagnostics["attemptedAdapters"] = [];
 
   console.log(
     `[generation-router] style=${req.styleKey} pref=${pref} ` +
-      `chain=${effectiveChain.map((a) => a.id).join(",")} reason="${routingReason}"`,
+      `chain=${effectiveChain.map((a) => a.id).join(" → ")} ` +
+      `reason="${routingReason}"` +
+      (feedbackOverride ? ` feedbackOverride="${feedbackOverride}"` : ""),
   );
+
+  // For manual "gemini" we explicitly disallow silent fallback.
+  const allowFallback = pref === "auto" || pref === "sdxl";
 
   for (let i = 0; i < effectiveChain.length; i++) {
     const adapter = effectiveChain[i];
@@ -120,20 +212,14 @@ export async function generateImage(
       const response = await adapter.run(req);
       attempts.push({ id: adapter.id, ok: true });
 
-      // If Auto fell back to Lovable after the primary failed, surface that
-      // explicitly in the execution route so the UI/DB reflects reality.
       const fallbackTriggered = i > 0;
-      const finalResponse: NormalizedGenerationResponse = fallbackTriggered
-        ? {
-            ...response,
-            executionRoute: "lovable_gateway_fallback",
-            fallbackUsed: true,
-            routingReason,
-          }
+      const finalResponse = fallbackTriggered
+        ? annotateFallback(response, adapter.id, routingReason)
         : { ...response, routingReason };
 
       console.log(
-        `[generation-router] ✓ adapter=${adapter.id} provider=${response.generationProvider} ` +
+        `[generation-router] ✓ adapter=${adapter.id} ` +
+          `provider=${response.generationProvider} ` +
           `route=${finalResponse.executionRoute} fallback=${fallbackTriggered}`,
       );
 
@@ -143,18 +229,23 @@ export async function generateImage(
           attemptedAdapters: attempts,
           fallbackTriggered,
           routingReason,
+          feedbackOverride,
         },
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       attempts.push({ id: adapter.id, ok: false, error: msg });
-      console.error(`[generation-router] ✗ adapter=${adapter.id} failed: ${msg}`);
-      // Manual selection → fail loudly. Auto → try next adapter.
-      if (pref !== "auto") throw err;
+      console.error(
+        `[generation-router] ✗ adapter=${adapter.id} failed: ${msg}` +
+          (allowFallback && i < effectiveChain.length - 1
+            ? " → trying next adapter"
+            : ""),
+      );
+      if (!allowFallback) throw err;
     }
   }
 
-  // Auto exhausted everything — surface a useful aggregated error.
+  // Auto / sdxl exhausted everything — surface a useful aggregated error.
   const summary = attempts
     .map((a) => `${a.id}:${a.ok ? "ok" : a.error}`)
     .join(" | ");

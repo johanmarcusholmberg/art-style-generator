@@ -37,7 +37,7 @@ export interface ComparisonResultPick {
 interface ProviderComparisonProps {
   request: CompareRequest;
   /** Adapters to race against each other. */
-  adapters: Array<{ id: "lovable" | "gemini"; label: string }>;
+  adapters: Array<{ id: "lovable" | "gemini" | "replicate"; label: string }>;
   onPick: (pick: ComparisonResultPick) => void;
   onClose: () => void;
 }
@@ -69,16 +69,40 @@ export default function ProviderComparison({
     await Promise.all(
       adapters.map(async (a) => {
         try {
-          const { response } = await generateImage({
-            prompt: request.prompt,
-            styleKey: request.styleKey,
-            aspectRatio: request.aspectRatio,
-            backgroundStyle: request.backgroundStyle,
-            printMode: request.printMode,
-            providerPreference: a.id === "gemini" ? "gemini" : "sdxl",
-            referenceImageUrl: request.referenceImageUrl,
-            isEdit: request.isEdit,
-          });
+          // Each comparison slot must hit ONE specific path so the user can
+          // judge per-provider quality. Map adapter id → the right call:
+          //   - "lovable"   → call Lovable adapter directly (the gateway path)
+          //   - "replicate" → router with pref "sdxl" (now → direct Replicate)
+          //   - "gemini"    → router with pref "gemini" (direct Gemini)
+          let response;
+          if (a.id === "lovable") {
+            const { generateWithLovableAdapter } = await import(
+              "@/lib/generation-providers/lovable",
+            );
+            response = await generateWithLovableAdapter({
+              prompt: request.prompt,
+              styleKey: request.styleKey,
+              aspectRatio: request.aspectRatio,
+              backgroundStyle: request.backgroundStyle,
+              printMode: request.printMode,
+              providerPreference: "sdxl",
+              referenceImageUrl: request.referenceImageUrl,
+              isEdit: request.isEdit,
+            });
+          } else {
+            const pref = a.id === "gemini" ? "gemini" : "sdxl";
+            const out = await generateImage({
+              prompt: request.prompt,
+              styleKey: request.styleKey,
+              aspectRatio: request.aspectRatio,
+              backgroundStyle: request.backgroundStyle,
+              printMode: request.printMode,
+              providerPreference: pref,
+              referenceImageUrl: request.referenceImageUrl,
+              isEdit: request.isEdit,
+            });
+            response = out.response;
+          }
           setSlots((prev) => ({ ...prev, [a.id]: { loading: false, response } }));
         } catch (err: any) {
           const msg = err?.message || "Generation failed";
