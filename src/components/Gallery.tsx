@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
   Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
-  FolderPlus, FolderMinus, Printer, ArrowUpCircle, ShoppingBag,
+  FolderPlus, FolderMinus, Printer, ArrowUpCircle, ShoppingBag, Layers,
 } from "lucide-react";
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,7 @@ import { resolveUpscaleRecipe, generatorFamilyFromProvider, type UpscaleRecipe }
 import UpscaleBadge from "@/components/UpscaleBadge";
 import { Progress } from "@/components/ui/progress";
 import EtsyExportDialog from "@/components/EtsyExportDialog";
+import EtsyMockupDialog from "@/components/EtsyMockupDialog";
 
 interface GalleryImage {
   id: string;
@@ -186,6 +187,7 @@ interface LightboxContentProps {
   onPrintExport: (img: GalleryImage) => void;
   printExporting: boolean;
   onEtsyExport: (img: GalleryImage) => void;
+  onEtsyMockup: (img: GalleryImage) => void;
   onUpscale: (img: GalleryImage, mode: UpscaleMode, recipe?: UpscaleRecipe | null) => void;
   upscaling: boolean;
   upscalingStageLabel: string;
@@ -200,6 +202,7 @@ function LightboxContent({
   bgChanging, bgResult, showEdit,
   onPrintExport, printExporting,
   onEtsyExport,
+  onEtsyMockup,
   onUpscale, upscaling, upscalingStageLabel, upscalingProgress, upscalingJobStatus,
   recommendedRecipe,
 }: LightboxContentProps) {
@@ -317,6 +320,15 @@ function LightboxContent({
           >
             <ShoppingBag className="mr-2 h-4 w-4" />
             Export for Etsy
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEtsyMockup(img)}
+            className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+          >
+            <Layers className="mr-2 h-4 w-4" />
+            Etsy Mockups
           </Button>
           {/* Unified Upscale badge — same component used during generation.
               Picking a mode immediately re-runs the upscale on the original
@@ -667,6 +679,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   const [printExporting, setPrintExporting] = useState(false);
   const [etsyExportImage, setEtsyExportImage] = useState<GalleryImage | null>(null);
+  const [mockupImage, setMockupImage] = useState<GalleryImage | null>(null);
   const {
     isRunning: galleryUpscaling,
     upscale: galleryUpscale,
@@ -834,6 +847,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     onPrintExport: handlePrintExport,
     printExporting,
     onEtsyExport: (img: GalleryImage) => setEtsyExportImage(img),
+    onEtsyMockup: (img: GalleryImage) => setMockupImage(img),
     onUpscale: handleGalleryUpscale,
     upscaling: galleryUpscaling,
     upscalingStageLabel: galleryUpscaleStageLabel,
@@ -1051,6 +1065,14 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           null
         }
         sourceLabel={etsyExportImage?.prompt}
+      />
+
+      {/* Etsy mockup preview generator */}
+      <EtsyMockupDialog
+        open={!!mockupImage}
+        onOpenChange={(o) => { if (!o) setMockupImage(null); }}
+        masterUrl={mockupImage ? getExportSourceAssetForImage(mockupImage) : null}
+        sourceLabel={mockupImage?.prompt}
       />
 
       {/* Delete confirmation */}
