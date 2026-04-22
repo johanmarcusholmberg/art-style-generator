@@ -73,19 +73,19 @@ export const GENERATOR_OPTIONS: GeneratorOption[] = [
     id: "auto",
     label: "Auto",
     shortLabel: "Auto",
-    description: "Prefers SDXL for best quality, falls back to Gemini if needed.",
+    description: "Cost-aware routing per style. Tries direct providers first, falls back to Lovable.",
   },
   {
     id: "sdxl",
     label: "SDXL",
     shortLabel: "SDXL",
-    description: "Stable Diffusion XL — premium print-oriented quality.",
+    description: "Stable Diffusion XL — calls Replicate directly, falls back to Lovable on failure.",
   },
   {
     id: "gemini",
     label: "Gemini",
     shortLabel: "Gemini",
-    description: "Google Gemini — fast, strong prompt comprehension, supports edits.",
+    description: "Google Gemini — direct call, supports edits. Never silently falls back.",
   },
 ];
 
