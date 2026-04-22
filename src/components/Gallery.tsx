@@ -833,6 +833,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     showEdit: !!onEditImage,
     onPrintExport: handlePrintExport,
     printExporting,
+    onEtsyExport: (img: GalleryImage) => setEtsyExportImage(img),
     onUpscale: handleGalleryUpscale,
     upscaling: galleryUpscaling,
     upscalingStageLabel: galleryUpscaleStageLabel,
@@ -1030,6 +1031,27 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           </div>
         )
       )}
+
+
+      {/* Etsy export dialog */}
+      <EtsyExportDialog
+        open={!!etsyExportImage}
+        onOpenChange={(o) => { if (!o) setEtsyExportImage(null); }}
+        masterUrl={etsyExportImage ? getExportSourceAssetForImage(etsyExportImage) : null}
+        masterWidth={
+          etsyExportImage?.actual_width_px ??
+          (etsyExportImage as any)?.enhanced_width_px ??
+          (etsyExportImage as any)?.base_width_px ??
+          null
+        }
+        masterHeight={
+          etsyExportImage?.actual_height_px ??
+          (etsyExportImage as any)?.enhanced_height_px ??
+          (etsyExportImage as any)?.base_height_px ??
+          null
+        }
+        sourceLabel={etsyExportImage?.prompt}
+      />
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
