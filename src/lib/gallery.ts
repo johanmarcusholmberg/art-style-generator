@@ -80,6 +80,8 @@ export interface GallerySaveOptions {
   generationModel?: string;
   providerStrategy?: string;
   fallbackUsed?: boolean;
+  /** Phase: cost-aware routing — explains where the image was generated. */
+  executionRoute?: string;
 }
 
 export async function saveToGallery(opts: GallerySaveOptions) {
@@ -133,6 +135,7 @@ export async function saveToGallery(opts: GallerySaveOptions) {
     generation_model: opts.generationModel || null,
     provider_strategy: opts.providerStrategy || null,
     fallback_used: opts.fallbackUsed || false,
+    execution_route: opts.executionRoute || null,
   } as any);
 
   if (dbError) throw dbError;
@@ -256,6 +259,7 @@ export async function replaceInGallery(
       generation_model: opts.generationModel || null,
       provider_strategy: opts.providerStrategy || null,
       fallback_used: opts.fallbackUsed || false,
+      execution_route: opts.executionRoute || null,
     } as any)
     .eq("id", opts.originalId);
 

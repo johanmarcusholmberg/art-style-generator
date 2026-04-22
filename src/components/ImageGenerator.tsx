@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +43,10 @@ import {
   generatorFamilyFromProvider,
   type UpscaleRecipe,
 } from "@/lib/upscale-recipes";
+import RouteBadge from "@/components/RouteBadge";
+import ProviderComparison from "@/components/ProviderComparison";
+import { useImageFeedback } from "@/hooks/use-image-feedback";
+import type { NormalizedGenerationResponse } from "@/lib/generation-types";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -117,6 +121,9 @@ export default function ImageGenerator({
   const [lastModelUsed, setLastModelUsed] = useState<string | null>(null);
   const [lastFallbackUsed, setLastFallbackUsed] = useState<boolean>(false);
   const [lastStrategyUsed, setLastStrategyUsed] = useState<"auto" | "manual" | null>(null);
+  const [lastExecutionRoute, setLastExecutionRoute] = useState<string | null>(null);
+  const [lastRoutingReason, setLastRoutingReason] = useState<string | null>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
   const { toast } = useToast();
 
   // Shared upscale hook
@@ -244,11 +251,13 @@ export default function ImageGenerator({
       setLastModelUsed(gen.generationModel);
       setLastFallbackUsed(gen.fallbackUsed);
       setLastStrategyUsed(gen.strategy);
+      setLastExecutionRoute(gen.executionRoute);
+      setLastRoutingReason(gen.routingReason ?? null);
 
       console.log(
         `[ImageGenerator] generated provider=${gen.generationProvider} model=${gen.generationModel} ` +
-          `strategy=${gen.strategy} fallback=${gen.fallbackUsed} ` +
-          `adapters=${diagnostics.attemptedAdapters.map((a) => a.id).join(",")}`,
+          `route=${gen.executionRoute} strategy=${gen.strategy} fallback=${gen.fallbackUsed} ` +
+          `reason="${gen.routingReason ?? ""}" adapters=${diagnostics.attemptedAdapters.map((a) => a.id).join(",")}`,
       );
       if (diagnostics.fallbackTriggered) {
         toast({
@@ -316,6 +325,7 @@ export default function ImageGenerator({
       generationModel: lastModelUsed || undefined,
       providerStrategy: lastStrategyUsed || undefined,
       fallbackUsed: lastFallbackUsed,
+      executionRoute: lastExecutionRoute || undefined,
     };
   };
 
@@ -636,21 +646,77 @@ export default function ImageGenerator({
           )}
         </div>
 
-        {/* Phase 1: Generator selector (compact badge → popover) */}
+        {/* Generator selector + comparison toggle */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <GeneratorBadge
-            value={generatorPref}
-            onChange={setGeneratorPref}
-            lastUsedProvider={lastProviderUsed}
-            lastFallbackUsed={lastFallbackUsed}
-          />
+          <div className="flex items-center gap-2 flex-wrap">
+            <GeneratorBadge
+              value={generatorPref}
+              onChange={setGeneratorPref}
+              lastUsedProvider={lastProviderUsed}
+              lastFallbackUsed={lastFallbackUsed}
+            />
+            <Button
+              type="button"
+              variant={compareOpen ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCompareOpen((v) => !v)}
+              className="font-display text-[11px] h-7"
+              title="Generate the same prompt on both providers and pick the best result"
+            >
+              <Layers className="h-3 w-3 mr-1" />
+              {compareOpen ? "Hide compare" : "Compare providers"}
+            </Button>
+          </div>
           {lastProviderUsed && (
-            <span className="font-display text-[10px] text-muted-foreground">
-              Last: <span className="text-foreground">{lastProviderUsed}</span>
-              {lastFallbackUsed ? " · fallback" : ""}
-            </span>
+            <RouteBadge
+              provider={lastProviderUsed}
+              model={lastModelUsed}
+              route={lastExecutionRoute}
+              fallback={lastFallbackUsed}
+              variant="full"
+            />
           )}
         </div>
+
+        {compareOpen && (prompt.trim() || isInlineEditing) && (
+          <ProviderComparison
+            request={{
+              prompt: (isInlineEditing ? editPrompt : prompt).trim(),
+              styleKey: styleConfig.styleKey,
+              aspectRatio: effectiveAspectRatio,
+              backgroundStyle,
+              printMode: true,
+              referenceImageUrl:
+                isInlineEditing && imageUrl
+                  ? imageUrl
+                  : sourceImageUrl || undefined,
+              isEdit: !!(isInlineEditing && imageUrl) || !!sourceImageUrl,
+            }}
+            adapters={[
+              { id: "lovable", label: "SDXL (via Lovable)" },
+              { id: "gemini", label: "Gemini (direct)" },
+            ]}
+            onPick={({ imageUrl: pickedUrl, response }) => {
+              setBaseImageUrl(pickedUrl);
+              setImageUrl(pickedUrl);
+              setLastProviderUsed(response.generationProvider);
+              setLastModelUsed(response.generationModel);
+              setLastFallbackUsed(response.fallbackUsed);
+              setLastStrategyUsed(response.strategy);
+              setLastExecutionRoute(response.executionRoute);
+              setLastRoutingReason(response.routingReason ?? null);
+              setSavedToGallery(false);
+              resetUpscale();
+              setEnhancedImageUrl(null);
+              setCompareOpen(false);
+              toast({
+                title: "Result selected",
+                description: `Using ${response.generationProvider.toUpperCase()} via ${response.executionRoute}.`,
+              });
+            }}
+            onClose={() => setCompareOpen(false)}
+          />
+        )}
 
         <Button
           onClick={generate}
@@ -723,6 +789,17 @@ export default function ImageGenerator({
               alt={prompt}
               compareUrl={viewVersion === "compare" && hasEnhanced ? baseImageUrl! : undefined}
             />
+            {lastProviderUsed && (
+              <ResultRouteRow
+                provider={lastProviderUsed}
+                model={lastModelUsed}
+                route={lastExecutionRoute}
+                fallback={lastFallbackUsed}
+                routingReason={lastRoutingReason}
+                prompt={prompt}
+                styleKey={styleConfig.styleKey}
+              />
+            )}
             <div className="flex flex-wrap gap-2 items-center justify-center">
               {hasEnhanced && (
                 <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
@@ -846,6 +923,69 @@ export default function ImageGenerator({
         {!isGenerating && !imageUrl && (
           <p className="font-display text-muted-foreground text-sm">Your artwork will appear here</p>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Inline result-route + feedback row ────────────────────────────────
+interface ResultRouteRowProps {
+  provider: string;
+  model: string | null;
+  route: string | null;
+  fallback: boolean;
+  routingReason: string | null;
+  prompt: string;
+  styleKey: string;
+}
+
+function ResultRouteRow({
+  provider, model, route, fallback, routingReason, prompt, styleKey,
+}: ResultRouteRowProps) {
+  const { rating, setFeedback } = useImageFeedback({
+    prompt, styleKey, provider, route,
+  });
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      <RouteBadge
+        provider={provider}
+        model={model}
+        route={route}
+        fallback={fallback}
+        variant="full"
+      />
+      {routingReason && (
+        <span className="font-display text-[10px] text-muted-foreground italic">
+          {routingReason}
+        </span>
+      )}
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setFeedback("up")}
+          className={cn(
+            "p-1 rounded-sm border transition-colors",
+            rating === "up"
+              ? "bg-primary/15 border-primary/40 text-primary"
+              : "border-border text-muted-foreground hover:bg-muted",
+          )}
+          title="This result is good"
+        >
+          <ThumbsUp className="h-3 w-3" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setFeedback("down")}
+          className={cn(
+            "p-1 rounded-sm border transition-colors",
+            rating === "down"
+              ? "bg-destructive/15 border-destructive/40 text-destructive"
+              : "border-border text-muted-foreground hover:bg-muted",
+          )}
+          title="This result is bad"
+        >
+          <ThumbsDown className="h-3 w-3" />
+        </button>
       </div>
     </div>
   );

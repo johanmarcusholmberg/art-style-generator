@@ -38,11 +38,19 @@ export async function generateWithLovableAdapter(
   if (!data || data.error) throw new Error(data?.error || "Generation failed");
   if (!data.imageUrl) throw new Error("Provider returned no imageUrl");
 
+  // Lovable adapter routes through the Lovable backend resolver, which can
+  // either dispatch to SDXL (Replicate) or Gemini (Lovable AI Gateway).
+  // Either way, the EXTERNAL execution route is "Lovable gateway" — the
+  // backend resolver, not the user, made the provider choice.
+  const provider = data.provider as "sdxl" | "gemini" | undefined;
+  const executionRoute =
+    provider === "sdxl" ? "lovable_gateway_sdxl" : "lovable_gateway";
+
   return {
     imageUrl: data.imageUrl,
     width: data.width,
     height: data.height,
-    generationProvider: data.provider, // "sdxl" | "gemini" — set by backend
+    generationProvider: provider!, // "sdxl" | "gemini" — set by backend
     generationModel: data.model,
     prompt: req.prompt,
     revisedPrompt: data.revisedPrompt,
@@ -50,6 +58,7 @@ export async function generateWithLovableAdapter(
     fallbackUsed: !!data.fallbackUsed,
     strategy: data.strategy ?? "auto",
     attempted: data.attempted,
+    executionRoute,
     metadata: { adapter: "lovable", edgeFn },
   };
 }

@@ -51,6 +51,9 @@ export async function generateWithGeminiAdapter(
     fallbackUsed: false, // manual selection — never auto-falls-back
     strategy: "manual",
     attempted: data.attempted,
+    // Gemini adapter explicitly bypasses the Lovable resolver's choice;
+    // mark this as a "direct" route so the UI can communicate it clearly.
+    executionRoute: "direct_gemini",
     metadata: { adapter: "gemini-direct", edgeFn },
   };
 }

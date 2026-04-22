@@ -13,6 +13,7 @@
  */
 
 import type { GeneratorPreference, ResolvedProviderId } from "./generators";
+import type { ExecutionRoute } from "./style-routing";
 
 // ── Request ──────────────────────────────────────────────────────────────
 
@@ -77,6 +78,15 @@ export interface NormalizedGenerationResponse {
   strategy: "auto" | "manual";
   /** Per-attempt diagnostics (one entry per provider tried). */
   attempted?: Array<{ providerId: GenerationProviderId; ok: boolean; error?: string }>;
+  /**
+   * EXTERNAL execution route — explains to the UI/DB whether the image came
+   * from the Lovable gateway, directly from Gemini, or via a fallback.
+   * MUST be set by the router based on which adapter actually ran. Never
+   * inferred client-side later.
+   */
+  executionRoute: ExecutionRoute;
+  /** Human-readable reason the router chose this route (for diagnostics). */
+  routingReason?: string;
   /** Free-form provider metadata (kept opaque to downstream code). */
   metadata?: Record<string, unknown>;
 }
@@ -95,5 +105,6 @@ export function toGeneratedImageColumns(res: NormalizedGenerationResponse) {
     fallback_used: res.fallbackUsed,
     actual_width_px: res.width ?? null,
     actual_height_px: res.height ?? null,
+    execution_route: res.executionRoute ?? null,
   };
 }

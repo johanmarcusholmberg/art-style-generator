@@ -83,6 +83,7 @@ export type Database = {
           enhanced_storage_path: string | null
           enhanced_width_px: number | null
           enhancement_model: string | null
+          execution_route: string | null
           export_height: number | null
           export_preferred_asset: string | null
           export_ready: boolean | null
@@ -129,6 +130,7 @@ export type Database = {
           enhanced_storage_path?: string | null
           enhanced_width_px?: number | null
           enhancement_model?: string | null
+          execution_route?: string | null
           export_height?: number | null
           export_preferred_asset?: string | null
           export_ready?: boolean | null
@@ -175,6 +177,7 @@ export type Database = {
           enhanced_storage_path?: string | null
           enhanced_width_px?: number | null
           enhancement_model?: string | null
+          execution_route?: string | null
           export_height?: number | null
           export_preferred_asset?: string | null
           export_ready?: boolean | null
