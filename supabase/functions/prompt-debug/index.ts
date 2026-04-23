@@ -11,6 +11,7 @@
 import {
   compilePrompt,
   compilePromptForSDXL,
+  compilePromptForOpenAI,
   corsHeaders,
 } from "../_shared/prompt-compiler.ts";
 import { categoryFor } from "../_shared/prompt-profiles.ts";
@@ -34,6 +35,10 @@ function compile(input: DebugInput) {
     ...opts,
     provider: "sdxl",
   });
+  const openai = compilePromptForOpenAI(input.prompt, input.style, {
+    ...opts,
+    provider: "openai",
+  });
 
   return {
     style: input.style,
@@ -49,6 +54,11 @@ function compile(input: DebugInput) {
       length: sdxl.prompt.length,
       negativeLength: (sdxl.negativePrompt ?? "").length,
       category: sdxl.category,
+    },
+    openai: {
+      prompt: openai.prompt,
+      length: openai.prompt.length,
+      category: openai.category,
     },
   };
 }

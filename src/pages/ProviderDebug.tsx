@@ -22,6 +22,7 @@ interface PromptDebugResult {
     negativeLength: number;
     category: string;
   };
+  openai?: { prompt: string; length: number; category: string };
 }
 
 const DEBUG_STYLE_KEYS = [
@@ -314,7 +315,7 @@ export default function ProviderDebug() {
                 <span className="text-foreground">{promptResult.category}</span>
               </p>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
                     Gemini · {promptResult.gemini.length} chars
@@ -341,6 +342,16 @@ export default function ProviderDebug() {
                     </>
                   )}
                 </div>
+                {promptResult.openai && (
+                  <div className="space-y-1">
+                    <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                      OpenAI · {promptResult.openai.length} chars
+                    </p>
+                    <pre className="bg-muted/50 border border-border rounded-sm p-2 text-[10px] leading-snug whitespace-pre-wrap break-words max-h-80 overflow-y-auto font-mono text-foreground">
+                      {promptResult.openai.prompt}
+                    </pre>
+                  </div>
+                )}
               </div>
             </div>
           )}

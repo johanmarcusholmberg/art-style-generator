@@ -16,7 +16,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
   corsHeaders,
   STYLE_RULES,
-  compilePrompt,
+  compilePromptForOpenAI,
 } from "../_shared/prompt-compiler.ts";
 
 interface Body {
@@ -100,20 +100,25 @@ serve(async (req) => {
       );
     }
 
-    // Use the same natural-language compiled prompt path as Gemini.
-    const compiledPrompt = compilePrompt(trimmedPrompt, styleKey, {
+    // Use the OpenAI-tuned compiler — same canonical prompt as Gemini, plus
+    // a category-aware PROVIDER GUIDANCE tail that locks illustration /
+    // non-photorealism for poster, screen-print, and minimal styles where
+    // gpt-image-1 tends to drift toward photographic output.
+    const compiled = compilePromptForOpenAI(trimmedPrompt, styleKey, {
       aspectRatio,
       backgroundStyle,
       isEdit: false,
       printMode: !!printMode,
+      provider: "openai",
     });
+    const compiledPrompt = compiled.prompt;
 
     const { size, width, height } = openaiSize(aspectRatio);
     const startedAt = Date.now();
 
     console.log(
-      `[direct-openai] style=${styleKey} prompt_len=${compiledPrompt.length} ` +
-        `size=${size} quality=${quality ?? "high"}`,
+      `[direct-openai] style=${styleKey} category=${compiled.category} ` +
+        `prompt_len=${compiledPrompt.length} size=${size} quality=${quality ?? "high"}`,
     );
 
     const res = await fetch("https://api.openai.com/v1/images/generations", {

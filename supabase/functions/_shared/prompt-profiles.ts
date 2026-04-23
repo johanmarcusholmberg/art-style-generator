@@ -9,7 +9,7 @@
  *          the model doesn't drift toward generic photoreal output.
  */
 
-export type ResolvedProviderId = "gemini" | "sdxl";
+export type ResolvedProviderId = "gemini" | "sdxl" | "openai";
 
 export type StyleCategory =
   | "poster_flat"
@@ -505,6 +505,203 @@ export function getSdxlParts(styleKey: string): SdxlPromptParts {
     reinforcement: [...base.reinforcement, ...(override.reinforcement ?? [])],
     composition: [...base.composition, ...(override.composition ?? [])],
     negative: [...base.negative, ...(override.negative ?? [])],
+    category,
+  };
+}
+
+// ── OpenAI (gpt-image-1) profile ────────────────────────────────────────
+//
+// gpt-image-1 follows natural-language instructions well (closer to Gemini
+// than to SDXL) but has a noticeable bias toward photographic / 3D-rendered
+// output for poster, screen-print and minimal styles. It also tends to
+// invent typography unless told not to.
+//
+// We do NOT replace the canonical compiled prompt — we APPEND a short,
+// category-aware "PROVIDER GUIDANCE" tail block. This keeps `STYLE_RULES`
+// as the single source of truth across providers.
+
+interface OpenAIProfile {
+  /** Short positive reinforcement clauses appended after the canonical prompt. */
+  guidance: string[];
+  /** Short prohibitions appended after guidance. Phrased in natural language. */
+  avoid: string[];
+}
+
+export const OPENAI_CATEGORY_PROFILES: Record<StyleCategory, OpenAIProfile> = {
+  poster_flat: {
+    guidance: [
+      "render this as a flat 2D illustration / printed poster — not a photograph and not a 3D render",
+      "keep solid color blocks, hard edges, and bold graphic shapes",
+      "preserve a graphic poster composition with clear figure-ground separation",
+    ],
+    avoid: [
+      "photographic realism, depth of field, bokeh, or cinematic camera lighting",
+      "3D rendering, octane / blender / unreal look, plastic or waxy surfaces",
+      "soft gradients, airbrushing, or smooth digital shading inside color blocks",
+      "any text, letters, words, captions, signatures, or watermarks",
+    ],
+  },
+  minimal: {
+    guidance: [
+      "render this as a minimalist flat illustration — Scandinavian / Swiss poster design",
+      "keep abundant negative space, two to four colors, and precise geometric edges",
+      "no shading, no gradients, no extra decorative detail",
+    ],
+    avoid: [
+      "photographic realism, depth of field, or cinematic lighting",
+      "3D rendering or any rendered-engine look",
+      "complex textures, busy backgrounds, or more than four colors",
+      "any text, letters, words, captions, or signatures",
+    ],
+  },
+  lineart: {
+    guidance: [
+      "render this as a pen-and-ink line illustration on a clean white background",
+      "use only fine black ink lines, hatching, and stippling — strictly monochrome",
+      "no color fills anywhere, no gray fills, no painted shading",
+    ],
+    avoid: [
+      "color of any kind, watercolor washes, or painted fills",
+      "photographic realism, 3D rendering, cartoon or anime styling",
+      "smooth gradient shading or airbrushing",
+      "any text, letters, watermarks, or signatures",
+    ],
+  },
+  painterly: {
+    guidance: [
+      "render this as a traditional-media painted illustration with visible brushwork and pigment texture",
+      "preserve atmospheric depth and natural color blending",
+    ],
+    avoid: [
+      "photographic realism, photo, or 3D / CGI rendered look",
+      "flat vector graphics or sterile digital smoothness",
+      "any text, letters, watermarks, or signatures",
+    ],
+  },
+  photographic_mono: {
+    guidance: [
+      "render this as a high-contrast black-and-white documentary photograph with analog film grain",
+      "keep deep blacks, bright highlights, and a raw gritty aesthetic",
+    ],
+    avoid: [
+      "any color, sepia tinting, or color cast",
+      "vector illustration, cartoon, anime, or 3D rendering",
+      "soft dreamy focus or smooth digital look",
+      "any text, letters, watermarks, or signatures",
+    ],
+  },
+  lo_fi_print: {
+    guidance: [
+      "render this as a screen-printed / risograph poster — visible halftone dots, ink bleed, and slight registration misalignment",
+      "use a limited spot-color palette and bold simplified forms — keep it 2D and printed-looking",
+    ],
+    avoid: [
+      "photographic realism, depth of field, or cinematic camera lighting",
+      "3D rendering or high-fidelity digital smoothness",
+      "smooth digital gradients or airbrushing inside color areas",
+      "any text, letters, words, or watermarks",
+    ],
+  },
+  comic_print: {
+    guidance: [
+      "render this as a vintage printed comic book panel — thick black ink outlines, halftone dot shading, and flat CMYK colors",
+      "keep a 2D printed-comic look, not a smooth digital recolor",
+    ],
+    avoid: [
+      "photographic realism, depth of field, or cinematic lighting",
+      "3D rendering or modern smooth digital coloring",
+      "manga / anime styling",
+      "any speech bubbles, text, letters, sound effects, or watermarks",
+    ],
+  },
+  tattoo_flash: {
+    guidance: [
+      "render this as a traditional American tattoo flash illustration — very thick black outlines and flat solid color fills",
+      "keep the iconic centered flash-sheet composition",
+    ],
+    avoid: [
+      "photographic realism or any rendered-engine look",
+      "soft gradient shading inside shapes or watercolor tattoo styling",
+      "any banner text, lettering, or watermarks",
+    ],
+  },
+  default: {
+    guidance: [
+      "render this as a high-quality illustration with a clear focal subject and strong composition",
+    ],
+    avoid: [
+      "low-quality output, blur, jpeg artifacts",
+      "any text, letters, words, captions, watermarks, or signatures",
+    ],
+  },
+};
+
+/** Per-style fine-grained OpenAI overrides — same merge semantics as SDXL. */
+export const STYLE_OPENAI_OVERRIDES: Record<string, StyleProviderOverride> = {
+  // Ukiyo-e: lock to woodblock, not "anime" or "watercolor".
+  japanese: {
+    reinforcement: [
+      "render as a traditional ukiyo-e woodblock print — flat color blocks, sumi ink outlines, visible wood grain",
+    ],
+    negative: [
+      "anime, manga, modern digital illustration, or photographic realism",
+    ],
+  },
+  freestyle: {
+    reinforcement: [
+      "render as a ukiyo-e woodblock print applied to this subject — flat color blocks and sumi ink outlines",
+    ],
+  },
+  // Pop art: emphasize Ben-Day dots since gpt-image-1 sometimes smooths them
+  popart: {
+    reinforcement: [
+      "explicitly include Ben-Day dot patterns in shadows and backgrounds — visible printed dots, not gradients",
+    ],
+  },
+  "popart-freestyle": {
+    reinforcement: [
+      "explicitly include Ben-Day dot patterns and thick black outlines — comic / pop print look",
+    ],
+  },
+  // Minimalism: harder anchor against decoration
+  minimalism: {
+    reinforcement: [
+      "lock to Scandinavian poster minimalism — at most three colors, abstract simplification of forms",
+    ],
+  },
+  "lineart-minimal": {
+    reinforcement: [
+      "single continuous black line on white, Picasso-style — absolute minimum strokes",
+    ],
+    negative: ["hatching, cross-hatching, shading, multiple line weights"],
+  },
+};
+
+export interface OpenAIPromptParts {
+  guidance: string[];
+  avoid: string[];
+  category: StyleCategory;
+}
+
+/** Resolve final OpenAI parts for a given style key (category + overrides). */
+export function getOpenAIParts(styleKey: string): OpenAIPromptParts {
+  const category = categoryFor(styleKey);
+  const base = OPENAI_CATEGORY_PROFILES[category];
+  const override = STYLE_OPENAI_OVERRIDES[styleKey];
+
+  if (!override) {
+    return { guidance: base.guidance, avoid: base.avoid, category };
+  }
+  if (override.replaceCategory) {
+    return {
+      guidance: override.reinforcement ?? base.guidance,
+      avoid: override.negative ?? base.avoid,
+      category,
+    };
+  }
+  return {
+    guidance: [...base.guidance, ...(override.reinforcement ?? [])],
+    avoid: [...base.avoid, ...(override.negative ?? [])],
     category,
   };
 }

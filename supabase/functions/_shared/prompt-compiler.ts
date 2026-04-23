@@ -416,7 +416,7 @@ export const STYLE_RULES: Record<string, StyleRules> = {
 
 // ── Prompt compiler ──
 
-import { getSdxlParts, type ResolvedProviderId } from "./prompt-profiles.ts";
+import { getSdxlParts, getOpenAIParts, type ResolvedProviderId } from "./prompt-profiles.ts";
 
 export interface CompileOptions {
   aspectRatio?: string;
@@ -641,10 +641,39 @@ export function compilePromptForSDXL(
   };
 }
 
+// ── OpenAI-tuned compiler ──────────────────────────────────────────────
+//
+// gpt-image-1 follows natural-language prompts well, so we reuse the same
+// canonical compiled prompt as Gemini and only APPEND a short
+// category-aware "PROVIDER GUIDANCE" tail. This keeps STYLE_RULES as the
+// single source of truth — providers diverge only in the tail tuning.
+export function compilePromptForOpenAI(
+  userPrompt: string,
+  styleKey: string,
+  options: CompileOptions = {},
+): CompiledPrompt {
+  const base = compilePrompt(userPrompt, styleKey, options);
+  const oa = getOpenAIParts(styleKey);
+
+  const guidance = oa.guidance.length
+    ? `\nPROVIDER GUIDANCE (OpenAI gpt-image-1): ${oa.guidance.join(". ")}.`
+    : "";
+  const avoid = oa.avoid.length
+    ? `\nDO NOT: ${oa.avoid.join(". ")}.`
+    : "";
+
+  return {
+    prompt: [base, guidance, avoid].filter(Boolean).join("\n"),
+    provider: "openai",
+    category: oa.category,
+  };
+}
+
 /**
  * Provider-aware entry point.
- * - For Gemini: returns the existing rich descriptive prompt (string in `.prompt`).
- * - For SDXL: returns front-loaded constraint prompt + dedicated negative.
+ * - Gemini: rich descriptive natural-language prompt.
+ * - SDXL:   front-loaded constraint prompt + dedicated negative.
+ * - OpenAI: canonical prompt + category-aware PROVIDER GUIDANCE tail.
  */
 export function compilePromptForProvider(
   userPrompt: string,
@@ -654,6 +683,9 @@ export function compilePromptForProvider(
   const provider: ResolvedProviderId = options.provider ?? "gemini";
   if (provider === "sdxl") {
     return compilePromptForSDXL(userPrompt, styleKey, options);
+  }
+  if (provider === "openai") {
+    return compilePromptForOpenAI(userPrompt, styleKey, options);
   }
   return {
     prompt: compilePrompt(userPrompt, styleKey, options),
