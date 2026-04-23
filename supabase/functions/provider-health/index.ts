@@ -10,7 +10,7 @@ import { generateWithGemini, generateWithSDXL, ProviderError } from "../_shared/
  */
 
 interface HealthRow {
-  providerId: "gemini" | "sdxl";
+  providerId: "gemini" | "sdxl" | "openai";
   modelId: string;
   status: "ready" | "missing-key" | "connection-failed" | "model-unavailable" | "unknown";
   message: string;
@@ -19,7 +19,7 @@ interface HealthRow {
   testedAt: string;
 }
 
-function quickStatus(providerId: "gemini" | "sdxl"): HealthRow {
+function quickStatus(providerId: "gemini" | "sdxl" | "openai"): HealthRow {
   const testedAt = new Date().toISOString();
   if (providerId === "gemini") {
     const key = Deno.env.get("LOVABLE_API_KEY");
@@ -27,15 +27,90 @@ function quickStatus(providerId: "gemini" | "sdxl"): HealthRow {
       ? { providerId, modelId: "google/gemini-3-pro-image-preview", status: "ready", message: "LOVABLE_API_KEY present", testedAt }
       : { providerId, modelId: "google/gemini-3-pro-image-preview", status: "missing-key", message: "LOVABLE_API_KEY not configured", testedAt };
   }
+  if (providerId === "openai") {
+    const key = Deno.env.get("OPENAI_API_KEY");
+    return key
+      ? { providerId, modelId: "gpt-image-1", status: "ready", message: "OPENAI_API_KEY present (direct, no Lovable credits)", testedAt }
+      : { providerId, modelId: "gpt-image-1", status: "missing-key", message: "OPENAI_API_KEY not configured", testedAt };
+  }
   const key = Deno.env.get("REPLICATE_API_TOKEN");
   return key
     ? { providerId, modelId: "stability-ai/sdxl", status: "ready", message: "REPLICATE_API_TOKEN present", testedAt }
     : { providerId, modelId: "stability-ai/sdxl", status: "missing-key", message: "REPLICATE_API_TOKEN not configured", testedAt };
 }
 
-async function liveTest(providerId: "gemini" | "sdxl"): Promise<HealthRow> {
+async function liveTest(providerId: "gemini" | "sdxl" | "openai"): Promise<HealthRow> {
   const testedAt = new Date().toISOString();
   const start = Date.now();
+
+  // OpenAI live test: a tiny direct call to keep token usage minimal.
+  // We don't want to wire OpenAI into the shared `runWithResolver` because
+  // the resolver only knows Gemini + SDXL — keeping OpenAI's transport
+  // isolated is intentional (matches the per-adapter file structure).
+  if (providerId === "openai") {
+    const key = Deno.env.get("OPENAI_API_KEY");
+    if (!key) {
+      return {
+        providerId,
+        modelId: "gpt-image-1",
+        status: "missing-key",
+        message: "OPENAI_API_KEY not configured",
+        testedAt,
+      };
+    }
+    try {
+      const res = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-image-1",
+          prompt: "a single red apple on a plain white background, minimalist",
+          size: "1024x1024",
+          n: 1,
+          quality: "low",
+        }),
+      });
+      const latencyMs = Date.now() - start;
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        return {
+          providerId,
+          modelId: "gpt-image-1",
+          status: res.status === 401 ? "missing-key" : "connection-failed",
+          message: `OpenAI ${res.status}: ${text.slice(0, 160)}`,
+          latencyMs,
+          testedAt,
+        };
+      }
+      const json = await res.json();
+      const item = Array.isArray(json?.data) ? json.data[0] : null;
+      const sampleImageUrl = item?.b64_json
+        ? `data:image/png;base64,${item.b64_json}`
+        : item?.url;
+      return {
+        providerId,
+        modelId: "gpt-image-1",
+        status: "ready",
+        message: "Live test succeeded",
+        latencyMs,
+        sampleImageUrl,
+        testedAt,
+      };
+    } catch (err) {
+      return {
+        providerId,
+        modelId: "gpt-image-1",
+        status: "connection-failed",
+        message: err instanceof Error ? err.message : String(err),
+        latencyMs: Date.now() - start,
+        testedAt,
+      };
+    }
+  }
+
   const args = {
     userPrompt: "a single red apple on a plain white background, minimalist",
     styleKey: "minimalism",
