@@ -188,6 +188,8 @@ function annotateFallback(
       ? "direct_gemini_fallback"
       : rescuerId === "replicate"
       ? "direct_replicate_fallback"
+      : rescuerId === "openai"
+      ? "direct_openai_fallback"
       : "lovable_gateway_fallback";
   return {
     ...response,
