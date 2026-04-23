@@ -31,6 +31,7 @@ interface RouteBadgeProps {
 const PROVIDER_LABELS: Record<string, string> = {
   sdxl: "SDXL",
   gemini: "Gemini",
+  openai: "OpenAI",
 };
 
 const KIND_STYLES: Record<

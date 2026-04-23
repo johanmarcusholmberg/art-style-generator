@@ -61,10 +61,12 @@ export default function ProviderDebug() {
   const [results, setResults] = useState<Record<ResolvedProviderId, HealthRow | null>>({
     sdxl: null,
     gemini: null,
+    openai: null,
   });
   const [running, setRunning] = useState<Record<ResolvedProviderId, boolean>>({
     sdxl: false,
     gemini: false,
+    openai: false,
   });
   const [loadingQuick, setLoadingQuick] = useState(true);
 
@@ -154,7 +156,7 @@ export default function ProviderDebug() {
     );
   };
 
-  const providers: ResolvedProviderId[] = ["sdxl", "gemini"];
+  const providers: ResolvedProviderId[] = ["sdxl", "gemini", "openai"];
 
   return (
     <div className="min-h-screen bg-background paper-texture">
