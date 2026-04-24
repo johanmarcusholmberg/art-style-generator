@@ -39,6 +39,9 @@ import {
   getReprocessSourceAssetForImage,
   getPrintReadiness,
 } from "@/lib/image-assets";
+import { describeExportSource } from "@/lib/asset-selection";
+import AssetStatusBadges from "@/components/AssetStatusBadges";
+import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { useUpscale } from "@/hooks/use-upscale";
 import { UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
@@ -246,6 +249,41 @@ function LightboxContent({
           </span>
         </div>
 
+        {/* Lifecycle status: Base / Enhanced / Print-ready / Exported */}
+        <AssetStatusBadges
+          image={img}
+          enhancementStatus={
+            upscaling
+              ? "enhancing"
+              : img.enhanced
+                ? "done"
+                : "idle"
+          }
+        />
+
+        {/* Export source notice — surfaces "enhanced master" vs "base only" */}
+        {(() => {
+          const exportInfo = describeExportSource(img);
+          if (exportInfo.source === "missing") return null;
+          return (
+            <p
+              className={cn(
+                "font-display text-[11px]",
+                exportInfo.source === "enhanced"
+                  ? "text-primary"
+                  : "text-muted-foreground italic",
+              )}
+            >
+              {exportInfo.label}
+              {exportInfo.recommendation && (
+                <span className="block text-muted-foreground not-italic">
+                  {exportInfo.recommendation}
+                </span>
+              )}
+            </p>
+          );
+        })()}
+
         {/* Print quality indicator — always visible when image has dimensions */}
         {img.actual_width_px && img.actual_height_px && (
           <PrintQualityIndicator
@@ -343,21 +381,36 @@ function LightboxContent({
             <Layers className="mr-2 h-4 w-4" />
             Etsy Mockups
           </Button>
-          {/* Unified Upscale badge — same component used during generation.
-              Picking a mode immediately re-runs the upscale on the original
-              base asset (never on the already-upscaled derivative). */}
-          <UpscaleBadge
-            value={(img.upscale_mode as UpscaleMode) || "none"}
-            onChange={() => { /* no-op — badge runs on pick */ }}
-            surface="gallery"
-            onRun={(m, recipe) => onUpscale(img, m, recipe ?? null)}
-            isRunning={upscaling}
-            stageLabel={upscalingStageLabel}
-            progress={upscalingProgress}
-            jobStatus={upscalingJobStatus}
-            appliedMode={(img.upscale_mode as UpscaleMode) || null}
+          {/* Enhance / Re-enhance — explicit confirmation dialog with method,
+              expected output, and cost label. Re-enhance always reprocesses
+              from the original/base asset (never an upscaled derivative). */}
+          <EnhanceForPrintDialog
+            hasEnhanced={!!img.enhanced}
+            sourceWidth={img.actual_width_px ?? null}
+            sourceHeight={img.actual_height_px ?? null}
             recommendedRecipe={recommendedRecipe}
-            compact
+            disabled={upscaling}
+            onConfirm={(m, recipe) => onUpscale(img, m, recipe ?? null)}
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={upscaling}
+                className={cn(
+                  "font-display text-xs",
+                  img.enhanced
+                    ? "border-border"
+                    : "border-primary/40 text-primary hover:bg-primary/10",
+                )}
+              >
+                {upscaling ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-2 h-4 w-4" />
+                )}
+                {img.enhanced ? "Re-enhance" : "Enhance for print"}
+              </Button>
+            }
           />
           {img.upscale_applied && currentModeLabel && (
             <Badge variant="outline" className="font-display text-xs text-primary border-primary/30">

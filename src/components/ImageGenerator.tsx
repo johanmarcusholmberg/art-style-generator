@@ -1,6 +1,9 @@
 import { useState, useRef, useMemo } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle } from "lucide-react";
+import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
+import AssetStatusBadges from "@/components/AssetStatusBadges";
+import { describeExportSource } from "@/lib/asset-selection";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,7 +36,8 @@ import {
   type UpscaleMode,
 } from "@/lib/upscale-modes";
 import GeneratorBadge from "@/components/GeneratorBadge";
-import UpscaleBadge from "@/components/UpscaleBadge";
+// UpscaleBadge removed from generator — replaced by EnhanceForPrintDialog
+// (kept in Gallery for the lightbox).
 import {
   type GeneratorPreference,
   loadGeneratorPreference,
@@ -279,10 +283,9 @@ export default function ImageGenerator({
 
       setLoading(false);
 
-      // Auto-upscale if a real mode is selected
-      if (upscaleMode !== "none") {
-        runUpscale(upscaleMode, savedGalleryIdRef.current);
-      }
+      // COST-CONTROL RULE: do NOT auto-upscale.
+      // Enhancement is always user-triggered via the "Enhance for print"
+      // dialog so the user explicitly approves the cost.
     } catch (err: any) {
       const desc = err?.message || "Something went wrong";
       // If user manually picked a provider that failed, surface the explicit message
@@ -528,26 +531,9 @@ export default function ImageGenerator({
           );
         })()}
 
-        {/* Upscale Mode — unified badge (Phase 2). Replaces old chip selector
-            AND the manual upscale button row below. Same component is reused
-            on the Gallery lightbox. */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <UpscaleBadge
-            value={upscaleMode}
-            onChange={setUpscaleMode}
-            surface="automatic"
-            isRunning={isUpscaling}
-            stageLabel={upscaleStageLabel}
-            progress={upscaleProgress}
-            jobStatus={upscaleJobStatus}
-            appliedMode={hasEnhanced ? upscaleMode : null}
-            disabled={loading}
-            recommendedRecipe={recommendedRecipe}
-          />
-          <span className="font-display text-[10px] text-muted-foreground">
-            {upscaleConfig.intendedUse}
-          </span>
-        </div>
+        {/* Cost-control note: enhancement is never automatic. The
+            "Enhance for print" button appears next to the generated image
+            once it's available (see action row below). */}
 
         {/* Generation Mode Toggle */}
         <div>
@@ -802,6 +788,52 @@ export default function ImageGenerator({
                 styleKey={styleConfig.styleKey}
               />
             )}
+
+            {/* Status badges + export source notice */}
+            {(() => {
+              const fakeImg = {
+                publicUrl: baseImageUrl || imageUrl,
+                enhancedUrl: enhancedImageUrl,
+                masterUrl: enhancedImageUrl || baseImageUrl || imageUrl,
+                enhanced_storage_path: enhancedImageUrl ? "ephemeral" : null,
+                upscale_mode: enhancedImageUrl ? upscaleMode : null,
+                print_format_id:
+                  generationMode === "print-ready" ? selectedPrintFormat.id : null,
+              };
+              const exportInfo = describeExportSource(fakeImg);
+              return (
+                <div className="flex flex-col items-center gap-1.5">
+                  <AssetStatusBadges
+                    image={fakeImg}
+                    enhancementStatus={
+                      isUpscaling
+                        ? upscaleStage === "saving"
+                          ? "saving"
+                          : "enhancing"
+                        : hasEnhanced
+                          ? "done"
+                          : "idle"
+                    }
+                  />
+                  {generationMode === "print-ready" && (
+                    <p
+                      className={cn(
+                        "font-display text-[11px] flex items-center gap-1",
+                        exportInfo.source === "enhanced"
+                          ? "text-primary"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {exportInfo.source === "base" && (
+                        <AlertTriangle className="h-3 w-3 text-orange-500" />
+                      )}
+                      {exportInfo.label}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="flex flex-wrap gap-2 items-center justify-center">
               {hasEnhanced && (
                 <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
@@ -833,29 +865,39 @@ export default function ImageGenerator({
                   )}
                 </Button>
               )}
-              {/* Manual Upscale — unified UpscaleBadge. Picking a mode here
-                  immediately re-runs the upscale on the original/base image. */}
+              {/* Enhance for print — explicit, user-triggered, with cost confirmation.
+                  Replaces the old auto-upscale + manual UpscaleBadge flow.
+                  When an enhanced master exists, the dialog title becomes "Re-enhance"
+                  so re-spending budget is always opt-in. */}
               {canManualUpscale && (
-                <UpscaleBadge
-                  value={upscaleMode}
-                  onChange={setUpscaleMode}
-                  surface="manual"
-                  onRun={(m, recipe) =>
+                <EnhanceForPrintDialog
+                  hasEnhanced={!!hasEnhanced}
+                  recommendedRecipe={recommendedRecipe}
+                  disabled={isUpscaling}
+                  onConfirm={(m, recipe) =>
                     runUpscale(m, savedGalleryIdRef.current, recipe ?? null)
                   }
-                  isRunning={isUpscaling}
-                  stageLabel={upscaleStageLabel}
-                  progress={upscaleProgress}
-                  jobStatus={upscaleJobStatus}
-                  appliedMode={hasEnhanced ? upscaleMode : null}
-                  recommendedRecipe={recommendedRecipe}
-                  compact
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isUpscaling}
+                      className={cn(
+                        "font-display text-xs tracking-wider",
+                        hasEnhanced
+                          ? "border-border"
+                          : "border-primary/40 text-primary hover:bg-primary/10",
+                      )}
+                    >
+                      {isUpscaling ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <ArrowUpCircle className="mr-2 h-4 w-4" />
+                      )}
+                      {hasEnhanced ? "Re-enhance" : "Enhance for print"}
+                    </Button>
+                  }
                 />
-              )}
-              {hasEnhanced && (
-                <span className="text-xs text-primary flex items-center gap-1 font-display">
-                  <Sparkles className="h-3 w-3" /> Upscaled
-                </span>
               )}
               {!savedToGallery && isEditMode && originalImageId && (
                 <Button variant="outline" size="sm" onClick={handleReplaceOriginal} disabled={replacing || saving}
