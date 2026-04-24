@@ -94,15 +94,22 @@ export default function ProviderDebug() {
   const [promptSubject, setPromptSubject] = useState<string>(
     "A lone fisherman in a small boat at sunset",
   );
+  const [strictness, setStrictness] = useState<Strictness>(
+    () => loadStrictness() ?? "strict",
+  );
   const [promptResult, setPromptResult] = useState<PromptDebugResult | null>(null);
   const [comparingPrompt, setComparingPrompt] = useState(false);
 
-  const comparePrompts = async () => {
+  const comparePrompts = async (overrides?: { strictness?: Strictness; style?: string }) => {
     setComparingPrompt(true);
     try {
       const { data, error } = await supabase.functions.invoke("prompt-debug", {
         method: "POST",
-        body: { style: promptStyle, prompt: promptSubject },
+        body: {
+          style: overrides?.style ?? promptStyle,
+          prompt: promptSubject,
+          strictness: overrides?.strictness ?? strictness,
+        },
       });
       if (error) throw error;
       setPromptResult(data as PromptDebugResult);
@@ -114,6 +121,16 @@ export default function ProviderDebug() {
       });
     } finally {
       setComparingPrompt(false);
+    }
+  };
+
+  const handleStrictnessChange = (value: string) => {
+    const next = value as Strictness;
+    setStrictness(next);
+    saveStrictness(next);
+    if (promptResult) {
+      // Refresh comparison automatically if we already have output
+      void comparePrompts({ strictness: next });
     }
   };
 
