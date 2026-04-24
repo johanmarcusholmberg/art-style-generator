@@ -23,6 +23,8 @@ export type SizeIntent = "preview" | "standard" | "print";
 /** Coarse intent for quality vs. speed (provider decides params). */
 export type QualityIntent = "fast" | "balanced" | "premium";
 
+export type Strictness = "balanced" | "strict" | "very_strict";
+
 export interface NormalizedGenerationRequest {
   /** Free-text user prompt — never include style boilerplate here. */
   prompt: string;
@@ -44,6 +46,8 @@ export interface NormalizedGenerationRequest {
   referenceImageUrl?: string;
   /** True when this is an image edit (forces image-capable provider). */
   isEdit?: boolean;
+  /** Style strictness — drives SDXL anchor repetition + negative boost. */
+  strictness?: Strictness;
 }
 
 // ── Response ─────────────────────────────────────────────────────────────
