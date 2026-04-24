@@ -12,6 +12,8 @@ import {
   STRICTNESS_OPTIONS,
   DRIFT_RISK_LABEL,
   DRIFT_RISK_CLASS,
+  loadStrictness,
+  saveStrictness,
   type Strictness,
   type DriftRisk,
 } from "@/lib/style-strictness";
@@ -92,15 +94,22 @@ export default function ProviderDebug() {
   const [promptSubject, setPromptSubject] = useState<string>(
     "A lone fisherman in a small boat at sunset",
   );
+  const [strictness, setStrictness] = useState<Strictness>(
+    () => loadStrictness() ?? "strict",
+  );
   const [promptResult, setPromptResult] = useState<PromptDebugResult | null>(null);
   const [comparingPrompt, setComparingPrompt] = useState(false);
 
-  const comparePrompts = async () => {
+  const comparePrompts = async (overrides?: { strictness?: Strictness; style?: string }) => {
     setComparingPrompt(true);
     try {
       const { data, error } = await supabase.functions.invoke("prompt-debug", {
         method: "POST",
-        body: { style: promptStyle, prompt: promptSubject },
+        body: {
+          style: overrides?.style ?? promptStyle,
+          prompt: promptSubject,
+          strictness: overrides?.strictness ?? strictness,
+        },
       });
       if (error) throw error;
       setPromptResult(data as PromptDebugResult);
@@ -112,6 +121,16 @@ export default function ProviderDebug() {
       });
     } finally {
       setComparingPrompt(false);
+    }
+  };
+
+  const handleStrictnessChange = (value: string) => {
+    const next = value as Strictness;
+    setStrictness(next);
+    saveStrictness(next);
+    if (promptResult) {
+      // Refresh comparison automatically if we already have output
+      void comparePrompts({ strictness: next });
     }
   };
 
@@ -170,6 +189,56 @@ export default function ProviderDebug() {
       <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border text-[11px] font-display", m.cls)}>
         <Icon className="h-3 w-3" /> {m.label}
       </span>
+    );
+  };
+
+  const DriftBadge = ({ risk }: { risk: DriftRisk }) => (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border text-[10px] font-display",
+        DRIFT_RISK_CLASS[risk],
+      )}
+    >
+      {DRIFT_RISK_LABEL[risk]}
+    </span>
+  );
+
+  const ValidationList = ({
+    report,
+  }: {
+    report: ValidationReport | undefined;
+  }) => {
+    if (!report || report.issues.length === 0) {
+      return (
+        <p className="font-display text-[10px] text-primary/80 flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3" /> Validation passed
+        </p>
+      );
+    }
+    return (
+      <ul className="space-y-1">
+        {report.issues.map((issue, i) => {
+          const isError = issue.level === "error";
+          return (
+            <li
+              key={i}
+              className={cn(
+                "flex items-start gap-1 text-[10px] font-display border rounded-sm px-1.5 py-1",
+                isError
+                  ? "bg-destructive/10 border-destructive/40 text-destructive"
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-500",
+              )}
+            >
+              {isError ? (
+                <XCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              ) : (
+                <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              )}
+              <span className="break-words">{issue.message}</span>
+            </li>
+          );
+        })}
+      </ul>
     );
   };
 
@@ -289,7 +358,7 @@ export default function ProviderDebug() {
             Gemini gets the rich descriptive prompt.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[200px,1fr,auto] gap-2 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-[180px,160px,1fr,auto] gap-2 items-start">
             <Select value={promptStyle} onValueChange={setPromptStyle}>
               <SelectTrigger className="font-display text-xs">
                 <SelectValue placeholder="Style" />
@@ -298,6 +367,21 @@ export default function ProviderDebug() {
                 {DEBUG_STYLE_KEYS.map((s) => (
                   <SelectItem key={s} value={s} className="font-display text-xs">
                     {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={strictness} onValueChange={handleStrictnessChange}>
+              <SelectTrigger className="font-display text-xs">
+                <SelectValue placeholder="Strictness" />
+              </SelectTrigger>
+              <SelectContent>
+                {STRICTNESS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.id} value={opt.id} className="font-display text-xs">
+                    <div className="flex flex-col">
+                      <span>{opt.label}</span>
+                      <span className="text-[10px] text-muted-foreground">{opt.description}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -311,7 +395,7 @@ export default function ProviderDebug() {
             />
             <Button
               size="sm"
-              onClick={comparePrompts}
+              onClick={() => comparePrompts()}
               disabled={comparingPrompt || !promptSubject.trim()}
               className="font-display text-xs"
             >
@@ -328,22 +412,30 @@ export default function ProviderDebug() {
             <div className="space-y-3 pt-2 border-t border-border">
               <p className="font-display text-[11px] text-muted-foreground">
                 Style: <span className="text-foreground">{promptResult.style}</span> · Category:{" "}
-                <span className="text-foreground">{promptResult.category}</span>
+                <span className="text-foreground">{promptResult.category}</span> · Strictness:{" "}
+                <span className="text-foreground">{strictness}</span>
               </p>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Gemini · {promptResult.gemini.length} chars
-                  </p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Gemini · {promptResult.gemini.length} chars
+                    </p>
+                    <DriftBadge risk={promptResult.gemini.driftRisk} />
+                  </div>
                   <pre className="bg-muted/50 border border-border rounded-sm p-2 text-[10px] leading-snug whitespace-pre-wrap break-words max-h-80 overflow-y-auto font-mono text-foreground">
                     {promptResult.gemini.prompt}
                   </pre>
+                  <ValidationList report={promptResult.gemini.validation} />
                 </div>
-                <div className="space-y-1">
-                  <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                    SDXL · {promptResult.sdxl.length} chars
-                  </p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                      SDXL · {promptResult.sdxl.length} chars
+                    </p>
+                    <DriftBadge risk={promptResult.sdxl.driftRisk} />
+                  </div>
                   <pre className="bg-muted/50 border border-border rounded-sm p-2 text-[10px] leading-snug whitespace-pre-wrap break-words max-h-80 overflow-y-auto font-mono text-foreground">
                     {promptResult.sdxl.prompt}
                   </pre>
@@ -357,15 +449,20 @@ export default function ProviderDebug() {
                       </pre>
                     </>
                   )}
+                  <ValidationList report={promptResult.sdxl.validation} />
                 </div>
                 {promptResult.openai && (
-                  <div className="space-y-1">
-                    <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                      OpenAI · {promptResult.openai.length} chars
-                    </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                        OpenAI · {promptResult.openai.length} chars
+                      </p>
+                      <DriftBadge risk={promptResult.openai.driftRisk} />
+                    </div>
                     <pre className="bg-muted/50 border border-border rounded-sm p-2 text-[10px] leading-snug whitespace-pre-wrap break-words max-h-80 overflow-y-auto font-mono text-foreground">
                       {promptResult.openai.prompt}
                     </pre>
+                    <ValidationList report={promptResult.openai.validation} />
                   </div>
                 )}
               </div>
