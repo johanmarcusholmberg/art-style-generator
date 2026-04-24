@@ -249,6 +249,41 @@ function LightboxContent({
           </span>
         </div>
 
+        {/* Lifecycle status: Base / Enhanced / Print-ready / Exported */}
+        <AssetStatusBadges
+          image={img}
+          enhancementStatus={
+            upscaling
+              ? "enhancing"
+              : img.enhanced
+                ? "done"
+                : "idle"
+          }
+        />
+
+        {/* Export source notice — surfaces "enhanced master" vs "base only" */}
+        {(() => {
+          const exportInfo = describeExportSource(img);
+          if (exportInfo.source === "missing") return null;
+          return (
+            <p
+              className={cn(
+                "font-display text-[11px]",
+                exportInfo.source === "enhanced"
+                  ? "text-primary"
+                  : "text-muted-foreground italic",
+              )}
+            >
+              {exportInfo.label}
+              {exportInfo.recommendation && (
+                <span className="block text-muted-foreground not-italic">
+                  {exportInfo.recommendation}
+                </span>
+              )}
+            </p>
+          );
+        })()}
+
         {/* Print quality indicator — always visible when image has dimensions */}
         {img.actual_width_px && img.actual_height_px && (
           <PrintQualityIndicator
