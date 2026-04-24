@@ -1,6 +1,9 @@
 import { useState, useRef, useMemo } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle } from "lucide-react";
+import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
+import AssetStatusBadges from "@/components/AssetStatusBadges";
+import { describeExportSource } from "@/lib/asset-selection";
 import {
   AlertDialog,
   AlertDialogAction,
