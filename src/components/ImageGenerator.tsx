@@ -530,26 +530,9 @@ export default function ImageGenerator({
           );
         })()}
 
-        {/* Upscale Mode — unified badge (Phase 2). Replaces old chip selector
-            AND the manual upscale button row below. Same component is reused
-            on the Gallery lightbox. */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <UpscaleBadge
-            value={upscaleMode}
-            onChange={setUpscaleMode}
-            surface="automatic"
-            isRunning={isUpscaling}
-            stageLabel={upscaleStageLabel}
-            progress={upscaleProgress}
-            jobStatus={upscaleJobStatus}
-            appliedMode={hasEnhanced ? upscaleMode : null}
-            disabled={loading}
-            recommendedRecipe={recommendedRecipe}
-          />
-          <span className="font-display text-[10px] text-muted-foreground">
-            {upscaleConfig.intendedUse}
-          </span>
-        </div>
+        {/* Cost-control note: enhancement is never automatic. The
+            "Enhance for print" button appears next to the generated image
+            once it's available (see action row below). */}
 
         {/* Generation Mode Toggle */}
         <div>
