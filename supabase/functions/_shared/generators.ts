@@ -6,6 +6,12 @@
  */
 
 import { compilePrompt, compilePromptForSDXL } from "./prompt-compiler.ts";
+import {
+  defaultStrictnessFor,
+  validateCompiledPrompt,
+  type Strictness,
+} from "./style-meta.ts";
+import { STYLE_RULES } from "./prompt-compiler.ts";
 
 export type ResolvedProviderId = "gemini" | "sdxl";
 export type GeneratorPreference = "auto" | ResolvedProviderId;
@@ -27,6 +33,8 @@ export interface GenerateArgs {
   printMode?: boolean;
   isEdit?: boolean;
   sourceImageUrl?: string;
+  /** Optional style strictness — defaults per-style + per-provider. */
+  strictness?: Strictness;
 }
 
 /** Map our supported aspect ratios to SDXL-friendly target sizes (longest side ~1024). */
