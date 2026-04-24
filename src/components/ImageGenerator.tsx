@@ -240,6 +240,15 @@ export default function ImageGenerator({
         isInlineEditing && imageUrl ? imageUrl : sourceImageUrl || undefined;
 
       const { generateImage } = await import("@/lib/generation-router");
+      // Resolve effective strictness from the Style Control Panel.
+      // For "auto" we use the sdxl entry because the router's auto chain
+      // tries SDXL first; manual selections use their own provider entry.
+      const strictnessProvider: StrictnessProviderId =
+        generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId);
+      const effectiveStrictness = getDefaultStrictness({
+        styleKey: styleConfig.styleKey,
+        provider: strictnessProvider,
+      });
       const { response: gen, diagnostics } = await generateImage({
         prompt: activePrompt.trim(),
         styleKey: styleConfig.styleKey,
@@ -249,6 +258,7 @@ export default function ImageGenerator({
         providerPreference: generatorPref,
         referenceImageUrl,
         isEdit: !!referenceImageUrl,
+        strictness: effectiveStrictness,
       });
 
       const baseUrl = gen.imageUrl;
