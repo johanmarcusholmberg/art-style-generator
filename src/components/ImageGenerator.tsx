@@ -655,6 +655,16 @@ export default function ImageGenerator({
               lastUsedProvider={lastProviderUsed}
               lastFallbackUsed={lastFallbackUsed}
             />
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
+              title="Configure per-style defaults at /style-control-panel"
+            >
+              Strictness: {getDefaultStrictness({
+                styleKey: styleConfig.styleKey,
+                provider: generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId),
+              })}
+              <span className="text-foreground/60">· auto from panel</span>
+            </span>
             <Button
               type="button"
               variant={compareOpen ? "default" : "outline"}
