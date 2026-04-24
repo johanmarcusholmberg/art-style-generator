@@ -192,6 +192,56 @@ export default function ProviderDebug() {
     );
   };
 
+  const DriftBadge = ({ risk }: { risk: DriftRisk }) => (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border text-[10px] font-display",
+        DRIFT_RISK_CLASS[risk],
+      )}
+    >
+      {DRIFT_RISK_LABEL[risk]}
+    </span>
+  );
+
+  const ValidationList = ({
+    report,
+  }: {
+    report: ValidationReport | undefined;
+  }) => {
+    if (!report || report.issues.length === 0) {
+      return (
+        <p className="font-display text-[10px] text-primary/80 flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3" /> Validation passed
+        </p>
+      );
+    }
+    return (
+      <ul className="space-y-1">
+        {report.issues.map((issue, i) => {
+          const isError = issue.level === "error";
+          return (
+            <li
+              key={i}
+              className={cn(
+                "flex items-start gap-1 text-[10px] font-display border rounded-sm px-1.5 py-1",
+                isError
+                  ? "bg-destructive/10 border-destructive/40 text-destructive"
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-500",
+              )}
+            >
+              {isError ? (
+                <XCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              ) : (
+                <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              )}
+              <span className="break-words">{issue.message}</span>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  };
+
   const providers: ResolvedProviderId[] = ["sdxl", "gemini", "openai"];
 
   return (
