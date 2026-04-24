@@ -14,6 +14,7 @@ import {
   DRIFT_RISK_CLASS,
   loadStrictness,
   saveStrictness,
+  getDefaultStrictness,
   type Strictness,
   type DriftRisk,
 } from "@/lib/style-strictness";
@@ -95,7 +96,11 @@ export default function ProviderDebug() {
     "A lone fisherman in a small boat at sunset",
   );
   const [strictness, setStrictness] = useState<Strictness>(
-    () => loadStrictness() ?? "strict",
+    () =>
+      loadStrictness() ??
+      // Fall back to the Style Control Panel default for this style + SDXL
+      // (debug page primarily inspects SDXL prompts).
+      getDefaultStrictness({ styleKey: "popart", provider: "sdxl" }),
   );
   const [promptResult, setPromptResult] = useState<PromptDebugResult | null>(null);
   const [comparingPrompt, setComparingPrompt] = useState(false);

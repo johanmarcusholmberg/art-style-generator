@@ -55,6 +55,87 @@ export function saveStrictness(s: Strictness) {
   } catch { /* ignore */ }
 }
 
+// ── Per-style / per-provider defaults (Style Control Panel) ──────────────
+//
+// Personal-use control panel persistence lives in localStorage so it
+// survives browser sessions, distinct from the ephemeral `loadStrictness`
+// override above. Reuses the existing `Strictness` type — no new values.
+
+export type ProviderId = "gemini" | "sdxl" | "openai";
+
+const DEFAULTS_STORAGE_KEY = "style-strictness-defaults";
+
+function isStrictness(v: unknown): v is Strictness {
+  return v === "balanced" || v === "strict" || v === "very_strict";
+}
+
+/** Shape: { [styleKey]: { [providerId]: Strictness } } */
+export type StrictnessDefaultsMap = Partial<
+  Record<string, Partial<Record<ProviderId, Strictness>>>
+>;
+
+export function loadStrictnessDefaults(): StrictnessDefaultsMap {
+  try {
+    const raw = localStorage.getItem(DEFAULTS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: StrictnessDefaultsMap = {};
+    for (const [styleKey, perProvider] of Object.entries(parsed)) {
+      if (!perProvider || typeof perProvider !== "object") continue;
+      const cell: Partial<Record<ProviderId, Strictness>> = {};
+      for (const p of ["gemini", "sdxl", "openai"] as ProviderId[]) {
+        const v = (perProvider as Record<string, unknown>)[p];
+        if (isStrictness(v)) cell[p] = v;
+      }
+      out[styleKey] = cell;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export function saveStrictnessDefaults(map: StrictnessDefaultsMap) {
+  try {
+    localStorage.setItem(DEFAULTS_STORAGE_KEY, JSON.stringify(map));
+  } catch { /* ignore */ }
+}
+
+export function setStrictnessDefault(
+  styleKey: string,
+  provider: ProviderId,
+  value: Strictness | undefined,
+) {
+  const map = loadStrictnessDefaults();
+  const cell = { ...(map[styleKey] ?? {}) };
+  if (value === undefined) delete cell[provider];
+  else cell[provider] = value;
+  if (Object.keys(cell).length === 0) delete map[styleKey];
+  else map[styleKey] = cell;
+  saveStrictnessDefaults(map);
+}
+
+/**
+ * Resolve the effective default strictness for a (style, provider) pair.
+ *
+ * Priority:
+ *   1. Style Control Panel override for this exact (style, provider).
+ *   2. Per-provider default (`defaultStrictnessFor`) — existing behavior.
+ *
+ * Note: this does NOT consult the ProviderDebug `loadStrictness()` override
+ * — that is a separate manual control intentionally scoped to the debug UI.
+ */
+export function getDefaultStrictness(input: {
+  styleKey: string;
+  provider: ProviderId;
+}): Strictness {
+  const map = loadStrictnessDefaults();
+  const override = map[input.styleKey]?.[input.provider];
+  if (override) return override;
+  return defaultStrictnessFor(input.provider);
+}
+
 export type DriftRisk = "low" | "medium" | "high";
 
 export const DRIFT_RISK_LABEL: Record<DriftRisk, string> = {

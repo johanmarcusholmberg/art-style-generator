@@ -51,6 +51,10 @@ import RouteBadge from "@/components/RouteBadge";
 import ProviderComparison from "@/components/ProviderComparison";
 import { useImageFeedback } from "@/hooks/use-image-feedback";
 import type { NormalizedGenerationResponse } from "@/lib/generation-types";
+import {
+  getDefaultStrictness,
+  type ProviderId as StrictnessProviderId,
+} from "@/lib/style-strictness";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -236,6 +240,15 @@ export default function ImageGenerator({
         isInlineEditing && imageUrl ? imageUrl : sourceImageUrl || undefined;
 
       const { generateImage } = await import("@/lib/generation-router");
+      // Resolve effective strictness from the Style Control Panel.
+      // For "auto" we use the sdxl entry because the router's auto chain
+      // tries SDXL first; manual selections use their own provider entry.
+      const strictnessProvider: StrictnessProviderId =
+        generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId);
+      const effectiveStrictness = getDefaultStrictness({
+        styleKey: styleConfig.styleKey,
+        provider: strictnessProvider,
+      });
       const { response: gen, diagnostics } = await generateImage({
         prompt: activePrompt.trim(),
         styleKey: styleConfig.styleKey,
@@ -245,6 +258,7 @@ export default function ImageGenerator({
         providerPreference: generatorPref,
         referenceImageUrl,
         isEdit: !!referenceImageUrl,
+        strictness: effectiveStrictness,
       });
 
       const baseUrl = gen.imageUrl;
@@ -641,6 +655,16 @@ export default function ImageGenerator({
               lastUsedProvider={lastProviderUsed}
               lastFallbackUsed={lastFallbackUsed}
             />
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
+              title="Configure per-style defaults at /style-control-panel"
+            >
+              Strictness: {getDefaultStrictness({
+                styleKey: styleConfig.styleKey,
+                provider: generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId),
+              })}
+              <span className="text-foreground/60">· auto from panel</span>
+            </span>
             <Button
               type="button"
               variant={compareOpen ? "default" : "outline"}

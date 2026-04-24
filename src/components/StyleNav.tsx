@@ -35,6 +35,7 @@ const navItems: StyleNavItem[] = [
   { to: "/blend", emoji: "✨", label: "Blend", category: "Tools" },
   { to: "/compare", emoji: "🔀", label: "Compare", category: "Tools" },
   { to: "/batch", emoji: "⚡", label: "Batch", category: "Tools" },
+  { to: "/style-control-panel", emoji: "🎚️", label: "Strictness", category: "Tools" },
 ];
 
 interface StyleNavProps {

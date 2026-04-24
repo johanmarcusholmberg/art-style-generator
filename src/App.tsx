@@ -24,6 +24,7 @@ import StyleCompare from "./pages/StyleCompare";
 import BatchStudio from "./pages/BatchStudio";
 import NotFound from "./pages/NotFound";
 import ProviderDebug from "./pages/ProviderDebug";
+import StyleControlPanel from "./pages/StyleControlPanel";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/compare" element={<StyleCompare />} />
             <Route path="/batch" element={<BatchStudio />} />
             <Route path="/debug/providers" element={<ProviderDebug />} />
+            <Route path="/style-control-panel" element={<StyleControlPanel />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
