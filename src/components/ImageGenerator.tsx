@@ -51,6 +51,10 @@ import RouteBadge from "@/components/RouteBadge";
 import ProviderComparison from "@/components/ProviderComparison";
 import { useImageFeedback } from "@/hooks/use-image-feedback";
 import type { NormalizedGenerationResponse } from "@/lib/generation-types";
+import {
+  getDefaultStrictness,
+  type ProviderId as StrictnessProviderId,
+} from "@/lib/style-strictness";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
