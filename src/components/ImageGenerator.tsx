@@ -787,6 +787,52 @@ export default function ImageGenerator({
                 styleKey={styleConfig.styleKey}
               />
             )}
+
+            {/* Status badges + export source notice */}
+            {(() => {
+              const fakeImg = {
+                publicUrl: baseImageUrl || imageUrl,
+                enhancedUrl: enhancedImageUrl,
+                masterUrl: enhancedImageUrl || baseImageUrl || imageUrl,
+                enhanced_storage_path: enhancedImageUrl ? "ephemeral" : null,
+                upscale_mode: enhancedImageUrl ? upscaleMode : null,
+                print_format_id:
+                  generationMode === "print-ready" ? selectedPrintFormat.id : null,
+              };
+              const exportInfo = describeExportSource(fakeImg);
+              return (
+                <div className="flex flex-col items-center gap-1.5">
+                  <AssetStatusBadges
+                    image={fakeImg}
+                    enhancementStatus={
+                      isUpscaling
+                        ? upscaleStage === "saving"
+                          ? "saving"
+                          : "enhancing"
+                        : hasEnhanced
+                          ? "done"
+                          : "idle"
+                    }
+                  />
+                  {generationMode === "print-ready" && (
+                    <p
+                      className={cn(
+                        "font-display text-[11px] flex items-center gap-1",
+                        exportInfo.source === "enhanced"
+                          ? "text-primary"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {exportInfo.source === "base" && (
+                        <AlertTriangle className="h-3 w-3 text-orange-500" />
+                      )}
+                      {exportInfo.label}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="flex flex-wrap gap-2 items-center justify-center">
               {hasEnhanced && (
                 <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
@@ -818,29 +864,39 @@ export default function ImageGenerator({
                   )}
                 </Button>
               )}
-              {/* Manual Upscale — unified UpscaleBadge. Picking a mode here
-                  immediately re-runs the upscale on the original/base image. */}
+              {/* Enhance for print — explicit, user-triggered, with cost confirmation.
+                  Replaces the old auto-upscale + manual UpscaleBadge flow.
+                  When an enhanced master exists, the dialog title becomes "Re-enhance"
+                  so re-spending budget is always opt-in. */}
               {canManualUpscale && (
-                <UpscaleBadge
-                  value={upscaleMode}
-                  onChange={setUpscaleMode}
-                  surface="manual"
-                  onRun={(m, recipe) =>
+                <EnhanceForPrintDialog
+                  hasEnhanced={!!hasEnhanced}
+                  recommendedRecipe={recommendedRecipe}
+                  disabled={isUpscaling}
+                  onConfirm={(m, recipe) =>
                     runUpscale(m, savedGalleryIdRef.current, recipe ?? null)
                   }
-                  isRunning={isUpscaling}
-                  stageLabel={upscaleStageLabel}
-                  progress={upscaleProgress}
-                  jobStatus={upscaleJobStatus}
-                  appliedMode={hasEnhanced ? upscaleMode : null}
-                  recommendedRecipe={recommendedRecipe}
-                  compact
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isUpscaling}
+                      className={cn(
+                        "font-display text-xs tracking-wider",
+                        hasEnhanced
+                          ? "border-border"
+                          : "border-primary/40 text-primary hover:bg-primary/10",
+                      )}
+                    >
+                      {isUpscaling ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <ArrowUpCircle className="mr-2 h-4 w-4" />
+                      )}
+                      {hasEnhanced ? "Re-enhance" : "Enhance for print"}
+                    </Button>
+                  }
                 />
-              )}
-              {hasEnhanced && (
-                <span className="text-xs text-primary flex items-center gap-1 font-display">
-                  <Sparkles className="h-3 w-3" /> Upscaled
-                </span>
               )}
               {!savedToGallery && isEditMode && originalImageId && (
                 <Button variant="outline" size="sm" onClick={handleReplaceOriginal} disabled={replacing || saving}
