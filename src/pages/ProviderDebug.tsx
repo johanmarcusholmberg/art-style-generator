@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Play, CheckCircle2, XCircle, KeyRound, FileText } from "lucide-react";
+import { Loader2, Play, CheckCircle2, XCircle, KeyRound, FileText, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,21 +8,37 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import StyleNav from "@/components/StyleNav";
 import { GENERATOR_PROVIDERS, type ResolvedProviderId } from "@/lib/generators";
+import {
+  STRICTNESS_OPTIONS,
+  DRIFT_RISK_LABEL,
+  DRIFT_RISK_CLASS,
+  type Strictness,
+  type DriftRisk,
+} from "@/lib/style-strictness";
 import { cn } from "@/lib/utils";
+
+interface ValidationIssue { level: "error" | "warning"; message: string }
+interface ValidationReport { ok: boolean; issues: ValidationIssue[] }
+
+interface ProviderPromptBlock {
+  prompt: string;
+  length: number;
+  strictness: Strictness;
+  driftRisk: DriftRisk;
+  validation: ValidationReport;
+  category?: string;
+  negativePrompt?: string;
+  negativeLength?: number;
+}
 
 interface PromptDebugResult {
   style: string;
   subject: string;
   category: string;
-  gemini: { prompt: string; length: number };
-  sdxl: {
-    prompt: string;
-    negativePrompt?: string;
-    length: number;
-    negativeLength: number;
-    category: string;
-  };
-  openai?: { prompt: string; length: number; category: string };
+  displayName: string;
+  gemini: ProviderPromptBlock;
+  sdxl: ProviderPromptBlock;
+  openai: ProviderPromptBlock;
 }
 
 const DEBUG_STYLE_KEYS = [
