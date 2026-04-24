@@ -44,6 +44,7 @@ serve(async (req) => {
       printMode,
       sourceImageUrl,
       generatorPreference,
+      strictness,
     } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
@@ -72,6 +73,13 @@ serve(async (req) => {
       );
     }
 
+    const validStrictness =
+      strictness === "balanced" ||
+      strictness === "strict" ||
+      strictness === "very_strict"
+        ? strictness
+        : undefined;
+
     const pref =
       generatorPreference === "sdxl" ||
       generatorPreference === "gemini" ||
@@ -92,6 +100,7 @@ serve(async (req) => {
         printMode: !!printMode,
         isEdit,
         sourceImageUrl,
+        strictness: validStrictness,
       });
 
       console.log(
