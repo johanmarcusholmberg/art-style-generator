@@ -31,6 +31,7 @@ export async function generateWithLovableAdapter(
     printMode: req.printMode ?? true,
     generatorPreference: req.providerPreference ?? "auto",
   };
+  if (req.strictness) body.strictness = req.strictness;
   if (req.referenceImageUrl) body.sourceImageUrl = req.referenceImageUrl;
 
   const { data, error } = await supabase.functions.invoke(edgeFn, { body });

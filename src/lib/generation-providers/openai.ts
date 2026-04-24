@@ -36,6 +36,7 @@ export async function generateWithOpenAIAdapter(
     backgroundStyle: req.backgroundStyle,
     printMode: req.printMode ?? true,
   };
+  if (req.strictness) body.strictness = req.strictness;
 
   const { data, error } = await supabase.functions.invoke(
     "generate-image-direct-openai",
