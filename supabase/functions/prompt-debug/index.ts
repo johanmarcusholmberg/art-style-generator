@@ -1,10 +1,10 @@
 /**
  * Provider-aware prompt inspection endpoint.
  *
- * GET  /prompt-debug?style=popart&prompt=A%20cat
- *   → returns Gemini + SDXL compiled prompts for the given style/subject.
+ * GET  /prompt-debug?style=popart&prompt=A%20cat&strictness=strict
+ *   → returns Gemini + SDXL + OpenAI compiled prompts for the given style/subject.
  *
- * POST { style, prompt, aspectRatio?, backgroundStyle?, printMode? }
+ * POST { style, prompt, aspectRatio?, backgroundStyle?, printMode?, strictness? }
  *   → same, with full options support.
  */
 
@@ -13,8 +13,16 @@ import {
   compilePromptForSDXL,
   compilePromptForOpenAI,
   corsHeaders,
+  STYLE_RULES,
 } from "../_shared/prompt-compiler.ts";
 import { categoryFor } from "../_shared/prompt-profiles.ts";
+import {
+  defaultStrictnessFor,
+  estimateDriftRisk,
+  getStyleMeta,
+  validateCompiledPrompt,
+  type Strictness,
+} from "../_shared/style-meta.ts";
 
 interface DebugInput {
   style: string;
@@ -22,6 +30,7 @@ interface DebugInput {
   aspectRatio?: string;
   backgroundStyle?: string;
   printMode?: boolean;
+  strictness?: Strictness;
 }
 
 function compile(input: DebugInput) {
@@ -30,23 +39,65 @@ function compile(input: DebugInput) {
     backgroundStyle: input.backgroundStyle,
     printMode: !!input.printMode,
   };
+  const meta = getStyleMeta(input.style);
+  const rules = STYLE_RULES[input.style];
+
+  const sdxlStrictness: Strictness =
+    input.strictness ?? defaultStrictnessFor(input.style, "sdxl");
+  const geminiStrictness: Strictness =
+    input.strictness ?? defaultStrictnessFor(input.style, "gemini");
+  const openaiStrictness: Strictness =
+    input.strictness ?? defaultStrictnessFor(input.style, "openai");
+
   const gemini = compilePrompt(input.prompt, input.style, opts);
   const sdxl = compilePromptForSDXL(input.prompt, input.style, {
     ...opts,
     provider: "sdxl",
+    strictness: sdxlStrictness,
   });
   const openai = compilePromptForOpenAI(input.prompt, input.style, {
     ...opts,
     provider: "openai",
+    strictness: openaiStrictness,
+  });
+
+  const mustHaves = (rules?.styleAnchors.length ?? 0) + (rules?.styleRules.length ?? 0);
+  const avoids = (rules?.avoidRules.length ?? 0) + (rules?.blockedTraits?.length ?? 0);
+
+  const sdxlValidation = validateCompiledPrompt({
+    styleKey: input.style,
+    provider: "sdxl",
+    prompt: sdxl.prompt,
+    negativePrompt: sdxl.negativePrompt,
+    styleMustHavesCount: mustHaves,
+    styleAvoidCount: avoids,
+  });
+  const geminiValidation = validateCompiledPrompt({
+    styleKey: input.style,
+    provider: "gemini",
+    prompt: gemini,
+    styleMustHavesCount: mustHaves,
+    styleAvoidCount: avoids,
+  });
+  const openaiValidation = validateCompiledPrompt({
+    styleKey: input.style,
+    provider: "openai",
+    prompt: openai.prompt,
+    styleMustHavesCount: mustHaves,
+    styleAvoidCount: avoids,
   });
 
   return {
     style: input.style,
     subject: input.prompt,
     category: categoryFor(input.style),
+    displayName: meta.displayName,
     gemini: {
       prompt: gemini,
       length: gemini.length,
+      strictness: geminiStrictness,
+      driftRisk: estimateDriftRisk(input.style, "gemini", geminiStrictness),
+      validation: geminiValidation,
     },
     sdxl: {
       prompt: sdxl.prompt,
@@ -54,13 +105,24 @@ function compile(input: DebugInput) {
       length: sdxl.prompt.length,
       negativeLength: (sdxl.negativePrompt ?? "").length,
       category: sdxl.category,
+      strictness: sdxlStrictness,
+      driftRisk: estimateDriftRisk(input.style, "sdxl", sdxlStrictness),
+      validation: sdxlValidation,
     },
     openai: {
       prompt: openai.prompt,
       length: openai.prompt.length,
       category: openai.category,
+      strictness: openaiStrictness,
+      driftRisk: estimateDriftRisk(input.style, "openai", openaiStrictness),
+      validation: openaiValidation,
     },
   };
+}
+
+function asStrictness(v: string | null | undefined): Strictness | undefined {
+  if (v === "balanced" || v === "strict" || v === "very_strict") return v;
+  return undefined;
 }
 
 Deno.serve(async (req) => {
@@ -83,6 +145,7 @@ Deno.serve(async (req) => {
         aspectRatio: url.searchParams.get("aspectRatio") ?? undefined,
         backgroundStyle: url.searchParams.get("backgroundStyle") ?? undefined,
         printMode: url.searchParams.get("printMode") === "true",
+        strictness: asStrictness(url.searchParams.get("strictness")),
       };
     } else {
       const body = await req.json().catch(() => ({}));
@@ -92,6 +155,7 @@ Deno.serve(async (req) => {
         aspectRatio: body.aspectRatio,
         backgroundStyle: body.backgroundStyle,
         printMode: !!body.printMode,
+        strictness: asStrictness(body.strictness),
       };
     }
 
