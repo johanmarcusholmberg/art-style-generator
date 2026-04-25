@@ -155,6 +155,9 @@ export default function ImageGenerator({
   //                            so the model bakes typography into the art.
   const [posterTemplateId, setPosterTemplateId] = useState<PosterTemplateId>("fika");
   const [posterTextMode, setPosterTextMode] = useState<PosterTextMode>("composer");
+  // STRICT: safe-area is OFF by default and must be explicitly enabled —
+  // never auto-enabled by template selection.
+  const [posterSafeAreaEnabled, setPosterSafeAreaEnabled] = useState(false);
   const [composerTitle, setComposerTitle] = useState("");
   const [composerSubtitle, setComposerSubtitle] = useState("");
   const [composerDescription, setComposerDescription] = useState("");
@@ -291,11 +294,13 @@ export default function ImageGenerator({
       // Optional poster-composer hint — additive only. Appended to the
       // user prompt so the existing prompt compiler is untouched.
       //
-      // - composer mode: ask the model to leave a clean empty band so the
-      //   composer can lay text on top later. Composer text fields are NOT
-      //   sent to the generator.
-      // - generated mode: surface the requested title/subtitle to the
-      //   model so it bakes typography into the artwork.
+      // STRICT rules (must match Poster Composer behaviour):
+      //   - composer mode: only emit a "leave clean empty space" hint when
+      //     the user has BOTH enabled the safe area AND entered some text.
+      //     Composer text fields are NEVER sent to the generator.
+      //   - generated mode: only emit "include this text" when the user
+      //     typed a title/subtitle. Safe area is irrelevant here.
+      //   - otherwise: no hint, no layout reservation, full artwork.
       const ingredientsList = composerIngredientsRaw
         .split("\n")
         .map((s) => s.trim())
@@ -305,11 +310,12 @@ export default function ImageGenerator({
         !!composerSubtitle.trim() ||
         !!composerDescription.trim() ||
         ingredientsList.length > 0;
+      const shouldReserveTextArea =
+        posterTextMode === "composer" &&
+        posterSafeAreaEnabled &&
+        hasComposerText;
       let posterHint = "";
-      if (posterTextMode === "composer") {
-        // Always reserve a clean band when composer mode is active so the
-        // model produces poster-friendly artwork even if the user hasn't
-        // typed any text yet.
+      if (shouldReserveTextArea) {
         posterHint =
           "Leave clean empty space at the bottom of the image for later text layout, with minimal details in that area.";
       } else if (posterTextMode === "generated" && hasComposerText) {
@@ -899,6 +905,30 @@ export default function ImageGenerator({
                 </label>
               </div>
             </div>
+            {/* Safe text area — strictly OFF by default. Only when this is
+                ON *and* text is entered does the generator receive a
+                "leave clean empty space" hint. Composer mode without this
+                toggle generates a full-bleed image. */}
+            {posterTextMode === "composer" && (
+              <div className="flex items-start gap-2 rounded-sm border border-border bg-card/40 px-2 py-1.5">
+                <Switch
+                  checked={posterSafeAreaEnabled}
+                  onCheckedChange={setPosterSafeAreaEnabled}
+                />
+                <div className="flex flex-col">
+                  <span className="font-display text-xs text-foreground">
+                    Safe text area (for poster layout)
+                  </span>
+                  <span className="font-display text-[10px] text-muted-foreground">
+                    {posterSafeAreaEnabled
+                      ? (composerTitle || composerSubtitle || composerDescription || composerIngredientsRaw
+                          ? "Generator will leave a clean empty band at the bottom for text."
+                          : "Enabled, but no poster text yet — generation is unaffected until text is added.")
+                      : "Off — image uses the full canvas. Toggle on to reserve a band for typography."}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
                 Poster text

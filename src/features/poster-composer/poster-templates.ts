@@ -60,10 +60,12 @@ export const POSTER_TEMPLATES: Record<PosterTemplateId, PosterTemplate> = {
       "Image-only — no text overlay. Use this when the artwork speaks for itself.",
     defaultText: {},
     defaultLayout: {
+      // Templates MUST NOT auto-enable the safe area. The user explicitly
+      // toggles it from the generator or composer UI.
       safeAreaEnabled: false,
       safeAreaPosition: "bottom",
-      safeAreaHeightRatio: 0,
-      safeAreaBackground: "#ffffff",
+      safeAreaHeightRatio: 0.25,
+      backgroundColor: "#ffffff",
     },
     layout: { imageArea: 1, textArea: 0 },
     typography: {
@@ -91,10 +93,10 @@ export const POSTER_TEMPLATES: Record<PosterTemplateId, PosterTemplate> = {
       description: "Coffee, something sweet, and a pause in the day.",
     },
     defaultLayout: {
-      safeAreaEnabled: true,
+      safeAreaEnabled: false,
       safeAreaPosition: "bottom",
       safeAreaHeightRatio: 0.3,
-      safeAreaBackground: "#fdfaf3",
+      backgroundColor: "#fdfaf3",
     },
     layout: { imageArea: 0.7, textArea: 0.3 },
     typography: {
@@ -127,10 +129,10 @@ export const POSTER_TEMPLATES: Record<PosterTemplateId, PosterTemplate> = {
       ],
     },
     defaultLayout: {
-      safeAreaEnabled: true,
+      safeAreaEnabled: false,
       safeAreaPosition: "bottom",
       safeAreaHeightRatio: 0.22,
-      safeAreaBackground: "#f5f1e8",
+      backgroundColor: "#f5f1e8",
     },
     layout: { imageArea: 0.78, textArea: 0.22 },
     typography: {

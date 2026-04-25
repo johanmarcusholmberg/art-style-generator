@@ -28,6 +28,26 @@ import type {
   PosterTextMode,
 } from "./poster-types";
 
+// ── Surface background (single source of truth) ──────────────────────────
+
+const FALLBACK_POSTER_BACKGROUND = "#f5efe4";
+
+/**
+ * Resolve THE poster surface colour — used for the outer frame, margins,
+ * the safe-area band, and the export canvas. Order of precedence:
+ *   1. `state.layout.backgroundColor` (user-edited)
+ *   2. `state.layout.safeAreaBackground` (legacy field)
+ *   3. template default `defaultLayout.backgroundColor`
+ *   4. global fallback
+ */
+export function resolvePosterSurfaceBackground(state: PosterState): string {
+  const layout = state.layout;
+  if (layout.backgroundColor) return layout.backgroundColor;
+  if (layout.safeAreaBackground) return layout.safeAreaBackground;
+  const tpl = getPosterTemplate(state.templateId);
+  return tpl.defaultLayout.backgroundColor ?? FALLBACK_POSTER_BACKGROUND;
+}
+
 // ── Geometry ─────────────────────────────────────────────────────────────
 
 export interface SafeAreaRect {
@@ -56,19 +76,32 @@ export function getSafeArea(
 
 // ── Prompt-hint builder (additive only) ──────────────────────────────────
 
+/** True when ANY non-empty text field is present on the poster. */
+export function hasPosterText(text: PosterTextContent | undefined): boolean {
+  if (!text) return false;
+  return Boolean(
+    text.title?.trim() ||
+      text.subtitle?.trim() ||
+      text.description?.trim() ||
+      text.ingredients?.some((i) => i.trim()),
+  );
+}
+
 /**
  * Build an optional text snippet to APPEND to the user's prompt before it
  * is sent to the existing generation pipeline. Never mutates the compiler.
  *
- *   - composer mode + safe area → ask the model to leave clean empty space
- *   - generated mode            → keep the existing text-in-image behavior:
- *                                 echo title/subtitle into the prompt as
- *                                 "include the words …" so it survives
- *                                 the prompt compiler unchanged.
+ * STRICT rules (no accidental layout artifacts):
+ *   - composer mode → only emit the "leave clean empty space" hint when
+ *     the user has BOTH enabled the safe area AND entered some text.
+ *   - generated mode → only emit the "include this text" hint when the
+ *     user typed a title/subtitle. The safe area is irrelevant here.
+ *   - otherwise → return "" so the generator runs untouched.
  */
 export function buildPromptHint(state: PosterState): string {
   if (state.textMode === "composer") {
     if (!state.layout.safeAreaEnabled) return "";
+    if (!hasPosterText(state.text)) return "";
     const where = state.layout.safeAreaPosition;
     return `Leave clean empty space at the ${where} of the image for later text layout, with minimal details in that area.`;
   }
@@ -93,8 +126,9 @@ function drawTextOverlay({ ctx, state, rect, scale }: OverlayRenderOptions) {
   const tpl = getPosterTemplate(state.templateId);
   const t = tpl.typography;
 
-  // Background band
-  ctx.fillStyle = state.layout.safeAreaBackground ?? t.titleColor === "#111111" ? "#ffffff" : (state.layout.safeAreaBackground ?? "#ffffff");
+  // Background band — uses the unified poster surface colour so the band
+  // is visually identical to the outer frame / margins.
+  ctx.fillStyle = resolvePosterSurfaceBackground(state);
   ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
 
   const padX = Math.round(rect.width * 0.06);
@@ -225,12 +259,16 @@ export async function exportPoster(
   const format = getPrintFormat(printFormatId);
   if (!format) throw new Error(`Unknown print format: ${printFormatId}`);
 
+  const surfaceColor = resolvePosterSurfaceBackground(state);
+
   // 1. Reuse existing print export to get the high-res normalized artwork.
+  //    The surface colour is also used as pad colour so any letterboxing
+  //    matches the poster background visually.
   const base = await preparePrintExport({
     imageUrl: state.imageUrl,
     printFormatId,
     ratioMethod: "pad",
-    padColor: state.layout.safeAreaBackground ?? "#ffffff",
+    padColor: surfaceColor,
     mimeType: "image/png",
   });
 

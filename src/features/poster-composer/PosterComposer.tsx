@@ -32,6 +32,7 @@ import {
   exportPoster,
   downloadPrintExport,
   usePosterComposer,
+  resolvePosterSurfaceBackground,
 } from "./usePosterComposer";
 import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "./poster-templates";
 import type {
@@ -118,13 +119,17 @@ export default function PosterComposer({
   const generatedNotice =
     state.textMode === "generated" && hasAnyText && !overlayInGenerated;
 
-  // Whether the in-preview overlay should be drawn. Composer mode draws
-  // when safe area is enabled. Generated mode only draws if the user
-  // explicitly opted into the duplicate-text overlay.
+  // STRICT render rule — text overlay is ONLY drawn for composer mode.
+  // Generated mode never paints overlay text in the preview, even if the
+  // user opts into the "also overlay text on export" toggle (we keep that
+  // for the export step only, to avoid double-rendering surprises here).
   const showPreviewOverlay =
-    state.layout.safeAreaEnabled &&
-    (state.textMode === "composer" ||
-      (state.textMode === "generated" && overlayInGenerated));
+    state.textMode === "composer" && state.layout.safeAreaEnabled;
+
+  // Single source of truth for the poster surface colour. Used for the
+  // outer frame, the safe-area band, and the export canvas so they always
+  // look identical.
+  const posterSurfaceBackground = resolvePosterSurfaceBackground(state);
 
   const handleExport = async () => {
     setExporting(true);
@@ -162,9 +167,7 @@ export default function PosterComposer({
     left: 0,
     right: 0,
     height: `${safeRatio * 100}%`,
-    background: showPreviewOverlay
-      ? state.layout.safeAreaBackground
-      : "rgba(255,255,255,0.35)",
+    background: posterSurfaceBackground,
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
@@ -175,7 +178,7 @@ export default function PosterComposer({
     pointerEvents: "none",
     [state.layout.safeAreaPosition === "bottom"
       ? "borderTop"
-      : "borderBottom"]: showPreviewOverlay ? "none" : "1px dashed #999",
+      : "borderBottom"]: showPreviewOverlay ? "none" : "1px dashed hsl(var(--border))",
     [state.layout.safeAreaPosition === "bottom" ? "bottom" : "top"]: 0,
   };
 
@@ -183,10 +186,14 @@ export default function PosterComposer({
     <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
       {/* ── Preview ─────────────────────────────────────────── */}
       <div className="space-y-3">
-        <div className="bg-muted/30 border border-border rounded-md p-4 flex items-center justify-center">
+        <div
+          className="border border-border rounded-md p-4 flex items-center justify-center"
+          style={{ background: posterSurfaceBackground }}
+        >
           <div
-            className="relative shadow-lg bg-white"
+            className="relative shadow-lg"
             style={{
+              background: posterSurfaceBackground,
               // Mimic 5:7 aspect ratio of the default poster format.
               aspectRatio: "5 / 7",
               width: "100%",
@@ -421,15 +428,26 @@ export default function PosterComposer({
               </div>
               <div className="space-y-1">
                 <Label className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Band background
+                  Poster background
                 </Label>
                 <Input
                   type="color"
-                  value={state.layout.safeAreaBackground ?? "#ffffff"}
-                  onChange={(e) => setLayout({ safeAreaBackground: e.target.value })}
+                  value={posterSurfaceBackground}
+                  onChange={(e) => setLayout({ backgroundColor: e.target.value })}
                   className="h-8 w-full p-1"
                 />
+                <p className="font-display text-[10px] text-muted-foreground">
+                  Applied to the full poster surface — frame, margins, and safe area.
+                </p>
               </div>
+              {state.layout.safeAreaEnabled && !hasAnyText && (
+                <div className="flex items-start gap-1.5 text-[10px] font-display border rounded-sm px-1.5 py-1 bg-muted/50 border-border text-muted-foreground">
+                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <span>
+                    Safe text area is enabled, but no poster text is entered. It will not affect generation until text is added.
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

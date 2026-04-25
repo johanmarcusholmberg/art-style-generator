@@ -33,13 +33,33 @@ export interface PosterTextContent {
 }
 
 export interface PosterLayoutConfig {
-  /** When true, a reserved area is rendered for text. */
+  /**
+   * When true, a reserved area is rendered for text.
+   *
+   * IMPORTANT: This must NEVER default to true from a template — the user
+   * must explicitly opt in. Templates may suggest a position / height ratio,
+   * but the toggle itself stays off until the user flips it.
+   */
   safeAreaEnabled: boolean;
   /** Where the reserved area sits relative to the image. */
   safeAreaPosition: "bottom" | "top";
   /** Fraction of poster height occupied by the safe area, 0..1. */
   safeAreaHeightRatio: number;
-  /** Background colour of the safe area (CSS colour). */
+  /**
+   * Single source of truth for the poster surface colour. Used for:
+   *   - outer poster background
+   *   - frame / margin background
+   *   - safe-area band background
+   *   - export canvas background
+   *
+   * Replaces the old `safeAreaBackground` which only coloured the band.
+   */
+  backgroundColor?: string;
+  /**
+   * @deprecated Use `backgroundColor`. Kept temporarily so older state
+   * objects (persisted, snapshots) don't crash; the composer always reads
+   * `backgroundColor` first and falls back to this when necessary.
+   */
   safeAreaBackground?: string;
 }
 
