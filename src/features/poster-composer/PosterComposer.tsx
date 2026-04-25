@@ -135,7 +135,9 @@ export default function PosterComposer({
     left: 0,
     right: 0,
     height: `${safeRatio * 100}%`,
-    background: state.layout.safeAreaBackground,
+    background: showPreviewOverlay
+      ? state.layout.safeAreaBackground
+      : "rgba(255,255,255,0.35)",
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
@@ -143,6 +145,10 @@ export default function PosterComposer({
     color: tpl.typography.titleColor,
     fontFamily: tpl.typography.bodyFontFamily,
     textAlign: tpl.typography.align,
+    pointerEvents: "none",
+    [state.layout.safeAreaPosition === "bottom"
+      ? "borderTop"
+      : "borderBottom"]: showPreviewOverlay ? "none" : "1px dashed #999",
     [state.layout.safeAreaPosition === "bottom" ? "bottom" : "top"]: 0,
   };
 
