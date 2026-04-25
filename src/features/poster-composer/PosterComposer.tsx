@@ -487,7 +487,7 @@ export default function PosterComposer({
         {/* Export */}
         <Button
           onClick={handleExport}
-          disabled={exporting || !imageUrl}
+          disabled={exporting || !imageUrl || isRegenerating}
           className="w-full font-display text-xs"
         >
           {exporting ? (
@@ -497,6 +497,23 @@ export default function PosterComposer({
           )}
           Export Print (PNG · 300 PPI)
         </Button>
+        {onRegenerate && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onRegenerate()}
+            disabled={isRegenerating || exporting}
+            className="w-full font-display text-xs"
+            title="Generate a new image with the same prompt — text and layout are kept."
+          >
+            {isRegenerating ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Regenerate image (keep text)
+          </Button>
+        )}
         <div className="flex items-start gap-1.5 text-[10px] font-display text-muted-foreground">
           <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
           <span>
