@@ -56,19 +56,32 @@ export function getSafeArea(
 
 // ── Prompt-hint builder (additive only) ──────────────────────────────────
 
+/** True when ANY non-empty text field is present on the poster. */
+export function hasPosterText(text: PosterTextContent | undefined): boolean {
+  if (!text) return false;
+  return Boolean(
+    text.title?.trim() ||
+      text.subtitle?.trim() ||
+      text.description?.trim() ||
+      text.ingredients?.some((i) => i.trim()),
+  );
+}
+
 /**
  * Build an optional text snippet to APPEND to the user's prompt before it
  * is sent to the existing generation pipeline. Never mutates the compiler.
  *
- *   - composer mode + safe area → ask the model to leave clean empty space
- *   - generated mode            → keep the existing text-in-image behavior:
- *                                 echo title/subtitle into the prompt as
- *                                 "include the words …" so it survives
- *                                 the prompt compiler unchanged.
+ * STRICT rules (no accidental layout artifacts):
+ *   - composer mode → only emit the "leave clean empty space" hint when
+ *     the user has BOTH enabled the safe area AND entered some text.
+ *   - generated mode → only emit the "include this text" hint when the
+ *     user typed a title/subtitle. The safe area is irrelevant here.
+ *   - otherwise → return "" so the generator runs untouched.
  */
 export function buildPromptHint(state: PosterState): string {
   if (state.textMode === "composer") {
     if (!state.layout.safeAreaEnabled) return "";
+    if (!hasPosterText(state.text)) return "";
     const where = state.layout.safeAreaPosition;
     return `Leave clean empty space at the ${where} of the image for later text layout, with minimal details in that area.`;
   }
