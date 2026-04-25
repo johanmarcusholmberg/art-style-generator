@@ -710,6 +710,25 @@ export default function ImageGenerator({
               <Layers className="h-3 w-3 mr-1" />
               {compareOpen ? "Hide compare" : "Compare providers"}
             </Button>
+            {/* Poster Composer hint — appended to the user prompt only when ON.
+                Does not change the prompt compiler or generator. */}
+            <label
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[11px] font-display cursor-pointer select-none",
+                reserveTextArea
+                  ? "border-primary/40 bg-primary/5 text-primary"
+                  : "border-border text-muted-foreground hover:bg-muted/40",
+              )}
+              title="Asks the model to leave a clean empty band at the bottom for later text overlay in the Poster Composer"
+            >
+              <LayoutPanelTop className="h-3 w-3" />
+              Reserve text area
+              <Switch
+                checked={reserveTextArea}
+                onCheckedChange={setReserveTextArea}
+                className="ml-1 scale-75"
+              />
+            </label>
           </div>
           {lastProviderUsed && (
             <RouteBadge
