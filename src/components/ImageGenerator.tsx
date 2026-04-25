@@ -1,6 +1,16 @@
 import { useState, useRef, useMemo } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle, LayoutPanelTop } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import PosterComposer from "@/features/poster-composer/PosterComposer";
+import { buildPromptHint } from "@/features/poster-composer/usePosterComposer";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
 import { describeExportSource } from "@/lib/asset-selection";
