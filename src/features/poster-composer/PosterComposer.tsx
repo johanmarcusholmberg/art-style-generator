@@ -173,7 +173,7 @@ export default function PosterComposer({
             />
             {state.layout.safeAreaEnabled && (
               <div style={safeAreaCss}>
-                {state.text.title && (
+                {showPreviewOverlay && state.text.title && (
                   <div
                     style={{
                       fontFamily: tpl.typography.titleFontFamily,
@@ -188,7 +188,7 @@ export default function PosterComposer({
                     {state.text.title}
                   </div>
                 )}
-                {state.text.subtitle && (
+                {showPreviewOverlay && state.text.subtitle && (
                   <div
                     style={{
                       marginTop: "4%",
@@ -199,7 +199,7 @@ export default function PosterComposer({
                     {state.text.subtitle}
                   </div>
                 )}
-                {state.text.description && (
+                {showPreviewOverlay && state.text.description && (
                   <div
                     style={{
                       marginTop: "3%",
@@ -211,18 +211,34 @@ export default function PosterComposer({
                     {state.text.description}
                   </div>
                 )}
-                {state.text.ingredients && state.text.ingredients.length > 0 && (
-                  <div
+                {showPreviewOverlay &&
+                  state.text.ingredients &&
+                  state.text.ingredients.length > 0 && (
+                    <div
+                      style={{
+                        marginTop: "auto",
+                        paddingTop: "3%",
+                        fontSize: `clamp(9px, ${tpl.typography.bodySize / 22}vw, ${tpl.typography.bodySize}px)`,
+                        color: tpl.typography.bodyColor,
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      {state.text.ingredients.join("  ·  ")}
+                    </div>
+                  )}
+                {!showPreviewOverlay && (
+                  <span
                     style={{
-                      marginTop: "auto",
-                      paddingTop: "3%",
-                      fontSize: `clamp(9px, ${tpl.typography.bodySize / 22}vw, ${tpl.typography.bodySize}px)`,
-                      color: tpl.typography.bodyColor,
-                      letterSpacing: "0.05em",
+                      fontSize: 10,
+                      color: "#666",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      textAlign: "center",
+                      width: "100%",
                     }}
                   >
-                    {state.text.ingredients.join("  ·  ")}
-                  </div>
+                    Safe text area
+                  </span>
                 )}
               </div>
             )}
