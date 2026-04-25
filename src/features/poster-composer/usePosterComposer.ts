@@ -12,7 +12,7 @@
  * No state crosses module boundaries; the hook is intentionally local.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   preparePrintExport,
   downloadPrintExport,
