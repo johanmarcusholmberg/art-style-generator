@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import PosterComposer from "@/features/poster-composer/PosterComposer";
-import { buildPromptHint } from "@/features/poster-composer/usePosterComposer";
+import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "@/features/poster-composer/poster-templates";
+import type { PosterTemplateId, PosterTextMode } from "@/features/poster-composer/poster-types";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
 import { describeExportSource } from "@/lib/asset-selection";
