@@ -1188,6 +1188,29 @@ export default function ImageGenerator({
                     }
                     filenameBase={`${styleConfig.downloadPrefix}-${mode}`}
                     printFormatId={selectedPrintFormat.id}
+                    initialTemplateId={lastPosterSnapshot?.templateId ?? posterTemplateId}
+                    initialTextMode={lastPosterSnapshot?.textMode ?? posterTextMode}
+                    initialText={
+                      lastPosterSnapshot
+                        ? {
+                            title: lastPosterSnapshot.title || undefined,
+                            subtitle: lastPosterSnapshot.subtitle || undefined,
+                            description: lastPosterSnapshot.description || undefined,
+                            ingredients:
+                              lastPosterSnapshot.ingredients.length > 0
+                                ? lastPosterSnapshot.ingredients
+                                : undefined,
+                          }
+                        : {
+                            title: composerTitle || undefined,
+                            subtitle: composerSubtitle || undefined,
+                            description: composerDescription || undefined,
+                          }
+                    }
+                    onRegenerate={async () => {
+                      await generate();
+                    }}
+                    isRegenerating={loading}
                   />
                 </DialogContent>
               </Dialog>
