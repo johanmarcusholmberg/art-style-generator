@@ -12,7 +12,7 @@
  * No state crosses module boundaries; the hook is intentionally local.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   preparePrintExport,
   downloadPrintExport,
@@ -314,16 +314,29 @@ interface UsePosterComposerInit {
   templateId?: PosterTemplateId;
   /** Optional starting text mode — defaults to "composer". */
   textMode?: PosterTextMode;
+  /** Optional starting text content — overrides template defaults. */
+  initialText?: PosterTextContent;
   printFormatId?: string;
 }
 
 export function usePosterComposer(init: UsePosterComposerInit) {
   const initial: PosterState = useMemo(() => {
     const tpl = getPosterTemplate(init.templateId ?? "fika");
+    const hasInitialText =
+      init.initialText &&
+      (init.initialText.title ||
+        init.initialText.subtitle ||
+        init.initialText.description ||
+        (init.initialText.ingredients && init.initialText.ingredients.length > 0));
     return {
       templateId: tpl.id,
       textMode: init.textMode ?? "composer",
-      text: { ...tpl.defaultText },
+      // If caller passed text (e.g. user typed it in the generator), use
+      // it instead of the template's placeholder text. Otherwise fall
+      // back to the template defaults so the preview is never empty.
+      text: hasInitialText
+        ? { ...init.initialText }
+        : { ...tpl.defaultText },
       layout: { ...tpl.defaultLayout },
       imageUrl: init.imageUrl,
       printFormatId: init.printFormatId,
@@ -332,6 +345,16 @@ export function usePosterComposer(init: UsePosterComposerInit) {
   }, []);
 
   const [state, setState] = useState<PosterState>(initial);
+
+  // Keep imageUrl in sync if the parent regenerates a new artwork while
+  // the composer is mounted. Text + layout + template are preserved.
+  const lastImageUrlRef = useRef(init.imageUrl);
+  useEffect(() => {
+    if (init.imageUrl && init.imageUrl !== lastImageUrlRef.current) {
+      lastImageUrlRef.current = init.imageUrl;
+      setState((s) => ({ ...s, imageUrl: init.imageUrl }));
+    }
+  }, [init.imageUrl]);
 
   const setTemplate = useCallback((id: PosterTemplateId) => {
     const tpl = getPosterTemplate(id);

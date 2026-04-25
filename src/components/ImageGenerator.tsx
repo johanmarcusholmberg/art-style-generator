@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle, LayoutPanelTop } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle, LayoutPanelTop, Info } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import PosterComposer from "@/features/poster-composer/PosterComposer";
-import { buildPromptHint } from "@/features/poster-composer/usePosterComposer";
+import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "@/features/poster-composer/poster-templates";
+import type { PosterTemplateId, PosterTextMode } from "@/features/poster-composer/poster-types";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
 import { describeExportSource } from "@/lib/asset-selection";
@@ -143,11 +144,33 @@ export default function ImageGenerator({
   const [lastRoutingReason, setLastRoutingReason] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Poster Composer integration (additive — does not change the generator).
-  // When ON, we append a layout hint to the user prompt asking the model to
-  // leave a clean empty band at the bottom for later text overlay. The
-  // composer dialog opens after generation via the "Create Poster" button.
-  const [reserveTextArea, setReserveTextArea] = useState(false);
+  // The user can configure template + text BEFORE generation. After the
+  // image is produced we auto-open the Poster Composer pre-filled with
+  // their inputs so the poster is ready to export immediately.
+  //
+  // Two text modes drive how we use the user-entered text:
+  //   - "composer" (default): text is NOT sent to the generator. We only
+  //                            ask the model to leave a clean empty band.
+  //   - "generated":          title/subtitle ARE injected into the prompt
+  //                            so the model bakes typography into the art.
+  const [posterTemplateId, setPosterTemplateId] = useState<PosterTemplateId>("fika");
+  const [posterTextMode, setPosterTextMode] = useState<PosterTextMode>("composer");
+  const [composerTitle, setComposerTitle] = useState("");
+  const [composerSubtitle, setComposerSubtitle] = useState("");
+  const [composerDescription, setComposerDescription] = useState("");
+  const [composerIngredientsRaw, setComposerIngredientsRaw] = useState("");
   const [posterOpen, setPosterOpen] = useState(false);
+  // Snapshot of poster config used for the most recent generation. We
+  // pass this (not the live form values) into PosterComposer so the
+  // dialog stays consistent if the user edits inputs after generating.
+  const [lastPosterSnapshot, setLastPosterSnapshot] = useState<{
+    templateId: PosterTemplateId;
+    textMode: PosterTextMode;
+    title: string;
+    subtitle: string;
+    description: string;
+    ingredients: string[];
+  } | null>(null);
   const { toast } = useToast();
 
   // Shared upscale hook
@@ -267,19 +290,36 @@ export default function ImageGenerator({
       });
       // Optional poster-composer hint — additive only. Appended to the
       // user prompt so the existing prompt compiler is untouched.
-      const posterHint = reserveTextArea
-        ? buildPromptHint({
-            templateId: "fika",
-            textMode: "composer",
-            text: {},
-            layout: {
-              safeAreaEnabled: true,
-              safeAreaPosition: "bottom",
-              safeAreaHeightRatio: 0.3,
-            },
-            imageUrl: "",
-          })
-        : "";
+      //
+      // - composer mode: ask the model to leave a clean empty band so the
+      //   composer can lay text on top later. Composer text fields are NOT
+      //   sent to the generator.
+      // - generated mode: surface the requested title/subtitle to the
+      //   model so it bakes typography into the artwork.
+      const ingredientsList = composerIngredientsRaw
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const hasComposerText =
+        !!composerTitle.trim() ||
+        !!composerSubtitle.trim() ||
+        !!composerDescription.trim() ||
+        ingredientsList.length > 0;
+      let posterHint = "";
+      if (posterTextMode === "composer") {
+        // Always reserve a clean band when composer mode is active so the
+        // model produces poster-friendly artwork even if the user hasn't
+        // typed any text yet.
+        posterHint =
+          "Leave clean empty space at the bottom of the image for later text layout, with minimal details in that area.";
+      } else if (posterTextMode === "generated" && hasComposerText) {
+        const parts: string[] = [];
+        if (composerTitle.trim()) parts.push(`title "${composerTitle.trim()}"`);
+        if (composerSubtitle.trim()) parts.push(`subtitle "${composerSubtitle.trim()}"`);
+        if (parts.length > 0) {
+          posterHint = `Include the following text inside the image as integrated typography: ${parts.join(", ")}.`;
+        }
+      }
       const promptForGen = posterHint
         ? `${activePrompt.trim()} ${posterHint}`
         : activePrompt.trim();
@@ -327,6 +367,27 @@ export default function ImageGenerator({
         setPrompt(activePrompt.trim());
         setIsInlineEditing(false);
         setEditPrompt("");
+      }
+
+      // Snapshot poster config used for this generation. We auto-open the
+      // Poster Composer when:
+      //   - composer mode is active (poster-friendly band was reserved)
+      //   - OR the user typed any text in either mode
+      // This gives the user a ready-to-export poster immediately.
+      const snapshot = {
+        templateId: posterTemplateId,
+        textMode: posterTextMode,
+        title: composerTitle.trim(),
+        subtitle: composerSubtitle.trim(),
+        description: composerDescription.trim(),
+        ingredients: ingredientsList,
+      };
+      setLastPosterSnapshot(snapshot);
+      const shouldAutoOpen =
+        !isInlineEditing &&
+        (posterTextMode === "composer" || hasComposerText);
+      if (shouldAutoOpen) {
+        setPosterOpen(true);
       }
 
       setLoading(false);
@@ -710,25 +771,8 @@ export default function ImageGenerator({
               <Layers className="h-3 w-3 mr-1" />
               {compareOpen ? "Hide compare" : "Compare providers"}
             </Button>
-            {/* Poster Composer hint — appended to the user prompt only when ON.
-                Does not change the prompt compiler or generator. */}
-            <label
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[11px] font-display cursor-pointer select-none",
-                reserveTextArea
-                  ? "border-primary/40 bg-primary/5 text-primary"
-                  : "border-border text-muted-foreground hover:bg-muted/40",
-              )}
-              title="Asks the model to leave a clean empty band at the bottom of the image so the Poster Composer can place text there later"
-            >
-              <LayoutPanelTop className="h-3 w-3" />
-              Safe text area
-              <Switch
-                checked={reserveTextArea}
-                onCheckedChange={setReserveTextArea}
-                className="ml-1 scale-75"
-              />
-            </label>
+            {/* Poster Composer setup is configured in the dedicated section
+                below the action button — see "Poster setup (optional)". */}
           </div>
           {lastProviderUsed && (
             <RouteBadge
@@ -782,6 +826,126 @@ export default function ImageGenerator({
             onClose={() => setCompareOpen(false)}
           />
         )}
+
+        {/* ── Poster setup (optional) ───────────────────────────────────
+            Lets the user pre-configure poster template + text BEFORE
+            hitting Generate. After generation, the Poster Composer
+            opens auto-filled with these values.
+            Generation logic is NOT changed — composer text is only sent
+            to the model when textMode === "generated". */}
+        {/* Composer details below. */}
+        <details className="rounded-sm border border-border bg-card/40 group">
+          <summary className="cursor-pointer select-none px-3 py-2 flex items-center gap-2 font-display text-xs">
+            <LayoutPanelTop className="h-3.5 w-3.5 text-primary" />
+            <span className="font-bold text-foreground">Poster setup</span>
+            <span className="text-muted-foreground">(optional)</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">
+              {posterTextMode === "composer" ? "Clean text" : "Artistic text"}
+              {" · "}
+              {getPosterTemplate(posterTemplateId).name}
+            </span>
+          </summary>
+          <div className="px-3 pb-3 pt-1 space-y-3">
+            <div className="space-y-1">
+              <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
+                Template
+              </Label>
+              <select
+                value={posterTemplateId}
+                onChange={(e) => setPosterTemplateId(e.target.value as PosterTemplateId)}
+                className="w-full bg-background border border-border rounded-sm px-2 py-1.5 font-display text-xs"
+              >
+                {POSTER_TEMPLATE_LIST.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} — {t.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
+                Text handling
+              </Label>
+              <div className="space-y-1">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="poster-text-mode"
+                    checked={posterTextMode === "composer"}
+                    onChange={() => setPosterTextMode("composer")}
+                    className="mt-0.5"
+                  />
+                  <span className="flex flex-col">
+                    <span className="font-display text-xs text-foreground">Clean text (Poster Composer)</span>
+                    <span className="font-display text-[10px] text-muted-foreground">
+                      Recommended for Etsy / print. Text is added on export — image is generated text-free.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="poster-text-mode"
+                    checked={posterTextMode === "generated"}
+                    onChange={() => setPosterTextMode("generated")}
+                    className="mt-0.5"
+                  />
+                  <span className="flex flex-col">
+                    <span className="font-display text-xs text-foreground">Artistic text (generated in image)</span>
+                    <span className="font-display text-[10px] text-muted-foreground">
+                      Title / subtitle are sent to the generator and become part of the artwork.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
+                Poster text
+              </Label>
+              <input
+                type="text"
+                value={composerTitle}
+                onChange={(e) => setComposerTitle(e.target.value)}
+                placeholder="Title"
+                className="w-full bg-background border border-border rounded-sm px-2 py-1.5 font-display text-xs"
+              />
+              <input
+                type="text"
+                value={composerSubtitle}
+                onChange={(e) => setComposerSubtitle(e.target.value)}
+                placeholder="Subtitle"
+                className="w-full bg-background border border-border rounded-sm px-2 py-1.5 font-display text-xs"
+              />
+              <Textarea
+                value={composerDescription}
+                onChange={(e) => setComposerDescription(e.target.value)}
+                placeholder="Description"
+                rows={2}
+                className="font-display text-xs min-h-[60px]"
+              />
+              <Textarea
+                value={composerIngredientsRaw}
+                onChange={(e) => setComposerIngredientsRaw(e.target.value)}
+                placeholder="Ingredients (one per line)"
+                rows={2}
+                className="font-display text-xs min-h-[60px]"
+              />
+              {posterTextMode === "composer" && (composerTitle || composerSubtitle || composerDescription || composerIngredientsRaw) && (
+                <p className="font-display text-[10px] text-muted-foreground flex items-start gap-1">
+                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  Text will be added as a clean overlay — not generated inside the image.
+                </p>
+              )}
+              {posterTextMode === "generated" && (composerTitle || composerSubtitle) && (
+                <p className="font-display text-[10px] text-muted-foreground flex items-start gap-1">
+                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  Text will be generated inside the image. Overlay text will not be applied.
+                </p>
+              )}
+            </div>
+          </div>
+        </details>
 
         <Button
           onClick={generate}
@@ -1024,6 +1188,29 @@ export default function ImageGenerator({
                     }
                     filenameBase={`${styleConfig.downloadPrefix}-${mode}`}
                     printFormatId={selectedPrintFormat.id}
+                    initialTemplateId={lastPosterSnapshot?.templateId ?? posterTemplateId}
+                    initialTextMode={lastPosterSnapshot?.textMode ?? posterTextMode}
+                    initialText={
+                      lastPosterSnapshot
+                        ? {
+                            title: lastPosterSnapshot.title || undefined,
+                            subtitle: lastPosterSnapshot.subtitle || undefined,
+                            description: lastPosterSnapshot.description || undefined,
+                            ingredients:
+                              lastPosterSnapshot.ingredients.length > 0
+                                ? lastPosterSnapshot.ingredients
+                                : undefined,
+                          }
+                        : {
+                            title: composerTitle || undefined,
+                            subtitle: composerSubtitle || undefined,
+                            description: composerDescription || undefined,
+                          }
+                    }
+                    onRegenerate={async () => {
+                      await generate();
+                    }}
+                    isRegenerating={loading}
                   />
                 </DialogContent>
               </Dialog>

@@ -11,7 +11,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Download, Loader2, AlertTriangle, Info } from "lucide-react";
+import { Download, Loader2, AlertTriangle, Info, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "./poster-templates";
 import type {
   PosterTemplateId,
   PosterTextMode,
+  PosterTextContent,
 } from "./poster-types";
 
 interface PosterComposerProps {
@@ -45,12 +46,32 @@ interface PosterComposerProps {
   filenameBase?: string;
   /** Optional default print format id. */
   printFormatId?: string;
+  /** Optional starting template (e.g. picked in the generator UI). */
+  initialTemplateId?: PosterTemplateId;
+  /** Optional starting text mode. Defaults to "composer". */
+  initialTextMode?: PosterTextMode;
+  /** Optional starting text content (e.g. typed in the generator UI). */
+  initialText?: PosterTextContent;
+  /**
+   * Optional regenerate callback — when provided, a "Regenerate image"
+   * button is shown in the composer. The composer keeps all text + layout
+   * state; only the imageUrl prop is expected to change after the
+   * callback resolves.
+   */
+  onRegenerate?: () => Promise<void> | void;
+  /** External "currently regenerating" flag from the parent. */
+  isRegenerating?: boolean;
 }
 
 export default function PosterComposer({
   imageUrl,
   filenameBase = "poster",
   printFormatId = DEFAULT_PRINT_FORMAT_ID,
+  initialTemplateId,
+  initialTextMode,
+  initialText,
+  onRegenerate,
+  isRegenerating = false,
 }: PosterComposerProps) {
   const { toast } = useToast();
   const {
@@ -59,7 +80,13 @@ export default function PosterComposer({
     setTextMode,
     setText,
     setLayout,
-  } = usePosterComposer({ imageUrl, printFormatId });
+  } = usePosterComposer({
+    imageUrl,
+    printFormatId,
+    templateId: initialTemplateId,
+    textMode: initialTextMode,
+    initialText,
+  });
 
   const [exporting, setExporting] = useState(false);
   const [overlayInGenerated, setOverlayInGenerated] = useState(false);
@@ -460,7 +487,7 @@ export default function PosterComposer({
         {/* Export */}
         <Button
           onClick={handleExport}
-          disabled={exporting || !imageUrl}
+          disabled={exporting || !imageUrl || isRegenerating}
           className="w-full font-display text-xs"
         >
           {exporting ? (
@@ -470,6 +497,23 @@ export default function PosterComposer({
           )}
           Export Print (PNG · 300 PPI)
         </Button>
+        {onRegenerate && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onRegenerate()}
+            disabled={isRegenerating || exporting}
+            className="w-full font-display text-xs"
+            title="Generate a new image with the same prompt — text and layout are kept."
+          >
+            {isRegenerating ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Regenerate image (keep text)
+          </Button>
+        )}
         <div className="flex items-start gap-1.5 text-[10px] font-display text-muted-foreground">
           <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
           <span>
