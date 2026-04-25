@@ -320,12 +320,33 @@ export default function PosterComposer({
               </span>
             </div>
           )}
+          {generatedNotice && (
+            <div className="flex items-start gap-1.5 text-[10px] font-display border rounded-sm px-1.5 py-1 bg-muted/50 border-border text-muted-foreground">
+              <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span>
+                Text will be generated inside the image. Overlay text will not be applied.
+              </span>
+            </div>
+          )}
+          {overlapRisk && (
+            <div className="flex items-start gap-1.5 text-[10px] font-display border rounded-sm px-1.5 py-1 bg-amber-500/10 border-amber-500/30 text-amber-600">
+              <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span>
+                Text may overlap the image. Consider enabling Safe text area below.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Safe area */}
         <div className="space-y-1.5 border border-border rounded-md p-2">
           <div className="flex items-center justify-between">
-            <Label className="font-display text-xs">Safe text area</Label>
+            <div className="space-y-0.5">
+              <Label className="font-display text-xs">Safe text area</Label>
+              <p className="font-display text-[10px] text-muted-foreground">
+                For poster layout — reserves a clean band for typography.
+              </p>
+            </div>
             <Switch
               checked={state.layout.safeAreaEnabled}
               onCheckedChange={(v) => setLayout({ safeAreaEnabled: v })}
