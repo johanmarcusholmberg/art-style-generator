@@ -719,10 +719,10 @@ export default function ImageGenerator({
                   ? "border-primary/40 bg-primary/5 text-primary"
                   : "border-border text-muted-foreground hover:bg-muted/40",
               )}
-              title="Asks the model to leave a clean empty band at the bottom for later text overlay in the Poster Composer"
+              title="Asks the model to leave a clean empty band at the bottom of the image so the Poster Composer can place text there later"
             >
               <LayoutPanelTop className="h-3 w-3" />
-              Reserve text area
+              Safe text area
               <Switch
                 checked={reserveTextArea}
                 onCheckedChange={setReserveTextArea}
