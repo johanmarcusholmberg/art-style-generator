@@ -155,6 +155,9 @@ export default function ImageGenerator({
   //                            so the model bakes typography into the art.
   const [posterTemplateId, setPosterTemplateId] = useState<PosterTemplateId>("fika");
   const [posterTextMode, setPosterTextMode] = useState<PosterTextMode>("composer");
+  // STRICT: safe-area is OFF by default and must be explicitly enabled —
+  // never auto-enabled by template selection.
+  const [posterSafeAreaEnabled, setPosterSafeAreaEnabled] = useState(false);
   const [composerTitle, setComposerTitle] = useState("");
   const [composerSubtitle, setComposerSubtitle] = useState("");
   const [composerDescription, setComposerDescription] = useState("");
