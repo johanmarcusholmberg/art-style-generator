@@ -106,8 +106,9 @@ function drawTextOverlay({ ctx, state, rect, scale }: OverlayRenderOptions) {
   const tpl = getPosterTemplate(state.templateId);
   const t = tpl.typography;
 
-  // Background band
-  ctx.fillStyle = state.layout.safeAreaBackground ?? t.titleColor === "#111111" ? "#ffffff" : (state.layout.safeAreaBackground ?? "#ffffff");
+  // Background band — uses the unified poster surface colour so the band
+  // is visually identical to the outer frame / margins.
+  ctx.fillStyle = resolvePosterSurfaceBackground(state);
   ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
 
   const padX = Math.round(rect.width * 0.06);
