@@ -659,6 +659,7 @@ export function compilePrompt(
       blockedSection,
       alwaysOnQuality,
       "",
+      styleStrictSuffix(styleKey),
       "Generate at maximum native resolution. Output the highest fidelity image possible.",
     ].filter(Boolean).join("\n");
   }
