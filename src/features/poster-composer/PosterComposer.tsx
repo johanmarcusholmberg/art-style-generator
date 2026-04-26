@@ -10,7 +10,7 @@
  * over it on a temporary canvas at export time.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Loader2, AlertTriangle, Info, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ import {
   downloadPrintExport,
   usePosterComposer,
   resolvePosterSurfaceBackground,
+  measurePosterOverlay,
 } from "./usePosterComposer";
 import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "./poster-templates";
 import type {
