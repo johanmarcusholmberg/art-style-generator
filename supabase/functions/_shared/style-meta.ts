@@ -217,6 +217,16 @@ export const STYLE_META: Record<string, StyleMeta> = {
     mediumTokens: ["photocopied zine"],
     defaultStrictness: "strict",
   },
+  scandinavian_poster: {
+    displayName: "Scandinavian minimalist poster",
+    mediumTokens: ["Scandinavian poster", "Nordic minimalist poster", "flat vector poster"],
+    defaultStrictness: "strict",
+  },
+  "scandinavian_poster-freestyle": {
+    displayName: "Scandinavian minimalist poster",
+    mediumTokens: ["Scandinavian poster", "Nordic minimalist poster", "flat vector poster"],
+    defaultStrictness: "strict",
+  },
 };
 
 /** Fallback-aware lookup. Always returns a usable meta. */

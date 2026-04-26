@@ -705,3 +705,48 @@ export const XEROXZINE_STYLE: StyleConfig = {
   themedRules: STYLE_RULES["xeroxzine"],
   freestyleRules: STYLE_RULES["xeroxzine-freestyle"],
 };
+
+export const SCANDINAVIANPOSTER_STYLE: StyleConfig = {
+  styleKey: "scandinavian_poster",
+  themedEdgeFn: "generate-image-scandinavianposter",
+  freestyleEdgeFn: "generate-image-scandinavianposter-freestyle",
+  themedTabLabel: "🇸🇪 Nordic Poster",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Scandinavian Poster",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your scene… e.g. 'A lone pine tree against a calm Nordic lake at dawn'",
+  freestylePlaceholder: "Describe any scene… e.g. 'A coffee cup on a wooden table beside a window'",
+  prompts: {
+    themed: {
+      generate: [
+        "A lone pine tree silhouetted against a calm Nordic lake at dawn with muted dusty blue tones",
+        "A small wooden cabin in a snowy field with sage green pines and warm beige sky",
+        "Three sailing boats arranged in negative space on a soft terracotta horizon",
+      ],
+      edit: [
+        "Reduce the palette to three muted Nordic tones",
+        "Add more negative space around the subject",
+        "Simplify the forms into cleaner geometric shapes",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A modern pour-over coffee setup arranged minimally on a warm beige background",
+        "A single bicycle leaning against a soft sage green wall with generous empty space",
+        "An abstract Nordic landscape of dusty blue hills with a small terracotta sun",
+      ],
+      edit: [
+        "Make it flatter and more poster-like",
+        "Reduce to a muted three-color Nordic palette",
+        "Add more breathing room and remove background clutter",
+      ],
+    },
+  },
+  themedModeValue: "scandinavian_poster",
+  freestyleModeValue: "scandinavian_poster-freestyle",
+  themedBadge: "🇸🇪",
+  freestyleBadge: "🎨",
+  downloadPrefix: "scandinavian-poster",
+  themedRules: STYLE_RULES["scandinavian_poster"],
+  freestyleRules: STYLE_RULES["scandinavian_poster-freestyle"],
+};

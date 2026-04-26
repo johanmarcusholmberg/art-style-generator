@@ -65,6 +65,10 @@ const GEMINI_FIRST_STYLES = new Set<string>([
   // Botanical — watercolor / painterly handled well by Gemini.
   "botanical",
   "botanical-freestyle",
+
+  // Scandinavian poster — flat minimal poster, Gemini handles best
+  "scandinavian_poster",
+  "scandinavian_poster-freestyle",
 ]);
 
 const LOVABLE_SDXL_STYLES = new Set<string>([

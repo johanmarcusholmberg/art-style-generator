@@ -41,6 +41,8 @@ export const STYLE_CATEGORY_OVERRIDES: Record<string, StyleCategory> = {
   // Minimalist / Scandinavian
   minimalism: "minimal",
   "minimalism-freestyle": "minimal",
+  scandinavian_poster: "minimal",
+  "scandinavian_poster-freestyle": "minimal",
 
   // Line art family
   lineart: "lineart",

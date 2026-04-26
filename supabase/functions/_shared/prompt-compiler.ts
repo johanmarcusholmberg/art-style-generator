@@ -412,6 +412,120 @@ export const STYLE_RULES: Record<string, StyleRules> = {
     blockedTraits: ["color of any kind", "digital smoothness"],
     edgeSafety: ["copier artifacts at edges are part of the artwork"],
   },
+  scandinavian_poster: {
+    visualGoal: [
+      "Minimal Scandinavian poster illustration",
+      "Calm, balanced and timeless Nordic design",
+      "Print-ready composition with strong negative space",
+    ],
+    styleAnchors: ["Scandinavian poster illustration", "Nordic minimalist design", "flat printed poster aesthetic"],
+    styleRules: [
+      "flat illustration style",
+      "no photorealism",
+      "clean geometric shapes",
+      "simplified and slightly abstracted forms",
+      "Scandinavian minimalism",
+      "subtle and smooth gradients only if needed",
+      "very light optional paper or grain texture",
+    ],
+    compositionRules: [
+      "strong balanced composition",
+      "large negative space",
+      "focus on one to three main elements",
+      "poster-like framing, not photographic",
+      "clear visual hierarchy",
+      "generous spacing between elements",
+      "minimal geometric backgrounds",
+    ],
+    colorRules: [
+      "muted Nordic color palette",
+      "warm off-white or light beige background",
+      "dusty blue, sage green, terracotta accents",
+      "maximum 3 to 5 colors",
+      "no bright or neon colors",
+      "avoid pure black, use soft dark tones",
+    ],
+    qualityRules: [
+      "crisp clean edges",
+      "vector-like clarity",
+      "no visual noise",
+      "print-friendly sharpness",
+      "balanced alignment and spacing",
+      "high readability at large print sizes",
+    ],
+    avoidRules: [
+      "photorealism",
+      "realistic textures",
+      "depth of field",
+      "camera effects",
+      "lens blur",
+      "heavy detail",
+      "cluttered compositions",
+      "dramatic lighting",
+      "glossy or 3D rendering",
+      "busy backgrounds",
+      "text unless explicitly requested",
+    ],
+    blockedTraits: ["photorealism", "3D rendering", "lens blur", "depth of field", "neon colors"],
+    edgeSafety: ["geometric shapes and accent elements near edges are part of the poster composition"],
+  },
+  "scandinavian_poster-freestyle": {
+    visualGoal: [
+      "Minimal Scandinavian poster illustration applied to any subject",
+      "Calm, balanced and timeless Nordic poster",
+      "Print-ready composition with strong negative space",
+    ],
+    styleAnchors: ["Scandinavian poster illustration", "Nordic minimalist design", "flat printed poster aesthetic"],
+    styleRules: [
+      "flat illustration style",
+      "no photorealism",
+      "clean geometric shapes",
+      "simplified and slightly abstracted forms",
+      "Scandinavian minimalism",
+      "subtle and smooth gradients only if needed",
+      "very light optional paper or grain texture",
+    ],
+    compositionRules: [
+      "strong balanced composition",
+      "large negative space",
+      "focus on one to three main elements",
+      "poster-like framing, not photographic",
+      "clear visual hierarchy",
+      "generous spacing between elements",
+      "minimal geometric backgrounds",
+    ],
+    colorRules: [
+      "muted Nordic color palette",
+      "warm off-white or light beige background",
+      "dusty blue, sage green, terracotta accents",
+      "maximum 3 to 5 colors",
+      "no bright or neon colors",
+      "avoid pure black, use soft dark tones",
+    ],
+    qualityRules: [
+      "crisp clean edges",
+      "vector-like clarity",
+      "no visual noise",
+      "print-friendly sharpness",
+      "balanced alignment and spacing",
+      "high readability at large print sizes",
+    ],
+    avoidRules: [
+      "photorealism",
+      "realistic textures",
+      "depth of field",
+      "camera effects",
+      "lens blur",
+      "heavy detail",
+      "cluttered compositions",
+      "dramatic lighting",
+      "glossy or 3D rendering",
+      "busy backgrounds",
+      "text unless explicitly requested",
+    ],
+    blockedTraits: ["photorealism", "3D rendering", "lens blur", "depth of field", "neon colors"],
+    edgeSafety: ["geometric shapes and accent elements near edges are part of the poster composition"],
+  },
 };
 
 // ── Prompt compiler ──
@@ -464,6 +578,17 @@ function buildArtworkBgText(bg?: string): string {
 }
 
 /**
+ * Per-style hard suffix applied across all providers.
+ * Returns "" for styles that don't need extra reinforcement.
+ */
+function styleStrictSuffix(styleKey: string): string {
+  if (styleKey === "scandinavian_poster" || styleKey === "scandinavian_poster-freestyle") {
+    return "STRICT STYLE: flat illustration, no photorealism, no realistic textures, no depth of field, no camera effects";
+  }
+  return "";
+}
+
+/**
  * Compiles a structured art-direction prompt.
  * Every edge function should use this instead of building prompts manually.
  */
@@ -493,6 +618,7 @@ export function compilePrompt(
       "",
       options.aspectRatio ? `The image must have a ${options.aspectRatio} aspect ratio.` : "",
       buildArtworkBgText(options.backgroundStyle),
+      styleStrictSuffix(styleKey),
       "Generate at maximum native resolution. Output the highest fidelity image possible.",
     ];
     return sections.filter(Boolean).join("\n");
@@ -533,6 +659,7 @@ export function compilePrompt(
       blockedSection,
       alwaysOnQuality,
       "",
+      styleStrictSuffix(styleKey),
       "Generate at maximum native resolution. Output the highest fidelity image possible.",
     ].filter(Boolean).join("\n");
   }
@@ -569,6 +696,7 @@ export function compilePrompt(
     ratioText,
     variationText,
     "",
+    styleStrictSuffix(styleKey),
     "Generate at maximum native resolution. Output the highest fidelity image possible.",
   ].filter(Boolean).join("\n");
 }
@@ -643,6 +771,7 @@ export function compilePromptForSDXL(
     ? `style reconfirm: ${displayNameToken}, ${mediumTokens.join(", ")}, 2D illustrated, not photo, not 3D`
     : "";
 
+  const strictSuffix = styleStrictSuffix(styleKey);
   const prompt = [
     head,
     composition,
@@ -651,6 +780,7 @@ export function compilePromptForSDXL(
     `style lock: ${styleLock}`,
     reconfirm,
     tailAnchors,
+    strictSuffix,
   ]
     .filter(Boolean)
     .join(", ");
@@ -715,8 +845,9 @@ export function compilePromptForOpenAI(
     ? `\nDO NOT: ${oa.avoid.join(". ")}.`
     : "";
 
+  const strictSuffix = styleStrictSuffix(styleKey);
   return {
-    prompt: [base, guidance, avoid].filter(Boolean).join("\n"),
+    prompt: [base, guidance, avoid, strictSuffix].filter(Boolean).join("\n"),
     provider: "openai",
     category: oa.category,
   };
