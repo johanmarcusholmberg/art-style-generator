@@ -374,6 +374,47 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+/**
+ * Measure-only pass — mirrors the exact layout logic of `drawTextOverlay`
+ * but does not paint. Returns `{ shrunk, overflowed }` so callers (notably
+ * the React preview) can surface a warning when the user's text won't fit.
+ *
+ * Uses an offscreen 2D context so it can run safely from a React render
+ * pass without touching the visible DOM.
+ */
+export function measurePosterOverlay(
+  state: PosterState,
+  canvasWidth: number,
+  canvasHeight: number,
+): { shrunk: boolean; overflowed: boolean } {
+  if (state.textMode !== "composer" || !state.layout.safeAreaEnabled) {
+    return { shrunk: false, overflowed: false };
+  }
+  const rect = getSafeArea(state.layout, canvasWidth, canvasHeight);
+  if (!rect) return { shrunk: false, overflowed: false };
+  if (typeof document === "undefined") return { shrunk: false, overflowed: false };
+
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return { shrunk: false, overflowed: false };
+
+  let result = { shrunk: false, overflowed: false };
+  const scale = canvasHeight / 1000;
+  drawTextOverlay({
+    ctx,
+    state,
+    rect,
+    scale,
+    spaceScale: scale,
+    onOverflow: (info) => {
+      result = info;
+    },
+  });
+  return result;
+}
+
 // ── Export (delegates artwork render to existing print-export.ts) ────────
 
 interface ExportPosterOptions {
