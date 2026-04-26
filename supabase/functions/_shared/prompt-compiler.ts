@@ -578,6 +578,17 @@ function buildArtworkBgText(bg?: string): string {
 }
 
 /**
+ * Per-style hard suffix applied across all providers.
+ * Returns "" for styles that don't need extra reinforcement.
+ */
+function styleStrictSuffix(styleKey: string): string {
+  if (styleKey === "scandinavian_poster" || styleKey === "scandinavian_poster-freestyle") {
+    return "STRICT STYLE: flat illustration, no photorealism, no realistic textures, no depth of field, no camera effects";
+  }
+  return "";
+}
+
+/**
  * Compiles a structured art-direction prompt.
  * Every edge function should use this instead of building prompts manually.
  */
