@@ -598,7 +598,7 @@ export default function PosterComposer({
                   max={45}
                   step={1}
                   onValueChange={([v]) =>
-                    setLayout({ safeAreaHeightRatio: v / 100 })
+                    handleManualSetLayout({ safeAreaHeightRatio: v / 100 })
                   }
                 />
               </div>
@@ -636,19 +636,19 @@ export default function PosterComposer({
           <Input
             placeholder="Title"
             value={state.text.title ?? ""}
-            onChange={(e) => setText({ title: e.target.value })}
+            onChange={(e) => handleManualSetText({ title: e.target.value })}
             className="font-display text-xs"
           />
           <Input
             placeholder="Subtitle"
             value={state.text.subtitle ?? ""}
-            onChange={(e) => setText({ subtitle: e.target.value })}
+            onChange={(e) => handleManualSetText({ subtitle: e.target.value })}
             className="font-display text-xs"
           />
           <Textarea
             placeholder="Description"
             value={state.text.description ?? ""}
-            onChange={(e) => setText({ description: e.target.value })}
+            onChange={(e) => handleManualSetText({ description: e.target.value })}
             className="font-display text-xs min-h-[64px]"
             rows={2}
           />
@@ -656,7 +656,7 @@ export default function PosterComposer({
             placeholder="Ingredients (one per line)"
             value={(state.text.ingredients ?? []).join("\n")}
             onChange={(e) =>
-              setText({
+              handleManualSetText({
                 ingredients: e.target.value
                   .split("\n")
                   .map((s) => s.trim())
