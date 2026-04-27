@@ -415,6 +415,124 @@ export function measurePosterOverlay(
   return result;
 }
 
+// ── Auto-fit (clickable warning helper) ──────────────────────────────────
+
+/**
+ * Suggested length presets when the user clicks "auto-fit". These are the
+ * smallest sensible character budgets per field — picked to look balanced
+ * on a poster, not just to fit. The fitter walks from largest → smallest
+ * preset, then escalates to growing the safe-area band.
+ */
+const TITLE_PRESETS = [48, 32, 24, 18, 12, 8];
+const SUBTITLE_PRESETS = [80, 60, 44, 32, 24, 16];
+const DESCRIPTION_PRESETS = [220, 160, 120, 90, 60, 40];
+const INGREDIENTS_LIMITS = [12, 8, 6, 4, 3];
+
+const HEIGHT_RAMP = [0.22, 0.26, 0.3, 0.34, 0.4, 0.45];
+
+/** Truncate at a word boundary when possible, append an ellipsis. */
+function truncateText(text: string, max: number): string {
+  if (text.length <= max) return text;
+  if (max <= 1) return text.slice(0, max);
+  const slice = text.slice(0, max - 1);
+  const lastSpace = slice.lastIndexOf(" ");
+  const cut = lastSpace > max * 0.6 ? slice.slice(0, lastSpace) : slice;
+  return cut.replace(/[\s,.;:!?-]+$/, "") + "…";
+}
+
+export interface AutoFitResult {
+  text: PosterTextContent;
+  layout: PosterLayoutConfig;
+  /** True when the safe-area height was bumped to make text fit. */
+  bumpedHeight: boolean;
+}
+
+/**
+ * Iteratively shrinks the user's text using the presets above. If text
+ * still overflows at the smallest preset, the safe-area band height is
+ * bumped up the HEIGHT_RAMP. Returns `null` when even the largest band
+ * with the smallest text cannot fit.
+ *
+ * Pure helper — does not mutate `state`. Caller applies the result via
+ * `setText` / `setLayout`.
+ */
+export function autoFitPosterText(state: PosterState): AutoFitResult | null {
+  if (state.textMode !== "composer" || !state.layout.safeAreaEnabled) {
+    return null;
+  }
+
+  const baseText = state.text;
+  const heightOptions = Array.from(
+    new Set([state.layout.safeAreaHeightRatio, ...HEIGHT_RAMP].filter((h) => h > 0)),
+  ).sort((a, b) => a - b);
+
+  const tryPreset = (
+    titleMax: number,
+    subtitleMax: number,
+    descriptionMax: number,
+    ingredientsMax: number,
+    height: number,
+  ): AutoFitResult | null => {
+    const text: PosterTextContent = {
+      title: baseText.title ? truncateText(baseText.title, titleMax) : baseText.title,
+      subtitle: baseText.subtitle
+        ? truncateText(baseText.subtitle, subtitleMax)
+        : baseText.subtitle,
+      description: baseText.description
+        ? truncateText(baseText.description, descriptionMax)
+        : baseText.description,
+      ingredients: baseText.ingredients
+        ? baseText.ingredients
+            .slice(0, ingredientsMax)
+            .map((i) => truncateText(i, 24))
+        : baseText.ingredients,
+    };
+    const layout: PosterLayoutConfig = {
+      ...state.layout,
+      safeAreaHeightRatio: height,
+    };
+    const probe: PosterState = { ...state, text, layout };
+    const info = measurePosterOverlay(probe, 1000, 1400);
+    if (!info.overflowed) {
+      return {
+        text,
+        layout,
+        bumpedHeight: height > state.layout.safeAreaHeightRatio + 0.001,
+      };
+    }
+    return null;
+  };
+
+  // Phase 1 — current band height, walk presets large → small.
+  for (let i = 0; i < TITLE_PRESETS.length; i++) {
+    const r = tryPreset(
+      TITLE_PRESETS[i],
+      SUBTITLE_PRESETS[i],
+      DESCRIPTION_PRESETS[i],
+      INGREDIENTS_LIMITS[Math.min(i, INGREDIENTS_LIMITS.length - 1)],
+      state.layout.safeAreaHeightRatio,
+    );
+    if (r) return r;
+  }
+
+  // Phase 2 — bump band height, retry presets large → small at each step.
+  for (const h of heightOptions) {
+    if (h <= state.layout.safeAreaHeightRatio) continue;
+    for (let i = 0; i < TITLE_PRESETS.length; i++) {
+      const r = tryPreset(
+        TITLE_PRESETS[i],
+        SUBTITLE_PRESETS[i],
+        DESCRIPTION_PRESETS[i],
+        INGREDIENTS_LIMITS[Math.min(i, INGREDIENTS_LIMITS.length - 1)],
+        h,
+      );
+      if (r) return r;
+    }
+  }
+
+  return null;
+}
+
 // ── Export (delegates artwork render to existing print-export.ts) ────────
 
 interface ExportPosterOptions {

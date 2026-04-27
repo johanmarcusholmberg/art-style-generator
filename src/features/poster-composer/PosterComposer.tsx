@@ -34,6 +34,7 @@ import {
   usePosterComposer,
   resolvePosterSurfaceBackground,
   measurePosterOverlay,
+  autoFitPosterText,
 } from "./usePosterComposer";
 import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "./poster-templates";
 import type {
@@ -333,12 +334,52 @@ export default function PosterComposer({
           </div>
         </div>
         {overflowInfo.overflowed && (
-          <div className="flex items-start gap-1.5 text-[11px] font-display border rounded-sm px-2 py-1.5 bg-amber-500/10 border-amber-500/30 text-amber-600">
+          <button
+            type="button"
+            onClick={() => {
+              const fitted = autoFitPosterText(state);
+              if (fitted) {
+                setText({
+                  title: fitted.text.title,
+                  subtitle: fitted.text.subtitle,
+                  description: fitted.text.description,
+                  ingredients: fitted.text.ingredients,
+                });
+                if (
+                  fitted.layout.safeAreaHeightRatio !==
+                  state.layout.safeAreaHeightRatio
+                ) {
+                  setLayout({
+                    safeAreaHeightRatio: fitted.layout.safeAreaHeightRatio,
+                  });
+                }
+                toast({
+                  title: "Auto-fit applied",
+                  description: fitted.bumpedHeight
+                    ? "Text shortened and safe area enlarged to fit."
+                    : "Text shortened to fit the safe area.",
+                });
+              } else {
+                toast({
+                  title: "Couldn't auto-fit",
+                  description:
+                    "Text is too long even at the largest safe area. Try removing a field.",
+                  variant: "destructive",
+                });
+              }
+            }}
+            className="w-full text-left flex items-start gap-1.5 text-[11px] font-display border rounded-sm px-2 py-1.5 bg-amber-500/10 border-amber-500/30 text-amber-600 hover:bg-amber-500/20 transition-colors"
+            title="Apply suggested shorter text presets"
+          >
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
             <span>
-              Text is too long for this poster area. Shorten text or increase safe area height.
+              Text is too long for this poster area.{" "}
+              <span className="underline font-semibold">
+                Click to auto-fit
+              </span>{" "}
+              — or shorten text / increase safe area height manually.
             </span>
-          </div>
+          </button>
         )}
         {!overflowInfo.overflowed && overflowInfo.shrunk && (
           <div className="flex items-start gap-1.5 text-[10px] font-display border rounded-sm px-2 py-1 bg-muted/50 border-border text-muted-foreground">
