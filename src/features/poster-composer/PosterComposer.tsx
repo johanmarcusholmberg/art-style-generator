@@ -364,6 +364,12 @@ export default function PosterComposer({
             onClick={() => {
               const fitted = autoFitPosterText(state);
               if (fitted) {
+                // Snapshot the pre-auto-fit values so the user can undo.
+                setAutoFitSnapshot({
+                  text: { ...state.text },
+                  safeAreaHeightRatio: state.layout.safeAreaHeightRatio,
+                  bumpedHeight: fitted.bumpedHeight,
+                });
                 setText({
                   title: fitted.text.title,
                   subtitle: fitted.text.subtitle,
@@ -403,6 +409,40 @@ export default function PosterComposer({
                 Click to auto-fit
               </span>{" "}
               — or shorten text / increase safe area height manually.
+            </span>
+          </button>
+        )}
+        {autoFitSnapshot && (
+          <button
+            type="button"
+            onClick={() => {
+              setText({
+                title: autoFitSnapshot.text.title,
+                subtitle: autoFitSnapshot.text.subtitle,
+                description: autoFitSnapshot.text.description,
+                ingredients: autoFitSnapshot.text.ingredients,
+              });
+              if (autoFitSnapshot.bumpedHeight) {
+                setLayout({
+                  safeAreaHeightRatio: autoFitSnapshot.safeAreaHeightRatio,
+                });
+              }
+              setAutoFitSnapshot(null);
+              toast({
+                title: "Auto-fit undone",
+                description: autoFitSnapshot.bumpedHeight
+                  ? "Original text and safe area height restored."
+                  : "Original text restored.",
+              });
+            }}
+            className="w-full text-left flex items-start gap-1.5 text-[11px] font-display border rounded-sm px-2 py-1.5 bg-muted/50 border-border text-foreground hover:bg-muted transition-colors"
+            title="Restore the text and safe-area height to before the auto-fit"
+          >
+            <Undo2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+            <span>
+              Auto-fit applied.{" "}
+              <span className="underline font-semibold">Undo</span> to restore your
+              original {autoFitSnapshot.bumpedHeight ? "text and safe area height" : "text"}.
             </span>
           </button>
         )}
