@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Loader2, AlertTriangle, Info, RefreshCw } from "lucide-react";
+import { Download, Loader2, AlertTriangle, Info, RefreshCw, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -93,6 +93,31 @@ export default function PosterComposer({
 
   const [exporting, setExporting] = useState(false);
   const [overlayInGenerated, setOverlayInGenerated] = useState(false);
+
+  // Snapshot of the composer state taken right BEFORE an auto-fit click,
+  // so the user can undo it. Cleared when the user manually edits text /
+  // layout, or when they click Undo.
+  const [autoFitSnapshot, setAutoFitSnapshot] = useState<
+    | {
+        text: PosterTextContent;
+        safeAreaHeightRatio: number;
+        bumpedHeight: boolean;
+      }
+    | null
+  >(null);
+
+  // Wrapped setters that clear the snapshot on any manual edit. We keep
+  // setLayout's safeAreaHeightRatio change tolerant of programmatic auto-
+  // fit application by checking against the snapshot's expected values
+  // immediately after the click (handled inline in the auto-fit handler).
+  const handleManualSetText = (patch: Partial<PosterTextContent>) => {
+    setAutoFitSnapshot(null);
+    setText(patch);
+  };
+  const handleManualSetLayout: typeof setLayout = (patch) => {
+    if ("safeAreaHeightRatio" in patch) setAutoFitSnapshot(null);
+    setLayout(patch);
+  };
 
   const tpl = useMemo(() => getPosterTemplate(state.templateId), [state.templateId]);
 
@@ -339,6 +364,12 @@ export default function PosterComposer({
             onClick={() => {
               const fitted = autoFitPosterText(state);
               if (fitted) {
+                // Snapshot the pre-auto-fit values so the user can undo.
+                setAutoFitSnapshot({
+                  text: { ...state.text },
+                  safeAreaHeightRatio: state.layout.safeAreaHeightRatio,
+                  bumpedHeight: fitted.bumpedHeight,
+                });
                 setText({
                   title: fitted.text.title,
                   subtitle: fitted.text.subtitle,
@@ -378,6 +409,40 @@ export default function PosterComposer({
                 Click to auto-fit
               </span>{" "}
               — or shorten text / increase safe area height manually.
+            </span>
+          </button>
+        )}
+        {autoFitSnapshot && (
+          <button
+            type="button"
+            onClick={() => {
+              setText({
+                title: autoFitSnapshot.text.title,
+                subtitle: autoFitSnapshot.text.subtitle,
+                description: autoFitSnapshot.text.description,
+                ingredients: autoFitSnapshot.text.ingredients,
+              });
+              if (autoFitSnapshot.bumpedHeight) {
+                setLayout({
+                  safeAreaHeightRatio: autoFitSnapshot.safeAreaHeightRatio,
+                });
+              }
+              setAutoFitSnapshot(null);
+              toast({
+                title: "Auto-fit undone",
+                description: autoFitSnapshot.bumpedHeight
+                  ? "Original text and safe area height restored."
+                  : "Original text restored.",
+              });
+            }}
+            className="w-full text-left flex items-start gap-1.5 text-[11px] font-display border rounded-sm px-2 py-1.5 bg-muted/50 border-border text-foreground hover:bg-muted transition-colors"
+            title="Restore the text and safe-area height to before the auto-fit"
+          >
+            <Undo2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+            <span>
+              Auto-fit applied.{" "}
+              <span className="underline font-semibold">Undo</span> to restore your
+              original {autoFitSnapshot.bumpedHeight ? "text and safe area height" : "text"}.
             </span>
           </button>
         )}
@@ -533,7 +598,7 @@ export default function PosterComposer({
                   max={45}
                   step={1}
                   onValueChange={([v]) =>
-                    setLayout({ safeAreaHeightRatio: v / 100 })
+                    handleManualSetLayout({ safeAreaHeightRatio: v / 100 })
                   }
                 />
               </div>
@@ -571,19 +636,19 @@ export default function PosterComposer({
           <Input
             placeholder="Title"
             value={state.text.title ?? ""}
-            onChange={(e) => setText({ title: e.target.value })}
+            onChange={(e) => handleManualSetText({ title: e.target.value })}
             className="font-display text-xs"
           />
           <Input
             placeholder="Subtitle"
             value={state.text.subtitle ?? ""}
-            onChange={(e) => setText({ subtitle: e.target.value })}
+            onChange={(e) => handleManualSetText({ subtitle: e.target.value })}
             className="font-display text-xs"
           />
           <Textarea
             placeholder="Description"
             value={state.text.description ?? ""}
-            onChange={(e) => setText({ description: e.target.value })}
+            onChange={(e) => handleManualSetText({ description: e.target.value })}
             className="font-display text-xs min-h-[64px]"
             rows={2}
           />
@@ -591,7 +656,7 @@ export default function PosterComposer({
             placeholder="Ingredients (one per line)"
             value={(state.text.ingredients ?? []).join("\n")}
             onChange={(e) =>
-              setText({
+              handleManualSetText({
                 ingredients: e.target.value
                   .split("\n")
                   .map((s) => s.trim())
