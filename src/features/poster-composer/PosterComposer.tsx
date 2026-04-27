@@ -94,6 +94,31 @@ export default function PosterComposer({
   const [exporting, setExporting] = useState(false);
   const [overlayInGenerated, setOverlayInGenerated] = useState(false);
 
+  // Snapshot of the composer state taken right BEFORE an auto-fit click,
+  // so the user can undo it. Cleared when the user manually edits text /
+  // layout, or when they click Undo.
+  const [autoFitSnapshot, setAutoFitSnapshot] = useState<
+    | {
+        text: PosterTextContent;
+        safeAreaHeightRatio: number;
+        bumpedHeight: boolean;
+      }
+    | null
+  >(null);
+
+  // Wrapped setters that clear the snapshot on any manual edit. We keep
+  // setLayout's safeAreaHeightRatio change tolerant of programmatic auto-
+  // fit application by checking against the snapshot's expected values
+  // immediately after the click (handled inline in the auto-fit handler).
+  const handleManualSetText = (patch: Partial<PosterTextContent>) => {
+    setAutoFitSnapshot(null);
+    setText(patch);
+  };
+  const handleManualSetLayout: typeof setLayout = (patch) => {
+    if ("safeAreaHeightRatio" in patch) setAutoFitSnapshot(null);
+    setLayout(patch);
+  };
+
   const tpl = useMemo(() => getPosterTemplate(state.templateId), [state.templateId]);
 
   const hasAnyText = !!(
