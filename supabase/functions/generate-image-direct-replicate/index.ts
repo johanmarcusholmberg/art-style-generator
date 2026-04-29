@@ -24,6 +24,7 @@ interface Body {
   aspectRatio?: string;
   backgroundStyle?: string;
   printMode?: boolean;
+  posterFormatHint?: string;
 }
 
 const REPLICATE_SDXL_VERSION =
@@ -52,7 +53,7 @@ serve(async (req) => {
 
   try {
     const body = (await req.json()) as Body;
-    const { prompt, styleKey, aspectRatio, backgroundStyle, printMode } = body || {};
+    const { prompt, styleKey, aspectRatio, backgroundStyle, printMode, posterFormatHint } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(
@@ -88,6 +89,8 @@ serve(async (req) => {
       isEdit: false,
       printMode: !!printMode,
       provider: "sdxl",
+      posterFormatHint:
+        typeof posterFormatHint === "string" ? posterFormatHint : undefined,
     });
 
     const { width, height } = sdxlSize(aspectRatio);

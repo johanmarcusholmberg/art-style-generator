@@ -29,6 +29,7 @@ interface Body {
   quality?: "low" | "medium" | "high" | "auto";
   /** Optional: "balanced" | "strict" | "very_strict". */
   strictness?: "balanced" | "strict" | "very_strict";
+  posterFormatHint?: string;
 }
 
 const OPENAI_MODEL = "gpt-image-1";
