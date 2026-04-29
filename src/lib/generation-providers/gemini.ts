@@ -33,6 +33,7 @@ export async function generateWithGeminiAdapter(
     generatorPreference: "gemini",
   };
   if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
+  if (req.posterFormatId) body.posterFormatId = req.posterFormatId;
   if (req.referenceImageUrl) body.sourceImageUrl = req.referenceImageUrl;
 
   const { data, error } = await supabase.functions.invoke(edgeFn, { body });

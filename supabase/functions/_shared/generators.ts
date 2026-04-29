@@ -12,6 +12,7 @@ import {
   type Strictness,
 } from "./style-meta.ts";
 import { STYLE_RULES } from "./prompt-compiler.ts";
+import { sdxlSizeForFormat } from "./provider-sizing.ts";
 
 export type ResolvedProviderId = "gemini" | "sdxl";
 export type GeneratorPreference = "auto" | ResolvedProviderId;
@@ -41,23 +42,12 @@ export interface GenerateArgs {
    * format suitable for 50 × 70 cm print").
    */
   posterFormatHint?: string;
-}
-
-/** Map our supported aspect ratios to SDXL-friendly target sizes (longest side ~1024). */
-function sdxlSize(aspectRatio?: string): { width: number; height: number } {
-  switch (aspectRatio) {
-    case "1:1": return { width: 1024, height: 1024 };
-    case "4:5": return { width: 832, height: 1024 };
-    case "5:7": return { width: 768, height: 1024 };
-    case "2:3": return { width: 768, height: 1152 };
-    case "3:2": return { width: 1152, height: 768 };
-    case "3:4": return { width: 768, height: 1024 };
-    case "4:3": return { width: 1024, height: 768 };
-    case "16:9": return { width: 1344, height: 768 };
-    case "9:16": return { width: 768, height: 1344 };
-    case "7:5": return { width: 1024, height: 768 };
-    default: return { width: 1024, height: 1024 };
-  }
+  /**
+   * Poster format id (from `src/lib/print-formats.ts`). When set, providers
+   * derive output pixel dimensions from the registry's recommended size
+   * instead of the legacy aspect-ratio token map.
+   */
+  posterFormatId?: string;
 }
 
 // ── Gemini provider (existing path) ─────────────────────────────────────
@@ -178,7 +168,11 @@ export async function generateWithSDXL(args: GenerateArgs): Promise<ProviderResu
       `prompt_len=${compiled.prompt.length} neg_len=${(compiled.negativePrompt ?? "").length}`,
   );
 
-  const { width, height } = sdxlSize(args.aspectRatio);
+  const sized = sdxlSizeForFormat(args.posterFormatId, args.aspectRatio);
+  const { width, height } = sized;
+  console.log(
+    `[sdxl] size=${width}x${height} source=${sized.source} posterFormatId=${args.posterFormatId ?? "none"} aspectRatio=${args.aspectRatio ?? "none"}`,
+  );
 
   // Create prediction
   const createRes = await fetch("https://api.replicate.com/v1/predictions", {

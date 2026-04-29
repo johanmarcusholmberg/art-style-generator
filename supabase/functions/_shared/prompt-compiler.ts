@@ -947,6 +947,7 @@ export function createStyleHandler(styleKey: string) {
         generatorPreference,
         strictness,
         posterFormatHint,
+        posterFormatId,
       } = body || {};
 
       if (!prompt || typeof prompt !== "string") {
@@ -998,6 +999,8 @@ export function createStyleHandler(styleKey: string) {
           strictness: validStrictness,
           posterFormatHint:
             typeof posterFormatHint === "string" ? posterFormatHint : undefined,
+          posterFormatId:
+            typeof posterFormatId === "string" ? posterFormatId : undefined,
         });
 
         return new Response(

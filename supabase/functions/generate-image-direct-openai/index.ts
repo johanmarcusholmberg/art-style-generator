@@ -18,6 +18,7 @@ import {
   STYLE_RULES,
   compilePromptForOpenAI,
 } from "../_shared/prompt-compiler.ts";
+import { openaiSizeForFormat } from "../_shared/provider-sizing.ts";
 
 interface Body {
   prompt?: string;
@@ -30,34 +31,10 @@ interface Body {
   /** Optional: "balanced" | "strict" | "very_strict". */
   strictness?: "balanced" | "strict" | "very_strict";
   posterFormatHint?: string;
+  posterFormatId?: string;
 }
 
 const OPENAI_MODEL = "gpt-image-1";
-
-/**
- * Map our aspect-ratio tokens to the closest size gpt-image-1 supports.
- * gpt-image-1 currently supports: 1024x1024, 1024x1536 (portrait), 1536x1024 (landscape).
- * We pick by orientation derived from the ratio.
- */
-function openaiSize(aspectRatio?: string): {
-  size: "1024x1024" | "1024x1536" | "1536x1024";
-  width: number;
-  height: number;
-} {
-  if (!aspectRatio || aspectRatio === "1:1") {
-    return { size: "1024x1024", width: 1024, height: 1024 };
-  }
-  const [aStr, bStr] = aspectRatio.split(":");
-  const a = parseFloat(aStr);
-  const b = parseFloat(bStr);
-  if (!isFinite(a) || !isFinite(b) || b === 0) {
-    return { size: "1024x1024", width: 1024, height: 1024 };
-  }
-  const ratio = a / b;
-  if (ratio > 1.05) return { size: "1536x1024", width: 1536, height: 1024 };
-  if (ratio < 0.95) return { size: "1024x1536", width: 1024, height: 1536 };
-  return { size: "1024x1024", width: 1024, height: 1024 };
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -75,6 +52,7 @@ serve(async (req) => {
       quality,
       strictness,
       posterFormatHint,
+      posterFormatId,
     } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
@@ -121,12 +99,14 @@ serve(async (req) => {
     });
     const compiledPrompt = compiled.prompt;
 
-    const { size, width, height } = openaiSize(aspectRatio);
+    const sized = openaiSizeForFormat(posterFormatId, aspectRatio);
+    const { size, width, height } = sized;
     const startedAt = Date.now();
 
     console.log(
       `[direct-openai] style=${styleKey} category=${compiled.category} ` +
-        `prompt_len=${compiledPrompt.length} size=${size} quality=${quality ?? "high"}`,
+        `prompt_len=${compiledPrompt.length} size=${size} sizeSource=${sized.source} ` +
+        `posterFormatId=${posterFormatId ?? "none"} quality=${quality ?? "high"}`,
     );
 
     const res = await fetch("https://api.openai.com/v1/images/generations", {

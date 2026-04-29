@@ -17,6 +17,7 @@ import {
   STYLE_RULES,
   compilePromptForSDXL,
 } from "../_shared/prompt-compiler.ts";
+import { sdxlSizeForFormat } from "../_shared/provider-sizing.ts";
 
 interface Body {
   prompt?: string;
@@ -25,26 +26,11 @@ interface Body {
   backgroundStyle?: string;
   printMode?: boolean;
   posterFormatHint?: string;
+  posterFormatId?: string;
 }
 
 const REPLICATE_SDXL_VERSION =
   "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b"; // stability-ai/sdxl
-
-function sdxlSize(aspectRatio?: string): { width: number; height: number } {
-  switch (aspectRatio) {
-    case "1:1": return { width: 1024, height: 1024 };
-    case "4:5": return { width: 832, height: 1024 };
-    case "5:7": return { width: 768, height: 1024 };
-    case "2:3": return { width: 768, height: 1152 };
-    case "3:2": return { width: 1152, height: 768 };
-    case "3:4": return { width: 768, height: 1024 };
-    case "4:3": return { width: 1024, height: 768 };
-    case "16:9": return { width: 1344, height: 768 };
-    case "9:16": return { width: 768, height: 1344 };
-    case "7:5": return { width: 1024, height: 768 };
-    default: return { width: 1024, height: 1024 };
-  }
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -53,7 +39,7 @@ serve(async (req) => {
 
   try {
     const body = (await req.json()) as Body;
-    const { prompt, styleKey, aspectRatio, backgroundStyle, printMode, posterFormatHint } = body || {};
+    const { prompt, styleKey, aspectRatio, backgroundStyle, printMode, posterFormatHint, posterFormatId } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(
@@ -93,12 +79,14 @@ serve(async (req) => {
         typeof posterFormatHint === "string" ? posterFormatHint : undefined,
     });
 
-    const { width, height } = sdxlSize(aspectRatio);
+    const sized = sdxlSizeForFormat(posterFormatId, aspectRatio);
+    const { width, height } = sized;
     const startedAt = Date.now();
 
     console.log(
       `[direct-replicate] style=${styleKey} category=${compiled.category} ` +
-        `prompt_len=${compiled.prompt.length} size=${width}x${height}`,
+        `prompt_len=${compiled.prompt.length} size=${width}x${height} ` +
+        `sizeSource=${sized.source} posterFormatId=${posterFormatId ?? "none"}`,
     );
 
     const createRes = await fetch("https://api.replicate.com/v1/predictions", {
