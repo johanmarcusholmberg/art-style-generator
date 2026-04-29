@@ -628,6 +628,8 @@ export function compilePrompt(
     `\nWALL ART COMPOSITION: ${WALL_ART_COMPOSITION.join(". ")}`,
   ].join("\n");
 
+  const formatInstruction = buildPosterFormatInstruction(options.posterFormatHint);
+
   if (!rules) {
     const sections = [
       `PRIMARY SUBJECT: ${userPrompt}`,
@@ -638,6 +640,7 @@ export function compilePrompt(
       alwaysOnQuality,
       "",
       options.aspectRatio ? `The image must have a ${options.aspectRatio} aspect ratio.` : "",
+      formatInstruction,
       buildArtworkBgText(options.backgroundStyle),
       styleStrictSuffix(styleKey),
       "Generate at maximum native resolution. Output the highest fidelity image possible.",
@@ -674,6 +677,7 @@ export function compilePrompt(
       `EDGE SAFETY: ${edgeSafetyLines.join(". ")}`,
       bgText,
       ratioText,
+      formatInstruction,
       `STYLE QUALITY: ${rules.qualityRules.join(". ")}`,
       `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
       `AVOID: ${rules.avoidRules.join(", ")}`,
@@ -715,6 +719,7 @@ export function compilePrompt(
     "",
     bgText,
     ratioText,
+    formatInstruction,
     variationText,
     "",
     styleStrictSuffix(styleKey),
