@@ -29,6 +29,8 @@ interface Body {
   strictness?: "balanced" | "strict" | "very_strict";
   /** Poster format hint, e.g. "vertical 5:7 poster format suitable for 50 × 70 cm print". */
   posterFormatHint?: string;
+  /** Poster format id from `src/lib/print-formats.ts`, used for provider sizing. */
+  posterFormatId?: string;
 }
 
 serve(async (req) => {
@@ -48,6 +50,7 @@ serve(async (req) => {
       generatorPreference,
       strictness,
       posterFormatHint,
+      posterFormatId,
     } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
@@ -106,6 +109,8 @@ serve(async (req) => {
         strictness: validStrictness,
         posterFormatHint:
           typeof posterFormatHint === "string" ? posterFormatHint : undefined,
+        posterFormatId:
+          typeof posterFormatId === "string" ? posterFormatId : undefined,
       });
 
       console.log(
