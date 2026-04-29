@@ -36,7 +36,7 @@ import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
-import { PRINT_FORMATS, type PrintFormat, formatExportDescription } from "@/lib/print-formats";
+import { PRINT_FORMATS, type PrintFormat, formatExportDescription, getPosterPromptHint } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -191,7 +191,11 @@ export default function ImageGenerator({
   const upscaleRunId = useRef(0);
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
-  const effectiveAspectRatio = generationMode === "print-ready" ? selectedPrintFormat.aspectRatio : printSize.ratio;
+  // Poster format is the single source of truth for aspect ratio across
+  // generation, preview, composer, and export. Standard mode used to drive
+  // ratio from PrintSizeSelector — we now ALWAYS use the selected poster
+  // format so the choice flows through every provider deterministically.
+  const effectiveAspectRatio = selectedPrintFormat.aspectRatio;
   const upscaleConfig = UPSCALE_MODES[upscaleMode];
 
   // Style + provider-aware recipe recommendation. Recomputes whenever the
@@ -339,6 +343,9 @@ export default function ImageGenerator({
         referenceImageUrl,
         isEdit: !!referenceImageUrl,
         strictness: effectiveStrictness,
+        posterFormatId: selectedPrintFormat.id,
+        posterFormatHint: getPosterPromptHint(selectedPrintFormat.id),
+        targetAspectRatio: selectedPrintFormat.aspectRatioDecimal,
       });
 
       const baseUrl = gen.imageUrl;
