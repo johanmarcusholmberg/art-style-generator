@@ -32,6 +32,7 @@ export async function generateWithGeminiAdapter(
     // Force Gemini path on the backend resolver.
     generatorPreference: "gemini",
   };
+  if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
   if (req.referenceImageUrl) body.sourceImageUrl = req.referenceImageUrl;
 
   const { data, error } = await supabase.functions.invoke(edgeFn, { body });

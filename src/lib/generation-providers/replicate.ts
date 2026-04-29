@@ -35,6 +35,7 @@ export async function generateWithReplicateAdapter(
     printMode: req.printMode ?? true,
   };
   if (req.strictness) body.strictness = req.strictness;
+  if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
 
   const { data, error } = await supabase.functions.invoke(
     "generate-image-direct-replicate",
