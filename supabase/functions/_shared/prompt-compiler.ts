@@ -996,6 +996,8 @@ export function createStyleHandler(styleKey: string) {
           isEdit,
           sourceImageUrl,
           strictness: validStrictness,
+          posterFormatHint:
+            typeof posterFormatHint === "string" ? posterFormatHint : undefined,
         });
 
         return new Response(
