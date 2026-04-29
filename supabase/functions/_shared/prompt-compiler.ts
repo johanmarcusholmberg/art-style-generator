@@ -553,6 +553,27 @@ export interface CompileOptions {
   provider?: ResolvedProviderId;
   /** Style strictness — controls SDXL anchor repetition + negative boost. */
   strictness?: Strictness;
+  /**
+   * Poster composition hint, e.g. "vertical 5:7 poster format suitable for
+   * 50 × 70 cm print". When provided, a strong COMPOSITION FORMAT
+   * directive is injected so every provider composes for the right canvas.
+   */
+  posterFormatHint?: string;
+}
+
+/**
+ * Build the COMPOSITION FORMAT directive that is appended to every
+ * provider's prompt. Strong, deterministic wording — applies the same
+ * constraint regardless of model. Returns "" when no hint is set.
+ */
+export function buildPosterFormatInstruction(hint?: string): string {
+  if (!hint) return "";
+  return (
+    `COMPOSITION FORMAT: Compose strictly for a ${hint}. The artwork must ` +
+    `match this aspect ratio. Do not create a square, landscape, cropped, ` +
+    `or freeform layout unless the selected poster format is square. Keep ` +
+    `the main subject comfortably inside the printable poster area.`
+  );
 }
 
 export interface CompiledPrompt {
