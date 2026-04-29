@@ -52,6 +52,7 @@ serve(async (req) => {
       quality,
       strictness,
       posterFormatHint,
+      posterFormatId,
     } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
@@ -98,12 +99,14 @@ serve(async (req) => {
     });
     const compiledPrompt = compiled.prompt;
 
-    const { size, width, height } = openaiSize(aspectRatio);
+    const sized = openaiSizeForFormat(posterFormatId, aspectRatio);
+    const { size, width, height } = sized;
     const startedAt = Date.now();
 
     console.log(
       `[direct-openai] style=${styleKey} category=${compiled.category} ` +
-        `prompt_len=${compiledPrompt.length} size=${size} quality=${quality ?? "high"}`,
+        `prompt_len=${compiledPrompt.length} size=${size} sizeSource=${sized.source} ` +
+        `posterFormatId=${posterFormatId ?? "none"} quality=${quality ?? "high"}`,
     );
 
     const res = await fetch("https://api.openai.com/v1/images/generations", {
