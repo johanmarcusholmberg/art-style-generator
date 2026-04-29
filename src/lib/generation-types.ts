@@ -48,6 +48,25 @@ export interface NormalizedGenerationRequest {
   isEdit?: boolean;
   /** Style strictness — drives SDXL anchor repetition + negative boost. */
   strictness?: Strictness;
+  /**
+   * Poster format id (from `src/lib/print-formats.ts`). When set, the
+   * router/adapters forward the poster format hint to the prompt compiler
+   * so every provider composes for the right canvas. Foundation pass —
+   * pixel-size enforcement per-adapter lands in a follow-up.
+   */
+  posterFormatId?: string;
+  /**
+   * Poster prompt hint, derived from `posterFormatId`. Sent to the edge
+   * function so the COMPOSITION FORMAT directive applies regardless of
+   * which provider runs.
+   */
+  posterFormatHint?: string;
+  /**
+   * Target aspect ratio as a decimal (width / height). Available to
+   * downstream consumers (debug UI, validation) without needing to parse
+   * the aspect-ratio string.
+   */
+  targetAspectRatio?: number;
 }
 
 // ── Response ─────────────────────────────────────────────────────────────
