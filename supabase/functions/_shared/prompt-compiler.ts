@@ -946,6 +946,7 @@ export function createStyleHandler(styleKey: string) {
         printMode,
         generatorPreference,
         strictness,
+        posterFormatHint,
       } = body || {};
 
       if (!prompt || typeof prompt !== "string") {
