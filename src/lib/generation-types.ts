@@ -112,6 +112,16 @@ export interface NormalizedGenerationResponse {
   routingReason?: string;
   /** Free-form provider metadata (kept opaque to downstream code). */
   metadata?: Record<string, unknown>;
+  /** Width (px) the provider was asked to generate at. */
+  requestedWidth?: number;
+  /** Height (px) the provider was asked to generate at. */
+  requestedHeight?: number;
+  /** Aspect ratio the provider was asked to target (e.g. "3:4"). */
+  requestedAspectRatio?: string;
+  /** True when the provider could match the poster aspect ratio exactly. */
+  providerExactMatch?: boolean;
+  /** True when the provider used an approximate ratio (export will crop). */
+  providerAdjusted?: boolean;
 }
 
 // ── Persistence mapping (used by gallery save) ───────────────────────────
