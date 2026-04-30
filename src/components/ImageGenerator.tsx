@@ -1003,7 +1003,31 @@ export default function ImageGenerator({
             <span className="font-bold text-foreground">Advanced settings</span>
             <span className="text-muted-foreground">(provider · strictness · compare)</span>
             {lastProviderUsed && (
-              <span className="ml-auto">
+              <span className="ml-auto flex items-center gap-2">
+                {lastRequestedSize && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
+                    title={
+                      lastProviderExactMatch === false
+                        ? "Provider used an approximate ratio — export pipeline will crop to exact poster size."
+                        : "Provider matched the poster aspect ratio exactly."
+                    }
+                  >
+                    {lastRequestedSize}
+                    <span
+                      className={
+                        lastProviderExactMatch === false
+                          ? "text-amber-500"
+                          : "text-emerald-500"
+                      }
+                    >
+                      ·{" "}
+                      {lastProviderExactMatch === false
+                        ? "Approximate (corrected on export)"
+                        : "Exact print ratio"}
+                    </span>
+                  </span>
+                )}
                 <RouteBadge
                   provider={lastProviderUsed}
                   model={lastModelUsed}
