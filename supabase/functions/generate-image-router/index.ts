@@ -129,6 +129,11 @@ serve(async (req) => {
           height: outcome.height,
           attempted: outcome.attempted,
           styleKey,
+          requestedWidth: outcome.requestedWidth,
+          requestedHeight: outcome.requestedHeight,
+          requestedAspectRatio: outcome.requestedAspectRatio,
+          providerExactMatch: outcome.providerExactMatch,
+          providerAdjusted: outcome.providerAdjusted,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
