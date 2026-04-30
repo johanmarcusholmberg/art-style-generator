@@ -171,6 +171,13 @@ serve(async (req) => {
         height,
         executionRoute: "direct_openai",
         styleKey,
+        requestedWidth: width,
+        requestedHeight: height,
+        requestedSize: size,
+        requestedAspectRatio: aspectRatio ?? null,
+        providerExactMatch: sized.exact,
+        providerAdjusted: !sized.exact,
+        sizeSource: sized.source,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
