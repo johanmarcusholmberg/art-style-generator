@@ -360,6 +360,14 @@ export default function ImageGenerator({
       setLastStrategyUsed(gen.strategy);
       setLastExecutionRoute(gen.executionRoute);
       setLastRoutingReason(gen.routingReason ?? null);
+      setLastProviderExactMatch(
+        typeof gen.providerExactMatch === "boolean" ? gen.providerExactMatch : null,
+      );
+      setLastRequestedSize(
+        gen.requestedWidth && gen.requestedHeight
+          ? `${gen.requestedWidth}×${gen.requestedHeight}`
+          : gen.requestedAspectRatio ?? null,
+      );
 
       console.log(
         `[ImageGenerator] generated provider=${gen.generationProvider} model=${gen.generationModel} ` +
