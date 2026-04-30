@@ -60,6 +60,11 @@ export async function generateWithReplicateAdapter(
     fallbackUsed: false,
     strategy: "manual",
     executionRoute: "direct_replicate",
-    metadata: { adapter: "replicate-direct" },
+    requestedWidth: data.requestedWidth ?? data.width,
+    requestedHeight: data.requestedHeight ?? data.height,
+    requestedAspectRatio: data.requestedAspectRatio ?? req.aspectRatio,
+    providerExactMatch: data.providerExactMatch,
+    providerAdjusted: data.providerAdjusted,
+    metadata: { adapter: "replicate-direct", sizeSource: data.sizeSource },
   };
 }
