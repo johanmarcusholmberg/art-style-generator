@@ -169,17 +169,54 @@ export type OpenAISize = "1024x1024" | "1024x1536" | "1536x1024";
 export function openaiSizeForFormat(
   posterFormatId?: string,
   aspectRatio?: string,
-): { size: OpenAISize; width: number; height: number; source: "format" | "aspect" | "default" } {
+): {
+  size: OpenAISize;
+  width: number;
+  height: number;
+  source: "map" | "format" | "aspect" | "default";
+  exact: boolean;
+} {
+  // 1. Hard map (preferred)
+  const mapped = getProviderSizeFromMap("openai", posterFormatId);
+  if (mapped) {
+    const [w, h] = mapped.size.split("x").map(Number);
+    return { size: mapped.size, width: w, height: h, source: "map", exact: mapped.exact };
+  }
+
+  // 2. Fallback: derive from format / aspect-ratio
   const format = getPrintFormat(posterFormatId);
   const ratio = format?.aspectRatioDecimal ?? aspectRatioToDecimal(aspectRatio);
 
   if (!ratio) {
-    return { size: "1024x1024", width: 1024, height: 1024, source: "default" };
+    return { size: "1024x1024", width: 1024, height: 1024, source: "default", exact: false };
   }
 
   const source: "format" | "aspect" = format ? "format" : "aspect";
 
-  if (ratio > 1.05) return { size: "1536x1024", width: 1536, height: 1024, source };
-  if (ratio < 0.95) return { size: "1024x1536", width: 1024, height: 1536, source };
-  return { size: "1024x1024", width: 1024, height: 1024, source };
+  if (ratio > 1.05) return { size: "1536x1024", width: 1536, height: 1024, source, exact: false };
+  if (ratio < 0.95) return { size: "1024x1536", width: 1024, height: 1536, source, exact: false };
+  return { size: "1024x1024", width: 1024, height: 1024, source, exact: false };
+}
+
+// ── Gemini ──────────────────────────────────────────────────────────────
+
+/**
+ * Resolve the aspect-ratio Gemini should target for the given poster
+ * format. Gemini doesn't expose explicit pixel dimensions through our
+ * gateway call, so this is informational — the prompt compiler still
+ * carries the COMPOSITION FORMAT directive. We surface it through the
+ * normalized response so the UI can flag "approximate" outputs.
+ */
+export function geminiAspectForFormat(
+  posterFormatId?: string,
+  aspectRatio?: string,
+): { aspectRatio: string; source: "map" | "format" | "aspect" | "default"; exact: boolean } {
+  const mapped = getProviderSizeFromMap("gemini", posterFormatId);
+  if (mapped) {
+    return { aspectRatio: mapped.aspectRatio, source: "map", exact: mapped.exact };
+  }
+  const format = getPrintFormat(posterFormatId);
+  if (format) return { aspectRatio: format.aspectRatio, source: "format", exact: false };
+  if (aspectRatio) return { aspectRatio, source: "aspect", exact: false };
+  return { aspectRatio: "1:1", source: "default", exact: false };
 }
