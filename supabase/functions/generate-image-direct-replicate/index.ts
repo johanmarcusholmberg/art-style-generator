@@ -182,6 +182,12 @@ serve(async (req) => {
         providerGenerationId: prediction.id,
         executionRoute: "direct_replicate",
         styleKey,
+        requestedWidth: width,
+        requestedHeight: height,
+        requestedAspectRatio: aspectRatio ?? null,
+        providerExactMatch: sized.exact,
+        providerAdjusted: !sized.exact,
+        sizeSource: sized.source,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
