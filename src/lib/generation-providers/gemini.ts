@@ -56,6 +56,11 @@ export async function generateWithGeminiAdapter(
     // Gemini adapter explicitly bypasses the Lovable resolver's choice;
     // mark this as a "direct" route so the UI can communicate it clearly.
     executionRoute: "direct_gemini",
+    requestedWidth: data.requestedWidth,
+    requestedHeight: data.requestedHeight,
+    requestedAspectRatio: data.requestedAspectRatio,
+    providerExactMatch: data.providerExactMatch,
+    providerAdjusted: data.providerAdjusted,
     metadata: { adapter: "gemini-direct", edgeFn },
   };
 }
