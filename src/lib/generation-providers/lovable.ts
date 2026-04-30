@@ -62,6 +62,11 @@ export async function generateWithLovableAdapter(
     strategy: data.strategy ?? "auto",
     attempted: data.attempted,
     executionRoute,
+    requestedWidth: data.requestedWidth,
+    requestedHeight: data.requestedHeight,
+    requestedAspectRatio: data.requestedAspectRatio,
+    providerExactMatch: data.providerExactMatch,
+    providerAdjusted: data.providerAdjusted,
     metadata: { adapter: "lovable", edgeFn },
   };
 }
