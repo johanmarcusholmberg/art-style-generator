@@ -1050,6 +1050,48 @@ export default function ImageGenerator({
           </div>
         </details>
 
+        {compareOpen && (prompt.trim() || isInlineEditing) && (
+          <ProviderComparison
+            request={{
+              prompt: (isInlineEditing ? editPrompt : prompt).trim(),
+              styleKey: styleConfig.styleKey,
+              aspectRatio: effectiveAspectRatio,
+              backgroundStyle,
+              printMode: true,
+              referenceImageUrl:
+                isInlineEditing && imageUrl
+                  ? imageUrl
+                  : sourceImageUrl || undefined,
+              isEdit: !!(isInlineEditing && imageUrl) || !!sourceImageUrl,
+            }}
+            adapters={[
+              { id: "replicate", label: "SDXL (direct Replicate)" },
+              { id: "gemini", label: "Gemini (direct)" },
+              { id: "openai", label: "OpenAI gpt-image-1 (direct)" },
+              { id: "lovable", label: "SDXL (via Lovable)" },
+            ]}
+            onPick={({ imageUrl: pickedUrl, response }) => {
+              setBaseImageUrl(pickedUrl);
+              setImageUrl(pickedUrl);
+              setLastProviderUsed(response.generationProvider);
+              setLastModelUsed(response.generationModel);
+              setLastFallbackUsed(response.fallbackUsed);
+              setLastStrategyUsed(response.strategy);
+              setLastExecutionRoute(response.executionRoute);
+              setLastRoutingReason(response.routingReason ?? null);
+              setSavedToGallery(false);
+              resetUpscale();
+              setEnhancedImageUrl(null);
+              setCompareOpen(false);
+              toast({
+                title: "Result selected",
+                description: `Using ${response.generationProvider.toUpperCase()} via ${response.executionRoute}.`,
+              });
+            }}
+            onClose={() => setCompareOpen(false)}
+          />
+        )}
+
         <Button
           onClick={generate}
           disabled={loading || (!isInlineEditing && !prompt.trim()) || (isInlineEditing && !editPrompt.trim())}
