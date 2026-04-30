@@ -132,7 +132,7 @@ export default function ImageGenerator({
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
-  const [generationMode, setGenerationMode] = useState<"standard" | "print-ready">("standard");
+  const [generationMode, setGenerationMode] = useState<"standard" | "print-ready">("print-ready");
   const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(PRINT_FORMATS[0]);
   // Phase 1: generator provider preference (auto/sdxl/gemini), persisted in sessionStorage
   const [generatorPref, setGeneratorPref] = useState<GeneratorPreference>(() => loadGeneratorPreference());
@@ -657,17 +657,17 @@ export default function ImageGenerator({
             "Enhance for print" button appears next to the generated image
             once it's available (see action row below). */}
 
-        {/* Generation Mode Toggle */}
-        <div>
-          <p className="font-display font-bold text-sm text-foreground mb-2">Generation Mode</p>
-          <div className="flex gap-2">
+        {/* ── Generation Mode (simplified) ───────────────────────────── */}
+        <div className="flex items-center gap-2">
+          <span className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">Mode:</span>
+          <div className="inline-flex items-center gap-1 border border-border rounded-sm p-0.5 bg-card/40">
             <button
               onClick={() => setGenerationMode("standard")}
               className={cn(
-                "text-xs px-3 py-1.5 rounded-sm border font-display transition-colors",
+                "font-display text-xs px-2.5 py-1 rounded-sm transition-colors",
                 generationMode === "standard"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-secondary text-secondary-foreground border-border hover:bg-muted"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               Standard
@@ -675,10 +675,10 @@ export default function ImageGenerator({
             <button
               onClick={() => setGenerationMode("print-ready")}
               className={cn(
-                "text-xs px-3 py-1.5 rounded-sm border font-display transition-colors flex items-center gap-1",
+                "font-display text-xs px-2.5 py-1 rounded-sm transition-colors inline-flex items-center gap-1",
                 generationMode === "print-ready"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-secondary text-secondary-foreground border-border hover:bg-muted"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Printer className="h-3 w-3" />
@@ -687,168 +687,175 @@ export default function ImageGenerator({
           </div>
         </div>
 
-        {/* Poster Size — single source of truth for aspect ratio across
-            generation, preview, composer, and export. Always visible. */}
-        <div className="rounded-sm border border-primary/20 bg-primary/5 p-3 space-y-2">
-          <p className="font-display font-bold text-sm text-foreground">Poster size</p>
-          <div className="flex flex-wrap gap-2">
-            {PRINT_FORMATS.map((fmt) => (
-              <button
-                key={fmt.id}
-                onClick={() => setSelectedPrintFormat(fmt)}
-                className={cn(
-                  "text-xs px-3 py-1.5 rounded-sm border font-display transition-colors",
-                  selectedPrintFormat.id === fmt.id
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-secondary text-secondary-foreground border-border hover:bg-muted"
-                )}
-              >
-                {fmt.label}
-              </button>
-            ))}
+        {/* ── Poster card — single source of truth for size ──────────── */}
+        <div className="rounded-md border border-border bg-card/60 p-4 space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h3 className="font-display text-base font-bold text-foreground">Poster</h3>
+            <span className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+              Size & format
+            </span>
           </div>
-          <div className="text-xs text-muted-foreground font-display space-y-0.5">
-            <p>
-              Aspect ratio: <span className="font-bold text-foreground">{selectedPrintFormat.aspectRatio}</span>
-              {" · "}
-              300 PPI target: <span className="font-bold text-foreground">{formatResolution(selectedPrintFormat.preferredPixelWidth, selectedPrintFormat.preferredPixelHeight)}</span>
+          <div>
+            <p className="font-display text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
+              Poster size
             </p>
-            <p className="text-[11px]">Drives composition for every provider, the preview canvas, the poster composer, and the print export.</p>
+            <div className="flex flex-wrap gap-2">
+              {PRINT_FORMATS.map((fmt) => {
+                const isSelected = selectedPrintFormat.id === fmt.id;
+                const isRecommended = fmt.id === "print_50x70";
+                return (
+                  <button
+                    key={fmt.id}
+                    onClick={() => setSelectedPrintFormat(fmt)}
+                    className={cn(
+                      "font-display text-xs px-3 py-1.5 rounded-sm border transition-colors",
+                      isSelected
+                        ? "bg-primary text-primary-foreground border-primary font-bold"
+                        : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    {fmt.label}
+                    {isRecommended && (
+                      <span className={cn("ml-1.5 text-[10px]", isSelected ? "opacity-90" : "text-primary")}>
+                        ★ Recommended
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="font-display text-xs text-muted-foreground mt-2">
+              {selectedPrintFormat.label} · {selectedPrintFormat.aspectRatio} · Print-ready format
+            </p>
+          </div>
+
+          <details className="group">
+            <summary className="cursor-pointer select-none font-display text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+              Print details
+            </summary>
+            <div className="mt-2 pt-2 border-t border-border/60 font-display text-[11px] text-muted-foreground space-y-0.5">
+              <p>
+                Aspect ratio: <span className="text-foreground font-bold">{selectedPrintFormat.aspectRatio}</span>
+              </p>
+              <p>
+                300 DPI export:{" "}
+                <span className="text-foreground font-bold">
+                  {formatResolution(selectedPrintFormat.preferredPixelWidth, selectedPrintFormat.preferredPixelHeight)}
+                </span>
+              </p>
+              <p className="text-[10px]">
+                Drives composition for every provider, the preview canvas, the poster composer, and the print export.
+              </p>
+            </div>
+          </details>
+        </div>
+
+        {/* ── Output card — quality ──────────────────────────────────── */}
+        <div className="rounded-md border border-border bg-card/60 p-4 space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h3 className="font-display text-base font-bold text-foreground">Output</h3>
+            <span className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+              Quality
+            </span>
+          </div>
+          <div>
+            <div className="flex flex-wrap gap-2">
+              {([
+                { id: "web", label: "Web", desc: "Small file for preview and sharing" },
+                { id: "print-150", label: "Print Standard", desc: "Good for smaller prints" },
+                { id: "print-300", label: "Print Premium", desc: "Best for selling prints · 300 DPI" },
+              ] as const).map((opt) => {
+                const isSelected = qualityTarget === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => setQualityTarget(opt.id)}
+                    className={cn(
+                      "font-display text-xs px-3 py-1.5 rounded-sm border transition-colors",
+                      isSelected
+                        ? "bg-primary text-primary-foreground border-primary font-bold"
+                        : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="font-display text-xs text-muted-foreground mt-2">
+              {qualityTarget === "web" && "Small file for preview and sharing"}
+              {qualityTarget === "print-150" && "Good for smaller prints"}
+              {qualityTarget === "print-300" && "Best for selling prints · 300 DPI"}
+            </p>
           </div>
         </div>
 
-        {/* Standard-mode quality toggle (kept; ratio is now driven by Poster size above). */}
-        {generationMode === "standard" && (
-          <PrintSizeSelector selected={printSize} onChange={setPrintSize} qualityTarget={qualityTarget} onQualityChange={setQualityTarget} />
-        )}
-
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Label className="font-display text-sm text-muted-foreground">Artwork BG:</Label>
-            <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
-              <button onClick={() => setBackgroundStyle("white")}
-                className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "white" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                White
-              </button>
-              <button onClick={() => setBackgroundStyle("cream")}
-                className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${backgroundStyle === "cream" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                Cream
-              </button>
-            </div>
-          </div>
-
-          {generationMode === "print-ready" && (
-            <div className="flex items-center gap-2">
-              <Label className="font-display text-sm text-muted-foreground">Paper:</Label>
-              <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
-                <button onClick={() => setPaperColor("white")}
-                  className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${paperColor === "white" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                  Pure White
+        {/* ── Artwork card (compact) ─────────────────────────────────── */}
+        <div className="rounded-md border border-border bg-card/60 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h3 className="font-display text-sm font-bold text-foreground">Artwork</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-display text-[11px] text-muted-foreground">Background:</span>
+              <div className="inline-flex items-center gap-1 border border-border rounded-sm p-0.5">
+                <button
+                  onClick={() => setBackgroundStyle("white")}
+                  className={cn(
+                    "font-display text-xs px-2.5 py-1 rounded-sm transition-colors",
+                    backgroundStyle === "white"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  White
                 </button>
-                <button onClick={() => setPaperColor("cream")}
-                  className={`font-display text-xs px-2.5 py-1 rounded-sm transition-colors ${paperColor === "cream" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                <button
+                  onClick={() => setBackgroundStyle("cream")}
+                  className={cn(
+                    "font-display text-xs px-2.5 py-1 rounded-sm transition-colors",
+                    backgroundStyle === "cream"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
                   Cream
                 </button>
               </div>
+              {generationMode === "print-ready" && (
+                <>
+                  <span className="font-display text-[11px] text-muted-foreground">Paper:</span>
+                  <div className="inline-flex items-center gap-1 border border-border rounded-sm p-0.5">
+                    <button
+                      onClick={() => setPaperColor("white")}
+                      className={cn(
+                        "font-display text-xs px-2.5 py-1 rounded-sm transition-colors",
+                        paperColor === "white"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      Pure White
+                    </button>
+                    <button
+                      onClick={() => setPaperColor("cream")}
+                      className={cn(
+                        "font-display text-xs px-2.5 py-1 rounded-sm transition-colors",
+                        paperColor === "cream"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      Cream
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-          )}
-        </div>
-
-        {/* Generator selector + comparison toggle */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
-            <GeneratorBadge
-              value={generatorPref}
-              onChange={setGeneratorPref}
-              lastUsedProvider={lastProviderUsed}
-              lastFallbackUsed={lastFallbackUsed}
-            />
-            <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
-              title="Configure per-style defaults at /style-control-panel"
-            >
-              Strictness: {getDefaultStrictness({
-                styleKey: styleConfig.styleKey,
-                provider: generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId),
-              })}
-              <span className="text-foreground/60">· auto from panel</span>
-            </span>
-            <Button
-              type="button"
-              variant={compareOpen ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCompareOpen((v) => !v)}
-              className="font-display text-[11px] h-7"
-              title="Generate the same prompt on both providers and pick the best result"
-            >
-              <Layers className="h-3 w-3 mr-1" />
-              {compareOpen ? "Hide compare" : "Compare providers"}
-            </Button>
-            {/* Poster Composer setup is configured in the dedicated section
-                below the action button — see "Poster setup (optional)". */}
           </div>
-          {lastProviderUsed && (
-            <RouteBadge
-              provider={lastProviderUsed}
-              model={lastModelUsed}
-              route={lastExecutionRoute}
-              fallback={lastFallbackUsed}
-              variant="full"
-            />
-          )}
         </div>
 
-        {compareOpen && (prompt.trim() || isInlineEditing) && (
-          <ProviderComparison
-            request={{
-              prompt: (isInlineEditing ? editPrompt : prompt).trim(),
-              styleKey: styleConfig.styleKey,
-              aspectRatio: effectiveAspectRatio,
-              backgroundStyle,
-              printMode: true,
-              referenceImageUrl:
-                isInlineEditing && imageUrl
-                  ? imageUrl
-                  : sourceImageUrl || undefined,
-              isEdit: !!(isInlineEditing && imageUrl) || !!sourceImageUrl,
-            }}
-            adapters={[
-              { id: "replicate", label: "SDXL (direct Replicate)" },
-              { id: "gemini", label: "Gemini (direct)" },
-              { id: "openai", label: "OpenAI gpt-image-1 (direct)" },
-              { id: "lovable", label: "SDXL (via Lovable)" },
-            ]}
-            onPick={({ imageUrl: pickedUrl, response }) => {
-              setBaseImageUrl(pickedUrl);
-              setImageUrl(pickedUrl);
-              setLastProviderUsed(response.generationProvider);
-              setLastModelUsed(response.generationModel);
-              setLastFallbackUsed(response.fallbackUsed);
-              setLastStrategyUsed(response.strategy);
-              setLastExecutionRoute(response.executionRoute);
-              setLastRoutingReason(response.routingReason ?? null);
-              setSavedToGallery(false);
-              resetUpscale();
-              setEnhancedImageUrl(null);
-              setCompareOpen(false);
-              toast({
-                title: "Result selected",
-                description: `Using ${response.generationProvider.toUpperCase()} via ${response.executionRoute}.`,
-              });
-            }}
-            onClose={() => setCompareOpen(false)}
-          />
-        )}
-
-        {/* ── Poster setup (optional) ───────────────────────────────────
-            Lets the user pre-configure poster template + text BEFORE
-            hitting Generate. After generation, the Poster Composer
-            opens auto-filled with these values.
-            Generation logic is NOT changed — composer text is only sent
-            to the model when textMode === "generated". */}
-        {/* Composer details below. */}
-        <details className="rounded-sm border border-border bg-card/40 group">
-          <summary className="cursor-pointer select-none px-3 py-2 flex items-center gap-2 font-display text-xs">
+        {/* ── Poster setup (optional, secondary) ─────────────────────── */}
+        <details className="group">
+          <summary className="cursor-pointer select-none px-1 py-1 flex items-center gap-2 font-display text-xs">
             <LayoutPanelTop className="h-3.5 w-3.5 text-primary" />
             <span className="font-bold text-foreground">Poster setup</span>
             <span className="text-muted-foreground">(optional)</span>
@@ -858,7 +865,7 @@ export default function ImageGenerator({
               {getPosterTemplate(posterTemplateId).name}
             </span>
           </summary>
-          <div className="px-3 pb-3 pt-1 space-y-3">
+          <div className="px-1 pt-2 pb-1 space-y-3">
             <div className="space-y-1">
               <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
                 Template
@@ -912,10 +919,6 @@ export default function ImageGenerator({
                 </label>
               </div>
             </div>
-            {/* Safe text area — strictly OFF by default. Only when this is
-                ON *and* text is entered does the generator receive a
-                "leave clean empty space" hint. Composer mode without this
-                toggle generates a full-bleed image. */}
             {posterTextMode === "composer" && (
               <div className="flex items-start gap-2 rounded-sm border border-border bg-card/40 px-2 py-1.5">
                 <Switch
@@ -984,10 +987,115 @@ export default function ImageGenerator({
           </div>
         </details>
 
+        {/* ── Advanced settings (provider/debug controls) ────────────── */}
+        <details className="group">
+          <summary className="cursor-pointer select-none px-1 py-1 flex items-center gap-2 font-display text-xs">
+            <span className="font-bold text-foreground">Advanced settings</span>
+            <span className="text-muted-foreground">(provider · strictness · compare)</span>
+            {lastProviderUsed && (
+              <span className="ml-auto">
+                <RouteBadge
+                  provider={lastProviderUsed}
+                  model={lastModelUsed}
+                  route={lastExecutionRoute}
+                  fallback={lastFallbackUsed}
+                  variant="compact"
+                />
+              </span>
+            )}
+          </summary>
+          <div className="px-1 pt-3 pb-1 space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <GeneratorBadge
+                value={generatorPref}
+                onChange={setGeneratorPref}
+                lastUsedProvider={lastProviderUsed}
+                lastFallbackUsed={lastFallbackUsed}
+              />
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
+                title="Configure per-style defaults at /style-control-panel"
+              >
+                Strictness: {getDefaultStrictness({
+                  styleKey: styleConfig.styleKey,
+                  provider: generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId),
+                })}
+                <span className="text-foreground/60">· auto from panel</span>
+              </span>
+              <Button
+                type="button"
+                variant={compareOpen ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCompareOpen((v) => !v)}
+                className="font-display text-[11px] h-7"
+                title="Generate the same prompt on both providers and pick the best result"
+              >
+                <Layers className="h-3 w-3 mr-1" />
+                {compareOpen ? "Hide compare" : "Compare providers"}
+              </Button>
+            </div>
+            {generationMode === "standard" && (
+              <div className="pt-2 border-t border-border/60">
+                <PrintSizeSelector
+                  selected={printSize}
+                  onChange={setPrintSize}
+                  qualityTarget={qualityTarget}
+                  onQualityChange={setQualityTarget}
+                />
+                <p className="font-display text-[10px] text-muted-foreground mt-2">
+                  Standard-mode legacy quality controls. Poster size above remains the source of truth for aspect ratio.
+                </p>
+              </div>
+            )}
+          </div>
+        </details>
+
+        {compareOpen && (prompt.trim() || isInlineEditing) && (
+          <ProviderComparison
+            request={{
+              prompt: (isInlineEditing ? editPrompt : prompt).trim(),
+              styleKey: styleConfig.styleKey,
+              aspectRatio: effectiveAspectRatio,
+              backgroundStyle,
+              printMode: true,
+              referenceImageUrl:
+                isInlineEditing && imageUrl
+                  ? imageUrl
+                  : sourceImageUrl || undefined,
+              isEdit: !!(isInlineEditing && imageUrl) || !!sourceImageUrl,
+            }}
+            adapters={[
+              { id: "replicate", label: "SDXL (direct Replicate)" },
+              { id: "gemini", label: "Gemini (direct)" },
+              { id: "openai", label: "OpenAI gpt-image-1 (direct)" },
+              { id: "lovable", label: "SDXL (via Lovable)" },
+            ]}
+            onPick={({ imageUrl: pickedUrl, response }) => {
+              setBaseImageUrl(pickedUrl);
+              setImageUrl(pickedUrl);
+              setLastProviderUsed(response.generationProvider);
+              setLastModelUsed(response.generationModel);
+              setLastFallbackUsed(response.fallbackUsed);
+              setLastStrategyUsed(response.strategy);
+              setLastExecutionRoute(response.executionRoute);
+              setLastRoutingReason(response.routingReason ?? null);
+              setSavedToGallery(false);
+              resetUpscale();
+              setEnhancedImageUrl(null);
+              setCompareOpen(false);
+              toast({
+                title: "Result selected",
+                description: `Using ${response.generationProvider.toUpperCase()} via ${response.executionRoute}.`,
+              });
+            }}
+            onClose={() => setCompareOpen(false)}
+          />
+        )}
+
         <Button
           onClick={generate}
           disabled={loading || (!isInlineEditing && !prompt.trim()) || (isInlineEditing && !editPrompt.trim())}
-          className="w-full sm:w-auto font-display text-sm tracking-wider"
+          className="w-full font-display text-sm tracking-wider h-11"
         >
           {loading ? (
             <>
@@ -995,7 +1103,7 @@ export default function ImageGenerator({
               {isInlineEditing || isEditMode ? "Editing…" : "Painting…"}
             </>
           ) : (
-            isInlineEditing || isEditMode ? "Apply Changes" : generateLabel
+            isInlineEditing || isEditMode ? "Apply Changes" : (generateLabel || "Generate poster")
           )}
         </Button>
       </div>
