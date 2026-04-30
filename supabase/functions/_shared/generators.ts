@@ -112,10 +112,15 @@ export async function generateWithGemini(args: GenerateArgs): Promise<ProviderRe
   const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
   if (!imageUrl) throw new ProviderError("no-image", "Gemini returned no image");
 
+  const geminiAspect = geminiAspectForFormat(args.posterFormatId, args.aspectRatio);
+
   return {
     imageUrl,
     providerId: "gemini",
     modelId,
+    requestedAspectRatio: geminiAspect.aspectRatio,
+    providerExactMatch: geminiAspect.exact,
+    providerAdjusted: !geminiAspect.exact,
   };
 }
 
