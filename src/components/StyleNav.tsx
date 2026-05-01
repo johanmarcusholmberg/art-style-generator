@@ -33,6 +33,7 @@ const navItems: StyleNavItem[] = [
   { to: "/brutalistposter", emoji: "⬛", label: "Brutalist", category: "Print" },
   { to: "/xeroxzine", emoji: "📋", label: "Xerox Zine", category: "Print" },
   { to: "/scandinavian-poster", emoji: "🇸🇪", label: "Scandinavian", category: "Print" },
+  { to: "/vintage", emoji: "🍷", label: "Vintage", category: "Print" },
   { to: "/blend", emoji: "✨", label: "Blend", category: "Tools" },
   { to: "/compare", emoji: "🔀", label: "Compare", category: "Tools" },
   { to: "/batch", emoji: "⚡", label: "Batch", category: "Tools" },

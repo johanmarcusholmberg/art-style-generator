@@ -20,6 +20,7 @@ import TattooFlash from "./pages/TattooFlash";
 import BrutalistPoster from "./pages/BrutalistPoster";
 import XeroxZine from "./pages/XeroxZine";
 import ScandinavianPoster from "./pages/ScandinavianPoster";
+import Vintage from "./pages/Vintage";
 import Blend from "./pages/Blend";
 import StyleCompare from "./pages/StyleCompare";
 import BatchStudio from "./pages/BatchStudio";
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/brutalistposter" element={<BrutalistPoster />} />
             <Route path="/xeroxzine" element={<XeroxZine />} />
             <Route path="/scandinavian-poster" element={<ScandinavianPoster />} />
+            <Route path="/vintage" element={<Vintage />} />
             <Route path="/blend" element={<Blend />} />
             <Route path="/compare" element={<StyleCompare />} />
             <Route path="/batch" element={<BatchStudio />} />

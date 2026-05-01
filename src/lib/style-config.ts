@@ -750,3 +750,48 @@ export const SCANDINAVIANPOSTER_STYLE: StyleConfig = {
   themedRules: STYLE_RULES["scandinavian_poster"],
   freestyleRules: STYLE_RULES["scandinavian_poster-freestyle"],
 };
+
+export const VINTAGE_STYLE: StyleConfig = {
+  styleKey: "vintage",
+  themedEdgeFn: "generate-image-vintage",
+  freestyleEdgeFn: "generate-image-vintage-freestyle",
+  themedTabLabel: "🍷 Café & Food",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Vintage Poster",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your hero subject… e.g. 'A steaming cappuccino in a porcelain cup with gingham background'",
+  freestylePlaceholder: "Describe any subject… e.g. 'A bouquet of wildflowers on a vintage tile background'",
+  prompts: {
+    themed: {
+      generate: [
+        "A glass of red wine on a soft sage scallop pattern background with a cream poster border",
+        "A steaming cappuccino in a porcelain cup centered on a warm gingham terracotta pattern",
+        "A rustic loaf of sourdough bread on a dusty blue floral textile background, painterly café poster",
+      ],
+      edit: [
+        "Make the brushstrokes more visible and the palette more muted",
+        "Soften the background pattern so the subject stands out more",
+        "Warm up the cream paper border and add a touch more painterly texture",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A small terracotta espresso cup on a soft butter-yellow tile background with hand-painted brushstrokes",
+        "A bowl of fresh lemons on a dusty blue floral pattern with a cream off-white poster border",
+        "A vase of garden roses on a sage scallop background, painted in gouache with visible brushwork",
+      ],
+      edit: [
+        "Push the palette to be softer and more muted",
+        "Make the painterly brush texture more visible",
+        "Add a thicker cream off-white poster border around the composition",
+      ],
+    },
+  },
+  themedModeValue: "vintage",
+  freestyleModeValue: "vintage-freestyle",
+  themedBadge: "🍷",
+  freestyleBadge: "🎨",
+  downloadPrefix: "vintage",
+  themedRules: STYLE_RULES["vintage"],
+  freestyleRules: STYLE_RULES["vintage-freestyle"],
+};
