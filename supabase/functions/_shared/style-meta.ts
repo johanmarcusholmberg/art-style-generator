@@ -227,6 +227,25 @@ export const STYLE_META: Record<string, StyleMeta> = {
     mediumTokens: ["Scandinavian poster", "Nordic minimalist poster", "flat vector poster"],
     defaultStrictness: "strict",
   },
+  vintage: {
+    displayName: "Vintage hand-painted poster",
+    mediumTokens: [
+      "vintage hand-painted poster",
+      "gouache café poster illustration",
+      "soft acrylic illustrated poster",
+      "decorative painted food poster",
+    ],
+    defaultStrictness: "strict",
+  },
+  "vintage-freestyle": {
+    displayName: "Vintage hand-painted poster",
+    mediumTokens: [
+      "vintage hand-painted poster",
+      "gouache illustration",
+      "soft acrylic illustrated poster",
+    ],
+    defaultStrictness: "strict",
+  },
 };
 
 /** Fallback-aware lookup. Always returns a usable meta. */
