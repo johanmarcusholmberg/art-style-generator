@@ -69,6 +69,10 @@ const GEMINI_FIRST_STYLES = new Set<string>([
   // Scandinavian poster — flat minimal poster, Gemini handles best
   "scandinavian_poster",
   "scandinavian_poster-freestyle",
+
+  // Vintage — soft hand-painted gouache café poster, Gemini handles painterly well
+  "vintage",
+  "vintage-freestyle",
 ]);
 
 const LOVABLE_SDXL_STYLES = new Set<string>([
