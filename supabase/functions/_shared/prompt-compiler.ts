@@ -736,6 +736,9 @@ function styleStrictSuffix(styleKey: string): string {
   if (styleKey === "scandinavian_poster" || styleKey === "scandinavian_poster-freestyle") {
     return "STRICT STYLE: flat illustration, no photorealism, no realistic textures, no depth of field, no camera effects";
   }
+  if (styleKey === "vintage" || styleKey === "vintage-freestyle") {
+    return "STRICT STYLE: hand-painted gouache illustration with visible brushstrokes, soft muted vintage palette, decorative patterned background, cream off-white poster border, no photorealism, no 3D, no glossy digital rendering, no neon colors, no rendered text";
+  }
   return "";
 }
 
