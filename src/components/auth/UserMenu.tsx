@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LogOut, Shield, User as UserIcon, Users } from "lucide-react";
+import { Image as ImageIcon, LogOut, Shield, User as UserIcon, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function UserMenu() {
