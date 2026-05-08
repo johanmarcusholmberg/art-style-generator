@@ -69,6 +69,13 @@ export default function UserMenu() {
           )}
           {role === "admin" && (
             <DropdownMenuItem asChild>
+              <Link to="/admin/assets" className="cursor-pointer">
+                <ImageIcon className="h-4 w-4 mr-2" /> Asset library
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {role === "admin" && (
+            <DropdownMenuItem asChild>
               <Link to="/style-control-panel" className="cursor-pointer">
                 <Shield className="h-4 w-4 mr-2" /> Studio settings
               </Link>
