@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import Account from "./pages/Account";
 import AdminUsers from "./pages/AdminUsers";
+import AdminAssets from "./pages/AdminAssets";
 import Index from "./pages/Index";
 import PopArt from "./pages/PopArt";
 import LineArt from "./pages/LineArt";
