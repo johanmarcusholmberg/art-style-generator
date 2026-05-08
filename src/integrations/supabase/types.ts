@@ -128,6 +128,7 @@ export type Database = {
         Row: {
           actual_height_px: number | null
           actual_width_px: number | null
+          admin_status: Database["public"]["Enums"]["asset_admin_status"] | null
           aspect_ratio: string
           base_height_px: number | null
           base_width_px: number | null
@@ -175,6 +176,9 @@ export type Database = {
         Insert: {
           actual_height_px?: number | null
           actual_width_px?: number | null
+          admin_status?:
+            | Database["public"]["Enums"]["asset_admin_status"]
+            | null
           aspect_ratio?: string
           base_height_px?: number | null
           base_width_px?: number | null
@@ -222,6 +226,9 @@ export type Database = {
         Update: {
           actual_height_px?: number | null
           actual_width_px?: number | null
+          admin_status?:
+            | Database["public"]["Enums"]["asset_admin_status"]
+            | null
           aspect_ratio?: string
           base_height_px?: number | null
           base_width_px?: number | null
@@ -651,6 +658,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      asset_admin_status:
+        | "draft"
+        | "needs_review"
+        | "approved"
+        | "rejected"
+        | "archived"
       auth_provider: "password" | "google" | "mixed"
       profile_status: "active" | "disabled" | "pending"
     }
@@ -781,6 +794,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      asset_admin_status: [
+        "draft",
+        "needs_review",
+        "approved",
+        "rejected",
+        "archived",
+      ],
       auth_provider: ["password", "google", "mixed"],
       profile_status: ["active", "disabled", "pending"],
     },
