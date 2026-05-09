@@ -1,23 +1,8 @@
 /**
  * /admin/assets — Admin Asset Library.
- *
- * Central management view for ALL persisted image assets in the system.
- *
- * IMAGE LIFECYCLE SUMMARY (for context):
- *   - Only EXPLICITLY SAVED images are persisted (via saveToGallery).
- *   - Generated previews held only in component state are NOT persisted.
- *   - Files live in Supabase Storage bucket `generated-images` (public).
- *   - Metadata lives in `public.generated_images`.
- *   - Asset roles: storage_path (base) → enhanced_storage_path (upscale)
- *     → master_storage_path (best). original_storage_path preserves the
- *     pre-enhancement source for re-processing.
- *   - Upscaling is done via the existing `useUpscale` hook (Replicate +
- *     async webhooks). We REUSE that pipeline here unchanged.
- *
- * This page is admin-only and reuses the existing tables, storage, and
- * upscale pipeline — no duplicate asset system.
+ * Admin-only management view for ALL persisted image assets.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -31,6 +16,10 @@ import {
   XCircle,
   ImageOff,
   RefreshCw,
+  FolderPlus,
+  Folder,
+  Pencil,
+  FolderOpen,
 } from "lucide-react";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +40,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -63,9 +53,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { fetchGalleryImages, deleteFromGallery } from "@/lib/gallery";
+import { deleteFromGallery } from "@/lib/gallery";
 import {
   getBaseAssetUrl,
   getEnhancedAssetUrl,
@@ -80,8 +69,34 @@ import {
   formatCost,
 } from "@/lib/admin-asset-cost";
 import { useUpscale } from "@/hooks/use-upscale";
+import {
+  getUpscaleOptionsForSurface,
+  UPSCALE_MODES,
+  type UpscaleMode,
+} from "@/lib/upscale-modes";
 
 type AdminStatus = "draft" | "needs_review" | "approved" | "rejected" | "archived";
+
+interface AssetFolder {
+  id: string;
+  name: string;
+  description: string | null;
+  deleted_at: string | null;
+}
+
+interface CostEvent {
+  id: string;
+  generated_image_id: string;
+  event_type: string;
+  provider: string | null;
+  model: string | null;
+  mode: string | null;
+  estimated_cost: number | null;
+  currency: string;
+  status: string;
+  metadata: any;
+  created_at: string;
+}
 
 interface AssetRow extends AssetImageLike {
   id: string;
@@ -99,6 +114,7 @@ interface AssetRow extends AssetImageLike {
   enhancement_model?: string | null;
   admin_status?: AdminStatus | null;
   deleted_at?: string | null;
+  folder_id?: string | null;
 }
 
 const STATUS_OPTIONS: { value: AdminStatus | "all"; label: string }[] = [
@@ -118,6 +134,9 @@ const statusBadgeVariant: Record<AdminStatus, "default" | "secondary" | "destruc
   archived: "outline",
 };
 
+// Upscale modes that can be triggered from admin (gallery surface)
+const ADMIN_UPSCALE_MODES = getUpscaleOptionsForSurface("gallery");
+
 function shortPrompt(p: string | null | undefined, len = 60): string {
   if (!p) return "Untitled";
   const s = p.replace(/\s+/g, " ").trim();
@@ -136,13 +155,23 @@ async function downloadUrl(url: string, filename: string) {
   URL.revokeObjectURL(a.href);
 }
 
+function upscaleModeLabel(mode: string | null | undefined): string {
+  if (!mode) return "Unknown";
+  const cfg = (UPSCALE_MODES as any)[mode] as
+    | { label: string }
+    | undefined;
+  return cfg?.label ?? mode;
+}
+
 export default function AdminAssets() {
   const [rows, setRows] = useState<AssetRow[]>([]);
+  const [folders, setFolders] = useState<AssetFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [providerFilter, setProviderFilter] = useState<string>("all");
   const [readinessFilter, setReadinessFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [folderFilter, setFolderFilter] = useState<string>("all");
   const [hasUpscaledFilter, setHasUpscaledFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -151,14 +180,26 @@ export default function AdminAssets() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [upscalingId, setUpscalingId] = useState<string | null>(null);
+  const [foldersOpen, setFoldersOpen] = useState(false);
 
   const upscaler = useUpscale();
 
-  const loadRows = async () => {
+  const loadFolders = useCallback(async () => {
+    const { data, error } = await (supabase as any)
+      .from("asset_folders")
+      .select("*")
+      .is("deleted_at", null)
+      .order("name", { ascending: true });
+    if (error) {
+      console.warn("Folders load failed:", error.message);
+      return;
+    }
+    setFolders((data || []) as AssetFolder[]);
+  }, []);
+
+  const loadRows = useCallback(async () => {
     setLoading(true);
     try {
-      // Reuse fetchGalleryImages — but we need ALL rows, including older ones.
-      // fetchGalleryImages limits to 50, so query directly here.
       const { data, error } = await supabase
         .from("generated_images")
         .select("*")
@@ -182,11 +223,12 @@ export default function AdminAssets() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadRows();
-  }, []);
+    loadFolders();
+  }, [loadRows, loadFolders]);
 
   /* ---------------- Derived data ---------------- */
 
@@ -198,6 +240,12 @@ export default function AdminAssets() {
     });
     return Array.from(set).sort();
   }, [rows]);
+
+  const folderById = useMemo(() => {
+    const m = new Map<string, AssetFolder>();
+    folders.forEach((f) => m.set(f.id, f));
+    return m;
+  }, [folders]);
 
   const filtered = useMemo(() => {
     let out = rows.slice();
@@ -217,10 +265,14 @@ export default function AdminAssets() {
       );
     }
     if (statusFilter === "all") {
-      // Hide archived by default — admin must explicitly filter to "Archived" to see them.
       out = out.filter((r) => (r.admin_status || "draft") !== "archived");
     } else {
       out = out.filter((r) => (r.admin_status || "draft") === statusFilter);
+    }
+    if (folderFilter === "none") {
+      out = out.filter((r) => !r.folder_id);
+    } else if (folderFilter !== "all") {
+      out = out.filter((r) => r.folder_id === folderFilter);
     }
     if (hasUpscaledFilter === "yes") {
       out = out.filter((r) => !!r.enhanced_storage_path);
@@ -268,6 +320,7 @@ export default function AdminAssets() {
     search,
     providerFilter,
     statusFilter,
+    folderFilter,
     hasUpscaledFilter,
     readinessFilter,
     sortBy,
@@ -347,6 +400,39 @@ export default function AdminAssets() {
     setSelected(new Set());
   };
 
+  const setAssetFolder = async (id: string, folderId: string | null) => {
+    const { error } = await supabase
+      .from("generated_images")
+      .update({ folder_id: folderId } as any)
+      .eq("id", id);
+    if (error) {
+      toast.error("Failed to set folder", { description: error.message });
+      return;
+    }
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, folder_id: folderId } : r)),
+    );
+    toast.success(folderId ? "Moved to folder" : "Removed from folder");
+  };
+
+  const bulkSetFolder = async (folderId: string | null) => {
+    if (!selected.size) return;
+    const ids = Array.from(selected);
+    const { error } = await supabase
+      .from("generated_images")
+      .update({ folder_id: folderId } as any)
+      .in("id", ids);
+    if (error) {
+      toast.error("Bulk move failed", { description: error.message });
+      return;
+    }
+    setRows((prev) =>
+      prev.map((r) => (ids.includes(r.id) ? { ...r, folder_id: folderId } : r)),
+    );
+    toast.success(`${ids.length} assets moved`);
+    setSelected(new Set());
+  };
+
   const handleDelete = async (id: string) => {
     const row = rows.find((r) => r.id === id);
     if (!row) return;
@@ -382,26 +468,56 @@ export default function AdminAssets() {
     toast.success(`Deleted ${ok} assets`);
   };
 
-  const handleUpscale = async (row: AssetRow) => {
+  const handleUpscale = async (row: AssetRow, mode: UpscaleMode) => {
     const source = getBaseAssetUrl(row);
     if (!source) {
       toast.error("No base image available to upscale");
       return;
     }
+    if (mode === "none") return;
     setUpscalingId(row.id);
+    const startedAt = new Date().toISOString();
     try {
       const result = await upscaler.upscale(source, {
         galleryImageId: row.id,
-        mode: "realesrgan_4x",
+        mode,
+      });
+      const cfg = UPSCALE_MODES[mode];
+      const estCost = estimateUpscaleCost(mode, mode, cfg.provider);
+      // Record a cost/action event going forward (admin-only RLS).
+      await (supabase as any).from("asset_cost_events").insert({
+        generated_image_id: row.id,
+        event_type: "upscale",
+        provider: cfg.provider,
+        model: cfg.provider,
+        mode,
+        estimated_cost: estCost,
+        currency: "USD",
+        status: result ? "succeeded" : "failed",
+        metadata: { started_at: startedAt, label: cfg.label },
       });
       if (result) {
-        toast.success("Upscale complete");
+        toast.success(`Upscale complete (${cfg.shortLabel})`);
         await loadRows();
       } else {
         toast.error("Upscale failed");
       }
     } catch (err: any) {
       toast.error("Upscale failed", { description: err?.message });
+      try {
+        const cfg = UPSCALE_MODES[mode];
+        await (supabase as any).from("asset_cost_events").insert({
+          generated_image_id: row.id,
+          event_type: "upscale",
+          provider: cfg.provider,
+          mode,
+          estimated_cost: null,
+          status: "failed",
+          metadata: { error: String(err?.message || err) },
+        });
+      } catch {
+        /* swallow */
+      }
     } finally {
       setUpscalingId(null);
     }
@@ -474,10 +590,16 @@ export default function AdminAssets() {
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={loadRows} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setFoldersOpen(true)}>
+              <FolderOpen className="h-4 w-4 mr-2" />
+              Asset folders
+            </Button>
+            <Button variant="outline" size="sm" onClick={loadRows} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Summary cards */}
@@ -513,6 +635,20 @@ export default function AdminAssets() {
                   {providers.map((p) => (
                     <SelectItem key={p} value={p}>
                       {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={folderFilter} onValueChange={setFolderFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Folder" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All folders</SelectItem>
+                  <SelectItem value="none">No folder</SelectItem>
+                  {folders.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -581,6 +717,19 @@ export default function AdminAssets() {
                 <Button size="sm" variant="outline" onClick={() => handleBulkZip("base")} disabled={busy}>
                   <Download className="h-4 w-4 mr-1" /> Original ZIP
                 </Button>
+                <Select onValueChange={(v) => bulkSetFolder(v === "__none__" ? null : v)}>
+                  <SelectTrigger className="h-9 w-[180px]">
+                    <SelectValue placeholder="Move to folder…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No folder</SelectItem>
+                    {folders.map((f) => (
+                      <SelectItem key={f.id} value={f.id}>
+                        {f.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button size="sm" variant="outline" onClick={() => bulkUpdateStatus("approved")}>
                   <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
                 </Button>
@@ -629,13 +778,14 @@ export default function AdminAssets() {
                 <AssetCard
                   key={row.id}
                   row={row}
+                  folder={row.folder_id ? folderById.get(row.folder_id) ?? null : null}
                   selected={selected.has(row.id)}
                   onToggleSelect={() => toggleSelect(row.id)}
                   onOpenDetail={() => setDetailId(row.id)}
-                  onUpscale={() => handleUpscale(row)}
                   upscaling={upscalingId === row.id}
                   onStatusChange={(s) => updateStatus(row.id, s)}
                   onDelete={() => setDeleteId(row.id)}
+                  onUpscale={(m) => handleUpscale(row, m)}
                 />
               ))}
             </div>
@@ -643,24 +793,33 @@ export default function AdminAssets() {
         )}
       </div>
 
-      {/* Detail dialog */}
+      {/* Detail dialog — scrollable on all viewports */}
       <Dialog open={!!detailRow} onOpenChange={(o) => !o && setDetailId(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 gap-0 flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
             <DialogTitle>Asset details</DialogTitle>
           </DialogHeader>
           {detailRow && (
-            <ScrollArea className="flex-1">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
               <AssetDetail
                 row={detailRow}
-                onUpscale={() => handleUpscale(detailRow)}
+                folders={folders}
                 upscaling={upscalingId === detailRow.id}
+                onUpscale={(m) => handleUpscale(detailRow, m)}
                 onStatusChange={(s) => updateStatus(detailRow.id, s)}
+                onSetFolder={(fid) => setAssetFolder(detailRow.id, fid)}
               />
-            </ScrollArea>
+            </div>
           )}
         </DialogContent>
       </Dialog>
+
+      <ManageFoldersDialog
+        open={foldersOpen}
+        onOpenChange={setFoldersOpen}
+        folders={folders}
+        reload={loadFolders}
+      />
 
       {/* Single delete confirm */}
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
@@ -723,8 +882,54 @@ function SummaryCard({ label, value }: { label: string; value: number | string }
   );
 }
 
+function UpscaleControl({
+  onRun,
+  upscaling,
+  size = "sm",
+}: {
+  onRun: (m: UpscaleMode) => void;
+  upscaling: boolean;
+  size?: "sm" | "default";
+}) {
+  const defaultMode: UpscaleMode =
+    (ADMIN_UPSCALE_MODES[0]?.id as UpscaleMode) || "realesrgan_4x";
+  const [mode, setMode] = useState<UpscaleMode>(defaultMode);
+  const cfg = UPSCALE_MODES[mode];
+  return (
+    <div className="flex items-stretch gap-2">
+      <Select value={mode} onValueChange={(v) => setMode(v as UpscaleMode)}>
+        <SelectTrigger className={size === "sm" ? "h-8 text-xs" : ""}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {ADMIN_UPSCALE_MODES.map((o) => (
+            <SelectItem key={o.id} value={o.id}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        variant="secondary"
+        size={size}
+        onClick={() => onRun(mode)}
+        disabled={upscaling}
+        className="whitespace-nowrap"
+      >
+        {upscaling ? (
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        ) : (
+          <Sparkles className="h-4 w-4 mr-2" />
+        )}
+        Run {cfg.shortLabel}
+      </Button>
+    </div>
+  );
+}
+
 function AssetCard({
   row,
+  folder,
   selected,
   onToggleSelect,
   onOpenDetail,
@@ -734,10 +939,11 @@ function AssetCard({
   onDelete,
 }: {
   row: AssetRow;
+  folder: AssetFolder | null;
   selected: boolean;
   onToggleSelect: () => void;
   onOpenDetail: () => void;
-  onUpscale: () => void;
+  onUpscale: (m: UpscaleMode) => void;
   upscaling: boolean;
   onStatusChange: (s: AdminStatus) => void;
   onDelete: () => void;
@@ -750,8 +956,6 @@ function AssetCard({
   const genCost = estimateGenerationCost(row.generation_provider, row.execution_route);
   const upCost = estimateUpscaleCost(row.upscale_mode, row.upscale_method, row.enhancement_model);
   const total = (genCost || 0) + (upCost || 0);
-  const masterUrl = getMasterAssetUrl(row);
-
   const fileMissing = !row.publicUrl;
 
   return (
@@ -785,6 +989,12 @@ function AssetCard({
             {status.replace("_", " ")}
           </Badge>
           {hasMaster && <Badge variant="secondary">Master</Badge>}
+          {folder && (
+            <Badge variant="outline" className="bg-background/80">
+              <Folder className="h-3 w-3 mr-1" />
+              {folder.name}
+            </Badge>
+          )}
         </div>
       </div>
       <CardContent className="p-3 space-y-2">
@@ -831,20 +1041,6 @@ function AssetCard({
           <Button
             size="icon"
             variant="ghost"
-            className="h-8 w-8"
-            onClick={onUpscale}
-            disabled={upscaling}
-            title="Upscale"
-          >
-            {upscaling ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
-            )}
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
             className="h-8 w-8 text-destructive"
             onClick={onDelete}
             title="Delete"
@@ -852,6 +1048,7 @@ function AssetCard({
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
+        <UpscaleControl onRun={onUpscale} upscaling={upscaling} />
       </CardContent>
     </Card>
   );
@@ -859,14 +1056,18 @@ function AssetCard({
 
 function AssetDetail({
   row,
-  onUpscale,
+  folders,
   upscaling,
+  onUpscale,
   onStatusChange,
+  onSetFolder,
 }: {
   row: AssetRow;
-  onUpscale: () => void;
+  folders: AssetFolder[];
   upscaling: boolean;
+  onUpscale: (m: UpscaleMode) => void;
   onStatusChange: (s: AdminStatus) => void;
+  onSetFolder: (folderId: string | null) => void;
 }) {
   const baseUrl = getBaseAssetUrl(row);
   const enhancedUrl = getEnhancedAssetUrl(row);
@@ -877,6 +1078,51 @@ function AssetDetail({
   const genCost = estimateGenerationCost(row.generation_provider, row.execution_route);
   const upCost = estimateUpscaleCost(row.upscale_mode, row.upscale_method, row.enhancement_model);
 
+  // Cost / action history events
+  const [events, setEvents] = useState<CostEvent[] | null>(null);
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      const { data, error } = await (supabase as any)
+        .from("asset_cost_events")
+        .select("*")
+        .eq("generated_image_id", row.id)
+        .order("created_at", { ascending: true });
+      if (cancel) return;
+      if (error) {
+        console.warn("history load failed:", error.message);
+        setEvents([]);
+      } else {
+        setEvents((data || []) as CostEvent[]);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [row.id]);
+
+  // Total known cost: sum of recorded events plus any known metadata cost
+  // for which there is NO matching event row, to avoid double-counting.
+  const eventTotals = useMemo(() => {
+    if (!events) return { sum: 0, hasGenEvent: false, hasUpscaleEvent: false };
+    let sum = 0;
+    let hasGenEvent = false;
+    let hasUpscaleEvent = false;
+    events.forEach((e) => {
+      if (typeof e.estimated_cost === "number") sum += Number(e.estimated_cost);
+      if (e.event_type === "generation") hasGenEvent = true;
+      if (e.event_type === "upscale") hasUpscaleEvent = true;
+    });
+    return { sum, hasGenEvent, hasUpscaleEvent };
+  }, [events]);
+
+  const totalKnown = useMemo(() => {
+    let total = eventTotals.sum;
+    if (!eventTotals.hasGenEvent && genCost) total += genCost;
+    if (!eventTotals.hasUpscaleEvent && upCost) total += upCost;
+    return total > 0 ? total : null;
+  }, [eventTotals, genCost, upCost]);
+
   const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
     <div className="grid grid-cols-3 gap-2 py-1.5 text-sm">
       <div className="text-muted-foreground">{label}</div>
@@ -885,7 +1131,7 @@ function AssetDetail({
   );
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-1">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-3">
         <div className="aspect-square bg-muted rounded overflow-hidden">
           {masterUrl ? (
@@ -925,14 +1171,12 @@ function AssetDetail({
             <Download className="h-4 w-4 mr-2" />
             Download original
           </Button>
-          <Button variant="secondary" onClick={onUpscale} disabled={upscaling}>
-            {upscaling ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4 mr-2" />
-            )}
-            Run upscale
-          </Button>
+          <div className="border rounded-md p-3 space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">
+              Run upscale
+            </div>
+            <UpscaleControl onRun={onUpscale} upscaling={upscaling} size="default" />
+          </div>
         </div>
       </div>
       <div className="space-y-4">
@@ -946,6 +1190,25 @@ function AssetDetail({
               {STATUS_OPTIONS.filter((o) => o.value !== "all").map((o) => (
                 <SelectItem key={o.value} value={o.value}>
                   {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground mb-1">Folder</div>
+          <Select
+            value={row.folder_id ?? "__none__"}
+            onValueChange={(v) => onSetFolder(v === "__none__" ? null : v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="No folder" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">No folder</SelectItem>
+              {folders.map((f) => (
+                <SelectItem key={f.id} value={f.id}>
+                  {f.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -991,14 +1254,61 @@ function AssetDetail({
               </span>
             }
           />
-          <Field label="Upscale mode" value={row.upscale_mode} />
-          <Field label="Enhancement model" value={row.enhancement_model} />
-          <Field label="Generation cost" value={formatCost(genCost)} />
-          <Field label="Upscale cost" value={formatCost(upCost)} />
           <Field
-            label="Total cost"
-            value={formatCost((genCost || 0) + (upCost || 0) || null)}
+            label="Upscale mode"
+            value={row.upscale_mode ? upscaleModeLabel(row.upscale_mode) : null}
           />
+          <Field label="Enhancement model" value={row.enhancement_model} />
+        </div>
+        <Separator />
+        <div>
+          <h4 className="text-sm font-semibold mb-2">Cost &amp; history</h4>
+          <Field label="Generation cost" value={formatCost(genCost)} />
+          <Field label="Upscaling cost" value={formatCost(upCost)} />
+          <Field
+            label="Total known cost"
+            value={totalKnown != null ? formatCost(totalKnown) : "Unknown"}
+          />
+          <Field label="Recorded events" value={events ? String(events.length) : "…"} />
+
+          <div className="mt-3 space-y-2">
+            {events == null ? (
+              <div className="text-xs text-muted-foreground">Loading history…</div>
+            ) : events.length === 0 ? (
+              <div className="text-xs text-muted-foreground">
+                No detailed history available for this asset. Showing known cost
+                metadata only.
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {events.map((e) => (
+                  <li
+                    key={e.id}
+                    className="border rounded-md p-2 text-xs space-y-0.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium capitalize">
+                        {e.event_type}
+                        {e.mode ? ` · ${upscaleModeLabel(e.mode)}` : ""}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {e.estimated_cost != null
+                          ? `${e.currency} ${formatCost(Number(e.estimated_cost))}`
+                          : "Unknown cost"}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground">
+                      <span>{new Date(e.created_at).toLocaleString()}</span>
+                      {(e.provider || e.model) && (
+                        <span>{e.provider || e.model}</span>
+                      )}
+                      <span className="capitalize">{e.status}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
         <Separator />
         <details className="text-sm">
@@ -1011,5 +1321,156 @@ function AssetDetail({
         </details>
       </div>
     </div>
+  );
+}
+
+/* ---------------- Manage folders dialog ---------------- */
+
+function ManageFoldersDialog({
+  open,
+  onOpenChange,
+  folders,
+  reload,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  folders: AssetFolder[];
+  reload: () => Promise<void>;
+}) {
+  const [newName, setNewName] = useState("");
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const create = async () => {
+    if (!newName.trim()) return;
+    setBusy(true);
+    const { error } = await (supabase as any)
+      .from("asset_folders")
+      .insert({ name: newName.trim() });
+    setBusy(false);
+    if (error) {
+      toast.error("Create failed", { description: error.message });
+      return;
+    }
+    setNewName("");
+    await reload();
+    toast.success("Folder created");
+  };
+
+  const rename = async (id: string, name: string) => {
+    if (!name.trim()) return;
+    const { error } = await (supabase as any)
+      .from("asset_folders")
+      .update({ name: name.trim() })
+      .eq("id", id);
+    if (error) {
+      toast.error("Rename failed", { description: error.message });
+      return;
+    }
+    setEditing(null);
+    await reload();
+    toast.success("Folder renamed");
+  };
+
+  const remove = async (id: string) => {
+    const { error } = await (supabase as any)
+      .from("asset_folders")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) {
+      toast.error("Archive failed", { description: error.message });
+      return;
+    }
+    await reload();
+    toast.success("Folder archived");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Asset folders</DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto space-y-3 py-2">
+          <div className="flex gap-2">
+            <Input
+              placeholder="New folder name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") create();
+              }}
+            />
+            <Button onClick={create} disabled={busy || !newName.trim()}>
+              <FolderPlus className="h-4 w-4 mr-1" /> Create
+            </Button>
+          </div>
+          {folders.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-6 text-center">
+              No folders yet.
+            </div>
+          ) : (
+            <ul className="space-y-1">
+              {folders.map((f) => (
+                <li
+                  key={f.id}
+                  className="flex items-center gap-2 border rounded-md px-3 py-2"
+                >
+                  {editing?.id === f.id ? (
+                    <>
+                      <Input
+                        value={editing.name}
+                        onChange={(e) =>
+                          setEditing({ id: f.id, name: e.target.value })
+                        }
+                        className="h-8"
+                      />
+                      <Button size="sm" onClick={() => rename(f.id, editing.name)}>
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditing(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="flex-1 text-sm">{f.name}</span>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={() => setEditing({ id: f.id, name: f.name })}
+                        title="Rename"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => remove(f.id)}
+                        title="Archive folder"
+                      >
+                        <Archive className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

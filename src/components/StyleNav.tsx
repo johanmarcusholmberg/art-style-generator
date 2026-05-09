@@ -136,7 +136,8 @@ const StyleNav = ({ activePath }: StyleNavProps) => {
 
   return (
     <div className="sticky top-0 z-30 bg-background/90 backdrop-blur-sm border-b border-border">
-      <div className="flex items-center px-2 relative">
+      {/* pr-32 reserves space for the floating UserMenu (top-3 right-3) so it never overlaps the style tabs */}
+      <div className="flex items-center px-2 pr-32 relative">
         {/* Left fade indicator */}
         {showLeftFade && (
           <div className="absolute left-2 top-0 bottom-0 w-8 bg-gradient-to-r from-background/90 to-transparent z-10 pointer-events-none" />

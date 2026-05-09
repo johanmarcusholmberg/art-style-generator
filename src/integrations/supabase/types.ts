@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      asset_cost_events: {
+        Row: {
+          created_at: string
+          currency: string
+          estimated_cost: number | null
+          event_type: string
+          generated_image_id: string
+          id: string
+          metadata: Json | null
+          mode: string | null
+          model: string | null
+          provider: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          estimated_cost?: number | null
+          event_type: string
+          generated_image_id: string
+          id?: string
+          metadata?: Json | null
+          mode?: string | null
+          model?: string | null
+          provider?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          estimated_cost?: number | null
+          event_type?: string
+          generated_image_id?: string
+          id?: string
+          metadata?: Json | null
+          mode?: string | null
+          model?: string | null
+          provider?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      asset_folders: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -148,6 +217,7 @@ export type Database = {
           export_type: string | null
           export_width: number | null
           fallback_used: boolean | null
+          folder_id: string | null
           generation_mode: string | null
           generation_model: string | null
           generation_provider: string | null
@@ -198,6 +268,7 @@ export type Database = {
           export_type?: string | null
           export_width?: number | null
           fallback_used?: boolean | null
+          folder_id?: string | null
           generation_mode?: string | null
           generation_model?: string | null
           generation_provider?: string | null
@@ -248,6 +319,7 @@ export type Database = {
           export_type?: string | null
           export_width?: number | null
           fallback_used?: boolean | null
+          folder_id?: string | null
           generation_mode?: string | null
           generation_model?: string | null
           generation_provider?: string | null
@@ -273,7 +345,15 @@ export type Database = {
           upscale_mode?: string | null
           upscaled_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "generated_images_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "asset_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       generation_job_items: {
         Row: {
