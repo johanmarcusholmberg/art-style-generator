@@ -102,7 +102,7 @@ interface AssetRow extends AssetImageLike {
 }
 
 const STATUS_OPTIONS: { value: AdminStatus | "all"; label: string }[] = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All (excl. archived)" },
   { value: "draft", label: "Draft" },
   { value: "needs_review", label: "Needs review" },
   { value: "approved", label: "Approved" },
