@@ -102,7 +102,7 @@ interface AssetRow extends AssetImageLike {
 }
 
 const STATUS_OPTIONS: { value: AdminStatus | "all"; label: string }[] = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All (excl. archived)" },
   { value: "draft", label: "Draft" },
   { value: "needs_review", label: "Needs review" },
   { value: "approved", label: "Approved" },
@@ -216,7 +216,10 @@ export default function AdminAssets() {
         (r) => (r.generation_provider || r.execution_route) === providerFilter,
       );
     }
-    if (statusFilter !== "all") {
+    if (statusFilter === "all") {
+      // Hide archived by default — admin must explicitly filter to "Archived" to see them.
+      out = out.filter((r) => (r.admin_status || "draft") !== "archived");
+    } else {
       out = out.filter((r) => (r.admin_status || "draft") === statusFilter);
     }
     if (hasUpscaledFilter === "yes") {
