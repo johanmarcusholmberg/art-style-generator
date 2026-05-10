@@ -118,8 +118,7 @@ const StyleNav = ({ activePath }: StyleNavProps) => {
   return (
     <>
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-sm border-b border-border">
-        {/* pr-32 reserves space on the right for the globally-floating UserMenu */}
-        <div className="flex items-center gap-2 px-4 pr-32 h-14">
+        <div className="flex items-center gap-2 px-4 sm:px-6 h-14">
           {/* Logo */}
           <Link
             to="/"
