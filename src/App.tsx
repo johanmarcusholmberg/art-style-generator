@@ -5,9 +5,8 @@ import BatchNotifications from "@/components/BatchNotifications";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import RequireAuth from "@/components/auth/RequireAuth";
-import UserMenu from "@/components/auth/UserMenu";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import Account from "./pages/Account";
@@ -38,12 +37,6 @@ import StyleControlPanel from "./pages/StyleControlPanel";
 
 const queryClient = new QueryClient();
 
-/** Renders the floating user menu only when authenticated. */
-const GlobalUserMenu = () => {
-  const { access } = useAuth();
-  if (access.kind !== "active") return null;
-  return <UserMenu />;
-};
 
 const protect = (node: React.ReactNode, adminOnly = false) => (
   <RequireAuth adminOnly={adminOnly}>{node}</RequireAuth>
@@ -58,7 +51,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <BatchNotifications />
-            <GlobalUserMenu />
+            
             <Routes>
               {/* Public auth routes */}
               <Route path="/login" element={<Login />} />

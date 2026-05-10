@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import UserMenu from "@/components/auth/UserMenu";
 import SelectedStyleCard from "./SelectedStyleCard";
 import { getStyleByRoute } from "@/lib/style-catalog";
 
@@ -117,8 +118,7 @@ const StyleNav = ({ activePath }: StyleNavProps) => {
   return (
     <>
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-sm border-b border-border">
-        {/* pr-32 reserves space on the right for the globally-floating UserMenu */}
-        <div className="flex items-center gap-2 px-4 pr-32 h-14">
+        <div className="flex items-center gap-2 px-4 sm:px-6 h-14">
           {/* Logo */}
           <Link
             to="/"
@@ -156,6 +156,11 @@ const StyleNav = ({ activePath }: StyleNavProps) => {
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
+
+          {/* User / account menu (inline, not floating) */}
+          <div className="ml-1 shrink-0">
+            <UserMenu />
+          </div>
 
           {/* Mobile hamburger */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
