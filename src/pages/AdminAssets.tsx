@@ -485,13 +485,15 @@ export default function AdminAssets() {
       const cfg = UPSCALE_MODES[mode];
       const estCost = estimateUpscaleCost(mode, mode, cfg.provider);
       // Record a cost/action event going forward (admin-only RLS).
+      // Only attribute cost on success — failed runs may or may not be billed,
+      // so we leave estimated_cost null to avoid inflating totals.
       await (supabase as any).from("asset_cost_events").insert({
         generated_image_id: row.id,
         event_type: "upscale",
         provider: cfg.provider,
         model: cfg.provider,
         mode,
-        estimated_cost: estCost,
+        estimated_cost: result ? estCost : null,
         currency: "USD",
         status: result ? "succeeded" : "failed",
         metadata: { started_at: startedAt, label: cfg.label },
@@ -1109,9 +1111,11 @@ function AssetDetail({
     let hasGenEvent = false;
     let hasUpscaleEvent = false;
     events.forEach((e) => {
-      if (typeof e.estimated_cost === "number") sum += Number(e.estimated_cost);
-      if (e.event_type === "generation") hasGenEvent = true;
-      if (e.event_type === "upscale") hasUpscaleEvent = true;
+      if (e.status === "succeeded" && typeof e.estimated_cost === "number") {
+        sum += Number(e.estimated_cost);
+      }
+      if (e.event_type === "generation" && e.status === "succeeded") hasGenEvent = true;
+      if (e.event_type === "upscale" && e.status === "succeeded") hasUpscaleEvent = true;
     });
     return { sum, hasGenEvent, hasUpscaleEvent };
   }, [events]);
