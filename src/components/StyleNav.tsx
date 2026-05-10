@@ -157,6 +157,11 @@ const StyleNav = ({ activePath }: StyleNavProps) => {
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
+          {/* User / account menu (inline, not floating) */}
+          <div className="ml-1 shrink-0">
+            <UserMenu />
+          </div>
+
           {/* Mobile hamburger */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
