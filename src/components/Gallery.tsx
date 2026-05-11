@@ -263,6 +263,34 @@ function LightboxContent({
           }
         />
 
+        {/* Full asset metadata (Part E badges) */}
+        <div className="rounded-sm border border-border bg-card/50 p-3">
+          <AssetMetaBadges
+            variant="full"
+            provider={(img as any).provider || (img as any).generation_provider}
+            model={(img as any).model || (img as any).generation_model}
+            route={(img as any).route || (img as any).execution_route}
+            assetRole={(img as any).asset_role || ((img as any).enhanced ? "enhanced_master" : "base_generation")}
+            baseWidth={(img as any).base_width_px}
+            baseHeight={(img as any).base_height_px}
+            masterWidth={(img as any).master_width || (img as any).enhanced_width_px || (img as any).actual_width_px}
+            masterHeight={(img as any).master_height || (img as any).enhanced_height_px || (img as any).actual_height_px}
+            exportWidth={(img as any).export_width}
+            exportHeight={(img as any).export_height}
+            printReadiness={
+              ((img as any).print_readiness as any) ||
+              classifyPrintReadiness(
+                (img as any).master_width || (img as any).actual_width_px,
+                (img as any).master_height || (img as any).actual_height_px,
+                (img as any).print_format_id,
+              )
+            }
+            estimatedCost={(img as any).estimated_cost ?? null}
+            currency={(img as any).currency || "USD"}
+            createdAt={img.created_at}
+          />
+        </div>
+
         {/* Export source notice — surfaces "enhanced master" vs "base only" */}
         {(() => {
           const exportInfo = describeExportSource(img);
