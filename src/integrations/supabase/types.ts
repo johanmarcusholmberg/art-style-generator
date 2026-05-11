@@ -199,16 +199,20 @@ export type Database = {
           actual_width_px: number | null
           admin_status: Database["public"]["Enums"]["asset_admin_status"] | null
           aspect_ratio: string
+          asset_role: string | null
           base_height_px: number | null
+          base_image_url: string | null
           base_width_px: number | null
           created_at: string
           crop_mode: string | null
+          currency: string | null
           deleted_at: string | null
           enhanced: boolean | null
           enhanced_height_px: number | null
           enhanced_storage_path: string | null
           enhanced_width_px: number | null
           enhancement_model: string | null
+          estimated_cost: number | null
           execution_route: string | null
           export_height: number | null
           export_preferred_asset: string | null
@@ -222,15 +226,23 @@ export type Database = {
           generation_model: string | null
           generation_provider: string | null
           id: string
+          master_height: number | null
+          master_image_url: string | null
           master_storage_path: string | null
+          master_width: number | null
           mode: string
+          model: string | null
           original_storage_path: string | null
           padding_mode: string | null
           print_format_id: string | null
+          print_readiness: string | null
           print_size: string | null
           prompt: string
+          prompt_version: string | null
+          provider: string | null
           provider_strategy: string | null
           quality_mode: string | null
+          route: string | null
           source_height: number | null
           source_width: number | null
           storage_path: string
@@ -250,16 +262,20 @@ export type Database = {
             | Database["public"]["Enums"]["asset_admin_status"]
             | null
           aspect_ratio?: string
+          asset_role?: string | null
           base_height_px?: number | null
+          base_image_url?: string | null
           base_width_px?: number | null
           created_at?: string
           crop_mode?: string | null
+          currency?: string | null
           deleted_at?: string | null
           enhanced?: boolean | null
           enhanced_height_px?: number | null
           enhanced_storage_path?: string | null
           enhanced_width_px?: number | null
           enhancement_model?: string | null
+          estimated_cost?: number | null
           execution_route?: string | null
           export_height?: number | null
           export_preferred_asset?: string | null
@@ -273,15 +289,23 @@ export type Database = {
           generation_model?: string | null
           generation_provider?: string | null
           id?: string
+          master_height?: number | null
+          master_image_url?: string | null
           master_storage_path?: string | null
+          master_width?: number | null
           mode?: string
+          model?: string | null
           original_storage_path?: string | null
           padding_mode?: string | null
           print_format_id?: string | null
+          print_readiness?: string | null
           print_size?: string | null
           prompt: string
+          prompt_version?: string | null
+          provider?: string | null
           provider_strategy?: string | null
           quality_mode?: string | null
+          route?: string | null
           source_height?: number | null
           source_width?: number | null
           storage_path: string
@@ -301,16 +325,20 @@ export type Database = {
             | Database["public"]["Enums"]["asset_admin_status"]
             | null
           aspect_ratio?: string
+          asset_role?: string | null
           base_height_px?: number | null
+          base_image_url?: string | null
           base_width_px?: number | null
           created_at?: string
           crop_mode?: string | null
+          currency?: string | null
           deleted_at?: string | null
           enhanced?: boolean | null
           enhanced_height_px?: number | null
           enhanced_storage_path?: string | null
           enhanced_width_px?: number | null
           enhancement_model?: string | null
+          estimated_cost?: number | null
           execution_route?: string | null
           export_height?: number | null
           export_preferred_asset?: string | null
@@ -324,15 +352,23 @@ export type Database = {
           generation_model?: string | null
           generation_provider?: string | null
           id?: string
+          master_height?: number | null
+          master_image_url?: string | null
           master_storage_path?: string | null
+          master_width?: number | null
           mode?: string
+          model?: string | null
           original_storage_path?: string | null
           padding_mode?: string | null
           print_format_id?: string | null
+          print_readiness?: string | null
           print_size?: string | null
           prompt?: string
+          prompt_version?: string | null
+          provider?: string | null
           provider_strategy?: string | null
           quality_mode?: string | null
+          route?: string | null
           source_height?: number | null
           source_width?: number | null
           storage_path?: string
