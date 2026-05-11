@@ -22,10 +22,13 @@ export function usePrintExport() {
     setIsExporting(true);
     setError(null);
     try {
-      const blob = await preparePrintExport(input.imageUrl, input.printFormat);
+      const result = await preparePrintExport({
+        imageUrl: input.imageUrl,
+        printFormatId: input.printFormat.id,
+      });
       const filename = `${input.filenamePrefix || "print"}-${input.printFormat.id}.png`;
-      await downloadPrintExport(blob, filename);
-      return { filename, blob };
+      downloadPrintExport(result.blob, filename);
+      return { filename, result };
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Print export failed";
       setError(msg);
