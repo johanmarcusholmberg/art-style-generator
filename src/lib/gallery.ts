@@ -82,6 +82,29 @@ export interface GallerySaveOptions {
   fallbackUsed?: boolean;
   /** Phase: cost-aware routing — explains where the image was generated. */
   executionRoute?: string;
+  // ── New asset-metadata fields (Part C of architecture upgrade) ───────
+  /** Logical role of the persisted asset. Defaults to "enhanced_master". */
+  assetRole?: "base_generation" | "enhanced_master" | "print_export" | "mockup_preview";
+  /** Route-level provider (e.g. "lovable"). Distinct from generationProvider. */
+  provider?: string;
+  /** Route-level model label (e.g. "google/gemini-3-pro-image-preview"). */
+  model?: string;
+  /** Route label (e.g. "lovable_gateway"). */
+  route?: string;
+  /** Estimated $ cost of the generation; null when unknown. */
+  estimatedCost?: number | null;
+  /** Currency for estimated_cost. Defaults to "USD". */
+  currency?: string;
+  /** Prompt compiler version (e.g. "v2"). */
+  promptVersion?: string;
+  /** Persisted public URLs (foundation for v2 reads). */
+  baseImageUrl?: string;
+  masterImageUrl?: string;
+  /** Master dimensions (separate from source/base). */
+  masterWidth?: number;
+  masterHeight?: number;
+  /** Classified print readiness. */
+  printReadiness?: string;
 }
 
 export async function saveToGallery(opts: GallerySaveOptions) {
