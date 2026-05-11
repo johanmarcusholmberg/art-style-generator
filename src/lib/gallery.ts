@@ -298,6 +298,21 @@ export async function replaceInGallery(
       provider_strategy: opts.providerStrategy || null,
       fallback_used: opts.fallbackUsed || false,
       execution_route: opts.executionRoute || null,
+      // ── Part C: asset metadata foundation ──
+      asset_role:
+        opts.assetRole ||
+        (enhancedPath ? "enhanced_master" : "base_generation"),
+      provider: opts.provider || null,
+      model: opts.model || null,
+      route: opts.route || null,
+      estimated_cost: opts.estimatedCost ?? null,
+      currency: opts.currency || "USD",
+      prompt_version: opts.promptVersion || null,
+      base_image_url: opts.baseImageUrl || null,
+      master_image_url: opts.masterImageUrl || null,
+      master_width: opts.masterWidth || null,
+      master_height: opts.masterHeight || null,
+      print_readiness: opts.printReadiness || null,
     } as any)
     .eq("id", opts.originalId);
 
