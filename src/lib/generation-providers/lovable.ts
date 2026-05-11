@@ -104,11 +104,13 @@ export async function generateWithLovableAdapter(
   if (!data || data.error) throw new Error(data?.error || "Generation failed");
   if (!data.imageUrl) throw new Error("Provider returned no imageUrl");
 
-  // Lovable adapter routes through the Lovable backend resolver, which can
-  // either dispatch to SDXL (Replicate) or Gemini (Lovable AI Gateway).
-  // Either way, the EXTERNAL execution route is "Lovable gateway" — the
-  // backend resolver, not the user, made the provider choice.
-  const provider = data.provider as "sdxl" | "gemini" | undefined;
+  // v2 wraps the upstream engine under `upstreamProvider`/`upstreamModel`.
+  // Legacy returns engine info as `provider`/`model` directly.
+  const provider = (data.upstreamProvider ?? data.provider) as
+    | "sdxl"
+    | "gemini"
+    | undefined;
+  const model = (data.upstreamModel ?? data.model) as string | undefined;
   const executionRoute =
     provider === "sdxl" ? "lovable_gateway_sdxl" : "lovable_gateway";
 
@@ -117,7 +119,7 @@ export async function generateWithLovableAdapter(
     width: data.width,
     height: data.height,
     generationProvider: provider!, // "sdxl" | "gemini" — set by backend
-    generationModel: data.model,
+    generationModel: model!,
     prompt: req.prompt,
     revisedPrompt: data.revisedPrompt,
     styleKey: req.styleKey,
@@ -130,6 +132,13 @@ export async function generateWithLovableAdapter(
     requestedAspectRatio: data.requestedAspectRatio,
     providerExactMatch: data.providerExactMatch,
     providerAdjusted: data.providerAdjusted,
-    metadata: { adapter: "lovable", edgeFn },
+    metadata: {
+      adapter: "lovable",
+      edgeFn: usedRoute === "v2" ? "generate-image-v2" : edgeFn,
+      route: data.route, // route-level label from v2 (lovable_gateway)
+      promptVersion: data.promptVersion,
+      estimatedCost: data.estimatedCost ?? null,
+      currency: data.currency ?? "USD",
+    },
   };
 }
