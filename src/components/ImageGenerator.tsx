@@ -33,6 +33,9 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PrintSizeSelector, { PRINT_SIZES, type PrintSize } from "@/components/PrintSizeSelector";
 import { saveToGallery, replaceInGallery } from "@/lib/gallery";
+import { loadImageDimensions, classifyPrintReadiness } from "@/lib/image-metadata";
+import { recordAssetCostEvent } from "@/lib/cost-events";
+import DownloadButton from "@/components/generation/DownloadButton";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
@@ -144,6 +147,16 @@ export default function ImageGenerator({
   const [lastRoutingReason, setLastRoutingReason] = useState<string | null>(null);
   const [lastProviderExactMatch, setLastProviderExactMatch] = useState<boolean | null>(null);
   const [lastRequestedSize, setLastRequestedSize] = useState<string | null>(null);
+  // ── Phase 2: route-level v2 metadata (provider/model/route + cost). These
+  // come from the generate-image-v2 envelope (via the lovable adapter's
+  // metadata blob). They are persisted on save so the gallery can show
+  // accurate provenance + cost badges.
+  const [lastRouteProvider, setLastRouteProvider] = useState<string | null>(null);
+  const [lastRouteModel, setLastRouteModel] = useState<string | null>(null);
+  const [lastRouteLabel, setLastRouteLabel] = useState<string | null>(null);
+  const [lastEstimatedCost, setLastEstimatedCost] = useState<number | null>(null);
+  const [lastCurrency, setLastCurrency] = useState<string>("USD");
+  const [lastPromptVersion, setLastPromptVersion] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Poster Composer integration (additive — does not change the generator).
   // The user can configure template + text BEFORE generation. After the
@@ -369,6 +382,29 @@ export default function ImageGenerator({
           : gen.requestedAspectRatio ?? null,
       );
 
+      // Phase 2 — capture v2 route metadata when present (lovable adapter
+      // exposes it via `metadata`). Falls back to nulls when the legacy
+      // edge function path was used so we never invent values.
+      const routeMeta = (gen.metadata || {}) as Record<string, unknown>;
+      setLastRouteProvider(
+        typeof routeMeta.adapter === "string" ? (routeMeta.adapter as string) : "lovable",
+      );
+      setLastRouteModel(gen.generationModel || null);
+      setLastRouteLabel(typeof routeMeta.route === "string" ? (routeMeta.route as string) : null);
+      setLastEstimatedCost(
+        typeof routeMeta.estimatedCost === "number"
+          ? (routeMeta.estimatedCost as number)
+          : null,
+      );
+      setLastCurrency(
+        typeof routeMeta.currency === "string" ? (routeMeta.currency as string) : "USD",
+      );
+      setLastPromptVersion(
+        typeof routeMeta.promptVersion === "string"
+          ? (routeMeta.promptVersion as string)
+          : null,
+      );
+
       console.log(
         `[ImageGenerator] generated provider=${gen.generationProvider} model=${gen.generationModel} ` +
           `route=${gen.executionRoute} strategy=${gen.strategy} fallback=${gen.fallbackUsed} ` +
@@ -461,7 +497,48 @@ export default function ImageGenerator({
       providerStrategy: lastStrategyUsed || undefined,
       fallbackUsed: lastFallbackUsed,
       executionRoute: lastExecutionRoute || undefined,
+      // Phase 2 — v2 envelope metadata (route-level provenance + cost).
+      provider: lastRouteProvider || undefined,
+      model: lastRouteModel || undefined,
+      route: lastRouteLabel || undefined,
+      estimatedCost: lastEstimatedCost,
+      currency: lastCurrency,
+      promptVersion: lastPromptVersion || undefined,
+      assetRole: hasEnhanced ? ("enhanced_master" as const) : ("base_generation" as const),
     };
+  };
+
+  /**
+   * Best-effort dimension + readiness probe. Never throws — falls back to
+   * `unknown` print readiness so save is never blocked by a CORS or
+   * network hiccup on the dimension load.
+   */
+  const probeDimensionsAndReadiness = async (
+    baseUrl: string,
+    masterUrl: string,
+    printFormatIdForReadiness: string | null,
+  ) => {
+    let baseDims: { width: number; height: number } | null = null;
+    let masterDims: { width: number; height: number } | null = null;
+    try {
+      baseDims = await loadImageDimensions(baseUrl);
+    } catch (e) {
+      console.warn("[ImageGenerator] base dimension probe failed:", e);
+    }
+    try {
+      masterDims =
+        masterUrl === baseUrl
+          ? baseDims
+          : await loadImageDimensions(masterUrl);
+    } catch (e) {
+      console.warn("[ImageGenerator] master dimension probe failed:", e);
+    }
+    const readiness = classifyPrintReadiness(
+      masterDims?.width ?? null,
+      masterDims?.height ?? null,
+      printFormatIdForReadiness,
+    );
+    return { baseDims, masterDims, readiness };
   };
 
   const handleSaveToGallery = async () => {
@@ -472,16 +549,61 @@ export default function ImageGenerator({
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
 
-      // Always save using baseImageUrl as the primary source
+      const baseUrlForSave = baseImageUrl || imageUrl;
+      const masterUrlForSave = enhancedImageUrl || baseUrlForSave;
+      const isPrint = generationMode === "print-ready";
+      const { baseDims, masterDims, readiness } = await probeDimensionsAndReadiness(
+        baseUrlForSave,
+        masterUrlForSave,
+        isPrint ? selectedPrintFormat.id : null,
+      );
+
       const saveOpts = buildSaveOptions();
       const result = await saveToGallery({
-        imageUrl: baseImageUrl || imageUrl,
+        imageUrl: baseUrlForSave,
         prompt: finalPrompt,
         ...saveOpts,
+        baseImageUrl: baseUrlForSave,
+        masterImageUrl: masterUrlForSave,
+        baseWidthPx: baseDims?.width,
+        baseHeightPx: baseDims?.height,
+        masterWidth: masterDims?.width,
+        masterHeight: masterDims?.height,
+        actualWidthPx: masterDims?.width ?? baseDims?.width,
+        actualHeightPx: masterDims?.height ?? baseDims?.height,
+        printReadiness: readiness,
       });
       // Note: result is the master public URL
       setSavedToGallery(true);
       onImageSaved?.();
+      // Best-effort cost-event log; never blocks save UX.
+      try {
+        const { data } = await supabase
+          .from("generated_images")
+          .select("id")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        const newId = (data?.[0] as { id?: string } | undefined)?.id;
+        if (newId) {
+          await recordAssetCostEvent({
+            imageId: newId,
+            eventType: "generation",
+            provider: lastRouteProvider || "lovable",
+            model: lastRouteModel || "google/gemini-3-pro-image-preview",
+            mode,
+            estimatedCost: lastEstimatedCost,
+            currency: lastCurrency,
+            status: "succeeded",
+            metadata: {
+              route: lastRouteLabel,
+              promptVersion: lastPromptVersion,
+              executionRoute: lastExecutionRoute,
+            },
+          });
+        }
+      } catch (e) {
+        console.warn("[ImageGenerator] cost event skipped:", e);
+      }
       toast({ title: "Saved to gallery", description: "Your artwork has been saved." });
     } catch (saveErr: any) {
       console.error("Gallery save failed:", saveErr);
@@ -499,15 +621,53 @@ export default function ImageGenerator({
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
 
+      const baseUrlForSave = baseImageUrl || imageUrl;
+      const masterUrlForSave = enhancedImageUrl || baseUrlForSave;
+      const isPrint = generationMode === "print-ready";
+      const { baseDims, masterDims, readiness } = await probeDimensionsAndReadiness(
+        baseUrlForSave,
+        masterUrlForSave,
+        isPrint ? selectedPrintFormat.id : null,
+      );
+
       await replaceInGallery({
         originalId: originalImageId,
         originalStoragePath,
-        imageUrl: baseImageUrl || imageUrl,
+        imageUrl: baseUrlForSave,
         prompt: finalPrompt,
         ...buildSaveOptions(),
+        baseImageUrl: baseUrlForSave,
+        masterImageUrl: masterUrlForSave,
+        baseWidthPx: baseDims?.width,
+        baseHeightPx: baseDims?.height,
+        masterWidth: masterDims?.width,
+        masterHeight: masterDims?.height,
+        actualWidthPx: masterDims?.width ?? baseDims?.width,
+        actualHeightPx: masterDims?.height ?? baseDims?.height,
+        printReadiness: readiness,
       });
       setSavedToGallery(true);
       onImageSaved?.();
+      try {
+        await recordAssetCostEvent({
+          imageId: originalImageId,
+          eventType: "generation",
+          provider: lastRouteProvider || "lovable",
+          model: lastRouteModel || "google/gemini-3-pro-image-preview",
+          mode,
+          estimatedCost: lastEstimatedCost,
+          currency: lastCurrency,
+          status: "succeeded",
+          metadata: {
+            route: lastRouteLabel,
+            promptVersion: lastPromptVersion,
+            executionRoute: lastExecutionRoute,
+            replacement: true,
+          },
+        });
+      } catch (e) {
+        console.warn("[ImageGenerator] cost event skipped:", e);
+      }
       toast({ title: "Original replaced", description: "The gallery image has been updated." });
     } catch (err: any) {
       console.error("Replace failed:", err);
@@ -1275,16 +1435,13 @@ export default function ImageGenerator({
                   ))}
                 </div>
               )}
-              <Button variant="outline" size="sm"
-                onClick={() => downloadImage(
-                  viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl,
-                  `${styleConfig.downloadPrefix}-${mode}-${effectiveAspectRatio.replace(":", "x")}-${Date.now()}.png`
-                )}
-                className="font-display text-xs tracking-wider">
-                <Download className="mr-2 h-4 w-4" />
-                Download{hasEnhanced ? (viewVersion === "original" ? " (Original)" : " (Enhanced)") : ""}{" "}
-                ({generationMode === "print-ready" ? selectedPrintFormat.label : printSize.dimensions})
-              </Button>
+              <DownloadButton
+                url={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
+                filename={`${styleConfig.downloadPrefix}-${mode}-${effectiveAspectRatio.replace(":", "x")}-${Date.now()}.png`}
+                versionLabel={hasEnhanced ? (viewVersion === "original" ? "Original" : "Enhanced") : undefined}
+                sizeLabel={generationMode === "print-ready" ? selectedPrintFormat.label : printSize.dimensions}
+              />
+
               {generationMode === "print-ready" && (
                 <Button variant="outline" size="sm" onClick={handlePrintExport} disabled={exporting}
                   className="font-display text-xs tracking-wider border-primary/30 text-primary hover:bg-primary/10">

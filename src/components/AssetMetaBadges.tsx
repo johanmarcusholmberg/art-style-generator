@@ -110,16 +110,19 @@ export default function AssetMetaBadges(props: AssetMetaBadgesProps) {
     : null;
 
   if (variant === "compact") {
+    // Hide "Unknown" readiness on gallery cards to keep the grid quiet —
+    // it carries no useful signal until dimensions are populated.
+    const showReadiness = readinessLabel && printReadiness && printReadiness !== "unknown";
     return (
       <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
-        {readinessLabel && (
+        {showReadiness && (
           <Badge
             variant="outline"
             className={cn(
               "font-display text-[10px]",
               readinessTone(printReadiness),
             )}
-            title={readinessLabel}
+            title={readinessLabel!}
           >
             {readinessLabel}
           </Badge>
