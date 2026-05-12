@@ -379,6 +379,29 @@ export default function ImageGenerator({
           : gen.requestedAspectRatio ?? null,
       );
 
+      // Phase 2 — capture v2 route metadata when present (lovable adapter
+      // exposes it via `metadata`). Falls back to nulls when the legacy
+      // edge function path was used so we never invent values.
+      const routeMeta = (gen.metadata || {}) as Record<string, unknown>;
+      setLastRouteProvider(
+        typeof routeMeta.adapter === "string" ? (routeMeta.adapter as string) : "lovable",
+      );
+      setLastRouteModel(gen.generationModel || null);
+      setLastRouteLabel(typeof routeMeta.route === "string" ? (routeMeta.route as string) : null);
+      setLastEstimatedCost(
+        typeof routeMeta.estimatedCost === "number"
+          ? (routeMeta.estimatedCost as number)
+          : null,
+      );
+      setLastCurrency(
+        typeof routeMeta.currency === "string" ? (routeMeta.currency as string) : "USD",
+      );
+      setLastPromptVersion(
+        typeof routeMeta.promptVersion === "string"
+          ? (routeMeta.promptVersion as string)
+          : null,
+      );
+
       console.log(
         `[ImageGenerator] generated provider=${gen.generationProvider} model=${gen.generationModel} ` +
           `route=${gen.executionRoute} strategy=${gen.strategy} fallback=${gen.fallbackUsed} ` +
