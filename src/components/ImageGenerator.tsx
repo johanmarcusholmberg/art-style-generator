@@ -1260,8 +1260,8 @@ export default function ImageGenerator({
               referenceImageUrl:
                 isInlineEditing && imageUrl
                   ? imageUrl
-                  : sourceImageUrl || undefined,
-              isEdit: !!(isInlineEditing && imageUrl) || !!sourceImageUrl,
+                  : effectiveSourceImageUrl || undefined,
+              isEdit: !!(isInlineEditing && imageUrl) || !!effectiveSourceImageUrl,
             }}
             adapters={[
               { id: "replicate", label: "SDXL (direct Replicate)" },
