@@ -847,37 +847,7 @@ export default function ImageGenerator({
           />
         )}
 
-        {/* ── Generation Mode (simplified) ───────────────────────────── */}
-        {false && (
-        <div className="flex items-center gap-2">
-          <span className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">Mode:</span>
-          <div className="inline-flex items-center gap-1 border border-border rounded-sm p-0.5 bg-card/40">
-            <button
-              onClick={() => setGenerationMode("standard")}
-              className={cn(
-                "font-display text-xs px-2.5 py-1 rounded-sm transition-colors",
-                generationMode === "standard"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Standard
-            </button>
-            <button
-              onClick={() => setGenerationMode("print-ready")}
-              className={cn(
-                "font-display text-xs px-2.5 py-1 rounded-sm transition-colors inline-flex items-center gap-1",
-                generationMode === "print-ready"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Printer className="h-3 w-3" />
-              Print-Ready
-            </button>
-          </div>
-        </div>
-        )}
+        {/* Generation Mode selector hidden — defaults to "print-ready" via state. */}
 
         {false && (
         <>
