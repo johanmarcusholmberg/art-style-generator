@@ -105,6 +105,12 @@ export interface GallerySaveOptions {
   masterHeight?: number;
   /** Classified print readiness. */
   printReadiness?: string;
+  /** Source/reference image used for the generation (edit or upload flows). */
+  sourceImageUrl?: string;
+  /** Storage path of an uploaded source image (null for non-uploaded sources). */
+  sourceStoragePath?: string;
+  /** Original file name of an uploaded source image. */
+  sourceFileName?: string;
 }
 
 export async function saveToGallery(opts: GallerySaveOptions) {
@@ -174,6 +180,9 @@ export async function saveToGallery(opts: GallerySaveOptions) {
     master_width: opts.masterWidth || null,
     master_height: opts.masterHeight || null,
     print_readiness: opts.printReadiness || null,
+    source_image_url: opts.sourceImageUrl || null,
+    source_storage_path: opts.sourceStoragePath || null,
+    source_file_name: opts.sourceFileName || null,
   } as any);
 
   if (dbError) throw dbError;
@@ -313,6 +322,9 @@ export async function replaceInGallery(
       master_width: opts.masterWidth || null,
       master_height: opts.masterHeight || null,
       print_readiness: opts.printReadiness || null,
+      source_image_url: opts.sourceImageUrl || null,
+      source_storage_path: opts.sourceStoragePath || null,
+      source_file_name: opts.sourceFileName || null,
     } as any)
     .eq("id", opts.originalId);
 

@@ -289,6 +289,14 @@ function LightboxContent({
             currency={(img as any).currency || "USD"}
             createdAt={img.created_at}
           />
+          {(img as any).source_image_url && (
+            <p className="mt-2 font-display text-[11px] text-muted-foreground">
+              Source image used
+              {(img as any).source_file_name ? (
+                <span className="text-foreground"> · {(img as any).source_file_name}</span>
+              ) : null}
+            </p>
+          )}
         </div>
 
         {/* Export source notice — surfaces "enhanced master" vs "base only" */}

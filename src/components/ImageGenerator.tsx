@@ -510,6 +510,11 @@ export default function ImageGenerator({
       currency: lastCurrency,
       promptVersion: lastPromptVersion || undefined,
       assetRole: hasEnhanced ? ("enhanced_master" as const) : ("base_generation" as const),
+      // Source-image provenance (uploaded source has full metadata; edit-mode
+      // initial source only has a URL).
+      sourceImageUrl: effectiveSourceImageUrl || undefined,
+      sourceStoragePath: uploadedSource?.storagePath || undefined,
+      sourceFileName: uploadedSource?.fileName || undefined,
     };
   };
 
@@ -842,145 +847,10 @@ export default function ImageGenerator({
           />
         )}
 
-        {/* ── Generation Mode (simplified) ───────────────────────────── */}
-        {false && (
-        <div className="flex items-center gap-2">
-          <span className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">Mode:</span>
-          <div className="inline-flex items-center gap-1 border border-border rounded-sm p-0.5 bg-card/40">
-            <button
-              onClick={() => setGenerationMode("standard")}
-              className={cn(
-                "font-display text-xs px-2.5 py-1 rounded-sm transition-colors",
-                generationMode === "standard"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Standard
-            </button>
-            <button
-              onClick={() => setGenerationMode("print-ready")}
-              className={cn(
-                "font-display text-xs px-2.5 py-1 rounded-sm transition-colors inline-flex items-center gap-1",
-                generationMode === "print-ready"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Printer className="h-3 w-3" />
-              Print-Ready
-            </button>
-          </div>
-        </div>
-        )}
+        {/* Generation Mode selector hidden — defaults to "print-ready" via state. */}
 
-        {false && (
-        <>
-        {/* ── Poster card — single source of truth for size ──────────── */}
-        <div className="rounded-md border border-border bg-card/60 p-4 space-y-3">
-          <div className="flex items-baseline justify-between">
-            <h3 className="font-display text-base font-bold text-foreground">Poster</h3>
-            <span className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-              Size & format
-            </span>
-          </div>
-          <div>
-            <p className="font-display text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
-              Poster size
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {PRINT_FORMATS.map((fmt) => {
-                const isSelected = selectedPrintFormat.id === fmt.id;
-                const isRecommended = fmt.id === "print_50x70";
-                return (
-                  <button
-                    key={fmt.id}
-                    onClick={() => setSelectedPrintFormat(fmt)}
-                    className={cn(
-                      "font-display text-xs px-3 py-1.5 rounded-sm border transition-colors",
-                      isSelected
-                        ? "bg-primary text-primary-foreground border-primary font-bold"
-                        : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground",
-                    )}
-                  >
-                    {fmt.label}
-                    {isRecommended && (
-                      <span className={cn("ml-1.5 text-[10px]", isSelected ? "opacity-90" : "text-primary")}>
-                        ★ Recommended
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="font-display text-xs text-muted-foreground mt-2">
-              {selectedPrintFormat.label} · {selectedPrintFormat.aspectRatio} · Print-ready format
-            </p>
-          </div>
-
-          <details className="group">
-            <summary className="cursor-pointer select-none font-display text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-              Print details
-            </summary>
-            <div className="mt-2 pt-2 border-t border-border/60 font-display text-[11px] text-muted-foreground space-y-0.5">
-              <p>
-                Aspect ratio: <span className="text-foreground font-bold">{selectedPrintFormat.aspectRatio}</span>
-              </p>
-              <p>
-                300 DPI export:{" "}
-                <span className="text-foreground font-bold">
-                  {formatResolution(selectedPrintFormat.preferredPixelWidth, selectedPrintFormat.preferredPixelHeight)}
-                </span>
-              </p>
-              <p className="text-[10px]">
-                Drives composition for every provider, the preview canvas, the poster composer, and the print export.
-              </p>
-            </div>
-          </details>
-        </div>
-
-        {/* ── Output card — quality ──────────────────────────────────── */}
-        <div className="rounded-md border border-border bg-card/60 p-4 space-y-3">
-          <div className="flex items-baseline justify-between">
-            <h3 className="font-display text-base font-bold text-foreground">Output</h3>
-            <span className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-              Quality
-            </span>
-          </div>
-          <div>
-            <div className="flex flex-wrap gap-2">
-              {([
-                { id: "web", label: "Web", desc: "Small file for preview and sharing" },
-                { id: "print-150", label: "Print Standard", desc: "Good for smaller prints" },
-                { id: "print-300", label: "Print Premium", desc: "Best for selling prints · 300 DPI" },
-              ] as const).map((opt) => {
-                const isSelected = qualityTarget === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    onClick={() => setQualityTarget(opt.id)}
-                    className={cn(
-                      "font-display text-xs px-3 py-1.5 rounded-sm border transition-colors",
-                      isSelected
-                        ? "bg-primary text-primary-foreground border-primary font-bold"
-                        : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground",
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="font-display text-xs text-muted-foreground mt-2">
-              {qualityTarget === "web" && "Small file for preview and sharing"}
-              {qualityTarget === "print-150" && "Good for smaller prints"}
-              {qualityTarget === "print-300" && "Best for selling prints · 300 DPI"}
-            </p>
-          </div>
-        </div>
-
-        </>
-        )}
+        {/* Poster size & Output quality cards hidden — defaults are
+            selectedPrintFormat = print_50x70 and qualityTarget = print-300. */}
 
         {/* ── Artwork card (compact) ─────────────────────────────────── */}
         <div className="rounded-md border border-border bg-card/60 p-3 space-y-2">
@@ -1045,141 +915,8 @@ export default function ImageGenerator({
           </div>
         </div>
 
-        {/* ── Poster setup (optional, secondary) ─────────────────────── */}
-        {false && (
-        <details className="group">
-          <summary className="cursor-pointer select-none px-1 py-1 flex items-center gap-2 font-display text-xs">
-            <LayoutPanelTop className="h-3.5 w-3.5 text-primary" />
-            <span className="font-bold text-foreground">Poster setup</span>
-            <span className="text-muted-foreground">(optional)</span>
-            <span className="ml-auto text-[10px] text-muted-foreground">
-              {posterTextMode === "composer" ? "Clean text" : "Artistic text"}
-              {" · "}
-              {getPosterTemplate(posterTemplateId).name}
-            </span>
-          </summary>
-          <div className="px-1 pt-2 pb-1 space-y-3">
-            <div className="space-y-1">
-              <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
-                Template
-              </Label>
-              <select
-                value={posterTemplateId}
-                onChange={(e) => setPosterTemplateId(e.target.value as PosterTemplateId)}
-                className="w-full bg-background border border-border rounded-sm px-2 py-1.5 font-display text-xs"
-              >
-                {POSTER_TEMPLATE_LIST.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} — {t.description}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
-                Text handling
-              </Label>
-              <div className="space-y-1">
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="poster-text-mode"
-                    checked={posterTextMode === "composer"}
-                    onChange={() => setPosterTextMode("composer")}
-                    className="mt-0.5"
-                  />
-                  <span className="flex flex-col">
-                    <span className="font-display text-xs text-foreground">Clean text (Poster Composer)</span>
-                    <span className="font-display text-[10px] text-muted-foreground">
-                      Recommended for Etsy / print. Text is added on export — image is generated text-free.
-                    </span>
-                  </span>
-                </label>
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="poster-text-mode"
-                    checked={posterTextMode === "generated"}
-                    onChange={() => setPosterTextMode("generated")}
-                    className="mt-0.5"
-                  />
-                  <span className="flex flex-col">
-                    <span className="font-display text-xs text-foreground">Artistic text (generated in image)</span>
-                    <span className="font-display text-[10px] text-muted-foreground">
-                      Title / subtitle are sent to the generator and become part of the artwork.
-                    </span>
-                  </span>
-                </label>
-              </div>
-            </div>
-            {posterTextMode === "composer" && (
-              <div className="flex items-start gap-2 rounded-sm border border-border bg-card/40 px-2 py-1.5">
-                <Switch
-                  checked={posterSafeAreaEnabled}
-                  onCheckedChange={setPosterSafeAreaEnabled}
-                />
-                <div className="flex flex-col">
-                  <span className="font-display text-xs text-foreground">
-                    Safe text area
-                  </span>
-                  <span className="font-display text-[10px] text-muted-foreground">
-                    {posterSafeAreaEnabled
-                      ? (composerTitle || composerSubtitle || composerDescription || composerIngredientsRaw
-                          ? "Works with any art style — generator will leave a clean empty band for your typography."
-                          : "Enabled, but no poster text yet — generation is unaffected until text is added.")
-                      : "Off — image uses the full canvas. Toggle on (any style) to reserve a band for typography."}
-                  </span>
-                </div>
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
-                Poster text
-              </Label>
-              <input
-                type="text"
-                value={composerTitle}
-                onChange={(e) => setComposerTitle(e.target.value)}
-                placeholder="Title"
-                className="w-full bg-background border border-border rounded-sm px-2 py-1.5 font-display text-xs"
-              />
-              <input
-                type="text"
-                value={composerSubtitle}
-                onChange={(e) => setComposerSubtitle(e.target.value)}
-                placeholder="Subtitle"
-                className="w-full bg-background border border-border rounded-sm px-2 py-1.5 font-display text-xs"
-              />
-              <Textarea
-                value={composerDescription}
-                onChange={(e) => setComposerDescription(e.target.value)}
-                placeholder="Description"
-                rows={2}
-                className="font-display text-xs min-h-[60px]"
-              />
-              <Textarea
-                value={composerIngredientsRaw}
-                onChange={(e) => setComposerIngredientsRaw(e.target.value)}
-                placeholder="Ingredients (one per line)"
-                rows={2}
-                className="font-display text-xs min-h-[60px]"
-              />
-              {posterTextMode === "composer" && (composerTitle || composerSubtitle || composerDescription || composerIngredientsRaw) && (
-                <p className="font-display text-[10px] text-muted-foreground flex items-start gap-1">
-                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                  Text will be added as a clean overlay — not generated inside the image.
-                </p>
-              )}
-              {posterTextMode === "generated" && (composerTitle || composerSubtitle) && (
-                <p className="font-display text-[10px] text-muted-foreground flex items-start gap-1">
-                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                  Text will be generated inside the image. Overlay text will not be applied.
-                </p>
-              )}
-            </div>
-          </div>
-        </details>
-        )}
+        {/* Poster setup section hidden — composer text + template state remain
+            in defaults (template "fika", textMode "composer", safe area off). */}
 
         {/* ── Advanced settings (provider/debug controls) ────────────── */}
         <details className="group">
