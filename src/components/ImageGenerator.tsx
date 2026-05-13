@@ -36,6 +36,7 @@ import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import { loadImageDimensions, classifyPrintReadiness } from "@/lib/image-metadata";
 import { recordAssetCostEvent } from "@/lib/cost-events";
 import DownloadButton from "@/components/generation/DownloadButton";
+import UploadedImageInput, { type UploadedSource } from "@/components/generation/UploadedImageInput";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
