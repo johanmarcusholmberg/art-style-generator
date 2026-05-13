@@ -510,6 +510,11 @@ export default function ImageGenerator({
       currency: lastCurrency,
       promptVersion: lastPromptVersion || undefined,
       assetRole: hasEnhanced ? ("enhanced_master" as const) : ("base_generation" as const),
+      // Source-image provenance (uploaded source has full metadata; edit-mode
+      // initial source only has a URL).
+      sourceImageUrl: effectiveSourceImageUrl || undefined,
+      sourceStoragePath: uploadedSource?.storagePath || undefined,
+      sourceFileName: uploadedSource?.fileName || undefined,
     };
   };
 
