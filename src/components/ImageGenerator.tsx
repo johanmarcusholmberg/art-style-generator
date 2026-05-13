@@ -832,7 +832,18 @@ export default function ImageGenerator({
             "Enhance for print" button appears next to the generated image
             once it's available (see action row below). */}
 
+        {/* Upload source image — optional, lets the user run the prompt
+            against a reference image (reuses the edit/source pipeline). */}
+        {!isEditMode && (
+          <UploadedImageInput
+            value={uploadedSource}
+            onChange={setUploadedSource}
+            disabled={loading}
+          />
+        )}
+
         {/* ── Generation Mode (simplified) ───────────────────────────── */}
+        {false && (
         <div className="flex items-center gap-2">
           <span className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">Mode:</span>
           <div className="inline-flex items-center gap-1 border border-border rounded-sm p-0.5 bg-card/40">
