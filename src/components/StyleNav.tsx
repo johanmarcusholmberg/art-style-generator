@@ -144,16 +144,7 @@ const StyleNav = ({ activePath }: StyleNavProps) => {
             {secondaryLinks.map(renderLink)}
           </nav>
 
-          {/* Dark mode toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground"
-            title="Toggle dark mode"
-          >
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
+          {/* Dark mode toggle removed — light-only experience. */}
 
           {/* User / account menu (inline, not floating) */}
           <div className="ml-1 shrink-0">
