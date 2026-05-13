@@ -1179,6 +1179,7 @@ export default function ImageGenerator({
             </div>
           </div>
         </details>
+        )}
 
         {/* ── Advanced settings (provider/debug controls) ────────────── */}
         <details className="group">
