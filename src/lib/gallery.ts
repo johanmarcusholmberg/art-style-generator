@@ -105,6 +105,12 @@ export interface GallerySaveOptions {
   masterHeight?: number;
   /** Classified print readiness. */
   printReadiness?: string;
+  /** Source/reference image used for the generation (edit or upload flows). */
+  sourceImageUrl?: string;
+  /** Storage path of an uploaded source image (null for non-uploaded sources). */
+  sourceStoragePath?: string;
+  /** Original file name of an uploaded source image. */
+  sourceFileName?: string;
 }
 
 export async function saveToGallery(opts: GallerySaveOptions) {
