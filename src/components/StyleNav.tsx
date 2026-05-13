@@ -59,7 +59,6 @@ const isActive = (link: NavLink, activePath: string): boolean => {
 };
 
 const StyleNav = ({ activePath }: StyleNavProps) => {
-  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const { access } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
