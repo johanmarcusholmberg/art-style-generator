@@ -243,7 +243,10 @@ export type Database = {
           provider_strategy: string | null
           quality_mode: string | null
           route: string | null
+          source_file_name: string | null
           source_height: number | null
+          source_image_url: string | null
+          source_storage_path: string | null
           source_width: number | null
           storage_path: string
           target_height_px: number | null
@@ -306,7 +309,10 @@ export type Database = {
           provider_strategy?: string | null
           quality_mode?: string | null
           route?: string | null
+          source_file_name?: string | null
           source_height?: number | null
+          source_image_url?: string | null
+          source_storage_path?: string | null
           source_width?: number | null
           storage_path: string
           target_height_px?: number | null
@@ -369,7 +375,10 @@ export type Database = {
           provider_strategy?: string | null
           quality_mode?: string | null
           route?: string | null
+          source_file_name?: string | null
           source_height?: number | null
+          source_image_url?: string | null
+          source_storage_path?: string | null
           source_width?: number | null
           storage_path?: string
           target_height_px?: number | null
