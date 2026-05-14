@@ -1018,6 +1018,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           Select
         </Button>
 
+        <ImportArtworkButton onImported={reloadGallery} />
+
         {selectMode && selectedIds.size > 0 && (
           <>
             <Button size="sm" className="font-display text-xs h-8" onClick={handleBatchDownload} disabled={downloading}>
