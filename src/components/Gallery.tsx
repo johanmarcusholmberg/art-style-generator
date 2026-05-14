@@ -53,6 +53,7 @@ import { Progress } from "@/components/ui/progress";
 import EtsyExportDialog from "@/components/EtsyExportDialog";
 import EtsyMockupDialog from "@/components/EtsyMockupDialog";
 import RouteBadge from "@/components/RouteBadge";
+import ImportArtworkButton from "@/components/gallery/ImportArtworkButton";
 
 interface GalleryImage {
   id: string;
