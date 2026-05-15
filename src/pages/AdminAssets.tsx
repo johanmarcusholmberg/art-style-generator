@@ -635,7 +635,41 @@ export default function AdminAssets() {
 
   /* ---------------- Render ---------------- */
 
-  const detailRow = detailId ? rows.find((r) => r.id === detailId) : null;
+  const detailIndex = detailId ? filtered.findIndex((r) => r.id === detailId) : -1;
+  const detailRow = detailIndex >= 0 ? filtered[detailIndex] : null;
+  const detailScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const goToDetail = useCallback(
+    (delta: number) => {
+      if (detailIndex < 0) return;
+      const next = detailIndex + delta;
+      if (next < 0 || next >= filtered.length) return;
+      setDetailId(filtered[next].id);
+      requestAnimationFrame(() => {
+        detailScrollRef.current?.scrollTo({ top: 0 });
+      });
+    },
+    [detailIndex, filtered],
+  );
+
+  useEffect(() => {
+    if (!detailRow) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement) {
+        const tag = e.target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goToDetail(-1);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goToDetail(1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [detailRow, goToDetail]);
 
   return (
     <div className="min-h-screen bg-background">
