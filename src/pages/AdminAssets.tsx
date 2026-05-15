@@ -20,6 +20,10 @@ import {
   Folder,
   Pencil,
   FolderOpen,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
