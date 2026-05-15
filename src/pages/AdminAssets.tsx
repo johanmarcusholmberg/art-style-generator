@@ -2,7 +2,7 @@
  * /admin/assets — Admin Asset Library.
  * Admin-only management view for ALL persisted image assets.
  */
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -20,6 +20,10 @@ import {
   Folder,
   Pencil,
   FolderOpen,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
@@ -74,6 +78,10 @@ import {
   UPSCALE_MODES,
   type UpscaleMode,
 } from "@/lib/upscale-modes";
+import {
+  assessUpscaleSuitability,
+  type UpscaleSuitability,
+} from "@/lib/upscale-suitability";
 
 type AdminStatus = "draft" | "needs_review" | "approved" | "rejected" | "archived";
 
@@ -181,6 +189,7 @@ export default function AdminAssets() {
   const [busy, setBusy] = useState(false);
   const [upscalingId, setUpscalingId] = useState<string | null>(null);
   const [foldersOpen, setFoldersOpen] = useState(false);
+  const [costRefreshTick, setCostRefreshTick] = useState(0);
 
   const upscaler = useUpscale();
 
@@ -475,6 +484,11 @@ export default function AdminAssets() {
       return;
     }
     if (mode === "none") return;
+
+    // Snapshot pre-state for cost-event diff metadata.
+    const prevDims = getMasterDimensions(row);
+    const prevReadiness = getPrintReadiness(row, row.print_format_id).level;
+
     setUpscalingId(row.id);
     const startedAt = new Date().toISOString();
     try {
@@ -484,23 +498,71 @@ export default function AdminAssets() {
       });
       const cfg = UPSCALE_MODES[mode];
       const estCost = estimateUpscaleCost(mode, mode, cfg.provider);
-      // Record a cost/action event going forward (admin-only RLS).
-      // Only attribute cost on success — failed runs may or may not be billed,
-      // so we leave estimated_cost null to avoid inflating totals.
-      await (supabase as any).from("asset_cost_events").insert({
-        generated_image_id: row.id,
-        event_type: "upscale",
-        provider: cfg.provider,
-        model: cfg.provider,
-        mode,
-        estimated_cost: result ? estCost : null,
-        currency: "USD",
-        status: result ? "succeeded" : "failed",
-        metadata: { started_at: startedAt, label: cfg.label },
-      });
+
+      // Reload from DB so new master/enhanced paths and dims are picked up
+      // (updateEnhancedAsset is called inside useUpscale on the sync path,
+      // upscale-webhook persists for async).
+      await loadRows();
+
+      // Compute new readiness against the freshly-loaded row (via closure
+      // over latest rows list inside setRows/loadRows is messy — re-fetch
+      // once for the diff snapshot only).
+      let newDims = prevDims;
+      let newReadiness = prevReadiness;
+      try {
+        const { data: fresh } = await supabase
+          .from("generated_images")
+          .select(
+            "enhanced_width_px,enhanced_height_px,actual_width_px,actual_height_px,base_width_px,base_height_px,print_format_id",
+          )
+          .eq("id", row.id)
+          .maybeSingle();
+        if (fresh) {
+          const freshLike = fresh as any;
+          newDims = getMasterDimensions(freshLike) || prevDims;
+          newReadiness = getPrintReadiness(
+            freshLike,
+            freshLike.print_format_id,
+          ).level;
+        }
+      } catch {
+        /* best-effort */
+      }
+
+      // Best-effort cost/history event with diff metadata.
+      try {
+        await (supabase as any).from("asset_cost_events").insert({
+          generated_image_id: row.id,
+          event_type: "upscale",
+          provider: cfg.provider,
+          model: cfg.provider,
+          mode,
+          estimated_cost: result ? estCost : null,
+          currency: "USD",
+          status: result ? "succeeded" : "failed",
+          metadata: {
+            started_at: startedAt,
+            label: cfg.label,
+            previous_dimensions: prevDims
+              ? { width: prevDims.width, height: prevDims.height }
+              : null,
+            new_dimensions: newDims
+              ? { width: newDims.width, height: newDims.height }
+              : null,
+            previous_print_readiness: prevReadiness,
+            new_print_readiness: newReadiness,
+            scale: result?.scale ?? cfg.scaleFactor,
+          },
+        });
+      } catch {
+        /* swallow — cost logging is best-effort */
+      }
+
+      // Refresh the in-modal cost history without closing the modal.
+      setCostRefreshTick((t) => t + 1);
+
       if (result) {
         toast.success(`Upscale complete (${cfg.shortLabel})`);
-        await loadRows();
       } else {
         toast.error("Upscale failed");
       }
@@ -517,6 +579,7 @@ export default function AdminAssets() {
           status: "failed",
           metadata: { error: String(err?.message || err) },
         });
+        setCostRefreshTick((t) => t + 1);
       } catch {
         /* swallow */
       }
@@ -572,7 +635,41 @@ export default function AdminAssets() {
 
   /* ---------------- Render ---------------- */
 
-  const detailRow = detailId ? rows.find((r) => r.id === detailId) : null;
+  const detailIndex = detailId ? filtered.findIndex((r) => r.id === detailId) : -1;
+  const detailRow = detailIndex >= 0 ? filtered[detailIndex] : null;
+  const detailScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const goToDetail = useCallback(
+    (delta: number) => {
+      if (detailIndex < 0) return;
+      const next = detailIndex + delta;
+      if (next < 0 || next >= filtered.length) return;
+      setDetailId(filtered[next].id);
+      requestAnimationFrame(() => {
+        detailScrollRef.current?.scrollTo({ top: 0 });
+      });
+    },
+    [detailIndex, filtered],
+  );
+
+  useEffect(() => {
+    if (!detailRow) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement) {
+        const tag = e.target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goToDetail(-1);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goToDetail(1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [detailRow, goToDetail]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -799,14 +896,45 @@ export default function AdminAssets() {
       <Dialog open={!!detailRow} onOpenChange={(o) => !o && setDetailId(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] p-0 gap-0 flex flex-col">
           <DialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
-            <DialogTitle>Asset details</DialogTitle>
+            <div className="flex items-center justify-between gap-3">
+              <DialogTitle>Asset details</DialogTitle>
+              {detailRow && filtered.length > 1 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {detailIndex + 1} of {filtered.length}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-7 w-7"
+                    onClick={() => goToDetail(-1)}
+                    disabled={detailIndex <= 0}
+                    title="Previous (←)"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-7 w-7"
+                    onClick={() => goToDetail(1)}
+                    disabled={detailIndex >= filtered.length - 1}
+                    title="Next (→)"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </DialogHeader>
           {detailRow && (
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div ref={detailScrollRef} className="flex-1 overflow-y-auto px-6 py-4">
               <AssetDetail
+                key={detailRow.id}
                 row={detailRow}
                 folders={folders}
                 upscaling={upscalingId === detailRow.id}
+                costRefreshTick={costRefreshTick}
                 onUpscale={(m) => handleUpscale(detailRow, m)}
                 onStatusChange={(s) => updateStatus(detailRow.id, s)}
                 onSetFolder={(fid) => setAssetFolder(detailRow.id, fid)}
@@ -1060,6 +1188,7 @@ function AssetDetail({
   row,
   folders,
   upscaling,
+  costRefreshTick,
   onUpscale,
   onStatusChange,
   onSetFolder,
@@ -1067,6 +1196,7 @@ function AssetDetail({
   row: AssetRow;
   folders: AssetFolder[];
   upscaling: boolean;
+  costRefreshTick: number;
   onUpscale: (m: UpscaleMode) => void;
   onStatusChange: (s: AdminStatus) => void;
   onSetFolder: (folderId: string | null) => void;
@@ -1079,6 +1209,24 @@ function AssetDetail({
   const status = (row.admin_status || "draft") as AdminStatus;
   const genCost = estimateGenerationCost(row.generation_provider, row.execution_route);
   const upCost = estimateUpscaleCost(row.upscale_mode, row.upscale_method, row.enhancement_model);
+  const suitability = useMemo<UpscaleSuitability>(
+    () => assessUpscaleSuitability(row),
+    [row],
+  );
+
+  // Confirmation gate for low / not-needed runs.
+  const [pendingMode, setPendingMode] = useState<UpscaleMode | null>(null);
+
+  const requestUpscale = useCallback(
+    (mode: UpscaleMode) => {
+      if (suitability.level === "low" || suitability.level === "not-needed") {
+        setPendingMode(mode);
+        return;
+      }
+      onUpscale(mode);
+    },
+    [suitability.level, onUpscale],
+  );
 
   // Cost / action history events
   const [events, setEvents] = useState<CostEvent[] | null>(null);
@@ -1101,7 +1249,7 @@ function AssetDetail({
     return () => {
       cancel = true;
     };
-  }, [row.id]);
+  }, [row.id, costRefreshTick]);
 
   // Total known cost: sum of recorded events plus any known metadata cost
   // for which there is NO matching event row, to avoid double-counting.
@@ -1179,7 +1327,8 @@ function AssetDetail({
             <div className="text-xs font-medium text-muted-foreground">
               Run upscale
             </div>
-            <UpscaleControl onRun={onUpscale} upscaling={upscaling} size="default" />
+            <SuitabilityCard suitability={suitability} alreadyUpscaled={!!row.upscale_applied || !!row.enhanced} />
+            <UpscaleControl onRun={requestUpscale} upscaling={upscaling} size="default" />
           </div>
         </div>
       </div>
@@ -1255,6 +1404,10 @@ function AssetDetail({
                     {readiness.recommendation}
                   </div>
                 )}
+                <div className="text-[11px] text-muted-foreground/80 mt-1 italic">
+                  Print readiness is based on dimensions/PPI. Compare original
+                  and enhanced versions visually before final print.
+                </div>
               </span>
             }
           />
@@ -1324,6 +1477,120 @@ function AssetDetail({
           </pre>
         </details>
       </div>
+
+      {/* Confirm low / not-needed upscale */}
+      <AlertDialog
+        open={pendingMode !== null}
+        onOpenChange={(o) => !o && setPendingMode(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {suitability.level === "not-needed"
+                ? "This image already appears print-ready"
+                : "Limited benefit expected"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {suitability.level === "not-needed"
+                ? "Upscaling may add artifacts without visible gain. Continue?"
+                : "This image may not visually improve after upscaling. Continue?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const m = pendingMode;
+                setPendingMode(null);
+                if (m) onUpscale(m);
+              }}
+            >
+              Continue anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+const SUITABILITY_STYLE: Record<
+  UpscaleSuitability["level"],
+  { label: string; cls: string; icon: React.ReactNode }
+> = {
+  high: {
+    label: "Good candidate",
+    cls: "bg-primary/10 text-primary border-primary/30",
+    icon: <Sparkles className="h-3 w-3" />,
+  },
+  medium: {
+    label: "May help",
+    cls: "bg-orange-500/10 text-orange-500 border-orange-500/30",
+    icon: <Info className="h-3 w-3" />,
+  },
+  low: {
+    label: "Limited benefit",
+    cls: "bg-muted text-muted-foreground border-border",
+    icon: <AlertTriangle className="h-3 w-3" />,
+  },
+  "not-needed": {
+    label: "Not needed",
+    cls: "bg-muted text-muted-foreground border-border",
+    icon: <CheckCircle2 className="h-3 w-3" />,
+  },
+  unknown: {
+    label: "Unknown",
+    cls: "bg-muted text-muted-foreground border-border",
+    icon: <Info className="h-3 w-3" />,
+  },
+};
+
+function SuitabilityCard({
+  suitability,
+  alreadyUpscaled,
+}: {
+  suitability: UpscaleSuitability;
+  alreadyUpscaled: boolean;
+}) {
+  const s = SUITABILITY_STYLE[suitability.level];
+  return (
+    <div className="rounded-md border border-border bg-muted/30 px-2.5 py-2 space-y-1.5 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border font-medium ${s.cls}`}
+        >
+          {s.icon}
+          {s.label}
+        </span>
+        {suitability.effectivePpi != null && (
+          <span className="text-muted-foreground tabular-nums">
+            ~{suitability.effectivePpi} PPI
+          </span>
+        )}
+      </div>
+      <div className="text-foreground/90 leading-snug">{suitability.title}</div>
+      {suitability.reasons.length > 0 && (
+        <ul className="text-muted-foreground leading-snug list-disc pl-4 space-y-0.5">
+          {suitability.reasons.slice(0, 2).map((r, i) => (
+            <li key={i}>{r}</li>
+          ))}
+        </ul>
+      )}
+      {suitability.riskFlags.length > 0 && (
+        <ul className="text-orange-500/90 leading-snug list-disc pl-4 space-y-0.5">
+          {suitability.riskFlags.map((r, i) => (
+            <li key={i}>{r}</li>
+          ))}
+        </ul>
+      )}
+      <div className="text-muted-foreground/80 italic">
+        {suitability.recommendation}
+      </div>
+      {alreadyUpscaled && suitability.level !== "unknown" && (
+        <div className="text-[11px] text-muted-foreground">
+          Note: this asset already has an enhanced master.
+        </div>
+      )}
     </div>
   );
 }
