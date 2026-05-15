@@ -1327,7 +1327,8 @@ function AssetDetail({
             <div className="text-xs font-medium text-muted-foreground">
               Run upscale
             </div>
-            <UpscaleControl onRun={onUpscale} upscaling={upscaling} size="default" />
+            <SuitabilityCard suitability={suitability} alreadyUpscaled={!!row.upscale_applied || !!row.enhanced} />
+            <UpscaleControl onRun={requestUpscale} upscaling={upscaling} size="default" />
           </div>
         </div>
       </div>
