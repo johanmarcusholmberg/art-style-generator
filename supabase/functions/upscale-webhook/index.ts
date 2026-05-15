@@ -498,11 +498,35 @@ Deno.serve(async (req) => {
             finished_at: new Date().toISOString(),
           })
           .eq("id", jobToken);
+        if (job.image_id) {
+          await recordUpscaleCostEvent({
+            imageId: job.image_id,
+            jobId: jobToken,
+            mode: job.mode,
+            provider,
+            status: "failed",
+            estimatedCost: null,
+            metadata: {
+              error: "Failed to download/upload Replicate output",
+              completed_at: new Date().toISOString(),
+            },
+          });
+        }
         return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders });
       }
 
+      let persisted:
+        | Awaited<ReturnType<typeof persistEnhancedAsset>>
+        | null = null;
       if (job.image_id) {
-        await persistEnhancedAsset(job.image_id, upload.filename, provider, scale, job.mode);
+        persisted = await persistEnhancedAsset(
+          job.image_id,
+          upload.filename,
+          provider,
+          scale,
+          job.mode,
+          { width: upload.width, height: upload.height },
+        );
       }
 
       const supirSucceeded = pipeline.supirAttempted === true; // we only set this when SUPIR ran; if it ran and we got here, it succeeded
@@ -519,6 +543,35 @@ Deno.serve(async (req) => {
           finished_at: new Date().toISOString(),
         })
         .eq("id", jobToken);
+
+      if (job.image_id) {
+        const newReadiness = classifyReadiness(upload.width, upload.height);
+        await recordUpscaleCostEvent({
+          imageId: job.image_id,
+          jobId: jobToken,
+          mode: job.mode,
+          provider,
+          status: "succeeded",
+          estimatedCost: estimateUpscaleCost(job.mode),
+          metadata: {
+            label: job.mode,
+            scale,
+            completed_at: new Date().toISOString(),
+            supir_succeeded: supirSucceeded || undefined,
+            previous_dimensions:
+              persisted && persisted.prevDims.width
+                ? persisted.prevDims
+                : null,
+            new_dimensions:
+              upload.width && upload.height
+                ? { width: upload.width, height: upload.height }
+                : null,
+            previous_print_readiness: persisted?.prevReadiness ?? "unknown",
+            new_print_readiness: newReadiness.level,
+            effective_ppi: newReadiness.ppi,
+          },
+        });
+      }
 
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
