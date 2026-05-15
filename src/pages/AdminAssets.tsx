@@ -1188,6 +1188,7 @@ function AssetDetail({
   row,
   folders,
   upscaling,
+  costRefreshTick,
   onUpscale,
   onStatusChange,
   onSetFolder,
@@ -1195,6 +1196,7 @@ function AssetDetail({
   row: AssetRow;
   folders: AssetFolder[];
   upscaling: boolean;
+  costRefreshTick: number;
   onUpscale: (m: UpscaleMode) => void;
   onStatusChange: (s: AdminStatus) => void;
   onSetFolder: (folderId: string | null) => void;
@@ -1207,6 +1209,24 @@ function AssetDetail({
   const status = (row.admin_status || "draft") as AdminStatus;
   const genCost = estimateGenerationCost(row.generation_provider, row.execution_route);
   const upCost = estimateUpscaleCost(row.upscale_mode, row.upscale_method, row.enhancement_model);
+  const suitability = useMemo<UpscaleSuitability>(
+    () => assessUpscaleSuitability(row),
+    [row],
+  );
+
+  // Confirmation gate for low / not-needed runs.
+  const [pendingMode, setPendingMode] = useState<UpscaleMode | null>(null);
+
+  const requestUpscale = useCallback(
+    (mode: UpscaleMode) => {
+      if (suitability.level === "low" || suitability.level === "not-needed") {
+        setPendingMode(mode);
+        return;
+      }
+      onUpscale(mode);
+    },
+    [suitability.level, onUpscale],
+  );
 
   // Cost / action history events
   const [events, setEvents] = useState<CostEvent[] | null>(null);
@@ -1229,7 +1249,7 @@ function AssetDetail({
     return () => {
       cancel = true;
     };
-  }, [row.id]);
+  }, [row.id, costRefreshTick]);
 
   // Total known cost: sum of recorded events plus any known metadata cost
   // for which there is NO matching event row, to avoid double-counting.
