@@ -467,15 +467,29 @@ async function persistEnhancedAsset(
   provider: string,
   scale: number,
   mode: string,
-) {
+  dims?: { width: number | null; height: number | null },
+): Promise<{
+  prevDims: { width: number | null; height: number | null };
+  prevReadiness: string;
+  printFormatId: string | null;
+}> {
   const { data: existing } = await supabase
     .from("generated_images")
-    .select("storage_path, original_storage_path")
+    .select(
+      "storage_path, original_storage_path, enhanced_width_px, enhanced_height_px, actual_width_px, actual_height_px, base_width_px, base_height_px, print_format_id",
+    )
     .eq("id", imageId)
     .maybeSingle();
 
+  const ex = (existing || {}) as any;
   const originalPath =
-    (existing as any)?.original_storage_path || (existing as any)?.storage_path || null;
+    ex.original_storage_path || ex.storage_path || null;
+
+  const prevW =
+    ex.enhanced_width_px || ex.actual_width_px || ex.base_width_px || null;
+  const prevH =
+    ex.enhanced_height_px || ex.actual_height_px || ex.base_height_px || null;
+  const prevReadiness = classifyReadiness(prevW, prevH).level;
 
   await supabase
     .from("generated_images")
@@ -489,6 +503,14 @@ async function persistEnhancedAsset(
       upscaled_at: new Date().toISOString(),
       enhancement_model: provider,
       upscale_factor: scale,
+      enhanced_width_px: dims?.width ?? null,
+      enhanced_height_px: dims?.height ?? null,
     } as any)
     .eq("id", imageId);
+
+  return {
+    prevDims: { width: prevW, height: prevH },
+    prevReadiness,
+    printFormatId: ex.print_format_id ?? null,
+  };
 }
