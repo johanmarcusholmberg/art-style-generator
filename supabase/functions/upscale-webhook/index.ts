@@ -450,7 +450,39 @@ Deno.serve(async (req) => {
             })
             .eq("id", jobToken);
           if (job.image_id) {
-            await persistEnhancedAsset(job.image_id, upload.filename, provider, scale, job.mode);
+            const persisted = await persistEnhancedAsset(
+              job.image_id,
+              upload.filename,
+              provider,
+              scale,
+              job.mode,
+              { width: upload.width, height: upload.height },
+            );
+            const newReadiness = classifyReadiness(upload.width, upload.height);
+            await recordUpscaleCostEvent({
+              imageId: job.image_id,
+              jobId: jobToken,
+              mode: job.mode,
+              provider,
+              status: "succeeded",
+              estimatedCost: estimateUpscaleCost(job.mode),
+              metadata: {
+                label: job.mode,
+                scale,
+                completed_at: new Date().toISOString(),
+                refine_failed: true,
+                previous_dimensions: persisted.prevDims.width
+                  ? persisted.prevDims
+                  : null,
+                new_dimensions:
+                  upload.width && upload.height
+                    ? { width: upload.width, height: upload.height }
+                    : null,
+                previous_print_readiness: persisted.prevReadiness,
+                new_print_readiness: newReadiness.level,
+                effective_ppi: newReadiness.ppi,
+              },
+            });
           }
           return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders });
         }
