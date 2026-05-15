@@ -552,6 +552,9 @@ export default function AdminAssets() {
             previous_print_readiness: prevReadiness,
             new_print_readiness: newReadiness,
             scale: result?.scale ?? cfg.scaleFactor,
+            job_id: result?.jobId ?? null,
+            async: result?.async ?? false,
+            source: "frontend",
           },
         });
       } catch {
