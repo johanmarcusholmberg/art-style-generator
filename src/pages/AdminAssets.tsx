@@ -189,6 +189,7 @@ export default function AdminAssets() {
   const [busy, setBusy] = useState(false);
   const [upscalingId, setUpscalingId] = useState<string | null>(null);
   const [foldersOpen, setFoldersOpen] = useState(false);
+  const [costRefreshTick, setCostRefreshTick] = useState(0);
 
   const upscaler = useUpscale();
 
