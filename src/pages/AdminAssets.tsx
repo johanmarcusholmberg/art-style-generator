@@ -896,14 +896,45 @@ export default function AdminAssets() {
       <Dialog open={!!detailRow} onOpenChange={(o) => !o && setDetailId(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] p-0 gap-0 flex flex-col">
           <DialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
-            <DialogTitle>Asset details</DialogTitle>
+            <div className="flex items-center justify-between gap-3">
+              <DialogTitle>Asset details</DialogTitle>
+              {detailRow && filtered.length > 1 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {detailIndex + 1} of {filtered.length}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-7 w-7"
+                    onClick={() => goToDetail(-1)}
+                    disabled={detailIndex <= 0}
+                    title="Previous (←)"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-7 w-7"
+                    onClick={() => goToDetail(1)}
+                    disabled={detailIndex >= filtered.length - 1}
+                    title="Next (→)"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </DialogHeader>
           {detailRow && (
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div ref={detailScrollRef} className="flex-1 overflow-y-auto px-6 py-4">
               <AssetDetail
+                key={detailRow.id}
                 row={detailRow}
                 folders={folders}
                 upscaling={upscalingId === detailRow.id}
+                costRefreshTick={costRefreshTick}
                 onUpscale={(m) => handleUpscale(detailRow, m)}
                 onStatusChange={(s) => updateStatus(detailRow.id, s)}
                 onSetFolder={(fid) => setAssetFolder(detailRow.id, fid)}
