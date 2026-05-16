@@ -530,33 +530,61 @@ export default function AdminAssets() {
       }
 
       // Best-effort cost/history event with diff metadata.
+      // For async upscales the webhook is the source of truth and may have
+      // already inserted a row with this job_id by the time the poller
+      // resolves. Skip insert if a matching webhook event already exists to
+      // avoid duplicates.
       try {
-        await (supabase as any).from("asset_cost_events").insert({
-          generated_image_id: row.id,
-          event_type: "upscale",
-          provider: cfg.provider,
-          model: cfg.provider,
-          mode,
-          estimated_cost: result ? estCost : null,
-          currency: "USD",
-          status: result ? "succeeded" : "failed",
-          metadata: {
-            started_at: startedAt,
-            label: cfg.label,
-            previous_dimensions: prevDims
-              ? { width: prevDims.width, height: prevDims.height }
-              : null,
-            new_dimensions: newDims
-              ? { width: newDims.width, height: newDims.height }
-              : null,
-            previous_print_readiness: prevReadiness,
-            new_print_readiness: newReadiness,
-            scale: result?.scale ?? cfg.scaleFactor,
-            job_id: result?.jobId ?? null,
-            async: result?.async ?? false,
-            source: "frontend",
-          },
-        });
+        let skipInsert = false;
+        if (result?.async && result.jobId) {
+          const since = new Date(
+            Date.now() - 2 * 60 * 60 * 1000,
+          ).toISOString();
+          const { data: existing } = await (supabase as any)
+            .from("asset_cost_events")
+            .select("id, metadata")
+            .eq("generated_image_id", row.id)
+            .eq("event_type", "upscale")
+            .eq("mode", mode)
+            .gte("created_at", since)
+            .order("created_at", { ascending: false })
+            .limit(5);
+          if (
+            (existing || []).some(
+              (e: any) => e?.metadata?.job_id === result.jobId,
+            )
+          ) {
+            skipInsert = true;
+          }
+        }
+        if (!skipInsert) {
+          await (supabase as any).from("asset_cost_events").insert({
+            generated_image_id: row.id,
+            event_type: "upscale",
+            provider: cfg.provider,
+            model: cfg.provider,
+            mode,
+            estimated_cost: result ? estCost : null,
+            currency: "USD",
+            status: result ? "succeeded" : "failed",
+            metadata: {
+              started_at: startedAt,
+              label: cfg.label,
+              previous_dimensions: prevDims
+                ? { width: prevDims.width, height: prevDims.height }
+                : null,
+              new_dimensions: newDims
+                ? { width: newDims.width, height: newDims.height }
+                : null,
+              previous_print_readiness: prevReadiness,
+              new_print_readiness: newReadiness,
+              scale: result?.scale ?? cfg.scaleFactor,
+              job_id: result?.jobId ?? null,
+              async: result?.async ?? false,
+              source: "frontend",
+            },
+          });
+        }
       } catch {
         /* swallow — cost logging is best-effort */
       }
