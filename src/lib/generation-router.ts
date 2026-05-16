@@ -187,20 +187,24 @@ export function resolveAdapterChain(
         modelFallbackReason,
       };
 
-      // Manual OpenAI: fail loudly, no silent fallback. Direct API call
-      // — does NOT consume Lovable image-generation credits.
-      return {
-        chain: [ADAPTERS.openai],
-        reason: "manual: openai (direct, no Lovable credits)",
-      };
-
     case "sdxl":
       // SDXL preference now means "direct Replicate first, Lovable as
       // a safety fallback". This shifts SDXL traffic off Lovable while
-      // keeping a working escape hatch.
+      // keeping a working escape hatch. A pinned modelId can override
+      // the primary, but the Lovable safety net is preserved.
       return {
-        chain: [ADAPTERS.replicate, ADAPTERS.lovable],
-        reason: "manual: sdxl → direct Replicate, fallback Lovable",
+        chain: pinnedAdapter
+          ? (pinnedAdapter.id === "lovable"
+              ? [pinnedAdapter]
+              : [pinnedAdapter, ADAPTERS.lovable])
+          : [ADAPTERS.replicate, ADAPTERS.lovable],
+        reason: pinnedAdapter
+          ? `manual sdxl + pinned modelId=${resolvedModelId} → ${pinnedAdapter.id}, fallback Lovable`
+          : "manual: sdxl → direct Replicate, fallback Lovable",
+        requestedModelId,
+        resolvedModelId,
+        resolvedAdapterId: pinnedAdapter?.id,
+        modelFallbackReason,
       };
 
     case "auto":
@@ -249,6 +253,8 @@ export function resolveAdapterChain(
         ),
         reason: decision.reason,
         feedbackOverride,
+        requestedModelId,
+        modelFallbackReason,
       };
     }
   }
