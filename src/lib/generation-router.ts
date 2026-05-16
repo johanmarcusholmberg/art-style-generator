@@ -303,14 +303,24 @@ export async function generateImage(
   req: NormalizedGenerationRequest,
 ): Promise<{ response: NormalizedGenerationResponse; diagnostics: RouterDiagnostics }> {
   const pref = req.providerPreference ?? "auto";
-  const { chain: effectiveChain, reason: routingReason, feedbackOverride } =
-    resolveAdapterChain(pref, req);
+  const {
+    chain: effectiveChain,
+    reason: routingReason,
+    feedbackOverride,
+    requestedModelId,
+    resolvedModelId,
+    resolvedAdapterId,
+    modelFallbackReason,
+  } = resolveAdapterChain(pref, req);
   const attempts: RouterDiagnostics["attemptedAdapters"] = [];
 
   console.log(
     `[generation-router] style=${req.styleKey} pref=${pref} ` +
       `chain=${effectiveChain.map((a) => a.id).join(" → ")} ` +
       `reason="${routingReason}"` +
+      (requestedModelId ? ` requestedModelId=${requestedModelId}` : "") +
+      (resolvedModelId ? ` resolvedModelId=${resolvedModelId}` : "") +
+      (modelFallbackReason ? ` modelFallback="${modelFallbackReason}"` : "") +
       (feedbackOverride ? ` feedbackOverride="${feedbackOverride}"` : ""),
   );
 
@@ -341,6 +351,10 @@ export async function generateImage(
           fallbackTriggered,
           routingReason,
           feedbackOverride,
+          requestedModelId,
+          resolvedModelId,
+          resolvedAdapterId,
+          modelFallbackReason,
         },
       };
     } catch (err) {
