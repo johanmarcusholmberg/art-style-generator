@@ -75,12 +75,24 @@ export interface RouterDiagnostics {
   routingReason?: string;
   /** Feedback signal that influenced routing (Auto only). */
   feedbackOverride?: string;
+  /** modelId from the request (if any). */
+  requestedModelId?: string;
+  /** Registry model id actually used to pin the primary adapter (if any). */
+  resolvedModelId?: string;
+  /** Adapter id derived from resolvedModelId (if any). */
+  resolvedAdapterId?: AdapterId;
+  /** Reason a requested modelId was not honored (if any). */
+  modelFallbackReason?: string;
 }
 
 interface ResolvedChain {
   chain: AdapterRun[];
   reason?: string;
   feedbackOverride?: string;
+  requestedModelId?: string;
+  resolvedModelId?: string;
+  resolvedAdapterId?: AdapterId;
+  modelFallbackReason?: string;
 }
 
 /**
