@@ -67,6 +67,24 @@ export interface NormalizedGenerationRequest {
    * the aspect-ratio string.
    */
   targetAspectRatio?: number;
+  /**
+   * Optional explicit model id from `PROVIDER_MODEL_REGISTRY`. When set,
+   * future router phases can pin a specific model instead of resolving by
+   * provider preference. Today this is informational — the existing
+   * `providerPreference` path still drives adapter selection.
+   */
+  modelId?: string;
+  /**
+   * Coarse quality profile (Balanced / Strict / Very strict). Mirrors the
+   * existing `strictness` field for forward compatibility with the unified
+   * generation contract; when both are set, `strictness` wins.
+   */
+  qualityProfile?: "balanced" | "strict" | "very_strict";
+  /**
+   * Coarse generation strategy bucket used by auto-routing heuristics.
+   * Optional — omitting it preserves today's behavior.
+   */
+  generationStrategy?: "artistic" | "photoreal" | "poster" | "interior" | "graphic";
 }
 
 // ── Response ─────────────────────────────────────────────────────────────
