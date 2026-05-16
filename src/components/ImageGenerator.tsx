@@ -375,6 +375,9 @@ export default function ImageGenerator({
         posterFormatId: selectedPrintFormat.id,
         posterFormatHint: getPosterPromptHint(selectedPrintFormat.id),
         targetAspectRatio: selectedPrintFormat.aspectRatioDecimal,
+        modelId: modelSelection.modelId ?? undefined,
+        qualityProfile: modelSelection.qualityProfile,
+        generationStrategy: modelSelection.generationStrategy ?? undefined,
       });
 
       const baseUrl = gen.imageUrl;
