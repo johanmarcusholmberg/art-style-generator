@@ -226,6 +226,16 @@ serve(async (req) => {
 
     const estimatedCost = estimateGenerationCost(route);
 
+    // Truthful echo of model-selection inputs. The Lovable gateway path
+    // currently routes via the shared resolver (gemini/sdxl) — it cannot
+    // pin an arbitrary provider model. We surface that fact when the
+    // caller asked for something the gateway cannot honor exactly.
+    const upstreamModel = innerData.model as string | undefined;
+    let modelFallbackReason: string | null = null;
+    if (typeof providerModelId === "string" && providerModelId && upstreamModel && providerModelId !== upstreamModel) {
+      modelFallbackReason = `gateway cannot pin ${providerModelId}; ran ${upstreamModel}`;
+    }
+
     return new Response(
       JSON.stringify({
         imageUrl: innerData.imageUrl,
@@ -247,7 +257,13 @@ serve(async (req) => {
         // Surface real upstream provider/model for telemetry; "provider"/"model"
         // above represent the route-level (Lovable) view.
         upstreamProvider: innerData.provider,
-        upstreamModel: innerData.model,
+        upstreamModel,
+        // Phase 5 — model-selection truthfulness
+        requestedModelId: typeof requestedModelId === "string" ? requestedModelId : null,
+        resolvedModelId: typeof requestedModelId === "string" ? requestedModelId : null,
+        qualityProfile: typeof qualityProfile === "string" ? qualityProfile : null,
+        generationStrategy: typeof generationStrategy === "string" ? generationStrategy : null,
+        modelFallbackReason,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
