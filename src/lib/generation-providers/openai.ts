@@ -71,6 +71,15 @@ export async function generateWithOpenAIAdapter(
     requestedAspectRatio: data.requestedAspectRatio ?? req.aspectRatio,
     providerExactMatch: data.providerExactMatch,
     providerAdjusted: data.providerAdjusted,
-    metadata: { adapter: "openai-direct", requestedSize: data.requestedSize, sizeSource: data.sizeSource },
+    metadata: {
+      adapter: "openai-direct",
+      requestedSize: data.requestedSize,
+      sizeSource: data.sizeSource,
+      requestedModelId: req.requestedModelId ?? null,
+      modelFallbackReason:
+        req.providerModelId && req.providerModelId !== (data.model ?? "gpt-image-1")
+          ? `requested ${req.providerModelId} but adapter ran ${data.model ?? "gpt-image-1"}`
+          : null,
+    },
   };
 }
