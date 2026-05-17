@@ -39,6 +39,11 @@ export async function generateWithOpenAIAdapter(
   if (req.strictness) body.strictness = req.strictness;
   if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
   if (req.posterFormatId) body.posterFormatId = req.posterFormatId;
+  if (req.requestedModelId) body.requestedModelId = req.requestedModelId;
+  // The direct OpenAI edge function only supports gpt-image-1 today; we
+  // forward the requested provider model so it can record a mismatch when
+  // a future caller pins something else.
+  if (req.providerModelId) body.providerModelId = req.providerModelId;
 
   const { data, error } = await supabase.functions.invoke(
     "generate-image-direct-openai",
@@ -66,6 +71,15 @@ export async function generateWithOpenAIAdapter(
     requestedAspectRatio: data.requestedAspectRatio ?? req.aspectRatio,
     providerExactMatch: data.providerExactMatch,
     providerAdjusted: data.providerAdjusted,
-    metadata: { adapter: "openai-direct", requestedSize: data.requestedSize, sizeSource: data.sizeSource },
+    metadata: {
+      adapter: "openai-direct",
+      requestedSize: data.requestedSize,
+      sizeSource: data.sizeSource,
+      requestedModelId: req.requestedModelId ?? null,
+      modelFallbackReason:
+        req.providerModelId && req.providerModelId !== (data.model ?? "gpt-image-1")
+          ? `requested ${req.providerModelId} but adapter ran ${data.model ?? "gpt-image-1"}`
+          : null,
+    },
   };
 }

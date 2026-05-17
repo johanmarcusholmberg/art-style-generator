@@ -60,6 +60,10 @@ export async function generateWithLovableAdapter(
   };
   if (req.strictness) v2Body.strictness = req.strictness;
   if (req.posterFormatHint) v2Body.posterFormatHint = req.posterFormatHint;
+  if (req.requestedModelId) v2Body.requestedModelId = req.requestedModelId;
+  if (req.providerModelId) v2Body.providerModelId = req.providerModelId;
+  if (req.qualityProfile) v2Body.qualityProfile = req.qualityProfile;
+  if (req.generationStrategy) v2Body.generationStrategy = req.generationStrategy;
 
   let data: any = null;
   let error: any = null;
@@ -139,6 +143,10 @@ export async function generateWithLovableAdapter(
       promptVersion: data.promptVersion,
       estimatedCost: data.estimatedCost ?? null,
       currency: data.currency ?? "USD",
+      // Echo back model-selection fields from v2 (if any).
+      requestedModelId: data.requestedModelId ?? req.requestedModelId ?? null,
+      resolvedModelId: data.resolvedModelId ?? null,
+      modelFallbackReason: data.modelFallbackReason ?? null,
     },
   };
 }

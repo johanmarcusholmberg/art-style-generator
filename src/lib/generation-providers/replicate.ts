@@ -37,6 +37,8 @@ export async function generateWithReplicateAdapter(
   if (req.strictness) body.strictness = req.strictness;
   if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
   if (req.posterFormatId) body.posterFormatId = req.posterFormatId;
+  if (req.requestedModelId) body.requestedModelId = req.requestedModelId;
+  if (req.providerModelId) body.providerModelId = req.providerModelId;
 
   const { data, error } = await supabase.functions.invoke(
     "generate-image-direct-replicate",
@@ -65,6 +67,16 @@ export async function generateWithReplicateAdapter(
     requestedAspectRatio: data.requestedAspectRatio ?? req.aspectRatio,
     providerExactMatch: data.providerExactMatch,
     providerAdjusted: data.providerAdjusted,
-    metadata: { adapter: "replicate-direct", sizeSource: data.sizeSource },
+    metadata: {
+      adapter: "replicate-direct",
+      sizeSource: data.sizeSource,
+      requestedModelId: req.requestedModelId ?? null,
+      modelFallbackReason:
+        req.providerModelId &&
+        data.model &&
+        req.providerModelId !== data.model
+          ? `requested ${req.providerModelId} but adapter ran ${data.model}`
+          : null,
+    },
   };
 }

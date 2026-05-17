@@ -171,6 +171,11 @@ export default function ImageGenerator({
   const [lastEstimatedCost, setLastEstimatedCost] = useState<number | null>(null);
   const [lastCurrency, setLastCurrency] = useState<string>("USD");
   const [lastPromptVersion, setLastPromptVersion] = useState<string | null>(null);
+  // Phase 5 — model-selection truthfulness
+  const [lastRequestedModelId, setLastRequestedModelId] = useState<string | null>(null);
+  const [lastResolvedModelId, setLastResolvedModelId] = useState<string | null>(null);
+  const [lastSelectedAdapterId, setLastSelectedAdapterId] = useState<string | null>(null);
+  const [lastModelFallbackReason, setLastModelFallbackReason] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Poster Composer integration (additive — does not change the generator).
   // The user can configure template + text BEFORE generation. After the
@@ -421,6 +426,16 @@ export default function ImageGenerator({
           ? (routeMeta.promptVersion as string)
           : null,
       );
+      setLastRequestedModelId(gen.requestedModelId ?? null);
+      setLastResolvedModelId(gen.resolvedModelId ?? null);
+      setLastSelectedAdapterId(gen.selectedAdapterId ?? diagnostics.resolvedAdapterId ?? null);
+      setLastModelFallbackReason(
+        gen.modelFallbackReason ??
+          diagnostics.modelFallbackReason ??
+          (typeof routeMeta.modelFallbackReason === "string"
+            ? (routeMeta.modelFallbackReason as string)
+            : null),
+      );
 
       console.log(
         `[ImageGenerator] generated provider=${gen.generationProvider} model=${gen.generationModel} ` +
@@ -620,6 +635,12 @@ export default function ImageGenerator({
               route: lastRouteLabel,
               promptVersion: lastPromptVersion,
               executionRoute: lastExecutionRoute,
+              requested_model_id: lastRequestedModelId,
+              resolved_model_id: lastResolvedModelId,
+              selected_adapter_id: lastSelectedAdapterId,
+              quality_profile: modelSelection.qualityProfile,
+              generation_strategy: modelSelection.generationStrategy,
+              model_fallback_reason: lastModelFallbackReason,
             },
           });
         }
@@ -685,6 +706,12 @@ export default function ImageGenerator({
             promptVersion: lastPromptVersion,
             executionRoute: lastExecutionRoute,
             replacement: true,
+            requested_model_id: lastRequestedModelId,
+            resolved_model_id: lastResolvedModelId,
+            selected_adapter_id: lastSelectedAdapterId,
+            quality_profile: modelSelection.qualityProfile,
+            generation_strategy: modelSelection.generationStrategy,
+            model_fallback_reason: lastModelFallbackReason,
           },
         });
       } catch (e) {
@@ -991,6 +1018,31 @@ export default function ImageGenerator({
             )}
           </summary>
           <div className="px-1 pt-3 pb-1 space-y-3">
+            {(lastRequestedModelId || lastResolvedModelId || lastModelFallbackReason) && (
+              <div
+                className="px-2 py-1.5 rounded-sm border border-border bg-muted/30 text-[10px] font-display text-muted-foreground leading-snug"
+                title="Model selection truthfulness"
+              >
+                {lastRequestedModelId && (
+                  <span>
+                    Requested:{" "}
+                    <span className="text-foreground">{lastResolvedModelId ?? lastRequestedModelId}</span>
+                    {" · "}
+                  </span>
+                )}
+                <span>
+                  Used:{" "}
+                  <span className="text-foreground">
+                    {lastProviderUsed ?? "—"}
+                    {lastModelUsed ? ` / ${lastModelUsed}` : ""}
+                  </span>
+                  {lastSelectedAdapterId ? ` (adapter: ${lastSelectedAdapterId})` : ""}
+                </span>
+                {lastModelFallbackReason && (
+                  <div className="text-amber-500 mt-0.5">Fallback: {lastModelFallbackReason}</div>
+                )}
+              </div>
+            )}
             <div className="flex items-center gap-2 flex-wrap">
               <GeneratorBadge
                 value={generatorPref}

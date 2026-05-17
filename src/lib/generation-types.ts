@@ -85,6 +85,17 @@ export interface NormalizedGenerationRequest {
    * Optional — omitting it preserves today's behavior.
    */
   generationStrategy?: "artistic" | "photoreal" | "poster" | "interior" | "graphic";
+  /**
+   * Echo of the caller's modelId — set by the router so adapters can read
+   * it without re-resolving the registry. Optional; same value as modelId.
+   */
+  requestedModelId?: string;
+  /**
+   * Provider-native model identifier (from the registry entry's modelId),
+   * forwarded so adapters can pin the actual upstream model when supported.
+   * Adapters that cannot honor it should report `modelFallbackReason`.
+   */
+  providerModelId?: string;
 }
 
 // ── Response ─────────────────────────────────────────────────────────────
@@ -140,6 +151,20 @@ export interface NormalizedGenerationResponse {
   providerExactMatch?: boolean;
   /** True when the provider used an approximate ratio (export will crop). */
   providerAdjusted?: boolean;
+
+  // ── Phase 5: model-selection truthfulness ─────────────────────────────
+  /** The modelId the caller asked for (registry id, if any). */
+  requestedModelId?: string;
+  /** The modelId the router actually resolved (registry id, if any). */
+  resolvedModelId?: string;
+  /** Adapter id used to dispatch (mirrors RouterDiagnostics). */
+  selectedAdapterId?: string;
+  /** Reason a requestedModelId was not honored exactly (if any). */
+  modelFallbackReason?: string;
+  /** Echoed quality profile (forward-compat; not yet applied by all adapters). */
+  qualityProfile?: "balanced" | "strict" | "very_strict";
+  /** Echoed generation strategy bucket. */
+  generationStrategy?: "artistic" | "photoreal" | "poster" | "interior" | "graphic";
 }
 
 // ── Persistence mapping (used by gallery save) ───────────────────────────
