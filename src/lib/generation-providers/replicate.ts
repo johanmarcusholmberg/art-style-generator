@@ -67,6 +67,16 @@ export async function generateWithReplicateAdapter(
     requestedAspectRatio: data.requestedAspectRatio ?? req.aspectRatio,
     providerExactMatch: data.providerExactMatch,
     providerAdjusted: data.providerAdjusted,
-    metadata: { adapter: "replicate-direct", sizeSource: data.sizeSource },
+    metadata: {
+      adapter: "replicate-direct",
+      sizeSource: data.sizeSource,
+      requestedModelId: req.requestedModelId ?? null,
+      modelFallbackReason:
+        req.providerModelId &&
+        data.model &&
+        req.providerModelId !== data.model
+          ? `requested ${req.providerModelId} but adapter ran ${data.model}`
+          : null,
+    },
   };
 }
