@@ -143,6 +143,10 @@ export async function generateWithLovableAdapter(
       promptVersion: data.promptVersion,
       estimatedCost: data.estimatedCost ?? null,
       currency: data.currency ?? "USD",
+      // Echo back model-selection fields from v2 (if any).
+      requestedModelId: data.requestedModelId ?? req.requestedModelId ?? null,
+      resolvedModelId: data.resolvedModelId ?? null,
+      modelFallbackReason: data.modelFallbackReason ?? null,
     },
   };
 }
