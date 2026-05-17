@@ -635,6 +635,12 @@ export default function ImageGenerator({
               route: lastRouteLabel,
               promptVersion: lastPromptVersion,
               executionRoute: lastExecutionRoute,
+              requested_model_id: lastRequestedModelId,
+              resolved_model_id: lastResolvedModelId,
+              selected_adapter_id: lastSelectedAdapterId,
+              quality_profile: modelSelection.qualityProfile,
+              generation_strategy: modelSelection.generationStrategy,
+              model_fallback_reason: lastModelFallbackReason,
             },
           });
         }
