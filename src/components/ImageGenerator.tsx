@@ -426,6 +426,16 @@ export default function ImageGenerator({
           ? (routeMeta.promptVersion as string)
           : null,
       );
+      setLastRequestedModelId(gen.requestedModelId ?? null);
+      setLastResolvedModelId(gen.resolvedModelId ?? null);
+      setLastSelectedAdapterId(gen.selectedAdapterId ?? diagnostics.resolvedAdapterId ?? null);
+      setLastModelFallbackReason(
+        gen.modelFallbackReason ??
+          diagnostics.modelFallbackReason ??
+          (typeof routeMeta.modelFallbackReason === "string"
+            ? (routeMeta.modelFallbackReason as string)
+            : null),
+      );
 
       console.log(
         `[ImageGenerator] generated provider=${gen.generationProvider} model=${gen.generationModel} ` +
