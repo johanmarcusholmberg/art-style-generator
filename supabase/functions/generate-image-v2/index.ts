@@ -145,6 +145,11 @@ serve(async (req) => {
       strictness,
       posterFormatHint,
       posterFormatId,
+      // Phase 5 — model-selection truthfulness
+      requestedModelId,
+      providerModelId,
+      qualityProfile,
+      generationStrategy,
     } = rawBody as Record<string, unknown>;
 
     if (typeof styleKey !== "string" || !styleKey) {
