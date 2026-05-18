@@ -190,6 +190,12 @@ export async function saveToGallery(opts: GallerySaveOptions) {
     source_image_url: opts.sourceImageUrl || null,
     source_storage_path: opts.sourceStoragePath || null,
     source_file_name: opts.sourceFileName || null,
+    requested_model_id: opts.requestedModelId ?? null,
+    resolved_model_id: opts.resolvedModelId ?? null,
+    selected_adapter_id: opts.selectedAdapterId ?? null,
+    quality_profile: opts.qualityProfile ?? null,
+    generation_strategy: opts.generationStrategy ?? null,
+    model_fallback_reason: opts.modelFallbackReason ?? null,
   } as any);
 
   if (dbError) throw dbError;
