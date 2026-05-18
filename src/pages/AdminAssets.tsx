@@ -83,6 +83,8 @@ import {
   type UpscaleSuitability,
 } from "@/lib/upscale-suitability";
 
+import { getModelById } from "@/lib/generation-providers/registry";
+
 type AdminStatus = "draft" | "needs_review" | "approved" | "rejected" | "archived";
 
 interface AssetFolder {
