@@ -111,6 +111,13 @@ export interface GallerySaveOptions {
   sourceStoragePath?: string;
   /** Original file name of an uploaded source image. */
   sourceFileName?: string;
+  // ── Model-selection truth (forwarded from router/adapters) ──
+  requestedModelId?: string | null;
+  resolvedModelId?: string | null;
+  selectedAdapterId?: string | null;
+  qualityProfile?: string | null;
+  generationStrategy?: string | null;
+  modelFallbackReason?: string | null;
 }
 
 export async function saveToGallery(opts: GallerySaveOptions) {
