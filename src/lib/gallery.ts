@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { QualityTarget } from "@/lib/print-resolution";
+import { loadImageDimensions } from "@/lib/image-metadata";
 
 /**
  * Converts a base64 data URL to a Blob
