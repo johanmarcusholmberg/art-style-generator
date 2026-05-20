@@ -99,6 +99,38 @@ export interface PrintExportOptions {
 }
 
 /**
+ * Phase 5 — Browser canvas safety guards.
+ *
+ * Browsers cap HTMLCanvasElement size and total pixel area. Exceeding those
+ * limits silently produces a blank/black canvas or crashes the tab. We
+ * pre-validate before allocating any pixels and surface a clear error.
+ *
+ * TODO(server-export): migrate large exports (>~200 MP) to a server-side
+ * renderer (sharp/imagemagick in an edge function) so users aren't bound
+ * by browser canvas limits or device memory.
+ */
+const MAX_CANVAS_DIMENSION = 16384; // conservative cross-browser cap
+const MAX_CANVAS_PIXELS = 200_000_000; // ~200 MP — RGBA needs ~800 MB
+function assertCanvasWithinLimits(width: number, height: number) {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    throw new Error(`Invalid export dimensions (${width}×${height}).`);
+  }
+  if (width > MAX_CANVAS_DIMENSION || height > MAX_CANVAS_DIMENSION) {
+    throw new Error(
+      `Export size ${width}×${height}px exceeds the browser's maximum canvas dimension ` +
+        `(${MAX_CANVAS_DIMENSION}px). Try a smaller print format or lower DPI.`,
+    );
+  }
+  if (width * height > MAX_CANVAS_PIXELS) {
+    throw new Error(
+      `Export is too large for browser rendering (${Math.round((width * height) / 1_000_000)} MP). ` +
+        `The current limit is ${MAX_CANVAS_PIXELS / 1_000_000} MP. ` +
+        `Use a smaller print format or wait for the upcoming server-side export.`,
+    );
+  }
+}
+
+/**
  * Run the full print-export pipeline.
  */
 export async function preparePrintExport(
@@ -147,11 +179,15 @@ export async function preparePrintExport(
   const upscaleFactor = targetW / norm.outputWidth;
   const upscaleApplied = upscaleFactor > 1.01;
 
-  // 3. Render to canvas
+  // 3. Render to canvas — validate first so we never allocate an oversized buffer.
+  assertCanvasWithinLimits(targetW, targetH);
   const canvas = document.createElement("canvas");
   canvas.width = targetW;
   canvas.height = targetH;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Could not allocate canvas for export — your browser may be low on memory.");
+  }
 
   // Fill with pad colour first (visible if padding is used)
   ctx.fillStyle = opts.padColor ?? "#ffffff";
