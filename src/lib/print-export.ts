@@ -109,9 +109,9 @@ export interface PrintExportOptions {
  * renderer (sharp/imagemagick in an edge function) so users aren't bound
  * by browser canvas limits or device memory.
  */
-const MAX_CANVAS_DIMENSION = 16384; // conservative cross-browser cap
-const MAX_CANVAS_PIXELS = 200_000_000; // ~200 MP — RGBA needs ~800 MB
-function assertCanvasWithinLimits(width: number, height: number) {
+export const MAX_CANVAS_DIMENSION = 16384; // conservative cross-browser cap
+export const MAX_CANVAS_PIXELS = 200_000_000; // ~200 MP — RGBA needs ~800 MB
+export function assertCanvasWithinLimits(width: number, height: number) {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
     throw new Error(`Invalid export dimensions (${width}×${height}).`);
   }
