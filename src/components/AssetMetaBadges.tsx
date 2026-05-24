@@ -174,18 +174,25 @@ export default function AssetMetaBadges(props: AssetMetaBadgesProps) {
   }
 
   return (
-    <dl
-      className={cn(
-        "grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-[11px] font-display",
-        className,
+    <div className={className}>
+      <dl
+        className={cn(
+          "grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-[11px] font-display",
+        )}
+      >
+        {rows.map(([k, v]) => (
+          <div key={k} className="contents">
+            <dt className="text-muted-foreground">{k}</dt>
+            <dd className="text-foreground">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      {printReadiness === "unknown" && (
+        <p className="mt-2 text-[11px] font-display text-muted-foreground italic">
+          Pixel dimensions weren&apos;t recorded for this image, so print PPI can&apos;t be
+          verified. Export still works at the source resolution.
+        </p>
       )}
-    >
-      {rows.map(([k, v]) => (
-        <div key={k} className="contents">
-          <dt className="text-muted-foreground">{k}</dt>
-          <dd className="text-foreground">{v}</dd>
-        </div>
-      ))}
-    </dl>
+    </div>
   );
 }

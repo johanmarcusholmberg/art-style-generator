@@ -61,5 +61,5 @@ export const PRINT_READINESS_LABEL: Record<PrintReadinessStatus, string> = {
   "good-150": "Good (150 PPI)",
   "ok-small-prints": "OK for small prints",
   "not-ready": "Not print ready",
-  unknown: "Unknown",
+  unknown: "Not measured",
 };

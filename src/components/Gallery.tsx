@@ -359,7 +359,16 @@ function LightboxContent({
                 dimensions, not preview/DOM size. */}
             {(() => {
               const r = getPrintReadiness(img, img.print_format_id);
-              if (r.level === "unknown") return null;
+              if (r.level === "unknown") {
+                return (
+                  <p className="font-display text-[11px] text-muted-foreground">
+                    Print quality not measured for this image.
+                    <span className="block italic">
+                      Export still works — we just can&apos;t verify the final PPI until dimensions are recorded.
+                    </span>
+                  </p>
+                );
+              }
               const cls =
                 r.level === "ready-300" ? "text-primary" :
                 r.level === "ready-150" ? "text-foreground" :

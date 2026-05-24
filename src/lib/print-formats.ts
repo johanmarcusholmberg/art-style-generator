@@ -261,7 +261,7 @@ export function formatExportDescription(
       ? "300 PPI — Full print quality"
       : tier === "fallback"
       ? "150 PPI — Standard print quality"
-      : "Source resolution — best effort";
+      : "Source resolution — print quality not measured";
   const upscaleNote = upscaleApplied
     ? ` · Enhanced ${upscaleFactor}×`
     : " · Native resolution";
