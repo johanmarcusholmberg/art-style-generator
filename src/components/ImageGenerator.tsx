@@ -769,7 +769,10 @@ export default function ImageGenerator({
         `${styleConfig.downloadPrefix}-${mode}-print-${selectedPrintFormat.id}-${Date.now()}.png`,
       );
 
-      toast({ title: "Print export ready", description: summary });
+      toast({
+        title: `Print export ready · ${selectedPrintFormat.label}`,
+        description: summary,
+      });
     } catch (err: any) {
       console.error("Print export failed:", err);
       const message = err.message || "Could not export";
