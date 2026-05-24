@@ -95,20 +95,20 @@ export function describeExportSource(
   if (img.enhanced_storage_path || img.enhancedUrl) {
     return {
       source: "enhanced",
-      label: "Using enhanced master",
+      label: "Exporting from enhanced master (highest available quality)",
       recommendation: null,
     };
   }
   if (getBaseAssetUrl(img)) {
     return {
       source: "base",
-      label: "Using base image — upscale recommended",
-      recommendation: "Run \"Enhance for print\" to upgrade quality before exporting.",
+      label: "Exporting from the original generated image",
+      recommendation: "For larger prints, run \"Enhance for print\" first to upscale before exporting.",
     };
   }
   return {
     source: "missing",
-    label: "No source asset available",
-    recommendation: "Re-generate the image to restore its base asset.",
+    label: "No source image available for this artwork",
+    recommendation: "Re-generate the image to restore its source asset.",
   };
 }
