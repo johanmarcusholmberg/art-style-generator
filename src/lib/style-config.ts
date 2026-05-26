@@ -795,3 +795,53 @@ export const VINTAGE_STYLE: StyleConfig = {
   themedRules: STYLE_RULES["vintage"],
   freestyleRules: STYLE_RULES["vintage-freestyle"],
 };
+
+export const WHIMSICALJAPANESE_STYLE: StyleConfig = {
+  styleKey: "whimsical_japanese",
+  themedEdgeFn: "generate-image-whimsicaljapanese",
+  freestyleEdgeFn: "generate-image-whimsicaljapanese-freestyle",
+  themedTabLabel: "🦊 Whimsical Scenes",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Whimsical Poster",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your character… e.g. 'A frog in an indigo kimono slurping a steaming bowl of ramen'",
+  freestylePlaceholder: "Describe any subject… e.g. 'A small teapot on a sage tatami mat with a single peony branch'",
+  prompts: {
+    themed: {
+      generate: [
+        "A frog in an indigo kimono happily slurping a steaming bowl of ramen at a small wooden counter",
+        "A fox in a cream yukata carefully pouring tea from a clay kyusu into a tiny cup",
+        "A rabbit carrying a stacked bamboo steamer of dumplings through a quiet lantern-lit alley",
+        "A round cat sushi chef shaping a piece of nigiri behind a small cedar counter",
+        "A graceful crane serving warm udon at a tiny terracotta noodle stall under a paper lantern",
+        "A tanuki holding a sake bottle with a contented smile in front of a sage noren curtain",
+      ],
+      edit: [
+        "Soften the palette toward dustier sage and indigo, less saturated",
+        "Add more visible paper grain and gouache brush texture",
+        "Calm the background — keep only one small Japanese-inspired prop",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A small clay teapot beside a single peony stem on a warm cream paper background",
+        "A wide-eyed owl in a tiny scholar's robe holding an open book, centered on dusty blue paper",
+        "A pair of soft mochi characters under a sprig of cherry blossom, painted in gouache",
+        "A bear barista in a sage apron holding a small ceramic latte cup, hand-inked outlines",
+        "A round hedgehog tucked inside a terracotta acorn cup with tiny falling leaves",
+      ],
+      edit: [
+        "Reduce the palette to three muted vintage tones",
+        "Make the ink outlines slightly finer and more hand-drawn",
+        "Remove background clutter — keep the character centered with quiet negative space",
+      ],
+    },
+  },
+  themedModeValue: "whimsical_japanese",
+  freestyleModeValue: "whimsical_japanese-freestyle",
+  themedBadge: "🦊",
+  freestyleBadge: "🎨",
+  downloadPrefix: "whimsical-japanese",
+  themedRules: STYLE_RULES["whimsical_japanese"],
+  freestyleRules: STYLE_RULES["whimsical_japanese-freestyle"],
+};
