@@ -96,6 +96,7 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     description: "Vintage comic-book panel art.",
     bestFor: "Action poses, halftone-shaded heroes, retro speech-bubble vibes.",
     category: "Illustration",
+  },
   {
     route: "/whimsical-japanese",
     name: "Whimsical Japanese",
