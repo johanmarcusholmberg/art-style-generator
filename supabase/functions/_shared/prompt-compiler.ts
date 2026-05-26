@@ -875,6 +875,9 @@ function styleStrictSuffix(styleKey: string): string {
   if (styleKey === "vintage" || styleKey === "vintage-freestyle") {
     return "STRICT STYLE: hand-painted gouache illustration with visible brushstrokes, soft muted vintage palette, decorative patterned background, cream off-white poster border, no photorealism, no 3D, no glossy digital rendering, no neon colors, no rendered text";
   }
+  if (styleKey === "whimsical_japanese" || styleKey === "whimsical_japanese-freestyle") {
+    return "STRICT STYLE: hand-painted gouache and watercolor illustration with refined hand-inked outlines, muted earthy Japanese-inspired palette (sage, indigo, terracotta, cream, dusty blue), vintage paper texture, calm storybook poster mood, centered composition, no photorealism, no 3D, no glossy digital sheen, no modern anime rendering, no neon colors, no rendered text. Do not copy any specific reference image composition.";
+  }
   return "";
 }
 
