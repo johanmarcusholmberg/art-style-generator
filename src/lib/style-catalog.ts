@@ -97,6 +97,14 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     bestFor: "Action poses, halftone-shaded heroes, retro speech-bubble vibes.",
     category: "Illustration",
   },
+  {
+    route: "/whimsical-japanese",
+    name: "Whimsical Japanese",
+    emoji: "🦊",
+    description: "Hand-painted Japanese-inspired storybook poster with anthropomorphic characters.",
+    bestFor: "Whimsical animal heroes, ramen/tea/dumpling scenes, charming framed wall art.",
+    category: "Illustration",
+  },
 
   // Modern & graphic
   {

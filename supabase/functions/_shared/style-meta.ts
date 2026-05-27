@@ -246,6 +246,25 @@ export const STYLE_META: Record<string, StyleMeta> = {
     ],
     defaultStrictness: "strict",
   },
+  whimsical_japanese: {
+    displayName: "Whimsical Japanese-inspired storybook poster",
+    mediumTokens: [
+      "hand-painted gouache illustration",
+      "Japanese-inspired storybook poster",
+      "anthropomorphic animal character art",
+      "vintage paper print poster",
+    ],
+    defaultStrictness: "strict",
+  },
+  "whimsical_japanese-freestyle": {
+    displayName: "Whimsical Japanese-inspired storybook poster",
+    mediumTokens: [
+      "hand-painted gouache illustration",
+      "Japanese-inspired storybook poster",
+      "vintage paper print poster",
+    ],
+    defaultStrictness: "strict",
+  },
 };
 
 /** Fallback-aware lookup. Always returns a usable meta. */

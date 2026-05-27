@@ -57,6 +57,10 @@ export const STYLE_CATEGORY_OVERRIDES: Record<string, StyleCategory> = {
   vintage: "painterly",
   "vintage-freestyle": "painterly",
 
+  // Whimsical Japanese → painterly (gouache/watercolor storybook poster)
+  whimsical_japanese: "painterly",
+  "whimsical_japanese-freestyle": "painterly",
+
   // Ukiyo-e → flat poster (woodblock = flat colors + outlines)
   japanese: "poster_flat",
   freestyle: "poster_flat",
