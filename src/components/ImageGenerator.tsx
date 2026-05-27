@@ -986,7 +986,33 @@ export default function ImageGenerator({
               )}
             </div>
           </div>
+
+          {/* Poster format selector — controls artwork composition + export shape */}
+          <div className="flex items-center justify-between gap-3 flex-wrap pt-2 border-t border-border/60">
+            <div className="flex flex-col">
+              <span className="font-display text-[11px] text-muted-foreground">Poster format</span>
+              <span className="font-display text-[10px] text-muted-foreground/70">
+                Controls the artwork composition and export shape.
+              </span>
+            </div>
+            <select
+              value={selectedPrintFormat.id}
+              onChange={(e) => {
+                const next = PRINT_FORMATS.find((f) => f.id === e.target.value);
+                if (next) setSelectedPrintFormat(next);
+              }}
+              className="font-display text-xs px-2 py-1 rounded-sm border border-border bg-background text-foreground"
+              aria-label="Poster format"
+            >
+              {PRINT_FORMATS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+
 
         {/* Poster setup section hidden — composer text + template state remain
             in defaults (template "fika", textMode "composer", safe area off). */}
