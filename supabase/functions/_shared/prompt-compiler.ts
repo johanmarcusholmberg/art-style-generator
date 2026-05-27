@@ -900,8 +900,9 @@ function styleStrictSuffix(styleKey: string): string {
     return "STRICT STYLE: hand-painted gouache illustration with visible brushstrokes, soft muted vintage palette, decorative patterned background, cream off-white poster border, no photorealism, no 3D, no glossy digital rendering, no neon colors, no rendered text";
   }
   if (styleKey === "whimsical_japanese" || styleKey === "whimsical_japanese-freestyle") {
-    return "STRICT STYLE: hand-painted gouache and watercolor illustration with refined hand-inked outlines, muted earthy Japanese-inspired palette (sage, indigo, terracotta, cream, dusty blue), vintage paper texture, calm storybook poster mood, centered composition, no photorealism, no 3D, no glossy digital sheen, no modern anime rendering, no neon colors, no rendered text. Do not copy any specific reference image composition.";
+    return "STRICT STYLE: refined vintage Japanese folk poster — hand-painted gouache and watercolor with slightly imperfect hand-inked outlines, muted earthy palette (sage, indigo, terracotta, cream, dusty blue, faded persimmon), visible paper grain and subtle print texture, ONE clear central hero subject with at most ONE main food/object interaction, soft and simple background with quiet negative space, mature collectible wall-art feel. The subject should usually be the clear central hero of the poster, with one main food/object interaction and only minimal supporting props. Backgrounds should be soft, simple, and secondary. STRICTLY AVOID: kawaii cuteness, closed-eye cartoon smiles, blushing cheeks, sparkles, children's book look, modern cozy café illustration, busy interior scenes, crowded tabletops, multiple plants/lanterns/curtains/plates/props, photorealism, 3D, glossy digital sheen, modern anime rendering, neon colors, rendered text. Do not copy any specific reference image composition.";
   }
+
   return "";
 }
 
