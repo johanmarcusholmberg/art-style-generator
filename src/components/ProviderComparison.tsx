@@ -59,6 +59,7 @@ export default function ProviderComparison({
   adapters,
   onPick,
   onClose,
+  onSaveResult,
 }: ProviderComparisonProps) {
   const { toast } = useToast();
   const [slots, setSlots] = useState<Record<string, SlotState>>(() =>
