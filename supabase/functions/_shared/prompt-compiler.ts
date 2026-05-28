@@ -671,24 +671,29 @@ export const STYLE_RULES: Record<string, StyleRules> = {
     ],
     styleRules: [
       "ONE anthropomorphic Japanese animal character as the clear central hero (fox, frog, rabbit, tanuki, cat, crane, bear, etc.) — calm and composed expression",
-      "ONE main food or object interaction at most (a single ramen bowl, a single teacup, a single dumpling steamer, a single sake cup) — never a full table spread",
-      "Japanese folk-print art direction (kimono, yukata, simple noren motif, a single lantern, a small fan) used sparingly as accents, not as scenery",
-      "slightly imperfect, hand-drawn ink contours with varied weight — never harsh, never digital, never perfectly clean",
-      "soft gouache / watercolor washes with gentle pigment pooling and subtle print texture",
-      "visible vintage paper grain and faint hand-print imperfections throughout",
+      "frame the hero as a half-body, waist-up, or seated portrait — never a tiny full-body figure lost in space, never an extreme close-up of just the face",
+      "ONE main food or drink interaction at most (a single ramen bowl, a single teacup, a single dumpling steamer, a single sake cup, a single plate of soba or sushi) held or placed clearly in front of / beside the hero",
+      "when food or drink is included, render it clearly readable: recognizable shape, simple iconic silhouette, and clearly identifiable contents (visible noodles, broth, dumplings, etc.) — never abstract blobs",
+      "Japanese folk-print art direction (kimono, yukata, simple noren motif, a single lantern, a small fan) used sparingly as accents on the character itself, not as scenery",
+      "slightly imperfect, hand-drawn ink contours with consistent medium weight — never harsh, never digital, never perfectly clean, but consistent from poster to poster",
+      "soft gouache / watercolor washes with restrained, slightly flatter shading — gentle pigment pooling and subtle print texture, but NOT loose painterly watercolor and NOT heavy realistic rendering",
+      "visible vintage paper grain and faint hand-print imperfections throughout, at a consistent subtle level",
       "flat painted illustration with soft depth — never 3D, never glossy",
       "mature, quiet, slightly nostalgic mood — refined folk-poster tone, NOT cute kawaii and NOT storybook",
       "the character should usually have open, calm eyes and a soft neutral expression — avoid closed-eye cartoon smiles, blushing cheeks, sparkles, or exaggerated kawaii features by default",
       "iconic centered poster composition with the hero clearly readable from across a room",
+      "include a subtle inner poster border or thin painted frame line a small distance inside the artwork edge to reinforce the collectible-print feel",
     ],
     compositionRules: [
       "vertical poster composition suitable for a framed wall print (5:7 / 50×70 cm friendly)",
-      "single centered hero subject — large, clear, and unmistakably the focal point",
-      "background is soft, simple, and SECONDARY — a flat color wash, a faint pattern, or one quiet accent only",
-      "generous quiet negative space around the character (top, sides, and below)",
+      "single centered hero subject framed as half-body / waist-up / seated portrait — large, clear, and unmistakably the focal point",
+      "the hero plus its single main prop should fill roughly 55–70% of the poster area — not tiny, not overflowing the edges",
+      "background is soft, simple, and SECONDARY — a single flat color wash, or a flat wash with at most ONE faint folk pattern or one small quiet accent",
+      "calm, evenly distributed negative space around the character — avoid large awkward empty zones AND avoid filling that space with extra props",
       "no interior scenes, no shop counters, no shelves of plates, no stacks of bowls, no decorated tables",
-      "at most ONE small supporting prop in the background, far from the hero, used only to give context",
+      "ZERO or ONE small supporting background accent only (a faint moon, a single distant branch, a soft cloud) — never multiple",
       "no multiple plants, no curtain assemblies, no lantern strings, no menu boards, no signage",
+      "include a subtle painted poster border / thin frame line just inside the artwork edges",
       "any small accents near the edges are part of the artwork — preserve them fully",
     ],
     colorRules: [
@@ -752,22 +757,27 @@ export const STYLE_RULES: Record<string, StyleRules> = {
     ],
     styleRules: [
       "the chosen subject is the clear central hero of the poster — singular, calm, and iconic",
+      "frame the subject as a half-body, waist-up, seated portrait, or a single iconic centered object — never a tiny figure lost in space, never an extreme close-up crop",
       "ONE main object interaction at most — no surrounding scene or prop collection",
+      "if food, drink, or a held object is included, render it clearly readable with a simple iconic silhouette — never abstract blobs",
       "preserve vintage Japanese folk-print art direction even on non-Japanese subjects (muted palette, gouache feel, slightly imperfect ink contours, paper texture)",
-      "slightly imperfect, hand-drawn ink contours with varied weight — never harsh, never digital",
-      "soft gouache / watercolor washes with gentle pigment pooling and subtle print texture",
-      "visible vintage paper grain and faint hand-print imperfections throughout",
+      "slightly imperfect, hand-drawn ink contours with consistent medium weight — never harsh, never digital",
+      "soft gouache / watercolor washes with restrained, slightly flatter shading — gentle pigment pooling and subtle print texture, NOT loose painterly watercolor",
+      "visible vintage paper grain and faint hand-print imperfections throughout, at a consistent subtle level",
       "flat painted illustration with soft depth — never 3D, never glossy",
       "mature, quiet, slightly nostalgic mood — refined folk-poster tone, NOT cute kawaii and NOT storybook",
       "for characters: calm open-eyed neutral expression by default — no closed-eye smiles, blushing cheeks, or kawaii features",
+      "include a subtle inner poster border or thin painted frame line a small distance inside the artwork edge",
     ],
     compositionRules: [
       "vertical poster composition suitable for a framed wall print",
-      "single centered hero subject — large, clear, and unmistakably the focal point",
-      "background is soft, simple, and SECONDARY — a flat color wash, a faint pattern, or one quiet accent only",
-      "generous quiet negative space around the subject",
+      "single centered hero subject framed as half-body / waist-up / seated portrait / iconic centered object — large, clear, and unmistakably the focal point",
+      "the hero subject should fill roughly 55–70% of the poster area — not tiny, not overflowing the edges",
+      "background is soft, simple, and SECONDARY — a single flat color wash, or a wash with at most ONE faint folk pattern or one small quiet accent",
+      "calm, evenly distributed negative space around the subject — no large awkward empty zones, no extra props filling the space",
       "no interior scenes, no busy environments, no crowded tabletops",
-      "at most ONE small supporting prop, used sparingly",
+      "ZERO or ONE small supporting background accent only — never multiple",
+      "include a subtle painted poster border / thin frame line just inside the artwork edges",
       "any small accents near the edges are part of the artwork — preserve them fully",
     ],
     colorRules: [
@@ -900,7 +910,7 @@ function styleStrictSuffix(styleKey: string): string {
     return "STRICT STYLE: hand-painted gouache illustration with visible brushstrokes, soft muted vintage palette, decorative patterned background, cream off-white poster border, no photorealism, no 3D, no glossy digital rendering, no neon colors, no rendered text";
   }
   if (styleKey === "whimsical_japanese" || styleKey === "whimsical_japanese-freestyle") {
-    return "STRICT STYLE: refined vintage Japanese folk poster — hand-painted gouache and watercolor with slightly imperfect hand-inked outlines, muted earthy palette (sage, indigo, terracotta, cream, dusty blue, faded persimmon), visible paper grain and subtle print texture, ONE clear central hero subject with at most ONE main food/object interaction, soft and simple background with quiet negative space, mature collectible wall-art feel. The subject should usually be the clear central hero of the poster, with one main food/object interaction and only minimal supporting props. Backgrounds should be soft, simple, and secondary. STRICTLY AVOID: kawaii cuteness, closed-eye cartoon smiles, blushing cheeks, sparkles, children's book look, modern cozy café illustration, busy interior scenes, crowded tabletops, multiple plants/lanterns/curtains/plates/props, photorealism, 3D, glossy digital sheen, modern anime rendering, neon colors, rendered text. Do not copy any specific reference image composition.";
+    return "STRICT STYLE: refined vintage Japanese folk poster — hand-painted gouache and watercolor with slightly imperfect hand-inked outlines of consistent medium weight, muted earthy palette (sage, indigo, terracotta, cream, dusty blue, faded persimmon), visible paper grain and subtle print texture, restrained slightly flatter shading (not loose painterly watercolor, not heavy realistic rendering). COMPOSITION: ONE clear central hero framed as half-body / waist-up / seated portrait (or one iconic centered object), occupying roughly 55–70% of the poster, with at most ONE main food or drink interaction rendered as a clearly readable iconic silhouette. BACKGROUND: a single soft flat color wash with at most ONE faint folk pattern or one small quiet accent, calm evenly distributed negative space, and a subtle thin painted poster border/frame line just inside the artwork edges. Mature collectible wall-art feel — outputs from the same prompt should look like part of the same poster collection. STRICTLY AVOID: kawaii cuteness, closed-eye cartoon smiles, blushing cheeks, sparkles, children's book look, modern cozy café illustration, busy interior scenes, crowded tabletops, multiple plants/lanterns/curtains/plates/props, full-body tiny figures lost in space, extreme close-up face crops, loose splashy watercolor, photorealism, 3D, glossy digital sheen, modern anime rendering, neon colors, rendered text. Do not copy any specific reference image composition.";
   }
 
   return "";
