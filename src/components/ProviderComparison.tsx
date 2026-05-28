@@ -11,7 +11,7 @@
  */
 
 import { useState } from "react";
-import { Loader2, ThumbsUp, ThumbsDown, Check } from "lucide-react";
+import { Loader2, ThumbsUp, ThumbsDown, Check, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,12 @@ interface ProviderComparisonProps {
   adapters: Array<{ id: "lovable" | "gemini" | "replicate" | "openai"; label: string }>;
   onPick: (pick: ComparisonResultPick) => void;
   onClose: () => void;
+  /**
+   * Optional per-result save handler. When provided, each successful card
+   * shows a "Save to gallery" button independent of "Use this". Should
+   * resolve on success and throw on failure.
+   */
+  onSaveResult?: (pick: ComparisonResultPick) => Promise<void>;
 }
 
 interface SlotState {
