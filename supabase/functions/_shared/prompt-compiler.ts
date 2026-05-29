@@ -825,6 +825,163 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "do not crop or fade the painted subject at the image boundary",
     ],
   },
+  modernist_cocktail: {
+    visualGoal: [
+      "modernist cocktail poster with a single hero drink",
+      "collectible mid-century wall-art poster",
+      "feels like a hand-printed vintage advertising poster",
+    ],
+    styleAnchors: [
+      "modernist cocktail poster",
+      "mid-century modern graphic design",
+      "Bauhaus and Swiss poster influence",
+      "vintage advertising aesthetic",
+      "screen-printed poster feel",
+    ],
+    styleRules: [
+      "ONE central hero drink in ONE primary vessel (cocktail glass, wine glass, beer mug, coffee cup, tumbler, coupe) — never multiple competing drinks",
+      "bold geometric construction: every form reduced to clean graphic shapes, ellipses, rectangles, triangles, segments",
+      "flat vector-like rendering with clean hard edges — no photoreal glass, no realistic liquid",
+      "liquid simplified into geometric reflections, abstract highlights, and layered flat color planes",
+      "strong graphic poster composition with clear visual hierarchy",
+      "intentional negative space framing the drink as a confident hero",
+      "subtle screen-print texture and grain on flat color areas — never glossy, never digital-smooth",
+      "graphic poster shadows: flat shape shadows or simple geometric blocks, never soft photographic shadows",
+      "may include a small modernist typographic area (drink name or short ingredient list) — kept secondary, restrained, never paragraphs and never logos",
+      "include a clean implied poster border or thin frame line just inside the artwork edges",
+    ],
+    compositionRules: [
+      "vertical poster orientation suitable for a framed wall print",
+      "single centered or balanced-asymmetric hero drink — large, clear, readable from across a room",
+      "hero drink + vessel occupies roughly 50–75% of the poster area",
+      "strong visual hierarchy: hero drink first, optional minor typographic accent second, everything else recedes",
+      "intentional negative space around the hero — calm, geometric, never cluttered",
+      "no realistic bar interiors, no shelves of bottles, no crowds, no busy scenery",
+      "ZERO or ONE small supporting graphic accent only (one citrus slice, one olive, one geometric sun, one abstract shape)",
+      "thin implied poster border / inner frame line just inside the artwork edges",
+      "all composition elements must stay fully within the image boundary",
+    ],
+    colorRules: [
+      "restrained modernist palette of 3–5 dominant colors only",
+      "draw from poster palettes such as: deep navy + bright orange + cream + dark red; olive green + mustard + cream + charcoal; terracotta + teal + ivory + dark brown; burgundy + beige + black + dusty gold",
+      "strong graphic contrast — bold but never neon, never candy",
+      "flat color blocks — no realistic glass gradients, no airbrushed highlights",
+      "any color blending happens only as discrete flat planes, not smooth gradients",
+      "no rainbow palettes, no more than five dominant colors",
+    ],
+    qualityRules: [
+      "premium illustrated poster quality — collectible wall-art tier",
+      "subtle visible print texture preserved at full resolution",
+      "crisp readable composition at 50×70 cm print scale",
+      "tasteful, confident, mid-century editorial poster feel",
+    ],
+    avoidRules: [
+      "photorealistic drinks or photorealistic glassware",
+      "realistic glass reflections, refractions, or condensation",
+      "realistic bar interiors, restaurants, or crowded scenes",
+      "multiple drinks competing for attention",
+      "stock-photo appearance or marketing photography look",
+      "AI fantasy aesthetics, ornate decorations, busy backgrounds",
+      "excessive text, paragraphs, ingredient walls, recipes",
+      "any rendered logos, brand marks, or watermarks",
+      "3D rendering, glossy digital surfaces, cinematic lighting",
+      "watercolor, oil painting, anime, cartoon styling",
+      "excessive smooth gradients or airbrushing inside color blocks",
+      "rainbow palettes or more than five dominant colors",
+    ],
+    blockedTraits: [
+      "photorealism",
+      "3D rendering",
+      "glossy plastic surfaces",
+      "cinematic lighting",
+      "watercolor wash",
+      "oil painting",
+      "anime",
+      "cartoon",
+      "busy bar interior",
+      "logos and brand marks",
+    ],
+    edgeSafety: [
+      "the inner poster border / frame line and any geometric accents near the edges are part of the artwork — preserve them fully",
+      "do not crop or fade the drink or vessel at the image boundary",
+    ],
+  },
+  "modernist_cocktail-freestyle": {
+    visualGoal: [
+      "modernist beverage poster applied to any drink subject",
+      "collectible mid-century wall-art poster",
+      "feels like a hand-printed vintage advertising poster",
+    ],
+    styleAnchors: [
+      "modernist beverage poster",
+      "mid-century modern graphic design",
+      "Bauhaus and Swiss poster influence",
+      "vintage advertising aesthetic",
+      "screen-printed poster feel",
+    ],
+    styleRules: [
+      "ONE central hero drink in ONE primary vessel — never multiple competing drinks",
+      "bold geometric construction with clean graphic shapes, flat planes, and confident silhouettes",
+      "flat vector-like rendering with hard edges — never photoreal glass, never realistic liquid",
+      "liquid simplified into geometric reflections, abstract highlights, and layered flat color planes",
+      "subtle screen-print texture / grain — never glossy digital sheen",
+      "graphic poster shadows only — flat shape shadows or simple geometric blocks",
+      "optional small modernist typographic accent (short drink name) — secondary, never logos, never paragraphs",
+      "include a clean implied poster border or thin frame line just inside the artwork edges",
+    ],
+    compositionRules: [
+      "vertical poster orientation suitable for a framed wall print",
+      "single centered or balanced-asymmetric hero drink — large and clearly readable",
+      "hero drink + vessel occupies roughly 50–75% of the poster area",
+      "intentional negative space around the hero, calm and geometric",
+      "ZERO or ONE small supporting graphic accent only",
+      "no bar interiors, no scenes, no clutter",
+      "thin implied poster border / inner frame line just inside the artwork edges",
+      "all composition elements must stay fully within the image boundary",
+    ],
+    colorRules: [
+      "restrained modernist palette of 3–5 dominant colors only",
+      "use rich poster palettes (navy/orange/cream, olive/mustard/cream, terracotta/teal/ivory, burgundy/beige/black/gold)",
+      "strong graphic contrast — bold but never neon, never candy",
+      "flat color blocks — no smooth realistic gradients, no airbrushed highlights",
+      "no rainbow palettes",
+    ],
+    qualityRules: [
+      "premium illustrated poster quality — collectible wall-art tier",
+      "subtle visible print texture preserved at full resolution",
+      "crisp readable composition at 50×70 cm print scale",
+      "tasteful, confident, mid-century editorial poster feel",
+    ],
+    avoidRules: [
+      "photorealistic drinks or glassware",
+      "realistic reflections, refractions, condensation",
+      "realistic bar interiors or crowded scenes",
+      "multiple drinks competing for attention",
+      "stock-photo look, marketing photography aesthetic",
+      "AI fantasy aesthetics, ornate decorations, busy backgrounds",
+      "excessive text, paragraphs, recipes",
+      "any rendered logos, brand marks, watermarks",
+      "3D rendering, glossy digital surfaces, cinematic lighting",
+      "watercolor, oil painting, anime, cartoon",
+      "rainbow palettes",
+    ],
+    blockedTraits: [
+      "photorealism",
+      "3D rendering",
+      "glossy plastic surfaces",
+      "cinematic lighting",
+      "watercolor",
+      "oil painting",
+      "anime",
+      "cartoon",
+      "busy bar interior",
+      "logos and brand marks",
+    ],
+    edgeSafety: [
+      "inner poster border, frame line, and geometric accents near the edges are part of the artwork — preserve them fully",
+      "do not crop or fade the drink or vessel at the image boundary",
+    ],
+  },
 };
 
 
@@ -911,6 +1068,9 @@ function styleStrictSuffix(styleKey: string): string {
   }
   if (styleKey === "whimsical_japanese" || styleKey === "whimsical_japanese-freestyle") {
     return "STRICT STYLE: refined vintage Japanese folk poster — hand-painted gouache and watercolor with slightly imperfect hand-inked outlines of consistent medium weight, muted earthy palette (sage, indigo, terracotta, cream, dusty blue, faded persimmon), visible paper grain and subtle print texture, restrained slightly flatter shading (not loose painterly watercolor, not heavy realistic rendering). COMPOSITION: ONE clear central hero framed as half-body / waist-up / seated portrait (or one iconic centered object), occupying roughly 55–70% of the poster, with at most ONE main food or drink interaction rendered as a clearly readable iconic silhouette. BACKGROUND: a single soft flat color wash with at most ONE faint folk pattern or one small quiet accent, calm evenly distributed negative space, and a subtle thin painted poster border/frame line just inside the artwork edges. Mature collectible wall-art feel — outputs from the same prompt should look like part of the same poster collection. STRICTLY AVOID: kawaii cuteness, closed-eye cartoon smiles, blushing cheeks, sparkles, children's book look, modern cozy café illustration, busy interior scenes, crowded tabletops, multiple plants/lanterns/curtains/plates/props, full-body tiny figures lost in space, extreme close-up face crops, loose splashy watercolor, photorealism, 3D, glossy digital sheen, modern anime rendering, neon colors, rendered text. Do not copy any specific reference image composition.";
+  }
+  if (styleKey === "modernist_cocktail" || styleKey === "modernist_cocktail-freestyle") {
+    return "STRICT STYLE: modernist cocktail poster — bold geometric construction, flat vector-like rendering with hard clean edges, limited 3–5 color modernist palette (e.g. navy/orange/cream, olive/mustard/cream, terracotta/teal/ivory, burgundy/beige/black/gold), subtle screen-print texture and grain on flat color areas, mid-century / Bauhaus / Swiss poster influence, vintage advertising aesthetic. COMPOSITION: ONE central hero drink in ONE primary vessel (cocktail glass, wine glass, beer mug, coffee cup, tumbler, coupe), occupying roughly 50–75% of the vertical poster, with intentional negative space and a thin implied poster border/frame line just inside the artwork edges. Liquid and glass simplified into geometric reflections, abstract highlights, and layered flat color planes — never photoreal. At most ONE small graphic accent (one citrus slice, one olive, one abstract shape) and optionally one small restrained modernist typographic line; never paragraphs and never logos. STRICTLY AVOID: photorealistic drinks or glassware, realistic glass reflections, realistic bar interiors or crowded scenes, multiple competing drinks, stock-photo or marketing-photography look, AI fantasy aesthetics, ornate decorations, busy backgrounds, excessive text or recipe blocks, rendered logos/brand marks/watermarks, 3D rendering, glossy digital sheen, cinematic lighting, watercolor, oil painting, anime, cartoon, rainbow palettes. Do not copy any specific reference poster.";
   }
 
   return "";

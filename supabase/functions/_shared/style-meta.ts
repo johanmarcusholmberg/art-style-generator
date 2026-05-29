@@ -265,6 +265,25 @@ export const STYLE_META: Record<string, StyleMeta> = {
     ],
     defaultStrictness: "strict",
   },
+  modernist_cocktail: {
+    displayName: "Modernist cocktail poster",
+    mediumTokens: [
+      "modernist cocktail poster",
+      "mid-century modern graphic poster",
+      "Bauhaus-influenced beverage poster",
+      "vintage advertising screen print",
+    ],
+    defaultStrictness: "strict",
+  },
+  "modernist_cocktail-freestyle": {
+    displayName: "Modernist cocktail poster",
+    mediumTokens: [
+      "modernist beverage poster",
+      "mid-century modern graphic poster",
+      "vintage advertising screen print",
+    ],
+    defaultStrictness: "strict",
+  },
 };
 
 /** Fallback-aware lookup. Always returns a usable meta. */
