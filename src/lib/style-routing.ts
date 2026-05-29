@@ -77,6 +77,10 @@ const GEMINI_FIRST_STYLES = new Set<string>([
   // Whimsical Japanese — gouache/watercolor storybook poster, Gemini handles painterly well
   "whimsical_japanese",
   "whimsical_japanese-freestyle",
+
+  // Modernist cocktail — flat geometric poster, Gemini-first per user spec
+  "modernist_cocktail",
+  "modernist_cocktail-freestyle",
 ]);
 
 const LOVABLE_SDXL_STYLES = new Set<string>([

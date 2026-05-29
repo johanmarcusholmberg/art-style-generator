@@ -849,3 +849,58 @@ export const WHIMSICALJAPANESE_STYLE: StyleConfig = {
   themedRules: STYLE_RULES["whimsical_japanese"],
   freestyleRules: STYLE_RULES["whimsical_japanese-freestyle"],
 };
+
+export const MODERNISTCOCKTAIL_STYLE: StyleConfig = {
+  styleKey: "modernist_cocktail",
+  themedEdgeFn: "generate-image-modernistcocktail",
+  freestyleEdgeFn: "generate-image-modernistcocktail-freestyle",
+  themedTabLabel: "🍸 Cocktail Posters",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Cocktail Poster",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your drink… e.g. 'A Negroni poster' or 'An Aperol Spritz'",
+  freestylePlaceholder: "Describe any drink subject… e.g. 'A geometric espresso poster in mid-century palette'",
+  prompts: {
+    themed: {
+      generate: [
+        "A Negroni poster",
+        "An Aperol Spritz poster",
+        "An Espresso Martini poster",
+        "A Manhattan cocktail poster",
+        "A glass of Rioja red wine",
+        "A Japanese whisky poster",
+        "An iced matcha poster",
+        "A craft beer poster",
+      ],
+      edit: [
+        "Reduce to a stricter three-color modernist palette",
+        "Simplify the liquid into flatter geometric color blocks",
+        "Increase the negative space around the glass and remove background props",
+        "Push the composition more vertical and poster-like",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A geometric Negroni in deep orange and navy",
+        "An abstract Aperol Spritz with Mediterranean colors",
+        "A modernist espresso poster inspired by Italian cafés",
+        "A bold graphic whiskey poster with Bauhaus influences",
+        "A minimalist wine poster using only burgundy, cream, and black",
+        "A modernist gin and tonic poster with olive and teal accents",
+      ],
+      edit: [
+        "Restrict the palette to three flat poster colors",
+        "Flatten the glass into geometric planes and abstract highlights",
+        "Add a thin painted poster border just inside the artwork edges",
+        "Center the drink and increase the surrounding negative space",
+      ],
+    },
+  },
+  themedModeValue: "modernist_cocktail",
+  freestyleModeValue: "modernist_cocktail-freestyle",
+  themedBadge: "🍸",
+  freestyleBadge: "🎨",
+  downloadPrefix: "modernist-cocktail",
+  themedRules: STYLE_RULES["modernist_cocktail"],
+  freestyleRules: STYLE_RULES["modernist_cocktail-freestyle"],
+};

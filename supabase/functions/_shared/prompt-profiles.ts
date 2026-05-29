@@ -61,6 +61,10 @@ export const STYLE_CATEGORY_OVERRIDES: Record<string, StyleCategory> = {
   whimsical_japanese: "painterly",
   "whimsical_japanese-freestyle": "painterly",
 
+  // Modernist cocktail → flat poster (geometric, vector-like, limited palette)
+  modernist_cocktail: "poster_flat",
+  "modernist_cocktail-freestyle": "poster_flat",
+
   // Ukiyo-e → flat poster (woodblock = flat colors + outlines)
   japanese: "poster_flat",
   freestyle: "poster_flat",

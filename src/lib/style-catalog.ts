@@ -105,6 +105,14 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     bestFor: "Whimsical animal heroes, ramen/tea/dumpling scenes, charming framed wall art.",
     category: "Illustration",
   },
+  {
+    route: "/modernist-cocktail",
+    name: "Modernist Cocktail",
+    emoji: "🍸",
+    description: "Geometric mid-century beverage poster with limited palette and flat shapes.",
+    bestFor: "Cocktails, wine, coffee, beer and spirits as bold collectible wall posters.",
+    category: "Modern & graphic",
+  },
 
   // Modern & graphic
   {
