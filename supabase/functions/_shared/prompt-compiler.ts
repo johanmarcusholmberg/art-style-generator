@@ -982,6 +982,145 @@ export const STYLE_RULES: Record<string, StyleRules> = {
       "do not crop or fade the drink or vessel at the image boundary",
     ],
   },
+
+  mediterranean_heritage: {
+    visualGoal: [
+      "fine-art Mediterranean travel photograph",
+      "premium architectural and cultural photography",
+      "collectible sunwashed heritage wall-art",
+      "feels like a timeless editorial European destination photo",
+    ],
+    styleAnchors: [
+      "fine-art Mediterranean travel photography",
+      "premium architectural and cultural photography",
+      "editorial color photography",
+      "authentic sunwashed heritage location",
+      "timeless European destination",
+    ],
+    styleRules: [
+      "realistic premium photography — never illustration, never painting, never 3D",
+      "authentic Mediterranean materials: limestone, weathered wood, peeling paint, aged plaster, terracotta, old stone, patina",
+      "beauty must come from authenticity, age, character and craftsmanship — never pristine new construction or luxury-modern perfection",
+      "soft natural Mediterranean sunlight (warm morning, golden afternoon) with gentle realistic shadows",
+      "sunwashed naturally faded palette — sage, olive, terracotta, sandstone, limestone, cream, beige, dusty blue, faded turquoise, weathered white, ochre, muted earth tones",
+      "no HDR, no neon, no oversaturation, no dramatic cinematic color grading — always natural and realistic",
+      "professional editorial composition with clean framing and elegant visual hierarchy",
+    ],
+    compositionRules: [
+      "strong focal point with intentional clean framing",
+      "balanced composition with intentional negative space",
+      "natural leading lines and elegant visual hierarchy",
+      "subject occupies roughly 50 to 80 percent of the image area",
+      "the visual identity stays consistent across all Mediterranean subjects: architecture (doors, windows, balconies, facades, staircases, courtyards, churches, alleyways, village streets), nature (olive trees, lemon trees, bougainvillea, vineyards, coastlines, cliffs), lifestyle (cafés, terraces, market stalls, fishing boats, harbors, plazas), details (ceramic pots, lanterns, shutters, fountains, stone textures)",
+      "supporting Mediterranean plants (olive, bougainvillea, lemon, vines, potted greenery) may complement the subject but never overwhelm it",
+      "people may appear occasionally but should rarely be the main subject",
+      "no cluttered scenes, no competing focal points, no tourist snapshot framing, no random visual noise",
+      "all composition elements must stay fully within the image boundary",
+    ],
+    colorRules: [
+      "authentic Mediterranean palette — sunwashed, naturally faded, warm and timeless",
+      "anchors: sage green, olive green, terracotta, sandstone, limestone, cream, beige, dusty blue, faded turquoise, weathered white, ochre, muted earth tones",
+      "soft warm sunlight tone bathing the scene",
+      "no neon colors, no hyper-saturation, no modern commercial palettes, no unrealistic color grading",
+    ],
+    qualityRules: [
+      "gallery-worthy print-worthy fine-art photography",
+      "extremely sharp realistic detail in materials and textures",
+      "natural micro-textures: stone grain, paint cracks, wood grain, plaster pores, fabric weave",
+      "professional high-end editorial photography finish",
+    ],
+    avoidRules: [
+      "any illustration, painting, watercolor, gouache, vector, cartoon, anime, fantasy or surreal styling",
+      "AI-art look, 3D render, CGI, or smooth digital plastic surfaces",
+      "HDR effects, dramatic cinematic lighting, artificial neon lighting, extreme contrast, overprocessed photography",
+      "instagram-style filters, teal-orange grade, oversaturation, social-media-filter aesthetics",
+      "crowds, heavy traffic, modern advertisements, brand logos, watermarks, captions or letters",
+      "futuristic elements, fantasy architecture, unrealistic colors, excessive decoration",
+      "pristine new construction or luxury-modern perfection",
+    ],
+    blockedTraits: [
+      "illustration",
+      "painting",
+      "watercolor",
+      "cartoon",
+      "anime",
+      "fantasy",
+      "surrealism",
+      "AI-art aesthetic",
+      "3D rendering",
+      "HDR",
+      "neon lighting",
+      "logos and brand marks",
+    ],
+    edgeSafety: [
+      "architectural details, plants, and materials near the borders are part of the photograph — preserve them fully",
+      "do not crop, fade, or soften the subject at the image boundary",
+    ],
+  },
+
+  "mediterranean_heritage-freestyle": {
+    visualGoal: [
+      "fine-art Mediterranean travel photograph applied to any Mediterranean subject",
+      "collectible sunwashed heritage wall-art",
+      "timeless editorial European destination feel",
+    ],
+    styleAnchors: [
+      "fine-art Mediterranean travel photography",
+      "premium architectural and cultural photography",
+      "editorial color photography",
+      "authentic sunwashed heritage location",
+    ],
+    styleRules: [
+      "realistic premium photography — never illustration, never painting, never 3D",
+      "authentic Mediterranean materials and natural aging — limestone, weathered wood, peeling paint, aged plaster, terracotta, old stone, patina",
+      "soft natural Mediterranean sunlight with gentle realistic shadows",
+      "sunwashed naturally faded palette of muted Mediterranean earth tones",
+      "no HDR, no neon, no oversaturation, no dramatic cinematic color grading",
+      "professional editorial composition with clean framing",
+    ],
+    compositionRules: [
+      "strong focal point with intentional clean framing",
+      "balanced composition with intentional negative space and natural leading lines",
+      "subject occupies roughly 50 to 80 percent of the image area",
+      "supporting Mediterranean plants may complement the subject but never overwhelm",
+      "people may appear occasionally but rarely as the main subject",
+      "no cluttered scenes, no tourist snapshots, no random visual noise",
+      "all composition elements must stay fully within the image boundary",
+    ],
+    colorRules: [
+      "authentic sunwashed Mediterranean palette — sage, olive, terracotta, sandstone, limestone, cream, dusty blue, faded turquoise, weathered white, ochre",
+      "soft warm sunlight tone bathing the scene",
+      "no neon, no hyper-saturation, no unrealistic grading",
+    ],
+    qualityRules: [
+      "gallery-worthy print-worthy fine-art photography",
+      "sharp realistic micro-textures in stone, wood, plaster and fabric",
+      "professional high-end editorial photography finish",
+    ],
+    avoidRules: [
+      "illustration, painting, watercolor, vector, cartoon, anime, fantasy or surreal styling",
+      "AI-art look, 3D render, CGI, smooth digital plastic surfaces",
+      "HDR, neon, oversaturation, dramatic cinematic grading, instagram filters, overprocessed look",
+      "crowds, modern advertisements, brand logos, watermarks, captions or letters",
+      "pristine new construction or luxury-modern perfection",
+    ],
+    blockedTraits: [
+      "illustration",
+      "painting",
+      "watercolor",
+      "cartoon",
+      "anime",
+      "fantasy",
+      "3D rendering",
+      "HDR",
+      "neon lighting",
+      "logos and brand marks",
+    ],
+    edgeSafety: [
+      "architectural details, plants and materials near the borders are part of the photograph — preserve them fully",
+      "do not crop or fade the subject at the image boundary",
+    ],
+  },
 };
 
 
@@ -1071,6 +1210,9 @@ function styleStrictSuffix(styleKey: string): string {
   }
   if (styleKey === "modernist_cocktail" || styleKey === "modernist_cocktail-freestyle") {
     return "STRICT STYLE: modernist cocktail poster — bold geometric construction, flat vector-like rendering with hard clean edges, limited 3–5 color modernist palette (e.g. navy/orange/cream, olive/mustard/cream, terracotta/teal/ivory, burgundy/beige/black/gold), subtle screen-print texture and grain on flat color areas, mid-century / Bauhaus / Swiss poster influence, vintage advertising aesthetic. COMPOSITION: ONE central hero drink in ONE primary vessel (cocktail glass, wine glass, beer mug, coffee cup, tumbler, coupe), occupying roughly 50–75% of the vertical poster, with intentional negative space and a thin implied poster border/frame line just inside the artwork edges. Liquid and glass simplified into geometric reflections, abstract highlights, and layered flat color planes — never photoreal. At most ONE small graphic accent (one citrus slice, one olive, one abstract shape) and optionally one small restrained modernist typographic line; never paragraphs and never logos. STRICTLY AVOID: photorealistic drinks or glassware, realistic glass reflections, realistic bar interiors or crowded scenes, multiple competing drinks, stock-photo or marketing-photography look, AI fantasy aesthetics, ornate decorations, busy backgrounds, excessive text or recipe blocks, rendered logos/brand marks/watermarks, 3D rendering, glossy digital sheen, cinematic lighting, watercolor, oil painting, anime, cartoon, rainbow palettes. Do not copy any specific reference poster.";
+  }
+  if (styleKey === "mediterranean_heritage" || styleKey === "mediterranean_heritage-freestyle") {
+    return "STRICT STYLE: fine-art Mediterranean travel photograph — realistic premium photography, NEVER illustration, NEVER painting, NEVER 3D render, NEVER AI-art aesthetic. Authentic Mediterranean materials with natural aging and patina (limestone, weathered wood, peeling paint, aged plaster, terracotta, old stone), soft natural Mediterranean sunlight (warm morning or golden afternoon) with gentle realistic shadows, sunwashed naturally faded palette (sage, olive, terracotta, sandstone, limestone, cream, beige, dusty blue, faded turquoise, weathered white, ochre, muted earth tones). COMPOSITION: strong focal point with clean framing, balanced composition with intentional negative space and natural leading lines, subject occupies roughly 50–80% of the frame, poster-friendly editorial layout. The visual identity stays consistent across architecture (doors, windows, balconies, facades, staircases, courtyards, churches, alleyways), nature (olive trees, lemon trees, bougainvillea, vineyards, coastlines, cliffs), lifestyle (cafés, terraces, market stalls, fishing boats, harbors, plazas), and details (ceramic pots, lanterns, shutters, fountains, stone textures). Supporting Mediterranean plants may complement the subject but must never overwhelm it. People may appear occasionally but rarely as the main subject. STRICTLY AVOID: any illustration, painting, watercolor, gouache, vector, cartoon, anime, fantasy or surrealism; HDR, dramatic cinematic lighting, artificial neon, extreme contrast, overprocessed travel photography, instagram-style filters, teal-orange grade, oversaturation; crowds, heavy traffic, modern advertisements, brand logos, watermarks, rendered text or captions; pristine new construction or luxury-modern perfection. Do not copy any specific real-world location or building.";
   }
 
   return "";
