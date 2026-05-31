@@ -12,6 +12,7 @@ export type StyleCategory =
   | "Classic print"
   | "Illustration"
   | "Modern & graphic"
+  | "Travel Photography"
   | "Experimental";
 
 export interface StyleCatalogEntry {
@@ -114,6 +115,16 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     category: "Modern & graphic",
   },
 
+  // Travel Photography
+  {
+    route: "/mediterranean-heritage",
+    name: "Mediterranean Heritage",
+    emoji: "🚪",
+    description: "Fine-art Mediterranean travel photography with sunwashed materials and warm light.",
+    bestFor: "Doors, windows, alleys, olive trees, harbors and heritage details as collectible travel posters.",
+    category: "Travel Photography",
+  },
+
   // Modern & graphic
   {
     route: "/scandinavian-poster",
@@ -195,6 +206,7 @@ export const STYLE_CATEGORIES: StyleCategory[] = [
   "Classic print",
   "Illustration",
   "Modern & graphic",
+  "Travel Photography",
   "Experimental",
 ];
 

@@ -30,6 +30,7 @@ import ScandinavianPoster from "./pages/ScandinavianPoster";
 import Vintage from "./pages/Vintage";
 import WhimsicalJapanese from "./pages/WhimsicalJapanese";
 import ModernistCocktail from "./pages/ModernistCocktail";
+import MediterraneanHeritage from "./pages/MediterraneanHeritage";
 import Blend from "./pages/Blend";
 import StyleCompare from "./pages/StyleCompare";
 import BatchStudio from "./pages/BatchStudio";
@@ -86,6 +87,7 @@ const App = () => (
               <Route path="/vintage" element={protect(<Vintage />)} />
               <Route path="/whimsical-japanese" element={protect(<WhimsicalJapanese />)} />
               <Route path="/modernist-cocktail" element={protect(<ModernistCocktail />)} />
+              <Route path="/mediterranean-heritage" element={protect(<MediterraneanHeritage />)} />
               <Route path="/blend" element={protect(<Blend />)} />
               <Route path="/compare" element={protect(<StyleCompare />)} />
               <Route path="/batch" element={protect(<BatchStudio />)} />
