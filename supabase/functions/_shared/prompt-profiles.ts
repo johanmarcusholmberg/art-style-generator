@@ -17,6 +17,7 @@ export type StyleCategory =
   | "lineart"
   | "painterly"
   | "photographic_mono"
+  | "photographic"
   | "lo_fi_print"
   | "comic_print"
   | "tattoo_flash"
@@ -64,6 +65,10 @@ export const STYLE_CATEGORY_OVERRIDES: Record<string, StyleCategory> = {
   // Modernist cocktail → flat poster (geometric, vector-like, limited palette)
   modernist_cocktail: "poster_flat",
   "modernist_cocktail-freestyle": "poster_flat",
+
+  // Mediterranean Heritage → premium color travel photography
+  mediterranean_heritage: "photographic",
+  "mediterranean_heritage-freestyle": "photographic",
 
   // Ukiyo-e → flat poster (woodblock = flat colors + outlines)
   japanese: "poster_flat",
@@ -293,6 +298,57 @@ export const SDXL_CATEGORY_PROFILES: Record<StyleCategory, SdxlProfile> = {
       "watermark",
       "text",
       "letters",
+      "ugly",
+      "deformed",
+    ],
+  },
+  photographic: {
+    reinforcement: [
+      "fine-art travel photograph",
+      "premium architectural photography",
+      "editorial color photography",
+      "natural Mediterranean sunlight",
+      "soft warm golden light",
+      "authentic weathered materials",
+      "sunwashed muted palette",
+      "realistic textures and patina",
+      "professional poster-friendly composition",
+    ],
+    composition: [
+      "strong focal point with clean framing",
+      "balanced composition with intentional negative space",
+      "natural leading lines and elegant hierarchy",
+      "subject occupies 50 to 80 percent of the frame",
+    ],
+    negative: [
+      "illustration",
+      "painting",
+      "watercolor",
+      "cartoon",
+      "anime",
+      "vector",
+      "flat graphic",
+      "3d render",
+      "cgi",
+      "fantasy",
+      "surreal",
+      "hdr",
+      "oversaturated",
+      "neon",
+      "lens flare",
+      "heavy bokeh",
+      "cinematic teal orange grade",
+      "instagram filter",
+      "overprocessed",
+      "tourist snapshot",
+      "crowds",
+      "modern advertisements",
+      "logos",
+      "watermark",
+      "text",
+      "letters",
+      "low quality",
+      "blurry",
       "ugly",
       "deformed",
     ],
@@ -637,6 +693,19 @@ export const OPENAI_CATEGORY_PROFILES: Record<StyleCategory, OpenAIProfile> = {
       "photographic realism or any rendered-engine look",
       "soft gradient shading inside shapes or watercolor tattoo styling",
       "any banner text, lettering, or watermarks",
+    ],
+  },
+  photographic: {
+    guidance: [
+      "render this as a fine-art color travel photograph with realistic materials, natural Mediterranean sunlight, and authentic weathered textures",
+      "compose like a premium architectural / editorial photograph — strong focal point, balanced framing, intentional negative space, poster-friendly layout",
+      "keep colors sunwashed and naturally faded — sage, olive, terracotta, sandstone, limestone, cream, dusty blue, ochre",
+    ],
+    avoid: [
+      "any illustration, painting, watercolor, vector, cartoon, anime, 3D render, CGI, fantasy or surrealism",
+      "HDR, oversaturation, neon tinting, dramatic cinematic color grading, instagram-style filters, overprocessed travel photography",
+      "crowds, heavy traffic, modern advertisements, signs, brand logos, watermarks, captions or letters",
+      "pristine new construction or luxury-modern perfection — the beauty must come from authentic aging and patina",
     ],
   },
   default: {
