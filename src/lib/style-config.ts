@@ -904,3 +904,58 @@ export const MODERNISTCOCKTAIL_STYLE: StyleConfig = {
   themedRules: STYLE_RULES["modernist_cocktail"],
   freestyleRules: STYLE_RULES["modernist_cocktail-freestyle"],
 };
+
+export const MEDITERRANEAN_HERITAGE_STYLE: StyleConfig = {
+  styleKey: "mediterranean_heritage",
+  themedEdgeFn: "generate-image-mediterraneanheritage",
+  freestyleEdgeFn: "generate-image-mediterraneanheritage-freestyle",
+  themedTabLabel: "🚪 Heritage Places",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Mediterranean Photo",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your subject… e.g. 'A weathered green door' or 'A lemon tree beside a stone wall'",
+  freestylePlaceholder: "Describe any Mediterranean subject… e.g. 'A fishing boat in a quiet harbor at golden hour'",
+  prompts: {
+    themed: {
+      generate: [
+        "A weathered green Mediterranean door",
+        "An old blue shuttered window",
+        "A stone staircase in a hillside village",
+        "A whitewashed village alley with bougainvillea",
+        "An olive tree beside a limestone wall",
+        "A lemon tree in a Mediterranean garden",
+        "A fishing boat in a quiet harbor",
+        "A historic stone fountain in a small plaza",
+      ],
+      edit: [
+        "Soften the light to warm golden afternoon and reduce contrast",
+        "Push the palette toward sunwashed sage, terracotta and cream",
+        "Simplify the background and increase intentional negative space",
+        "Add gentle realistic patina and weathered texture to the materials",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A traditional Maltese courtyard at golden hour",
+        "A coastal cliff in southern Spain bathed in warm light",
+        "A Mediterranean café terrace under olive trees",
+        "An outdoor market stall in a historic town",
+        "A weathered ceramic pot beside an old doorway",
+        "Traditional Mediterranean shutters with peeling paint",
+      ],
+      edit: [
+        "Calm the composition — fewer props, more negative space",
+        "Warm the light toward soft morning Mediterranean sun",
+        "Mute the palette toward authentic sunwashed earth tones",
+        "Make the materials feel more aged and authentic — more patina",
+      ],
+    },
+  },
+  themedModeValue: "mediterranean_heritage",
+  freestyleModeValue: "mediterranean_heritage-freestyle",
+  themedBadge: "🚪",
+  freestyleBadge: "🎨",
+  downloadPrefix: "mediterranean-heritage",
+  themedRules: STYLE_RULES["mediterranean_heritage"],
+  freestyleRules: STYLE_RULES["mediterranean_heritage-freestyle"],
+};

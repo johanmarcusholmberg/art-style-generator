@@ -81,6 +81,10 @@ const GEMINI_FIRST_STYLES = new Set<string>([
   // Modernist cocktail — flat geometric poster, Gemini-first per user spec
   "modernist_cocktail",
   "modernist_cocktail-freestyle",
+
+  // Mediterranean heritage — photographic travel style, Gemini-first per user spec
+  "mediterranean_heritage",
+  "mediterranean_heritage-freestyle",
 ]);
 
 const LOVABLE_SDXL_STYLES = new Set<string>([
