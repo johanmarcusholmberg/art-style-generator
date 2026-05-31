@@ -50,6 +50,11 @@ const PHOTO_MONO_TOKENS = [
   "documentary photo",
   "analog film photograph",
 ];
+const PHOTO_COLOR_TOKENS = [
+  "fine-art travel photograph",
+  "premium architectural photography",
+  "editorial color photograph",
+];
 const LO_FI_PRINT_TOKENS = [
   "screen print",
   "risograph print",
@@ -72,6 +77,7 @@ export const CATEGORY_MEDIUM_TOKENS: Record<StyleCategory, string[]> = {
   lineart: LINEART_TOKENS,
   painterly: PAINTERLY_TOKENS,
   photographic_mono: PHOTO_MONO_TOKENS,
+  photographic: PHOTO_COLOR_TOKENS,
   lo_fi_print: LO_FI_PRINT_TOKENS,
   comic_print: COMIC_TOKENS,
   tattoo_flash: TATTOO_TOKENS,
@@ -281,6 +287,25 @@ export const STYLE_META: Record<string, StyleMeta> = {
       "modernist beverage poster",
       "mid-century modern graphic poster",
       "vintage advertising screen print",
+    ],
+    defaultStrictness: "strict",
+  },
+  mediterranean_heritage: {
+    displayName: "Mediterranean heritage travel photograph",
+    mediumTokens: [
+      "fine-art Mediterranean travel photograph",
+      "premium architectural photography",
+      "editorial color photograph",
+      "sunwashed heritage photograph",
+    ],
+    defaultStrictness: "strict",
+  },
+  "mediterranean_heritage-freestyle": {
+    displayName: "Mediterranean heritage travel photograph",
+    mediumTokens: [
+      "fine-art Mediterranean travel photograph",
+      "editorial color photograph",
+      "sunwashed heritage photograph",
     ],
     defaultStrictness: "strict",
   },
