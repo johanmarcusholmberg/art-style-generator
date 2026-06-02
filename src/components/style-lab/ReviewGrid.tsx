@@ -100,6 +100,8 @@ export default function ReviewGrid() {
         minRating,
         favoritesOnly,
         includeArchived: showArchived,
+        includeRejected: showRejected || rejectedOnly,
+        rejectedOnly,
       });
       setItems(rows);
     } catch (err) {
@@ -109,7 +111,7 @@ export default function ReviewGrid() {
     } finally {
       setLoading(false);
     }
-  }, [styleFilter, providerFilter, minRating, favoritesOnly, showArchived, toast]);
+  }, [styleFilter, providerFilter, minRating, favoritesOnly, showArchived, showRejected, rejectedOnly, toast]);
 
   useEffect(() => {
     void load();
