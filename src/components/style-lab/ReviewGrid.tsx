@@ -270,6 +270,26 @@ export default function ReviewGrid() {
             <Switch checked={showArchived} onCheckedChange={setShowArchived} />
             <span className="font-display text-xs">Show archived</span>
           </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Switch
+              checked={showRejected}
+              onCheckedChange={(v) => {
+                setShowRejected(v);
+                if (!v) setRejectedOnly(false);
+              }}
+            />
+            <span className="font-display text-xs">Show rejected</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Switch
+              checked={rejectedOnly}
+              onCheckedChange={(v) => {
+                setRejectedOnly(v);
+                if (v) setShowRejected(true);
+              }}
+            />
+            <span className="font-display text-xs">Rejected only</span>
+          </label>
           <span className="font-display text-[11px] text-muted-foreground ml-auto">
             {items.length} image{items.length === 1 ? "" : "s"}
           </span>
