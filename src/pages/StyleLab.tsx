@@ -196,6 +196,7 @@ export default function StyleLab() {
     setResults(seeded);
     setRunning(true);
     setCancelRequested(false);
+    cancelRef.current = false;
     setCurrentIndex(0);
 
     for (let i = 0; i < prompts.length; i++) {
