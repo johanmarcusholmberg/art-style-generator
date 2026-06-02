@@ -16,11 +16,14 @@ import {
   Star,
   Heart,
   Archive as ArchiveIcon,
+  Ban,
+  FolderPlus,
   X,
   RefreshCcw,
 } from "lucide-react";
 
 import RouteBadge from "@/components/RouteBadge";
+import CollectionsManager from "@/components/CollectionsManager";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -31,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,6 +43,7 @@ import {
   setImageRating,
   setImageFavorite,
   setImageArchived,
+  setImageRejected,
   type ImageRating,
   type ReviewImage,
 } from "@/lib/style-lab";
@@ -81,8 +85,11 @@ export default function ReviewGrid() {
   const [minRating, setMinRating] = useState<number>(0);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [showRejected, setShowRejected] = useState(false);
+  const [rejectedOnly, setRejectedOnly] = useState(false);
 
   const [preview, setPreview] = useState<ReviewImage | null>(null);
+  const [collectionFor, setCollectionFor] = useState<ReviewImage | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,6 +100,8 @@ export default function ReviewGrid() {
         minRating,
         favoritesOnly,
         includeArchived: showArchived,
+        includeRejected: showRejected || rejectedOnly,
+        rejectedOnly,
       });
       setItems(rows);
     } catch (err) {
@@ -102,7 +111,7 @@ export default function ReviewGrid() {
     } finally {
       setLoading(false);
     }
-  }, [styleFilter, providerFilter, minRating, favoritesOnly, showArchived, toast]);
+  }, [styleFilter, providerFilter, minRating, favoritesOnly, showArchived, showRejected, rejectedOnly, toast]);
 
   useEffect(() => {
     void load();
@@ -147,7 +156,6 @@ export default function ReviewGrid() {
     patch(row.id, { is_archived: next });
     try {
       await setImageArchived(row.id, next);
-      // If we're hiding archived, drop it from view.
       if (next && !showArchived) {
         setItems((prev) => prev.filter((r) => r.id !== row.id));
       }
@@ -156,6 +164,20 @@ export default function ReviewGrid() {
       patch(row.id, { is_archived: row.is_archived });
     }
   };
+  const handleReject = async (row: ReviewImage) => {
+    const next = !row.is_rejected;
+    patch(row.id, { is_rejected: next });
+    try {
+      await setImageRejected(row.id, next);
+      if (next && !showRejected && !rejectedOnly) {
+        setItems((prev) => prev.filter((r) => r.id !== row.id));
+      }
+    } catch (e) {
+      console.warn("reject failed", e);
+      patch(row.id, { is_rejected: row.is_rejected });
+    }
+  };
+
 
   return (
     <div className="space-y-4">
@@ -248,6 +270,26 @@ export default function ReviewGrid() {
             <Switch checked={showArchived} onCheckedChange={setShowArchived} />
             <span className="font-display text-xs">Show archived</span>
           </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Switch
+              checked={showRejected}
+              onCheckedChange={(v) => {
+                setShowRejected(v);
+                if (!v) setRejectedOnly(false);
+              }}
+            />
+            <span className="font-display text-xs">Show rejected</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Switch
+              checked={rejectedOnly}
+              onCheckedChange={(v) => {
+                setRejectedOnly(v);
+                if (v) setShowRejected(true);
+              }}
+            />
+            <span className="font-display text-xs">Rejected only</span>
+          </label>
           <span className="font-display text-[11px] text-muted-foreground ml-auto">
             {items.length} image{items.length === 1 ? "" : "s"}
           </span>
@@ -276,6 +318,8 @@ export default function ReviewGrid() {
               onRate={(n) => handleRate(row, n)}
               onFav={() => handleFav(row)}
               onArchive={() => handleArchive(row)}
+              onReject={() => handleReject(row)}
+              onAddToCollection={() => setCollectionFor(row)}
             />
           ))}
         </div>
@@ -321,6 +365,16 @@ export default function ReviewGrid() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Collection assignment modal */}
+      <Dialog open={!!collectionFor} onOpenChange={(open) => !open && setCollectionFor(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">Add to collection</DialogTitle>
+          </DialogHeader>
+          {collectionFor && <CollectionsManager imageId={collectionFor.id} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -333,14 +387,17 @@ interface ReviewCardProps {
   onRate: (n: ImageRating) => void;
   onFav: () => void;
   onArchive: () => void;
+  onReject: () => void;
+  onAddToCollection: () => void;
 }
 
-function ReviewCard({ row, onOpen, onRate, onFav, onArchive }: ReviewCardProps) {
+function ReviewCard({ row, onOpen, onRate, onFav, onArchive, onReject, onAddToCollection }: ReviewCardProps) {
   return (
     <div
       className={cn(
         "rounded-md border border-border bg-card overflow-hidden flex flex-col",
-        row.is_archived && "opacity-60",
+        (row.is_archived || row.is_rejected) && "opacity-60",
+        row.is_rejected && "border-destructive/40",
       )}
     >
       <button
@@ -359,7 +416,12 @@ function ReviewCard({ row, onOpen, onRate, onFav, onArchive }: ReviewCardProps) 
             <Heart className="h-3 w-3 fill-current" />
           </span>
         )}
-        {row.is_archived && (
+        {row.is_rejected && (
+          <span className="absolute top-1.5 right-1.5 rounded-sm bg-destructive/80 px-1.5 py-0.5 text-[9px] font-display uppercase tracking-wider text-destructive-foreground">
+            Rejected
+          </span>
+        )}
+        {!row.is_rejected && row.is_archived && (
           <span className="absolute top-1.5 right-1.5 rounded-sm bg-background/80 px-1.5 py-0.5 text-[9px] font-display uppercase tracking-wider text-muted-foreground">
             Archived
           </span>
@@ -418,6 +480,15 @@ function ReviewCard({ row, onOpen, onRate, onFav, onArchive }: ReviewCardProps) 
           </button>
           <button
             type="button"
+            onClick={onAddToCollection}
+            className="p-1 rounded-sm border border-border text-muted-foreground hover:bg-muted transition-colors"
+            aria-label="Add to collection"
+            title="Add to collection"
+          >
+            <FolderPlus className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
             onClick={onArchive}
             className={cn(
               "p-1 rounded-sm border transition-colors",
@@ -425,10 +496,24 @@ function ReviewCard({ row, onOpen, onRate, onFav, onArchive }: ReviewCardProps) 
                 ? "bg-muted-foreground/15 border-muted-foreground/40 text-foreground"
                 : "border-border text-muted-foreground hover:bg-muted",
             )}
-            aria-label={row.is_archived ? "Unarchive" : "Archive (reject)"}
-            title={row.is_archived ? "Unarchive" : "Archive (reject)"}
+            aria-label={row.is_archived ? "Unarchive" : "Archive"}
+            title={row.is_archived ? "Unarchive" : "Archive (hide but maybe useful later)"}
           >
             <ArchiveIcon className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={onReject}
+            className={cn(
+              "p-1 rounded-sm border transition-colors",
+              row.is_rejected
+                ? "bg-destructive/15 border-destructive/40 text-destructive"
+                : "border-border text-muted-foreground hover:bg-muted",
+            )}
+            aria-label={row.is_rejected ? "Unreject" : "Reject"}
+            title={row.is_rejected ? "Unreject" : "Reject (bad output)"}
+          >
+            <Ban className="h-3 w-3" />
           </button>
         </div>
       </div>

@@ -35,6 +35,14 @@ export async function setImageArchived(id: string, value: boolean): Promise<void
   if (error) throw error;
 }
 
+export async function setImageRejected(id: string, value: boolean): Promise<void> {
+  const { error } = await supabase
+    .from("generated_images")
+    .update({ is_rejected: value } as never)
+    .eq("id", id);
+  if (error) throw error;
+}
+
 /**
  * Find the most recently inserted gallery row that matches a prompt and
  * style key. Used by Style Lab to attach an id to each just-saved result
@@ -78,6 +86,7 @@ export interface ReviewImage {
   rating: number;
   is_favorite: boolean;
   is_archived: boolean;
+  is_rejected: boolean;
   publicUrl: string;
   masterUrl: string;
 }
@@ -89,6 +98,8 @@ export interface FetchReviewOptions {
   favoritesOnly?: boolean;
   includeArchived?: boolean;
   archivedOnly?: boolean;
+  includeRejected?: boolean;
+  rejectedOnly?: boolean;
   limit?: number;
 }
 
@@ -96,7 +107,7 @@ export async function fetchReviewImages(opts: FetchReviewOptions = {}): Promise<
   let q = supabase
     .from("generated_images")
     .select(
-      "id,prompt,mode,created_at,storage_path,master_storage_path,generation_provider,generation_model,execution_route,fallback_used,rating,is_favorite,is_archived,deleted_at",
+      "id,prompt,mode,created_at,storage_path,master_storage_path,generation_provider,generation_model,execution_route,fallback_used,rating,is_favorite,is_archived,is_rejected,deleted_at",
     )
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -110,6 +121,11 @@ export async function fetchReviewImages(opts: FetchReviewOptions = {}): Promise<
     q = q.eq("is_archived", true);
   } else if (!opts.includeArchived) {
     q = q.eq("is_archived", false);
+  }
+  if (opts.rejectedOnly) {
+    q = q.eq("is_rejected", true);
+  } else if (!opts.includeRejected) {
+    q = q.eq("is_rejected", false);
   }
 
   const { data, error } = await q;
@@ -135,6 +151,7 @@ export async function fetchReviewImages(opts: FetchReviewOptions = {}): Promise<
       rating: Number(r.rating ?? 0),
       is_favorite: Boolean(r.is_favorite),
       is_archived: Boolean(r.is_archived),
+      is_rejected: Boolean(r.is_rejected),
       publicUrl,
       masterUrl,
     };
