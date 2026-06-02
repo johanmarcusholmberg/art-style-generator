@@ -156,7 +156,6 @@ export default function ReviewGrid() {
     patch(row.id, { is_archived: next });
     try {
       await setImageArchived(row.id, next);
-      // If we're hiding archived, drop it from view.
       if (next && !showArchived) {
         setItems((prev) => prev.filter((r) => r.id !== row.id));
       }
@@ -165,6 +164,20 @@ export default function ReviewGrid() {
       patch(row.id, { is_archived: row.is_archived });
     }
   };
+  const handleReject = async (row: ReviewImage) => {
+    const next = !row.is_rejected;
+    patch(row.id, { is_rejected: next });
+    try {
+      await setImageRejected(row.id, next);
+      if (next && !showRejected && !rejectedOnly) {
+        setItems((prev) => prev.filter((r) => r.id !== row.id));
+      }
+    } catch (e) {
+      console.warn("reject failed", e);
+      patch(row.id, { is_rejected: row.is_rejected });
+    }
+  };
+
 
   return (
     <div className="space-y-4">
