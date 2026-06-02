@@ -227,6 +227,8 @@ export type Database = {
           generation_provider: string | null
           generation_strategy: string | null
           id: string
+          is_archived: boolean
+          is_favorite: boolean
           master_height: number | null
           master_image_url: string | null
           master_storage_path: string | null
@@ -245,6 +247,7 @@ export type Database = {
           provider_strategy: string | null
           quality_mode: string | null
           quality_profile: string | null
+          rating: number
           requested_model_id: string | null
           resolved_model_id: string | null
           route: string | null
@@ -299,6 +302,8 @@ export type Database = {
           generation_provider?: string | null
           generation_strategy?: string | null
           id?: string
+          is_archived?: boolean
+          is_favorite?: boolean
           master_height?: number | null
           master_image_url?: string | null
           master_storage_path?: string | null
@@ -317,6 +322,7 @@ export type Database = {
           provider_strategy?: string | null
           quality_mode?: string | null
           quality_profile?: string | null
+          rating?: number
           requested_model_id?: string | null
           resolved_model_id?: string | null
           route?: string | null
@@ -371,6 +377,8 @@ export type Database = {
           generation_provider?: string | null
           generation_strategy?: string | null
           id?: string
+          is_archived?: boolean
+          is_favorite?: boolean
           master_height?: number | null
           master_image_url?: string | null
           master_storage_path?: string | null
@@ -389,6 +397,7 @@ export type Database = {
           provider_strategy?: string | null
           quality_mode?: string | null
           quality_profile?: string | null
+          rating?: number
           requested_model_id?: string | null
           resolved_model_id?: string | null
           route?: string | null
