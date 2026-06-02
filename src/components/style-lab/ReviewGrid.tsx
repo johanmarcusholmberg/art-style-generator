@@ -396,7 +396,8 @@ function ReviewCard({ row, onOpen, onRate, onFav, onArchive, onReject, onAddToCo
     <div
       className={cn(
         "rounded-md border border-border bg-card overflow-hidden flex flex-col",
-        row.is_archived && "opacity-60",
+        (row.is_archived || row.is_rejected) && "opacity-60",
+        row.is_rejected && "border-destructive/40",
       )}
     >
       <button
