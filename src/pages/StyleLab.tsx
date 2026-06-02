@@ -199,7 +199,7 @@ export default function StyleLab() {
     setCurrentIndex(0);
 
     for (let i = 0; i < prompts.length; i++) {
-      if (cancelRequested) break;
+      if (cancelRef.current) break;
       setCurrentIndex(i);
       const prompt = prompts[i];
       setResults((prev) =>
