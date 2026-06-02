@@ -36,6 +36,7 @@ interface NavLink {
 const BASE_LINKS: NavLink[] = [
   { to: "/", label: "Generate", matchPrefixes: ["/"] },
   { to: "/batch", label: "Batch", matchPrefixes: ["/batch"] },
+  { to: "/style-lab", label: "Style Lab", matchPrefixes: ["/style-lab"] },
 ];
 
 const SECONDARY_LINKS: NavLink[] = [
