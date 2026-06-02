@@ -151,6 +151,7 @@ export async function fetchReviewImages(opts: FetchReviewOptions = {}): Promise<
       rating: Number(r.rating ?? 0),
       is_favorite: Boolean(r.is_favorite),
       is_archived: Boolean(r.is_archived),
+      is_rejected: Boolean(r.is_rejected),
       publicUrl,
       masterUrl,
     };
