@@ -92,6 +92,7 @@ const App = () => (
               <Route path="/blend" element={protect(<Blend />)} />
               <Route path="/compare" element={protect(<StyleCompare />)} />
               <Route path="/batch" element={protect(<BatchStudio />)} />
+              <Route path="/style-lab" element={protect(<StyleLab />)} />
               <Route path="/debug/providers" element={protect(<ProviderDebug />, true)} />
               <Route path="/style-control-panel" element={protect(<StyleControlPanel />, true)} />
 
