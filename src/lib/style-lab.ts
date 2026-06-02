@@ -35,6 +35,14 @@ export async function setImageArchived(id: string, value: boolean): Promise<void
   if (error) throw error;
 }
 
+export async function setImageRejected(id: string, value: boolean): Promise<void> {
+  const { error } = await supabase
+    .from("generated_images")
+    .update({ is_rejected: value } as never)
+    .eq("id", id);
+  if (error) throw error;
+}
+
 /**
  * Find the most recently inserted gallery row that matches a prompt and
  * style key. Used by Style Lab to attach an id to each just-saved result
