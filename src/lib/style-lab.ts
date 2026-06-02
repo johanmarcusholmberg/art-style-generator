@@ -61,3 +61,82 @@ export async function findRecentGalleryRow(opts: {
   if (error || !data || data.length === 0) return null;
   return { id: (data[0] as { id: string }).id };
 }
+
+// ── Review helpers ─────────────────────────────────────────────────────
+
+export interface ReviewImage {
+  id: string;
+  prompt: string;
+  mode: string;
+  created_at: string;
+  storage_path: string;
+  master_storage_path: string | null;
+  generation_provider: string | null;
+  generation_model: string | null;
+  execution_route: string | null;
+  fallback_used: boolean | null;
+  rating: number;
+  is_favorite: boolean;
+  is_archived: boolean;
+  publicUrl: string;
+  masterUrl: string;
+}
+
+export interface FetchReviewOptions {
+  mode?: string | null;
+  provider?: string | null;
+  minRating?: number;
+  favoritesOnly?: boolean;
+  includeArchived?: boolean;
+  archivedOnly?: boolean;
+  limit?: number;
+}
+
+export async function fetchReviewImages(opts: FetchReviewOptions = {}): Promise<ReviewImage[]> {
+  let q = supabase
+    .from("generated_images")
+    .select(
+      "id,prompt,mode,created_at,storage_path,master_storage_path,generation_provider,generation_model,execution_route,fallback_used,rating,is_favorite,is_archived,deleted_at",
+    )
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(opts.limit ?? 200);
+
+  if (opts.mode) q = q.eq("mode", opts.mode);
+  if (opts.provider) q = q.eq("generation_provider", opts.provider);
+  if (opts.minRating && opts.minRating > 0) q = q.gte("rating", opts.minRating);
+  if (opts.favoritesOnly) q = q.eq("is_favorite", true);
+  if (opts.archivedOnly) {
+    q = q.eq("is_archived", true);
+  } else if (!opts.includeArchived) {
+    q = q.eq("is_archived", false);
+  }
+
+  const { data, error } = await q;
+  if (error) throw error;
+
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  return rows.map((r) => {
+    const storagePath = String(r.storage_path ?? "");
+    const masterPath = (r.master_storage_path as string | null) || storagePath;
+    const publicUrl = supabase.storage.from("generated-images").getPublicUrl(storagePath).data.publicUrl;
+    const masterUrl = supabase.storage.from("generated-images").getPublicUrl(masterPath).data.publicUrl;
+    return {
+      id: String(r.id),
+      prompt: String(r.prompt ?? ""),
+      mode: String(r.mode ?? ""),
+      created_at: String(r.created_at ?? ""),
+      storage_path: storagePath,
+      master_storage_path: (r.master_storage_path as string | null) ?? null,
+      generation_provider: (r.generation_provider as string | null) ?? null,
+      generation_model: (r.generation_model as string | null) ?? null,
+      execution_route: (r.execution_route as string | null) ?? null,
+      fallback_used: (r.fallback_used as boolean | null) ?? null,
+      rating: Number(r.rating ?? 0),
+      is_favorite: Boolean(r.is_favorite),
+      is_archived: Boolean(r.is_archived),
+      publicUrl,
+      masterUrl,
+    };
+  });
+}
