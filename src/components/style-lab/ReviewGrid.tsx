@@ -480,6 +480,15 @@ function ReviewCard({ row, onOpen, onRate, onFav, onArchive, onReject, onAddToCo
           </button>
           <button
             type="button"
+            onClick={onAddToCollection}
+            className="p-1 rounded-sm border border-border text-muted-foreground hover:bg-muted transition-colors"
+            aria-label="Add to collection"
+            title="Add to collection"
+          >
+            <FolderPlus className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
             onClick={onArchive}
             className={cn(
               "p-1 rounded-sm border transition-colors",
@@ -487,10 +496,24 @@ function ReviewCard({ row, onOpen, onRate, onFav, onArchive, onReject, onAddToCo
                 ? "bg-muted-foreground/15 border-muted-foreground/40 text-foreground"
                 : "border-border text-muted-foreground hover:bg-muted",
             )}
-            aria-label={row.is_archived ? "Unarchive" : "Archive (reject)"}
-            title={row.is_archived ? "Unarchive" : "Archive (reject)"}
+            aria-label={row.is_archived ? "Unarchive" : "Archive"}
+            title={row.is_archived ? "Unarchive" : "Archive (hide but maybe useful later)"}
           >
             <ArchiveIcon className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={onReject}
+            className={cn(
+              "p-1 rounded-sm border transition-colors",
+              row.is_rejected
+                ? "bg-destructive/15 border-destructive/40 text-destructive"
+                : "border-border text-muted-foreground hover:bg-muted",
+            )}
+            aria-label={row.is_rejected ? "Unreject" : "Reject"}
+            title={row.is_rejected ? "Unreject" : "Reject (bad output)"}
+          >
+            <Ban className="h-3 w-3" />
           </button>
         </div>
       </div>
