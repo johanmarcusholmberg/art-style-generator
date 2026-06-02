@@ -86,6 +86,7 @@ export interface ReviewImage {
   rating: number;
   is_favorite: boolean;
   is_archived: boolean;
+  is_rejected: boolean;
   publicUrl: string;
   masterUrl: string;
 }
@@ -97,6 +98,8 @@ export interface FetchReviewOptions {
   favoritesOnly?: boolean;
   includeArchived?: boolean;
   archivedOnly?: boolean;
+  includeRejected?: boolean;
+  rejectedOnly?: boolean;
   limit?: number;
 }
 
