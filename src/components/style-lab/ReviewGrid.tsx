@@ -416,7 +416,12 @@ function ReviewCard({ row, onOpen, onRate, onFav, onArchive, onReject, onAddToCo
             <Heart className="h-3 w-3 fill-current" />
           </span>
         )}
-        {row.is_archived && (
+        {row.is_rejected && (
+          <span className="absolute top-1.5 right-1.5 rounded-sm bg-destructive/80 px-1.5 py-0.5 text-[9px] font-display uppercase tracking-wider text-destructive-foreground">
+            Rejected
+          </span>
+        )}
+        {!row.is_rejected && row.is_archived && (
           <span className="absolute top-1.5 right-1.5 rounded-sm bg-background/80 px-1.5 py-0.5 text-[9px] font-display uppercase tracking-wider text-muted-foreground">
             Archived
           </span>
