@@ -229,6 +229,7 @@ export type Database = {
           id: string
           is_archived: boolean
           is_favorite: boolean
+          is_rejected: boolean
           master_height: number | null
           master_image_url: string | null
           master_storage_path: string | null
@@ -304,6 +305,7 @@ export type Database = {
           id?: string
           is_archived?: boolean
           is_favorite?: boolean
+          is_rejected?: boolean
           master_height?: number | null
           master_image_url?: string | null
           master_storage_path?: string | null
@@ -379,6 +381,7 @@ export type Database = {
           id?: string
           is_archived?: boolean
           is_favorite?: boolean
+          is_rejected?: boolean
           master_height?: number | null
           master_image_url?: string | null
           master_storage_path?: string | null

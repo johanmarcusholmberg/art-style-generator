@@ -1,0 +1,2 @@
+ALTER TABLE public.generated_images ADD COLUMN IF NOT EXISTS is_rejected boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS generated_images_is_rejected_idx ON public.generated_images (is_rejected);
