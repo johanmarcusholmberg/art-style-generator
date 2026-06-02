@@ -387,9 +387,11 @@ interface ReviewCardProps {
   onRate: (n: ImageRating) => void;
   onFav: () => void;
   onArchive: () => void;
+  onReject: () => void;
+  onAddToCollection: () => void;
 }
 
-function ReviewCard({ row, onOpen, onRate, onFav, onArchive }: ReviewCardProps) {
+function ReviewCard({ row, onOpen, onRate, onFav, onArchive, onReject, onAddToCollection }: ReviewCardProps) {
   return (
     <div
       className={cn(
