@@ -464,6 +464,10 @@ export default function StyleLab() {
             <TabsContent value="insights">
               <InsightsPanel />
             </TabsContent>
+
+            <TabsContent value="collections">
+              <CollectionsWorkspace />
+            </TabsContent>
           </Tabs>
         </div>
       </main>
