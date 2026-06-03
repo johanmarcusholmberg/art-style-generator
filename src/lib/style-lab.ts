@@ -157,3 +157,195 @@ export async function fetchReviewImages(opts: FetchReviewOptions = {}): Promise<
     };
   });
 }
+
+// ── Collection workspace helpers (Phase 5) ─────────────────────────────
+
+export interface CollectionImage extends ReviewImage {
+  added_at: string;
+}
+
+export interface CollectionSummary {
+  id: string;
+  name: string;
+  created_at: string;
+  imageCount: number;
+  avgRating: number;        // ratings > 0 only; 0 if no rated images
+  ratedCount: number;
+  favoriteCount: number;
+  rejectCount: number;
+  archivedCount: number;
+}
+
+/**
+ * Loads all collections + per-collection stats. One query for collections,
+ * one for membership rows, then chunked lookups for image metadata.
+ */
+export async function fetchCollectionsWithStats(): Promise<CollectionSummary[]> {
+  const { data: cols, error: cErr } = await supabase
+    .from("collections")
+    .select("id,name,created_at")
+    .order("created_at", { ascending: false });
+  if (cErr) throw cErr;
+  const collections = (cols ?? []) as Array<{ id: string; name: string; created_at: string }>;
+  if (collections.length === 0) return [];
+
+  const { data: links, error: lErr } = await supabase
+    .from("collection_images")
+    .select("collection_id,image_id");
+  if (lErr) throw lErr;
+  const rows = (links ?? []) as Array<{ collection_id: string; image_id: string }>;
+  const imageIds = Array.from(new Set(rows.map((r) => r.image_id)));
+
+  const imageMap = new Map<
+    string,
+    { rating: number; is_favorite: boolean; is_archived: boolean; is_rejected: boolean }
+  >();
+  if (imageIds.length > 0) {
+    const chunkSize = 500;
+    for (let i = 0; i < imageIds.length; i += chunkSize) {
+      const slice = imageIds.slice(i, i + chunkSize);
+      const { data, error } = await supabase
+        .from("generated_images")
+        .select("id,rating,is_favorite,is_archived,is_rejected,deleted_at")
+        .in("id", slice)
+        .is("deleted_at", null);
+      if (error) throw error;
+      ((data ?? []) as Array<Record<string, unknown>>).forEach((r) => {
+        imageMap.set(String(r.id), {
+          rating: Number(r.rating ?? 0),
+          is_favorite: Boolean(r.is_favorite),
+          is_archived: Boolean(r.is_archived),
+          is_rejected: Boolean(r.is_rejected),
+        });
+      });
+    }
+  }
+
+  const byCol = new Map<string, string[]>();
+  rows.forEach((r) => {
+    const arr = byCol.get(r.collection_id) ?? [];
+    arr.push(r.image_id);
+    byCol.set(r.collection_id, arr);
+  });
+
+  return collections.map((c) => {
+    const ids = byCol.get(c.id) ?? [];
+    let ratingSum = 0;
+    let ratedCount = 0;
+    let favoriteCount = 0;
+    let rejectCount = 0;
+    let archivedCount = 0;
+    let liveCount = 0;
+    ids.forEach((id) => {
+      const meta = imageMap.get(id);
+      if (!meta) return;
+      liveCount += 1;
+      if (meta.rating > 0) {
+        ratingSum += meta.rating;
+        ratedCount += 1;
+      }
+      if (meta.is_favorite) favoriteCount += 1;
+      if (meta.is_rejected) rejectCount += 1;
+      if (meta.is_archived) archivedCount += 1;
+    });
+    return {
+      id: c.id,
+      name: c.name,
+      created_at: c.created_at,
+      imageCount: liveCount,
+      avgRating: ratedCount > 0 ? ratingSum / ratedCount : 0,
+      ratedCount,
+      favoriteCount,
+      rejectCount,
+      archivedCount,
+    };
+  });
+}
+
+/** Load all images for a collection, joined with their metadata. */
+export async function fetchCollectionImages(collectionId: string): Promise<CollectionImage[]> {
+  const { data, error } = await supabase
+    .from("collection_images")
+    .select(
+      "added_at,image_id,generated_images!inner(id,prompt,mode,created_at,storage_path,master_storage_path,generation_provider,generation_model,execution_route,fallback_used,rating,is_favorite,is_archived,is_rejected,deleted_at)",
+    )
+    .eq("collection_id", collectionId);
+  if (error) throw error;
+
+  const rows = (data ?? []) as Array<{
+    added_at: string;
+    image_id: string;
+    generated_images: Record<string, unknown> | null;
+  }>;
+
+  return rows
+    .filter((r) => r.generated_images && !(r.generated_images as { deleted_at?: unknown }).deleted_at)
+    .map((r) => {
+      const g = r.generated_images as Record<string, unknown>;
+      const storagePath = String(g.storage_path ?? "");
+      const masterPath = (g.master_storage_path as string | null) || storagePath;
+      const publicUrl = supabase.storage.from("generated-images").getPublicUrl(storagePath).data.publicUrl;
+      const masterUrl = supabase.storage.from("generated-images").getPublicUrl(masterPath).data.publicUrl;
+      return {
+        id: String(g.id),
+        prompt: String(g.prompt ?? ""),
+        mode: String(g.mode ?? ""),
+        created_at: String(g.created_at ?? ""),
+        storage_path: storagePath,
+        master_storage_path: (g.master_storage_path as string | null) ?? null,
+        generation_provider: (g.generation_provider as string | null) ?? null,
+        generation_model: (g.generation_model as string | null) ?? null,
+        execution_route: (g.execution_route as string | null) ?? null,
+        fallback_used: (g.fallback_used as boolean | null) ?? null,
+        rating: Number(g.rating ?? 0),
+        is_favorite: Boolean(g.is_favorite),
+        is_archived: Boolean(g.is_archived),
+        is_rejected: Boolean(g.is_rejected),
+        publicUrl,
+        masterUrl,
+        added_at: String(r.added_at ?? ""),
+      };
+    })
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+}
+
+/** CSV exporter for the spec'd fields. */
+export function buildCollectionCsv(images: CollectionImage[]): string {
+  const header = [
+    "image_id",
+    "prompt",
+    "style",
+    "provider",
+    "model",
+    "rating",
+    "favorite",
+    "archived",
+    "rejected",
+    "created_at",
+  ];
+  const escape = (v: unknown): string => {
+    const s = v == null ? "" : String(v);
+    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+  const lines = [header.join(",")];
+  for (const img of images) {
+    lines.push(
+      [
+        img.id,
+        img.prompt,
+        img.mode,
+        img.generation_provider ?? "",
+        img.generation_model ?? "",
+        img.rating,
+        img.is_favorite ? "true" : "false",
+        img.is_archived ? "true" : "false",
+        img.is_rejected ? "true" : "false",
+        img.created_at,
+      ]
+        .map(escape)
+        .join(","),
+    );
+  }
+  return lines.join("\n");
+}
