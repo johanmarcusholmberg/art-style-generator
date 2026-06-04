@@ -312,17 +312,15 @@ export default function StyleLab() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-h-72">
-                    {STYLE_CATALOG.filter((s) => ROUTE_TO_STYLE_KEY[s.route]).map(
-                      (s) => (
-                        <SelectItem
-                          key={s.route}
-                          value={s.route}
-                          className="font-display text-sm"
-                        >
-                          {s.emoji} {s.name}
-                        </SelectItem>
-                      ),
-                    )}
+                    {STYLE_LAB_STYLES.map((s) => (
+                      <SelectItem
+                        key={s.route}
+                        value={s.route}
+                        className="font-display text-sm"
+                      >
+                        {s.emoji} {s.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
