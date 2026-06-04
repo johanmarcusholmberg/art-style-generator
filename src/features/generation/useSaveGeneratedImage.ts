@@ -8,7 +8,6 @@
 import { useCallback, useState } from "react";
 import { saveToGallery, replaceInGallery, type GallerySaveOptions } from "@/lib/gallery";
 import { recordAssetCostEvent } from "@/lib/cost-events";
-import { supabase } from "@/integrations/supabase/client";
 
 export function useSaveGeneratedImage() {
   const [isSaving, setIsSaving] = useState(false);
