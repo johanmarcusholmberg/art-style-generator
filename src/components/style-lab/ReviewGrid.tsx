@@ -1,13 +1,11 @@
 /**
- * Style Lab — Review Grid (Phase 2).
+ * Style Lab — Review Grid.
  *
- * Browse saved generated_images with filters and inline curation actions.
- * Limitations:
- *  - No `is_rejected` column exists in `generated_images`; reject is mapped
- *    to "archive" for now and a "Reject" affordance is omitted (acceptance
- *    criteria mark it as optional / "if exists").
- *  - Preview uses a lightweight modal — not the full Gallery lightbox,
- *    which is tightly coupled to many enhancement/export dialogs.
+ * Browse saved generated_images with filters (style, provider, min rating,
+ * favorites, archived, rejected) and inline curation actions (rate /
+ * favorite / archive / reject / add to collection). Preview uses a
+ * lightweight modal rather than the full Gallery lightbox, which is
+ * tightly coupled to enhancement / export dialogs.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -47,30 +45,11 @@ import {
   type ImageRating,
   type ReviewImage,
 } from "@/lib/style-lab";
-import { STYLE_CATALOG } from "@/lib/style-catalog";
+import { STYLE_LAB_STYLES } from "@/lib/style-lab-styles";
 
-const STYLE_KEYS: { value: string; label: string }[] = [
-  { value: "japanese", label: "🏯 Ukiyo-e" },
-  { value: "risograph", label: "📠 Risograph" },
-  { value: "screenprint", label: "🖨️ Screen Print" },
-  { value: "xeroxzine", label: "📋 Xerox Zine" },
-  { value: "lineart", label: "✒️ Line Art" },
-  { value: "botanical", label: "🌿 Botanical" },
-  { value: "tattooflash", label: "🔥 Tattoo Flash" },
-  { value: "retrocomic", label: "💥 Retro Comic" },
-  { value: "whimsicaljapanese", label: "🦊 Whimsical Japanese" },
-  { value: "modernistcocktail", label: "🍸 Modernist Cocktail" },
-  { value: "mediterraneanheritage", label: "🚪 Mediterranean Heritage" },
-  { value: "scandinavianposter", label: "🇸🇪 Scandinavian" },
-  { value: "brutalistposter", label: "⬛ Brutalist" },
-  { value: "urbannoir", label: "🖤 Urban Noir" },
-  { value: "minimalism", label: "◻ Minimalism" },
-  { value: "graffiti", label: "🎨 Graffiti" },
-  { value: "pulpmagazine", label: "📕 Pulp Magazine" },
-  { value: "popart", label: "🎯 Pop Art" },
-  { value: "vintage", label: "🍷 Vintage" },
-];
-void STYLE_CATALOG; // keep import lint-clean
+const STYLE_KEYS: { value: string; label: string }[] = STYLE_LAB_STYLES.map(
+  (s) => ({ value: s.styleKey, label: `${s.emoji} ${s.name}` }),
+);
 
 const ALL = "__all__";
 
