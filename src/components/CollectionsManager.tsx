@@ -18,6 +18,7 @@ import {
   addToCollection,
   removeFromCollection,
   fetchCollectionImageIds,
+  CollectionValidationError,
   type Collection,
 } from "@/lib/collections";
 import { toast } from "sonner";
@@ -65,8 +66,12 @@ export default function CollectionsManager({ imageId, onFilterChange, activeFilt
       setNewName("");
       await load();
       toast.success("Collection created", { duration: 3000 });
-    } catch {
-      toast.error("Failed to create collection");
+    } catch (e) {
+      if (e instanceof CollectionValidationError) {
+        toast.error(e.message);
+      } else {
+        toast.error("Failed to create collection");
+      }
     }
   };
 

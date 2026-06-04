@@ -596,7 +596,7 @@ export default function ImageGenerator({
       );
 
       const saveOpts = buildSaveOptions();
-      const result = await saveToGallery({
+      const { id: newId } = await saveToGallery({
         imageUrl: baseUrlForSave,
         prompt: finalPrompt,
         ...saveOpts,
@@ -616,40 +616,31 @@ export default function ImageGenerator({
         generationStrategy: modelSelection.generationStrategy ?? null,
         modelFallbackReason: lastModelFallbackReason,
       });
-      // Note: result is the master public URL
       setSavedToGallery(true);
       onImageSaved?.();
-      // Best-effort cost-event log; never blocks save UX.
+      // Cost-event log uses the id returned by saveToGallery — no race.
       try {
-        const { data } = await supabase
-          .from("generated_images")
-          .select("id")
-          .order("created_at", { ascending: false })
-          .limit(1);
-        const newId = (data?.[0] as { id?: string } | undefined)?.id;
-        if (newId) {
-          await recordAssetCostEvent({
-            imageId: newId,
-            eventType: "generation",
-            provider: lastRouteProvider || "lovable",
-            model: lastRouteModel || "google/gemini-3-pro-image-preview",
-            mode,
-            estimatedCost: lastEstimatedCost,
-            currency: lastCurrency,
-            status: "succeeded",
-            metadata: {
-              route: lastRouteLabel,
-              promptVersion: lastPromptVersion,
-              executionRoute: lastExecutionRoute,
-              requested_model_id: lastRequestedModelId,
-              resolved_model_id: lastResolvedModelId,
-              selected_adapter_id: lastSelectedAdapterId,
-              quality_profile: modelSelection.qualityProfile,
-              generation_strategy: modelSelection.generationStrategy,
-              model_fallback_reason: lastModelFallbackReason,
-            },
-          });
-        }
+        await recordAssetCostEvent({
+          imageId: newId,
+          eventType: "generation",
+          provider: lastRouteProvider || "lovable",
+          model: lastRouteModel || "google/gemini-3-pro-image-preview",
+          mode,
+          estimatedCost: lastEstimatedCost,
+          currency: lastCurrency,
+          status: "succeeded",
+          metadata: {
+            route: lastRouteLabel,
+            promptVersion: lastPromptVersion,
+            executionRoute: lastExecutionRoute,
+            requested_model_id: lastRequestedModelId,
+            resolved_model_id: lastResolvedModelId,
+            selected_adapter_id: lastSelectedAdapterId,
+            quality_profile: modelSelection.qualityProfile,
+            generation_strategy: modelSelection.generationStrategy,
+            model_fallback_reason: lastModelFallbackReason,
+          },
+        });
       } catch (e) {
         console.warn("[ImageGenerator] cost event skipped:", e);
       }

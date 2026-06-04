@@ -15,10 +15,33 @@ export async function fetchCollections(): Promise<Collection[]> {
   return data || [];
 }
 
+export class CollectionValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CollectionValidationError";
+  }
+}
+
 export async function createCollection(name: string): Promise<Collection> {
+  const trimmed = name.trim();
+  if (trimmed.length === 0) {
+    throw new CollectionValidationError("Collection name cannot be empty.");
+  }
+
+  // Case-insensitive duplicate check against existing collections.
+  const existing = await fetchCollections();
+  const dup = existing.find(
+    (c) => c.name.trim().toLowerCase() === trimmed.toLowerCase(),
+  );
+  if (dup) {
+    throw new CollectionValidationError(
+      `A collection named "${dup.name}" already exists.`,
+    );
+  }
+
   const { data, error } = await supabase
     .from("collections")
-    .insert({ name })
+    .insert({ name: trimmed })
     .select()
     .single();
   if (error) throw error;

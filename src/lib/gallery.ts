@@ -154,78 +154,86 @@ export async function saveToGallery(opts: GallerySaveOptions) {
   }
 
 
-  const { error: dbError } = await supabase.from("generated_images").insert({
-    prompt: opts.prompt,
-    mode: opts.mode,
-    aspect_ratio: opts.aspectRatio,
-    print_size: opts.printSize,
-    storage_path: base.filename,
-    enhanced_storage_path: enhancedPath,
-    master_storage_path: masterPath,
-    quality_mode: opts.qualityMode || "quality",
-    target_ppi: opts.targetPpi || null,
-    target_width_px: opts.targetWidthPx || null,
-    target_height_px: opts.targetHeightPx || null,
-    actual_width_px: actualWidthPx || null,
-    actual_height_px: actualHeightPx || null,
-    enhanced: opts.enhanced || !!enhancedPath,
-    print_format_id: opts.printFormatId || null,
-    generation_mode: opts.generationMode || null,
-    source_width: opts.sourceWidth || null,
-    source_height: opts.sourceHeight || null,
-    export_width: opts.exportWidth || null,
-    export_height: opts.exportHeight || null,
-    export_ready: opts.exportReady || false,
-    export_type: opts.exportType || null,
-    upscale_applied: opts.upscaleApplied || !!enhancedPath,
-    upscale_method: opts.upscaleMethod || null,
-    crop_mode: opts.cropMode || null,
-    padding_mode: opts.paddingMode || null,
-    enhancement_model: opts.enhancementModel || null,
-    upscale_factor: opts.upscaleFactor || null,
-    base_width_px: opts.baseWidthPx || null,
-    base_height_px: opts.baseHeightPx || null,
-    enhanced_width_px: opts.enhancedWidthPx || null,
-    enhanced_height_px: opts.enhancedHeightPx || null,
-    generation_provider: opts.generationProvider || null,
-    generation_model: opts.generationModel || null,
-    provider_strategy: opts.providerStrategy || null,
-    fallback_used: opts.fallbackUsed || false,
-    execution_route: opts.executionRoute || null,
-    // ── Part C: asset metadata foundation ──
-    asset_role:
-      opts.assetRole ||
-      (enhancedPath ? "enhanced_master" : "base_generation"),
-    provider: opts.provider || null,
-    model: opts.model || null,
-    route: opts.route || null,
-    estimated_cost: opts.estimatedCost ?? null,
-    currency: opts.currency || "USD",
-    prompt_version: opts.promptVersion || null,
-    base_image_url: opts.baseImageUrl || null,
-    master_image_url: opts.masterImageUrl || null,
-    master_width: opts.masterWidth || null,
-    master_height: opts.masterHeight || null,
-    print_readiness: opts.printReadiness || null,
-    source_image_url: opts.sourceImageUrl || null,
-    source_storage_path: opts.sourceStoragePath || null,
-    source_file_name: opts.sourceFileName || null,
-    requested_model_id: opts.requestedModelId ?? null,
-    resolved_model_id: opts.resolvedModelId ?? null,
-    selected_adapter_id: opts.selectedAdapterId ?? null,
-    quality_profile: opts.qualityProfile ?? null,
-    generation_strategy: opts.generationStrategy ?? null,
-    model_fallback_reason: opts.modelFallbackReason ?? null,
-  } as any);
+  const { data: inserted, error: dbError } = await supabase
+    .from("generated_images")
+    .insert({
+      prompt: opts.prompt,
+      mode: opts.mode,
+      aspect_ratio: opts.aspectRatio,
+      print_size: opts.printSize,
+      storage_path: base.filename,
+      enhanced_storage_path: enhancedPath,
+      master_storage_path: masterPath,
+      quality_mode: opts.qualityMode || "quality",
+      target_ppi: opts.targetPpi || null,
+      target_width_px: opts.targetWidthPx || null,
+      target_height_px: opts.targetHeightPx || null,
+      actual_width_px: actualWidthPx || null,
+      actual_height_px: actualHeightPx || null,
+      enhanced: opts.enhanced || !!enhancedPath,
+      print_format_id: opts.printFormatId || null,
+      generation_mode: opts.generationMode || null,
+      source_width: opts.sourceWidth || null,
+      source_height: opts.sourceHeight || null,
+      export_width: opts.exportWidth || null,
+      export_height: opts.exportHeight || null,
+      export_ready: opts.exportReady || false,
+      export_type: opts.exportType || null,
+      upscale_applied: opts.upscaleApplied || !!enhancedPath,
+      upscale_method: opts.upscaleMethod || null,
+      crop_mode: opts.cropMode || null,
+      padding_mode: opts.paddingMode || null,
+      enhancement_model: opts.enhancementModel || null,
+      upscale_factor: opts.upscaleFactor || null,
+      base_width_px: opts.baseWidthPx || null,
+      base_height_px: opts.baseHeightPx || null,
+      enhanced_width_px: opts.enhancedWidthPx || null,
+      enhanced_height_px: opts.enhancedHeightPx || null,
+      generation_provider: opts.generationProvider || null,
+      generation_model: opts.generationModel || null,
+      provider_strategy: opts.providerStrategy || null,
+      fallback_used: opts.fallbackUsed || false,
+      execution_route: opts.executionRoute || null,
+      // ── Part C: asset metadata foundation ──
+      asset_role:
+        opts.assetRole ||
+        (enhancedPath ? "enhanced_master" : "base_generation"),
+      provider: opts.provider || null,
+      model: opts.model || null,
+      route: opts.route || null,
+      estimated_cost: opts.estimatedCost ?? null,
+      currency: opts.currency || "USD",
+      prompt_version: opts.promptVersion || null,
+      base_image_url: opts.baseImageUrl || null,
+      master_image_url: opts.masterImageUrl || null,
+      master_width: opts.masterWidth || null,
+      master_height: opts.masterHeight || null,
+      print_readiness: opts.printReadiness || null,
+      source_image_url: opts.sourceImageUrl || null,
+      source_storage_path: opts.sourceStoragePath || null,
+      source_file_name: opts.sourceFileName || null,
+      requested_model_id: opts.requestedModelId ?? null,
+      resolved_model_id: opts.resolvedModelId ?? null,
+      selected_adapter_id: opts.selectedAdapterId ?? null,
+      quality_profile: opts.qualityProfile ?? null,
+      generation_strategy: opts.generationStrategy ?? null,
+      model_fallback_reason: opts.modelFallbackReason ?? null,
+    } as any)
+    .select("id")
+    .single();
 
   if (dbError) throw dbError;
 
-  // Return the master public URL
+  // Return the master public URL + the inserted row id so callers can
+  // reliably target the new row without best-effort lookups.
   const { data: masterUrlData } = supabase.storage
     .from("generated-images")
     .getPublicUrl(masterPath);
 
-  return masterUrlData.publicUrl;
+  return {
+    id: (inserted as { id: string }).id,
+    publicUrl: masterUrlData.publicUrl,
+  };
 }
 
 /** Helper to resolve a storage path to a public URL */

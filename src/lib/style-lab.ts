@@ -1,74 +1,49 @@
 /**
- * Style Lab — small helpers for curation fields on generated_images.
+ * Style Lab — backend helpers.
  *
- * Phase 1: lightweight DB updates for rating / favorite / archive. Kept
- * isolated from src/lib/gallery.ts so future Style Lab phases can grow
- * here without bloating the gallery module.
+ * Curation field updates (rating / favorite / archive / reject), Review
+ * fetch + filters, and Collection workspace queries. The Style Lab UI
+ * (Test / Review / Insights / Collections tabs) is built on top of these
+ * helpers; analytics aggregation lives in `style-lab-insights.ts`.
  */
 
 import { supabase } from "@/integrations/supabase/client";
 
 export type ImageRating = 0 | 1 | 2 | 3 | 4 | 5;
 
-export async function setImageRating(id: string, rating: ImageRating): Promise<void> {
+// New curation columns are not in the generated Supabase types yet, so
+// the update payloads are cast through `never`. Each helper is a tiny
+// single-purpose write and the column names are validated by the DB.
+type CurationUpdate =
+  | { rating: ImageRating }
+  | { is_favorite: boolean }
+  | { is_archived: boolean }
+  | { is_rejected: boolean };
+
+async function updateCurationField(id: string, update: CurationUpdate): Promise<void> {
   const { error } = await supabase
     .from("generated_images")
-    // Cast: new columns may not be in generated types yet.
-    .update({ rating } as never)
+    .update(update as never)
     .eq("id", id);
   if (error) throw error;
+}
+
+export async function setImageRating(id: string, rating: ImageRating): Promise<void> {
+  return updateCurationField(id, { rating });
 }
 
 export async function setImageFavorite(id: string, value: boolean): Promise<void> {
-  const { error } = await supabase
-    .from("generated_images")
-    .update({ is_favorite: value } as never)
-    .eq("id", id);
-  if (error) throw error;
+  return updateCurationField(id, { is_favorite: value });
 }
 
 export async function setImageArchived(id: string, value: boolean): Promise<void> {
-  const { error } = await supabase
-    .from("generated_images")
-    .update({ is_archived: value } as never)
-    .eq("id", id);
-  if (error) throw error;
+  return updateCurationField(id, { is_archived: value });
 }
 
 export async function setImageRejected(id: string, value: boolean): Promise<void> {
-  const { error } = await supabase
-    .from("generated_images")
-    .update({ is_rejected: value } as never)
-    .eq("id", id);
-  if (error) throw error;
+  return updateCurationField(id, { is_rejected: value });
 }
 
-/**
- * Find the most recently inserted gallery row that matches a prompt and
- * style key. Used by Style Lab to attach an id to each just-saved result
- * so per-image actions (rate/favorite/archive) can target it.
- *
- * Best-effort — returns null if nothing matches within `windowSeconds`.
- */
-export async function findRecentGalleryRow(opts: {
-  prompt: string;
-  mode: string;
-  withinSeconds?: number;
-}): Promise<{ id: string } | null> {
-  const since = new Date(
-    Date.now() - (opts.withinSeconds ?? 60) * 1000,
-  ).toISOString();
-  const { data, error } = await supabase
-    .from("generated_images")
-    .select("id, created_at")
-    .eq("mode", opts.mode)
-    .eq("prompt", opts.prompt)
-    .gte("created_at", since)
-    .order("created_at", { ascending: false })
-    .limit(1);
-  if (error || !data || data.length === 0) return null;
-  return { id: (data[0] as { id: string }).id };
-}
 
 // ── Review helpers ─────────────────────────────────────────────────────
 

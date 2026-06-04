@@ -1,14 +1,15 @@
 /**
- * Style Lab — Phase 1.
+ * Style Lab.
  *
- * A focused workspace for testing a single style with many prompts.
- * Pick a style, paste prompts (one per line), pick a poster format,
- * then run sequentially. Each successful generation is auto-saved to
- * the gallery, and a live results grid grows as runs complete.
+ * Four-tab workspace for testing, reviewing, analysing, and curating
+ * generated artwork:
+ *   • Test        — run a single style across many prompts sequentially
+ *   • Review      — filter / rate / favorite / archive / reject results
+ *   • Insights    — read-only analytics on style + provider performance
+ *   • Collections — curate saved images into named collections
  *
- * Scope deliberately small: no Insights, no Review tab, no bulk
- * actions, no new providers, no new styles. Reuses the existing
- * generation router and `saveToGallery` helper.
+ * Reuses the existing generation router and `saveToGallery` helper —
+ * does not change generation behavior.
  */
 
 import { useMemo, useRef, useState } from "react";
@@ -42,7 +43,6 @@ import CollectionsWorkspace from "@/components/style-lab/CollectionsWorkspace";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-import { STYLE_CATALOG } from "@/lib/style-catalog";
 import {
   PRINT_FORMATS,
   DEFAULT_PRINT_FORMAT_ID,
@@ -54,36 +54,13 @@ import {
   setImageRating,
   setImageFavorite,
   setImageArchived,
-  findRecentGalleryRow,
   type ImageRating,
 } from "@/lib/style-lab";
+import {
+  STYLE_LAB_STYLES,
+  styleKeyForRoute,
+} from "@/lib/style-lab-styles";
 import type { NormalizedGenerationResponse } from "@/lib/generation-types";
-
-// ── Style key resolution ────────────────────────────────────────────────
-// The style catalog stores routes ("/whimsical-japanese") but the
-// generation router expects style keys (e.g. "whimsicaljapanese"). Map
-// each route to the matching key used everywhere else in the codebase.
-const ROUTE_TO_STYLE_KEY: Record<string, string> = {
-  "/": "japanese",
-  "/popart": "popart",
-  "/lineart": "lineart",
-  "/minimalism": "minimalism",
-  "/graffiti": "graffiti",
-  "/botanical": "botanical",
-  "/urbannoir": "urbannoir",
-  "/screenprint": "screenprint",
-  "/risograph": "risograph",
-  "/retrocomic": "retrocomic",
-  "/pulpmagazine": "pulpmagazine",
-  "/tattooflash": "tattooflash",
-  "/brutalistposter": "brutalistposter",
-  "/xeroxzine": "xeroxzine",
-  "/scandinavian-poster": "scandinavianposter",
-  "/vintage": "vintage",
-  "/whimsical-japanese": "whimsicaljapanese",
-  "/modernist-cocktail": "modernistcocktail",
-  "/mediterranean-heritage": "mediterraneanheritage",
-};
 
 interface ResultRow {
   id: string;
@@ -110,8 +87,8 @@ export default function StyleLab() {
 
   // Default to a popular concrete style so first-run works.
   const initialRoute =
-    STYLE_CATALOG.find((s) => s.route === "/mediterranean-heritage")?.route ??
-    STYLE_CATALOG[0].route;
+    STYLE_LAB_STYLES.find((s) => s.route === "/mediterranean-heritage")?.route ??
+    STYLE_LAB_STYLES[0].route;
 
   const [styleRoute, setStyleRoute] = useState<string>(initialRoute);
   const [promptText, setPromptText] = useState<string>("");
@@ -127,8 +104,10 @@ export default function StyleLab() {
   const completed = results.filter((r) => r.status === "saved" || r.status === "failed").length;
   const progressPct = total === 0 ? 0 : Math.round((completed / total) * 100);
 
-  const selectedStyleKey = ROUTE_TO_STYLE_KEY[styleRoute] ?? "japanese";
+  const selectedStyleKey =
+    styleKeyForRoute(styleRoute) ?? STYLE_LAB_STYLES[0].styleKey;
   const selectedFormat = getPrintFormat(formatId) ?? PRINT_FORMATS[0];
+
 
   // ── Per-result actions (optimistic UI + best-effort persistence) ────
   const updateResult = (idx: number, patch: Partial<ResultRow>) => {
@@ -224,7 +203,7 @@ export default function StyleLab() {
         });
 
         // Save to gallery with provider/model/route preserved.
-        await saveToGallery({
+        const { id: savedRowId } = await saveToGallery({
           imageUrl: response.imageUrl,
           prompt,
           mode: selectedStyleKey,
@@ -242,13 +221,6 @@ export default function StyleLab() {
           masterImageUrl: response.imageUrl,
         });
 
-        // Best-effort: find the just-saved row id so per-image actions can target it.
-        const recent = await findRecentGalleryRow({
-          prompt,
-          mode: selectedStyleKey,
-          withinSeconds: 90,
-        });
-
         setResults((prev) =>
           prev.map((r, idx) =>
             idx === i
@@ -257,7 +229,7 @@ export default function StyleLab() {
                   status: "saved",
                   imageUrl: response.imageUrl,
                   response,
-                  savedRowId: recent?.id,
+                  savedRowId,
                 }
               : r,
           ),
@@ -340,17 +312,15 @@ export default function StyleLab() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-h-72">
-                    {STYLE_CATALOG.filter((s) => ROUTE_TO_STYLE_KEY[s.route]).map(
-                      (s) => (
-                        <SelectItem
-                          key={s.route}
-                          value={s.route}
-                          className="font-display text-sm"
-                        >
-                          {s.emoji} {s.name}
-                        </SelectItem>
-                      ),
-                    )}
+                    {STYLE_LAB_STYLES.map((s) => (
+                      <SelectItem
+                        key={s.route}
+                        value={s.route}
+                        className="font-display text-sm"
+                      >
+                        {s.emoji} {s.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
