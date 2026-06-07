@@ -222,6 +222,40 @@ export function getPrintExportSize(
   return {
     width: Math.round(f.widthCm * CM_TO_INCHES * dpi),
     height: Math.round(f.heightCm * CM_TO_INCHES * dpi),
+}
+
+/**
+ * Convenience: width / height in millimetres for a format id. Derived
+ * from cm; centralised here so other consumers don't repeat the math.
+ */
+export function getPrintFormatMm(formatId: string): { widthMm: number; heightMm: number } {
+  const f = getPrintFormat(formatId) ?? PRINT_FORMATS[0];
+  return { widthMm: f.widthCm * 10, heightMm: f.heightCm * 10 };
+}
+
+/**
+ * Pixel triplet (trim / bleed / export) for a print format at the
+ * requested DPI. Used by export UIs and admin tooling that need to show
+ * trim vs export dimensions side-by-side.
+ */
+export function getPrintExportSizeWithBleed(
+  formatId: string,
+  dpi: number = 300,
+  bleedMm: number = 3,
+): {
+  trim: { width: number; height: number };
+  bleed: { px: number; mm: number };
+  export: { width: number; height: number };
+} {
+  const trim = getPrintExportSize(formatId, dpi);
+  const bleedPx = Math.round((bleedMm / 25.4) * dpi);
+  return {
+    trim,
+    bleed: { px: bleedPx, mm: bleedMm },
+    export: {
+      width: trim.width + bleedPx * 2,
+      height: trim.height + bleedPx * 2,
+    },
   };
 }
 
