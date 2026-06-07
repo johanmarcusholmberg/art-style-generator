@@ -300,13 +300,19 @@ export async function preparePrintExport(
 }
 
 /**
- * Trigger a browser download of a print export blob.
+ * Trigger a browser download of a print export blob. Idempotently ensures the
+ * standardized bleed suffix (`_bleed3mm`) is present so every customer-facing
+ * file advertises its baked-in bleed.
  */
 export function downloadPrintExport(blob: Blob, filename: string) {
+  const suffix = `_bleed${DEFAULT_BLEED_MM}mm`;
+  const finalName = filename.includes(suffix)
+    ? filename
+    : filename.replace(/(\.[a-zA-Z0-9]+)$|$/, (m) => `${suffix}${m}`);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = filename;
+  a.download = finalName;
   a.click();
   URL.revokeObjectURL(url);
 }
