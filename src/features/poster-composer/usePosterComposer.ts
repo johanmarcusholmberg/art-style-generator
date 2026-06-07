@@ -539,8 +539,12 @@ interface ExportPosterOptions {
   /** When true, write text overlay at export time. Defaults to true for
    *  composer mode and false for generated mode. */
   renderOverlay?: boolean;
+  /** Legacy mime override. Ignored when {@link format} is set. */
   mimeType?: string;
+  /** Legacy quality override. Ignored when {@link format} is set. */
   quality?: number;
+  /** Output format. Defaults to the user's persisted choice. */
+  format?: ExportFormat;
 }
 
 export async function exportPoster(
