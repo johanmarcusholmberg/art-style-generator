@@ -128,16 +128,10 @@ const STYLE_CARDS = [
   { emoji: "🌿", label: "Botanical", desc: "Scientific watercolour plant studies", to: "/botanical" },
 ];
 
-const downloadImage = async (url: string, filename: string) => {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  const blobUrl = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = blobUrl;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(blobUrl);
-};
+import { downloadWithBleed, renderRawWithBleed } from "@/lib/raw-download";
+
+const downloadImage = (url: string, filename: string) =>
+  downloadWithBleed(url, { filename });
 
 // ── Skeleton grid ──────────────────────────────────────────────────────────────
 function GallerySkeleton() {
