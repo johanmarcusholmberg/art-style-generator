@@ -183,10 +183,15 @@ export interface EtsyExportOptions {
   template: ExportTemplate;
   /** Add a uniform white border to every file in the bundle */
   withBorder?: boolean;
+  /**
+   * Output format applied to every file in the bundle (PNG / JPEG / PDF).
+   * Defaults to the project-wide PNG default.
+   */
+  exportFormat?: ExportFormat;
   /** Optional progress callback (0..1) */
   onProgress?: (done: number, total: number, current?: ExportSize) => void;
   /** Render options shared across sizes */
-  render?: Omit<RenderSizeOptions, "withBorder">;
+  render?: Omit<RenderSizeOptions, "withBorder" | "exportFormat">;
 }
 
 export interface EtsyExportResult {
