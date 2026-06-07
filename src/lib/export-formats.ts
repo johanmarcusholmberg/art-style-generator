@@ -74,8 +74,23 @@ export function isExportFormat(v: unknown): v is ExportFormat {
   return v === "png" || v === "jpeg" || v === "pdf";
 }
 
+/**
+ * Returns true only when a usable localStorage exists on the current
+ * runtime. Guards against SSR, web-workers, and stripped-down test
+ * runners (e.g. bare Bun) where `window` or `localStorage` is absent.
+ */
+function hasLocalStorage(): boolean {
+  if (typeof window === "undefined") return false;
+  if (typeof localStorage === "undefined") return false;
+  try {
+    return typeof window.localStorage?.getItem === "function";
+  } catch {
+    return false;
+  }
+}
+
 export function getStoredExportFormat(): ExportFormat {
-  if (typeof window === "undefined") return DEFAULT_EXPORT_FORMAT;
+  if (!hasLocalStorage()) return DEFAULT_EXPORT_FORMAT;
   try {
     const v = window.localStorage.getItem(LS_KEY);
     if (isExportFormat(v)) return v;
@@ -86,7 +101,7 @@ export function getStoredExportFormat(): ExportFormat {
 }
 
 export function setStoredExportFormat(f: ExportFormat): void {
-  if (typeof window === "undefined") return;
+  if (!hasLocalStorage()) return;
   try {
     window.localStorage.setItem(LS_KEY, f);
   } catch {
