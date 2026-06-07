@@ -20,6 +20,13 @@ import {
   computeBleedPixels,
   renderWithBleed,
 } from "@/lib/bleed-config";
+import {
+  type ExportFormat,
+  DEFAULT_EXPORT_FORMAT,
+  buildExportFilename,
+  encodeCanvasToBlob,
+  getExportFormatMeta,
+} from "@/lib/export-formats";
 
 export interface PrintExportResult {
   /** The final high-res blob ready for download / upload (includes bleed). */
@@ -117,10 +124,18 @@ export interface PrintExportOptions {
   ratioMethod?: "crop" | "pad";
   /** Padding fill colour (CSS colour string) */
   padColor?: string;
-  /** Output MIME type */
+  /**
+   * Output MIME type. Ignored when {@link exportFormat} is set.
+   * Kept for backwards compatibility with older callers.
+   */
   mimeType?: string;
-  /** JPEG/WebP quality 0-1 */
+  /** JPEG/WebP quality 0-1. Ignored when {@link exportFormat} is set. */
   quality?: number;
+  /**
+   * Output format (PNG / JPEG / PDF). When set, drives the final encoder
+   * regardless of legacy `mimeType` / `quality`. Defaults to PNG.
+   */
+  exportFormat?: ExportFormat;
   /** Override the default bleed (mm). Defaults to {@link DEFAULT_BLEED_MM}. */
   bleedMm?: number;
   /** Override the safe-area inset (mm). Defaults to {@link DEFAULT_SAFE_MM}. */
@@ -269,15 +284,22 @@ export async function preparePrintExport(
     ctx,
   });
 
-  // 4. Export blob
-  const mime = opts.mimeType ?? "image/png";
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("Canvas export failed"))),
-      mime,
-      opts.quality ?? 1.0,
-    );
-  });
+  // 4. Encode the final canvas in the requested format.
+  //    `exportFormat` (PNG / JPEG / PDF) is the new path; legacy callers
+  //    that only set `mimeType` still work via the fallback branch.
+  let blob: Blob;
+  if (opts.exportFormat) {
+    blob = await encodeCanvasToBlob(canvas, opts.exportFormat);
+  } else {
+    const mime = opts.mimeType ?? "image/png";
+    blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("Canvas export failed"))),
+        mime,
+        opts.quality ?? 1.0,
+      );
+    });
+  }
 
   return {
     blob,
@@ -300,15 +322,23 @@ export async function preparePrintExport(
 }
 
 /**
- * Trigger a browser download of a print export blob. Idempotently ensures the
- * standardized bleed suffix (`_bleed3mm`) is present so every customer-facing
- * file advertises its baked-in bleed.
+ * Trigger a browser download of a print export blob. Idempotently ensures
+ * the standardized bleed suffix (`_bleed3mm`) is present and — when a
+ * format is supplied — rewrites the extension to match the encoded blob.
  */
-export function downloadPrintExport(blob: Blob, filename: string) {
-  const suffix = `_bleed${DEFAULT_BLEED_MM}mm`;
-  const finalName = filename.includes(suffix)
-    ? filename
-    : filename.replace(/(\.[a-zA-Z0-9]+)$|$/, (m) => `${suffix}${m}`);
+export function downloadPrintExport(
+  blob: Blob,
+  filename: string,
+  format?: ExportFormat,
+) {
+  const finalName = format
+    ? buildExportFilename(filename, format, DEFAULT_BLEED_MM)
+    : (() => {
+        const suffix = `_bleed${DEFAULT_BLEED_MM}mm`;
+        return filename.includes(suffix)
+          ? filename
+          : filename.replace(/(\.[a-zA-Z0-9]+)$|$/, (m) => `${suffix}${m}`);
+      })();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -316,3 +346,13 @@ export function downloadPrintExport(blob: Blob, filename: string) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// Re-export for callers that previously imported encoder/format helpers
+// indirectly through this module.
+export {
+  type ExportFormat,
+  DEFAULT_EXPORT_FORMAT,
+  getExportFormatMeta,
+  buildExportFilename,
+} from "@/lib/export-formats";
+

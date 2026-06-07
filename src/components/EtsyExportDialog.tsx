@@ -40,6 +40,13 @@ import {
 } from "@/lib/etsy-export";
 import { cn } from "@/lib/utils";
 import { DEFAULT_BLEED_MM, DEFAULT_SAFE_MM, computeBleedPixels } from "@/lib/bleed-config";
+import {
+  type ExportFormat,
+  EXPORT_FORMATS,
+  EXPORT_FORMAT_META,
+  getStoredExportFormat,
+  setStoredExportFormat,
+} from "@/lib/export-formats";
 
 export interface EtsyExportDialogProps {
   open: boolean;
@@ -63,8 +70,15 @@ export default function EtsyExportDialog({
 }: EtsyExportDialogProps) {
   const [templateId, setTemplateId] = useState<string>(DEFAULT_EXPORT_TEMPLATE_ID);
   const [withBorder, setWithBorder] = useState(false);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>(() => getStoredExportFormat());
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0, label: "" });
+
+  const handleFormatChange = (v: string) => {
+    const next = v as ExportFormat;
+    setExportFormat(next);
+    setStoredExportFormat(next);
+  };
 
   const template: ExportTemplate =
     getExportTemplate(templateId) ?? EXPORT_TEMPLATES[0]!;
@@ -87,6 +101,7 @@ export default function EtsyExportDialog({
         masterUrl,
         template,
         withBorder,
+        exportFormat,
         onProgress: (done, total, current) => {
           setProgress({
             done,
@@ -196,6 +211,28 @@ export default function EtsyExportDialog({
                 Master: {masterWidth} × {masterHeight} px
               </p>
             )}
+          </div>
+
+          {/* Export format selector */}
+          <div className="space-y-1.5">
+            <Label className="font-display text-xs text-muted-foreground">Export format</Label>
+            <Select value={exportFormat} onValueChange={handleFormatChange} disabled={exporting}>
+              <SelectTrigger className="font-display">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EXPORT_FORMATS.map((f) => (
+                  <SelectItem key={f} value={f} className="font-display">
+                    {EXPORT_FORMAT_META[f].label} — {EXPORT_FORMAT_META[f].description}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="font-display text-[11px] text-muted-foreground">
+              Every size in the ZIP will be encoded as{" "}
+              <strong>{EXPORT_FORMAT_META[exportFormat].label}</strong>{" "}
+              (.{EXPORT_FORMAT_META[exportFormat].extension}).
+            </p>
           </div>
 
           {/* Bleed notice */}

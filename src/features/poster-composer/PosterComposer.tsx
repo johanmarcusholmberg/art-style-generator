@@ -36,6 +36,7 @@ import {
   measurePosterOverlay,
   autoFitPosterText,
 } from "./usePosterComposer";
+import { getStoredExportFormat, EXPORT_FORMAT_META } from "@/lib/export-formats";
 import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "./poster-templates";
 import type {
   PosterTemplateId,
@@ -161,17 +162,20 @@ export default function PosterComposer({
   const handleExport = async () => {
     setExporting(true);
     try {
+      const fmt = getStoredExportFormat();
+      const meta = EXPORT_FORMAT_META[fmt];
       const result = await exportPoster(state, {
         renderOverlay:
           state.textMode === "composer"
             ? state.layout.safeAreaEnabled
             : overlayInGenerated && state.layout.safeAreaEnabled,
+        format: fmt,
       });
-      const filename = `${filenameBase}-${state.templateId}-${Date.now()}.png`;
-      downloadPrintExport(result.blob, filename);
+      const filename = `${filenameBase}-${state.templateId}-${Date.now()}.${meta.extension}`;
+      downloadPrintExport(result.blob, filename, fmt);
       toast({
         title: "Poster exported",
-        description: `${result.width} × ${result.height} px · ${result.tier === "preferred" ? "300 PPI" : result.tier === "fallback" ? "150 PPI" : "Source res"}`,
+        description: `${result.width} × ${result.height} px · ${meta.label} · ${result.tier === "preferred" ? "300 PPI" : result.tier === "fallback" ? "150 PPI" : "Source res"}`,
       });
     } catch (e) {
       toast({

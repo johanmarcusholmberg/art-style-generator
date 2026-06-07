@@ -29,6 +29,13 @@ import {
   renderWithBleed,
 } from "@/lib/bleed-config";
 import { assertCanvasWithinLimits } from "@/lib/print-export";
+import {
+  type ExportFormat,
+  DEFAULT_EXPORT_FORMAT,
+  buildExportFilename,
+  encodeCanvasToBlob,
+  getExportFormatMeta,
+} from "@/lib/export-formats";
 
 /* ------------------------------------------------------------------ */
 /* Image loading                                                      */
@@ -62,10 +69,15 @@ export interface RenderSizeOptions {
   borderRatio?: number;
   /** Background colour shown when fitting / bordering. */
   backgroundColor?: string;
-  /** JPEG quality 0..1 */
+  /** Legacy JPEG quality 0..1. Ignored when {@link exportFormat} is set. */
   quality?: number;
-  /** Output mime type — JPEG keeps the ZIP small */
+  /** Legacy mime type. Ignored when {@link exportFormat} is set. */
   mimeType?: string;
+  /**
+   * Multi-format encoder selection (PNG / JPEG / PDF). When set, drives
+   * the final encoding and overrides the legacy mime/quality fields.
+   */
+  exportFormat?: ExportFormat;
   /** Override default bleed in mm. */
   bleedMm?: number;
   /** Override default safe-area inset in mm. */
@@ -91,6 +103,7 @@ export async function renderSizeToBlob(
     withBorder = false,
     borderRatio = 0.04,
     backgroundColor = "#ffffff",
+    exportFormat,
     quality = 0.92,
     mimeType = "image/jpeg",
     bleedMm = DEFAULT_BLEED_MM,
@@ -146,6 +159,9 @@ export async function renderSizeToBlob(
     ctx,
   });
 
+  if (exportFormat) {
+    return encodeCanvasToBlob(canvas, exportFormat);
+  }
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Canvas export failed"))),
@@ -166,10 +182,15 @@ export interface EtsyExportOptions {
   template: ExportTemplate;
   /** Add a uniform white border to every file in the bundle */
   withBorder?: boolean;
+  /**
+   * Output format applied to every file in the bundle (PNG / JPEG / PDF).
+   * Defaults to the project-wide PNG default.
+   */
+  exportFormat?: ExportFormat;
   /** Optional progress callback (0..1) */
   onProgress?: (done: number, total: number, current?: ExportSize) => void;
   /** Render options shared across sizes */
-  render?: Omit<RenderSizeOptions, "withBorder">;
+  render?: Omit<RenderSizeOptions, "withBorder" | "exportFormat">;
 }
 
 export interface EtsyExportResult {
@@ -204,6 +225,9 @@ export async function buildEtsyExportBundle(
   let bytes = 0;
   let done = 0;
 
+  const exportFormat: ExportFormat = opts.exportFormat ?? DEFAULT_EXPORT_FORMAT;
+  const formatMeta = getExportFormatMeta(exportFormat);
+
   for (const group of opts.template.ratios) {
     const folder = zip.folder(ratioFolderName(group));
     if (!folder) continue;
@@ -212,18 +236,17 @@ export async function buildEtsyExportBundle(
         opts.onProgress?.(done, total, size);
         const blob = await renderSizeToBlob(source, size, {
           ...opts.render,
+          exportFormat,
           withBorder: !!opts.withBorder,
         });
-        const ext = (opts.render?.mimeType ?? "image/jpeg").split("/")[1] ?? "jpg";
         const baseName = buildExportFileName(size, {
-          ext: ext === "jpeg" ? "jpg" : ext,
+          // Provide a placeholder ext — buildExportFilename rewrites it.
+          ext: "tmp",
           withBorder: opts.withBorder,
         });
-        // Tag every file with its baked-in bleed so printers see it at a glance.
-        const fileName = baseName.replace(
-          /(\.[a-zA-Z0-9]+)$/,
-          `_bleed${DEFAULT_BLEED_MM}mm$1`,
-        );
+        // Format-aware filename: strips the placeholder ext, appends the
+        // _bleed{N}mm suffix, then the format extension.
+        const fileName = buildExportFilename(baseName, exportFormat, DEFAULT_BLEED_MM);
         folder.file(fileName, blob);
         rendered.push(size);
         bytes += blob.size;
@@ -248,6 +271,7 @@ export async function buildEtsyExportBundle(
       opts.template.description,
       "",
       `All files are ${opts.template.defaultDpi} DPI, ready for high-quality printing.`,
+      `Output format: ${formatMeta.label} (.${formatMeta.extension}) — ${formatMeta.description}`,
       `Every file includes a ${DEFAULT_BLEED_MM} mm bleed on all sides (baked into the pixels via edge extension).`,
       `Keep important content at least ${DEFAULT_SAFE_MM} mm inside the trim line.`,
       opts.withBorder

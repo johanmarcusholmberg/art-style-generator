@@ -55,6 +55,11 @@ import EtsyMockupDialog from "@/components/EtsyMockupDialog";
 import RouteBadge from "@/components/RouteBadge";
 import ImportArtworkButton from "@/components/gallery/ImportArtworkButton";
 import { downloadWithBleed, renderRawWithBleed } from "@/lib/raw-download";
+import {
+  buildExportFilename,
+  EXPORT_FORMAT_META,
+  getStoredExportFormat,
+} from "@/lib/export-formats";
 
 interface GalleryImage {
   id: string;
@@ -620,11 +625,14 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     try {
       const zip = new JSZip();
       const selectedImages = images.filter((img) => selectedIds.has(img.id));
+      const fmt = getStoredExportFormat();
+      const meta = EXPORT_FORMAT_META[fmt];
       await Promise.all(
         selectedImages.map(async (img, i) => {
           // Every poster in the ZIP carries the static 3 mm bleed.
-          const r = await renderRawWithBleed(img.publicUrl, {});
-          zip.file(`art-${i + 1}-${img.mode}_bleed${r.bleedMm}mm.png`, r.blob);
+          const r = await renderRawWithBleed(img.publicUrl, { exportFormat: fmt });
+          const baseName = `art-${i + 1}-${img.mode}`;
+          zip.file(buildExportFilename(baseName, fmt, r.bleedMm), r.blob);
         })
       );
       const content = await zip.generateAsync({ type: "blob" });
@@ -636,7 +644,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       URL.revokeObjectURL(url);
       setSelectMode(false);
       setSelectedIds(new Set());
-      toast.success(`Downloaded ${selectedImages.length} images`, { duration: 3000 });
+      toast.success(`Downloaded ${selectedImages.length} ${meta.label} files`, { duration: 3000 });
     } catch (e) {
       console.error(e);
       toast.error("Failed to create ZIP");
@@ -863,20 +871,24 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
     setPrintExporting(true);
     try {
+      const fmt = getStoredExportFormat();
+      const fmtMeta = EXPORT_FORMAT_META[fmt];
       const result = await preparePrintExport({
         imageUrl: exportSourceUrl,
         printFormatId: formatId,
+        exportFormat: fmt,
       });
 
       const { tierLabel, upscaleNote } = formatExportDescription(
         result.tier, result.upscaleApplied, result.upscaleFactor, result.width, result.height,
       );
 
-      // Upload to print-exports bucket
-      const exportFilename = `print-${img.id}-${Date.now()}.png`;
+      // Upload to print-exports bucket — keep PNG path stable for storage
+      // (avoid double-encoding the historical asset format).
+      const exportFilename = `print-${img.id}-${Date.now()}.${fmtMeta.extension}`;
       const { error: uploadError } = await supabase.storage
         .from("print-exports")
-        .upload(exportFilename, result.blob, { contentType: "image/png" });
+        .upload(exportFilename, result.blob, { contentType: fmtMeta.mimeType });
 
       if (uploadError) {
         console.warn("Print export upload failed, download will still proceed:", uploadError);
@@ -912,12 +924,12 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         setSelected((prev) => prev ? { ...prev, ...exportUpdate } : prev);
       }
 
-      // Trigger download
-      const downloadName = `print-${format.label.replace(/\s/g, "")}-${result.width}x${result.height}.png`;
-      downloadPrintExport(result.blob, downloadName);
+      // Trigger download — buildExportFilename adds _bleed3mm + correct extension.
+      const downloadName = `print-${format.label.replace(/\s/g, "")}-${result.width}x${result.height}`;
+      downloadPrintExport(result.blob, downloadName, fmt);
 
       toast.success(
-        `${result.width}×${result.height} px · ${tierLabel}${upscaleNote}`,
+        `${result.width}×${result.height} px · ${fmtMeta.label} · ${tierLabel}${upscaleNote}`,
         { duration: 6000 }
       );
     } catch (err: any) {

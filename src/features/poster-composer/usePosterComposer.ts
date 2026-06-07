@@ -17,6 +17,11 @@ import {
   preparePrintExport,
   downloadPrintExport,
 } from "@/lib/print-export";
+import {
+  type ExportFormat,
+  encodeCanvasToBlob,
+  getStoredExportFormat,
+} from "@/lib/export-formats";
 import { DEFAULT_PRINT_FORMAT_ID, getPrintFormat } from "@/lib/print-formats";
 import { POSTER_TEMPLATES, getPosterTemplate } from "./poster-templates";
 import type {
@@ -539,8 +544,12 @@ interface ExportPosterOptions {
   /** When true, write text overlay at export time. Defaults to true for
    *  composer mode and false for generated mode. */
   renderOverlay?: boolean;
+  /** Legacy mime override. Ignored when {@link format} is set. */
   mimeType?: string;
+  /** Legacy quality override. Ignored when {@link format} is set. */
   quality?: number;
+  /** Output format. Defaults to the user's persisted choice. */
+  format?: ExportFormat;
 }
 
 export async function exportPoster(
@@ -554,16 +563,16 @@ export async function exportPoster(
   if (!format) throw new Error(`Unknown print format: ${printFormatId}`);
 
   const surfaceColor = resolvePosterSurfaceBackground(state);
+  const exportFormat: ExportFormat = opts.format ?? getStoredExportFormat();
 
-  // 1. Reuse existing print export to get the high-res normalized artwork.
-  //    The surface colour is also used as pad colour so any letterboxing
-  //    matches the poster background visually.
+  // 1. Reuse existing print export to get the high-res normalized artwork
+  //    (with bleed baked in) in the chosen export format.
   const base = await preparePrintExport({
     imageUrl: state.imageUrl,
     printFormatId,
     ratioMethod: "pad",
     padColor: surfaceColor,
-    mimeType: "image/png",
+    exportFormat,
   });
 
   // 2. Decide whether to overlay text. Composer mode always overlays;
@@ -584,14 +593,29 @@ export async function exportPoster(
 
   // 3. Composite text overlay onto a fresh canvas. We keep the artwork
   //    untouched and draw over a reserved region on top.
+  //    The base blob already includes bleed, so the canvas inherits it.
   const canvas = document.createElement("canvas");
   canvas.width = base.width;
   canvas.height = base.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context unavailable for poster export.");
 
-  // Draw the print-ready artwork as the bottom layer.
-  const artwork = await blobToImage(base.blob);
+  // PDF blobs can't be re-decoded as <img>, so when the user picks PDF
+  // we first composite as a raster canvas and re-encode at the end.
+  // Re-render artwork in PNG to keep the image-load step format-agnostic.
+  const artworkSource = base.blob.type.startsWith("image/")
+    ? base.blob
+    : await (async () => {
+        const png = await preparePrintExport({
+          imageUrl: state.imageUrl!,
+          printFormatId,
+          ratioMethod: "pad",
+          padColor: surfaceColor,
+          exportFormat: "png",
+        });
+        return png.blob;
+      })();
+  const artwork = await blobToImage(artworkSource);
   ctx.drawImage(artwork, 0, 0, base.width, base.height);
 
   // Draw the safe-area band + typography on top.
@@ -603,14 +627,7 @@ export async function exportPoster(
     drawTextOverlay({ ctx, state, rect, scale, spaceScale });
   }
 
-  const mime = opts.mimeType ?? "image/png";
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("Poster export failed"))),
-      mime,
-      opts.quality ?? 1,
-    );
-  });
+  const blob = await encodeCanvasToBlob(canvas, exportFormat);
 
   return {
     blob,
