@@ -322,15 +322,23 @@ export async function preparePrintExport(
 }
 
 /**
- * Trigger a browser download of a print export blob. Idempotently ensures the
- * standardized bleed suffix (`_bleed3mm`) is present so every customer-facing
- * file advertises its baked-in bleed.
+ * Trigger a browser download of a print export blob. Idempotently ensures
+ * the standardized bleed suffix (`_bleed3mm`) is present and — when a
+ * format is supplied — rewrites the extension to match the encoded blob.
  */
-export function downloadPrintExport(blob: Blob, filename: string) {
-  const suffix = `_bleed${DEFAULT_BLEED_MM}mm`;
-  const finalName = filename.includes(suffix)
-    ? filename
-    : filename.replace(/(\.[a-zA-Z0-9]+)$|$/, (m) => `${suffix}${m}`);
+export function downloadPrintExport(
+  blob: Blob,
+  filename: string,
+  format?: ExportFormat,
+) {
+  const finalName = format
+    ? buildExportFilename(filename, format, DEFAULT_BLEED_MM)
+    : (() => {
+        const suffix = `_bleed${DEFAULT_BLEED_MM}mm`;
+        return filename.includes(suffix)
+          ? filename
+          : filename.replace(/(\.[a-zA-Z0-9]+)$|$/, (m) => `${suffix}${m}`);
+      })();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -338,3 +346,13 @@ export function downloadPrintExport(blob: Blob, filename: string) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// Re-export for callers that previously imported encoder/format helpers
+// indirectly through this module.
+export {
+  type ExportFormat,
+  DEFAULT_EXPORT_FORMAT,
+  getExportFormatMeta,
+  buildExportFilename,
+} from "@/lib/export-formats";
+
