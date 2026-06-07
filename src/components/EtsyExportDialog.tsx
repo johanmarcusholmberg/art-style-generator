@@ -40,6 +40,13 @@ import {
 } from "@/lib/etsy-export";
 import { cn } from "@/lib/utils";
 import { DEFAULT_BLEED_MM, DEFAULT_SAFE_MM, computeBleedPixels } from "@/lib/bleed-config";
+import {
+  type ExportFormat,
+  EXPORT_FORMATS,
+  EXPORT_FORMAT_META,
+  getStoredExportFormat,
+  setStoredExportFormat,
+} from "@/lib/export-formats";
 
 export interface EtsyExportDialogProps {
   open: boolean;
