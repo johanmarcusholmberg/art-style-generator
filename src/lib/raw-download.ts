@@ -65,6 +65,8 @@ export interface RawBleedResult {
   safeMm: number;
   bleedPx: number;
   dpi: number;
+  /** The format the blob was encoded in. */
+  format: ExportFormat;
 }
 
 /**
@@ -77,14 +79,15 @@ export async function renderRawWithBleed(
 ): Promise<RawBleedResult> {
   if (!imageUrl) throw new Error("No image URL provided");
 
+  const format: ExportFormat = opts.exportFormat ?? getStoredExportFormat();
+
   // Print-format path delegates fully so the existing pipeline (tiers,
   // ratio normalization, upscale awareness) keeps applying.
   if (opts.printFormatId) {
     const result: PrintExportResult = await preparePrintExport({
       imageUrl,
       printFormatId: opts.printFormatId,
-      mimeType: opts.mimeType,
-      quality: opts.quality,
+      exportFormat: format,
       bleedMm: opts.bleedMm,
       safeMm: opts.safeMm,
     });
@@ -98,6 +101,7 @@ export async function renderRawWithBleed(
       safeMm: result.safeMm,
       bleedPx: result.bleedPx,
       dpi: result.dpi,
+      format,
     };
   }
 
@@ -135,14 +139,7 @@ export async function renderRawWithBleed(
     ctx,
   });
 
-  const mime = opts.mimeType ?? "image/png";
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("Canvas export failed"))),
-      mime,
-      opts.quality ?? 1.0,
-    );
-  });
+  const blob = await encodeCanvasToBlob(canvas, format);
 
   return {
     blob,
@@ -154,11 +151,14 @@ export async function renderRawWithBleed(
     safeMm: bleed.safeMm,
     bleedPx: bleed.bleedPx,
     dpi: bleed.dpi,
+    format,
   };
 }
 
 /**
  * Append a bleed suffix to a filename, e.g. "art.png" → "art_bleed3mm.png".
+ * Kept for backwards compatibility — new callers should prefer
+ * {@link buildExportFilename} from `export-formats.ts`.
  */
 export function withBleedSuffix(filename: string, bleedMm: number = DEFAULT_BLEED_MM): string {
   const m = filename.match(/^(.*?)(\.[a-zA-Z0-9]+)?$/);
@@ -179,8 +179,14 @@ export async function downloadWithBleed(
   const url = URL.createObjectURL(result.blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = withBleedSuffix(opts.filename, result.bleedMm);
+  // Use the format-aware filename builder so the extension matches the
+  // encoded blob (and the _bleed{N}mm suffix is preserved).
+  a.download = buildExportFilename(opts.filename, result.format, result.bleedMm);
   a.click();
   URL.revokeObjectURL(url);
   return result;
 }
+
+// Re-export so legacy imports keep working.
+export { getExportFormatMeta };
+
