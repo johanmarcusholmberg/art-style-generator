@@ -101,6 +101,7 @@ export default function EtsyExportDialog({
         masterUrl,
         template,
         withBorder,
+        exportFormat,
         onProgress: (done, total, current) => {
           setProgress({
             done,
