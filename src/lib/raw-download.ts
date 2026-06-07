@@ -29,6 +29,13 @@ import {
   preparePrintExport,
   type PrintExportResult,
 } from "@/lib/print-export";
+import {
+  type ExportFormat,
+  buildExportFilename,
+  encodeCanvasToBlob,
+  getExportFormatMeta,
+  getStoredExportFormat,
+} from "@/lib/export-formats";
 
 export interface DownloadWithBleedOptions {
   /** File name presented to the user. */
@@ -41,10 +48,11 @@ export interface DownloadWithBleedOptions {
   bleedMm?: number;
   /** Override default safe-area inset in mm. */
   safeMm?: number;
-  /** Output MIME type. Defaults to "image/png". */
-  mimeType?: string;
-  /** JPEG/WebP quality 0..1. */
-  quality?: number;
+  /**
+   * Output format. Defaults to the user's persisted choice
+   * (PNG until changed).
+   */
+  exportFormat?: ExportFormat;
 }
 
 export interface RawBleedResult {
