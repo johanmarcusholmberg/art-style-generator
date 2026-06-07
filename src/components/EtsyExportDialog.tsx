@@ -198,6 +198,17 @@ export default function EtsyExportDialog({
             )}
           </div>
 
+          {/* Bleed notice */}
+          <div className="rounded-md border border-border/60 bg-background p-3 space-y-1">
+            <p className="font-display text-xs">
+              Every file includes a baked-in <strong>{DEFAULT_BLEED_MM} mm bleed</strong> on all sides.
+            </p>
+            <p className="font-display text-[11px] text-muted-foreground">
+              Keep important content ≥ {DEFAULT_SAFE_MM} mm inside the trim line. Customer-visible
+              mockups and previews continue to use the trim size.
+            </p>
+          </div>
+
           {/* Sizes list */}
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {template.ratios.map((group) => (
@@ -211,6 +222,11 @@ export default function EtsyExportDialog({
                       masterWidth != null &&
                       masterHeight != null &&
                       (masterWidth < s.pixelWidth || masterHeight < s.pixelHeight);
+                    const b = computeBleedPixels({
+                      trimWidthPx: s.pixelWidth,
+                      trimHeightPx: s.pixelHeight,
+                      dpi: s.dpi,
+                    });
                     return (
                       <li
                         key={s.id}
@@ -226,7 +242,7 @@ export default function EtsyExportDialog({
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="font-display text-[11px] text-muted-foreground">
-                            {s.pixelWidth} × {s.pixelHeight} px
+                            trim {s.pixelWidth}×{s.pixelHeight} → export {b.exportWidth}×{b.exportHeight} px
                           </span>
                           <Badge variant="outline" className="font-display text-[10px]">
                             {s.dpi} DPI
@@ -239,6 +255,7 @@ export default function EtsyExportDialog({
               </div>
             ))}
           </div>
+
 
           {/* Progress while exporting */}
           {exporting && progress.total > 0 && (
