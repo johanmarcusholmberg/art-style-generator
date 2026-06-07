@@ -124,10 +124,18 @@ export interface PrintExportOptions {
   ratioMethod?: "crop" | "pad";
   /** Padding fill colour (CSS colour string) */
   padColor?: string;
-  /** Output MIME type */
+  /**
+   * Output MIME type. Ignored when {@link exportFormat} is set.
+   * Kept for backwards compatibility with older callers.
+   */
   mimeType?: string;
-  /** JPEG/WebP quality 0-1 */
+  /** JPEG/WebP quality 0-1. Ignored when {@link exportFormat} is set. */
   quality?: number;
+  /**
+   * Output format (PNG / JPEG / PDF). When set, drives the final encoder
+   * regardless of legacy `mimeType` / `quality`. Defaults to PNG.
+   */
+  exportFormat?: ExportFormat;
   /** Override the default bleed (mm). Defaults to {@link DEFAULT_BLEED_MM}. */
   bleedMm?: number;
   /** Override the safe-area inset (mm). Defaults to {@link DEFAULT_SAFE_MM}. */
