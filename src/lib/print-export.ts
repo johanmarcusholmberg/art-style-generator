@@ -80,6 +80,28 @@ function loadImage(src: string, timeoutMs = 30000): Promise<HTMLImageElement> {
 /**
  * Determine which quality tier an image can reach for a given print format.
  */
+function loadImage(src: string, timeoutMs = 30000): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    const timer = setTimeout(() => {
+      img.src = "";
+      reject(new Error("Image load timed out — the source may be unavailable"));
+    }, timeoutMs);
+    img.onload = () => { clearTimeout(timer); resolve(img); };
+    img.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error("Failed to load source image — it may have been deleted or is inaccessible"));
+    };
+    img.src = src;
+  });
+}
+
+export { loadImage as loadImageForExport };
+
+/**
+ * Determine which quality tier an image can reach for a given print format.
+ */
 function determineTier(
   sourceWidth: number,
   sourceHeight: number,
