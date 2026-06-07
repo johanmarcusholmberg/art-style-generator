@@ -871,20 +871,24 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
     setPrintExporting(true);
     try {
+      const fmt = getStoredExportFormat();
+      const fmtMeta = EXPORT_FORMAT_META[fmt];
       const result = await preparePrintExport({
         imageUrl: exportSourceUrl,
         printFormatId: formatId,
+        exportFormat: fmt,
       });
 
       const { tierLabel, upscaleNote } = formatExportDescription(
         result.tier, result.upscaleApplied, result.upscaleFactor, result.width, result.height,
       );
 
-      // Upload to print-exports bucket
-      const exportFilename = `print-${img.id}-${Date.now()}.png`;
+      // Upload to print-exports bucket — keep PNG path stable for storage
+      // (avoid double-encoding the historical asset format).
+      const exportFilename = `print-${img.id}-${Date.now()}.${fmtMeta.extension}`;
       const { error: uploadError } = await supabase.storage
         .from("print-exports")
-        .upload(exportFilename, result.blob, { contentType: "image/png" });
+        .upload(exportFilename, result.blob, { contentType: fmtMeta.mimeType });
 
       if (uploadError) {
         console.warn("Print export upload failed, download will still proceed:", uploadError);
@@ -920,12 +924,12 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         setSelected((prev) => prev ? { ...prev, ...exportUpdate } : prev);
       }
 
-      // Trigger download
-      const downloadName = `print-${format.label.replace(/\s/g, "")}-${result.width}x${result.height}.png`;
-      downloadPrintExport(result.blob, downloadName);
+      // Trigger download — buildExportFilename adds _bleed3mm + correct extension.
+      const downloadName = `print-${format.label.replace(/\s/g, "")}-${result.width}x${result.height}`;
+      downloadPrintExport(result.blob, downloadName, fmt);
 
       toast.success(
-        `${result.width}×${result.height} px · ${tierLabel}${upscaleNote}`,
+        `${result.width}×${result.height} px · ${fmtMeta.label} · ${tierLabel}${upscaleNote}`,
         { duration: 6000 }
       );
     } catch (err: any) {
