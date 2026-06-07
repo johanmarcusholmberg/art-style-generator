@@ -30,16 +30,9 @@ const BLEND_STYLES = [
   { value: "botanical", label: "🌿 Botanical" },
 ];
 
-const downloadImage = async (dataUrl: string, filename: string) => {
-  const res = await fetch(dataUrl);
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-};
+import { downloadWithBleed } from "@/lib/raw-download";
+const downloadImage = (url: string, filename: string) =>
+  downloadWithBleed(url, { filename });
 
 export default function Blend() {
   const [prompt, setPrompt] = useState("");
