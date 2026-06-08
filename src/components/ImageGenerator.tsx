@@ -327,7 +327,7 @@ export default function ImageGenerator({
       const strictnessProvider: StrictnessProviderId =
         generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId);
       const effectiveStrictness = getDefaultStrictness({
-        styleKey: styleConfig.styleKey,
+        styleKey: variantStyleKey,
         provider: strictnessProvider,
       });
       // Optional poster-composer hint — additive only. Appended to the
