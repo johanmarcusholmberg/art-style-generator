@@ -370,7 +370,7 @@ export default function ImageGenerator({
         : activePrompt.trim();
       const { response: gen, diagnostics } = await generateImage({
         prompt: promptForGen,
-        styleKey: styleConfig.styleKey,
+        styleKey: variantStyleKey,
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
         printMode: true,
