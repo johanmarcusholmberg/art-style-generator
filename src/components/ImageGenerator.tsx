@@ -103,6 +103,16 @@ export default function ImageGenerator({
   const modeLabel = isTertiary ? styleConfig.tertiaryTabLabel! : isThemed ? styleConfig.themedTabLabel : styleConfig.freestyleTabLabel;
   const generateLabel = isTertiary ? styleConfig.tertiaryGenerateLabel! : isThemed ? styleConfig.themedGenerateLabel : styleConfig.freestyleGenerateLabel;
 
+  // Variant-specific style key (e.g. "lineart-minimal", "lineart-freestyle", "lineart").
+  // STYLE_RULES is keyed by this AND resolveEdgeFnForStyle expects this. Passing the
+  // base styleConfig.styleKey makes every variant resolve to the themed edge function
+  // and themed prompt rules (e.g. Minimal Lines acting like Ink Scenes).
+  const variantStyleKey = isTertiary
+    ? (styleConfig.tertiaryModeValue ?? styleConfig.styleKey)
+    : isThemed
+    ? styleConfig.styleKey
+    : (styleConfig.freestyleModeValue ?? `${styleConfig.styleKey}-freestyle`);
+
   const persistKey = `${styleConfig.styleKey}-${mode}` as any;
 
   const {
@@ -228,12 +238,12 @@ export default function ImageGenerator({
   const recommendedRecipe = useMemo(
     () =>
       resolveUpscaleRecipe({
-        styleKey: styleConfig.styleKey,
+        styleKey: variantStyleKey,
         mode,
         generatorFamily: generatorFamilyFromProvider(lastProviderUsed),
         printIntent: generationMode === "print-ready",
       }),
-    [styleConfig.styleKey, mode, lastProviderUsed, generationMode],
+    [variantStyleKey, mode, lastProviderUsed, generationMode],
   );
 
   /**
@@ -317,7 +327,7 @@ export default function ImageGenerator({
       const strictnessProvider: StrictnessProviderId =
         generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId);
       const effectiveStrictness = getDefaultStrictness({
-        styleKey: styleConfig.styleKey,
+        styleKey: variantStyleKey,
         provider: strictnessProvider,
       });
       // Optional poster-composer hint — additive only. Appended to the
@@ -360,7 +370,7 @@ export default function ImageGenerator({
         : activePrompt.trim();
       const { response: gen, diagnostics } = await generateImage({
         prompt: promptForGen,
-        styleKey: styleConfig.styleKey,
+        styleKey: variantStyleKey,
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
         printMode: true,
@@ -1083,7 +1093,7 @@ export default function ImageGenerator({
                 title="Configure per-style defaults at /style-control-panel"
               >
                 Strictness: {getDefaultStrictness({
-                  styleKey: styleConfig.styleKey,
+                  styleKey: variantStyleKey,
                   provider: generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId),
                 })}
                 <span className="text-foreground/60">· auto from panel</span>
@@ -1120,7 +1130,7 @@ export default function ImageGenerator({
           <ProviderComparison
             request={{
               prompt: (isInlineEditing ? editPrompt : prompt).trim(),
-              styleKey: styleConfig.styleKey,
+              styleKey: variantStyleKey,
               aspectRatio: effectiveAspectRatio,
               backgroundStyle,
               printMode: true,
