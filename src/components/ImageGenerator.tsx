@@ -1093,7 +1093,7 @@ export default function ImageGenerator({
                 title="Configure per-style defaults at /style-control-panel"
               >
                 Strictness: {getDefaultStrictness({
-                  styleKey: styleConfig.styleKey,
+                  styleKey: variantStyleKey,
                   provider: generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId),
                 })}
                 <span className="text-foreground/60">· auto from panel</span>
