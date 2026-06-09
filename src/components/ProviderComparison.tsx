@@ -188,12 +188,13 @@ export default function ProviderComparison({
             adapter: a.id,
             startedAt,
             elapsedMs,
-            request: adapterReq,
+            request: sanitizeForDebug(adapterReq),
             ok: true,
-            responseBody: {
+            responseBody: sanitizeForDebug({
               imageUrlPreview:
                 typeof response.imageUrl === "string"
-                  ? response.imageUrl.slice(0, 80) + "…"
+                  ? stripUrlSecrets(response.imageUrl).slice(0, 120) +
+                    (response.imageUrl.length > 120 ? "…" : "")
                   : null,
               provider: response.generationProvider,
               model: response.generationModel,
@@ -201,7 +202,7 @@ export default function ProviderComparison({
               width: response.width,
               height: response.height,
               metadata: response.metadata,
-            },
+            }),
           };
           setSlots((prev) => ({
             ...prev,
