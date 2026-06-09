@@ -61,54 +61,10 @@ interface SlotDebug {
   truncated?: boolean;
 }
 
-/**
- * Keys that must never leak into the debug panel / copy-log / console.
- * Matched case-insensitively against any nested object key.
- */
-const SENSITIVE_KEY_PATTERN =
-  /(authorization|api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|bearer|secret|password|cookie|set-cookie|x-api-key|signature|client[_-]?secret|session|jwt|email|phone)/i;
-
-/** Strip query strings + fragments from URLs so signed-URL tokens don't leak. */
-const stripUrlSecrets = (s: string): string => {
-  if (typeof s !== "string") return s;
-  // Detect URLs and strip ?query and #fragment
-  return s.replace(/\bhttps?:\/\/[^\s"'<>]+/gi, (url) => {
-    const qi = url.indexOf("?");
-    const hi = url.indexOf("#");
-    const cut = [qi, hi].filter((i) => i >= 0).sort((a, b) => a - b)[0];
-    return cut === undefined ? url : url.slice(0, cut) + "?[redacted]";
-  });
-};
+import { sanitizeForDebug, stripUrlSecrets } from "@/lib/debug-sanitize";
 
 const MAX_STRING_LEN = 2_000;
 const MAX_BODY_BYTES = 20_000;
-
-/** Deep-clone with secret-key redaction, URL token stripping, and size caps. */
-function sanitizeForDebug(value: unknown, depth = 0): unknown {
-  if (depth > 6) return "[depth-limit]";
-  if (value === null || value === undefined) return value;
-  if (typeof value === "string") {
-    const cleaned = stripUrlSecrets(value);
-    return cleaned.length > MAX_STRING_LEN
-      ? cleaned.slice(0, MAX_STRING_LEN) + `…[+${cleaned.length - MAX_STRING_LEN} chars]`
-      : cleaned;
-  }
-  if (typeof value !== "object") return value;
-  if (Array.isArray(value)) {
-    const capped = value.slice(0, 50).map((v) => sanitizeForDebug(v, depth + 1));
-    if (value.length > 50) capped.push(`…[+${value.length - 50} items]`);
-    return capped;
-  }
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-    if (SENSITIVE_KEY_PATTERN.test(k)) {
-      out[k] = "[redacted]";
-      continue;
-    }
-    out[k] = sanitizeForDebug(v, depth + 1);
-  }
-  return out;
-}
 
 interface SlotState {
   loading: boolean;
