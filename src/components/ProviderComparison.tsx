@@ -58,6 +58,56 @@ interface SlotDebug {
   errorMessage?: string;
   httpStatus?: number;
   responseBody?: unknown;
+  truncated?: boolean;
+}
+
+/**
+ * Keys that must never leak into the debug panel / copy-log / console.
+ * Matched case-insensitively against any nested object key.
+ */
+const SENSITIVE_KEY_PATTERN =
+  /(authorization|api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|bearer|secret|password|cookie|set-cookie|x-api-key|signature|client[_-]?secret|session|jwt|email|phone)/i;
+
+/** Strip query strings + fragments from URLs so signed-URL tokens don't leak. */
+const stripUrlSecrets = (s: string): string => {
+  if (typeof s !== "string") return s;
+  // Detect URLs and strip ?query and #fragment
+  return s.replace(/\bhttps?:\/\/[^\s"'<>]+/gi, (url) => {
+    const qi = url.indexOf("?");
+    const hi = url.indexOf("#");
+    const cut = [qi, hi].filter((i) => i >= 0).sort((a, b) => a - b)[0];
+    return cut === undefined ? url : url.slice(0, cut) + "?[redacted]";
+  });
+};
+
+const MAX_STRING_LEN = 2_000;
+const MAX_BODY_BYTES = 20_000;
+
+/** Deep-clone with secret-key redaction, URL token stripping, and size caps. */
+function sanitizeForDebug(value: unknown, depth = 0): unknown {
+  if (depth > 6) return "[depth-limit]";
+  if (value === null || value === undefined) return value;
+  if (typeof value === "string") {
+    const cleaned = stripUrlSecrets(value);
+    return cleaned.length > MAX_STRING_LEN
+      ? cleaned.slice(0, MAX_STRING_LEN) + `…[+${cleaned.length - MAX_STRING_LEN} chars]`
+      : cleaned;
+  }
+  if (typeof value !== "object") return value;
+  if (Array.isArray(value)) {
+    const capped = value.slice(0, 50).map((v) => sanitizeForDebug(v, depth + 1));
+    if (value.length > 50) capped.push(`…[+${value.length - 50} items]`);
+    return capped;
+  }
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (SENSITIVE_KEY_PATTERN.test(k)) {
+      out[k] = "[redacted]";
+      continue;
+    }
+    out[k] = sanitizeForDebug(v, depth + 1);
+  }
+  return out;
 }
 
 interface SlotState {
@@ -138,12 +188,13 @@ export default function ProviderComparison({
             adapter: a.id,
             startedAt,
             elapsedMs,
-            request: adapterReq,
+            request: sanitizeForDebug(adapterReq),
             ok: true,
-            responseBody: {
+            responseBody: sanitizeForDebug({
               imageUrlPreview:
                 typeof response.imageUrl === "string"
-                  ? response.imageUrl.slice(0, 80) + "…"
+                  ? stripUrlSecrets(response.imageUrl).slice(0, 120) +
+                    (response.imageUrl.length > 120 ? "…" : "")
                   : null,
               provider: response.generationProvider,
               model: response.generationModel,
@@ -151,7 +202,7 @@ export default function ProviderComparison({
               width: response.width,
               height: response.height,
               metadata: response.metadata,
-            },
+            }),
           };
           setSlots((prev) => ({
             ...prev,
@@ -162,44 +213,73 @@ export default function ProviderComparison({
           // supabase-js FunctionsHttpError exposes the raw Response via .context
           let httpStatus: number | undefined;
           let responseBody: unknown;
+          let truncated = false;
           const ctx = err?.context;
-          if (ctx && typeof ctx === "object") {
-            httpStatus = (ctx as Response).status;
+          if (ctx && typeof ctx === "object" && typeof (ctx as Response).clone === "function") {
             try {
-              const raw = await (ctx as Response).clone().text();
-              try {
-                responseBody = JSON.parse(raw);
-              } catch {
-                responseBody = raw;
+              const resp = (ctx as Response).clone();
+              httpStatus = resp.status;
+              const reader = resp.body?.getReader();
+              if (reader) {
+                const chunks: Uint8Array[] = [];
+                let total = 0;
+                while (total < MAX_BODY_BYTES) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  chunks.push(value);
+                  total += value.byteLength;
+                }
+                if (total >= MAX_BODY_BYTES) {
+                  truncated = true;
+                  try { await reader.cancel(); } catch { /* ignore */ }
+                }
+                const raw = new TextDecoder().decode(
+                  chunks.reduce((acc, c) => {
+                    const merged = new Uint8Array(acc.length + c.length);
+                    merged.set(acc, 0);
+                    merged.set(c, acc.length);
+                    return merged;
+                  }, new Uint8Array()),
+                );
+                try {
+                  responseBody = JSON.parse(raw);
+                } catch {
+                  // Not JSON — could be HTML error page. Keep as string preview only.
+                  responseBody = raw.slice(0, MAX_STRING_LEN);
+                }
               }
             } catch {
-              /* ignore */
+              /* ignore — leave responseBody undefined */
             }
           }
           const msg =
             (responseBody && typeof responseBody === "object" &&
+              typeof (responseBody as any).error === "string" &&
               (responseBody as any).error) ||
-            err?.message ||
+            (typeof err?.message === "string" && err.message) ||
             "Generation failed";
           const debug: SlotDebug = {
             adapter: a.id,
             startedAt,
             elapsedMs,
-            request: adapterReq,
+            request: sanitizeForDebug(adapterReq),
             ok: false,
-            errorName: err?.name,
-            errorMessage: err?.message,
+            errorName: typeof err?.name === "string" ? err.name : undefined,
+            errorMessage: typeof err?.message === "string" ? err.message : undefined,
             httpStatus,
-            responseBody,
+            responseBody: sanitizeForDebug(responseBody),
+            truncated,
           };
-          console.error(`[ProviderComparison] ${a.id} failed`, debug);
+          if (import.meta.env.DEV) {
+            console.error(`[ProviderComparison] ${a.id} failed`, debug);
+          }
           setSlots((prev) => ({
             ...prev,
-            [a.id]: { loading: false, error: String(msg), debug },
+            [a.id]: { loading: false, error: String(msg).slice(0, 500), debug },
           }));
           toast({
             title: `${a.label} failed`,
-            description: String(msg),
+            description: String(msg).slice(0, 300),
             variant: "destructive",
           });
         }
@@ -434,8 +514,43 @@ function ComparisonSlot({ label, state, request, onPick, onSave }: ComparisonSlo
 }
 
 function DebugLog({ debug }: { debug: SlotDebug }) {
+  const { toast } = useToast();
   const [open, setOpen] = useState(!debug.ok);
-  const json = JSON.stringify(debug, null, 2);
+  // Defensive: JSON.stringify can throw on circular refs even after sanitize.
+  let json: string;
+  try {
+    json = JSON.stringify(debug, null, 2);
+  } catch {
+    json = JSON.stringify(
+      { adapter: debug.adapter, ok: debug.ok, error: "[unserializable debug payload]" },
+      null,
+      2,
+    );
+  }
+  const copy = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(json);
+      } else {
+        // Fallback for non-secure contexts
+        const ta = document.createElement("textarea");
+        ta.value = json;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      toast({ title: "Debug log copied" });
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Select the log text manually.",
+        variant: "destructive",
+      });
+    }
+  };
   return (
     <div className="border-t border-border">
       <button
@@ -447,19 +562,20 @@ function DebugLog({ debug }: { debug: SlotDebug }) {
           {debug.ok ? "Debug log" : "Error log"}
           {debug.httpStatus ? ` · HTTP ${debug.httpStatus}` : ""}
           {` · ${debug.elapsedMs}ms`}
+          {debug.truncated ? " · truncated" : ""}
         </span>
         <span className="font-display text-[10px] text-muted-foreground">
           {open ? "Hide" : "Show"}
         </span>
       </button>
       {open && (
-        <div className="p-2 space-y-1.5">
+        <div className="p-2 space-y-1.5 min-w-0">
           <pre className="text-[10px] leading-snug max-h-64 overflow-auto bg-muted/40 rounded-sm p-2 whitespace-pre-wrap break-all">
             {json}
           </pre>
           <button
             type="button"
-            onClick={() => navigator.clipboard?.writeText(json)}
+            onClick={copy}
             className="font-display text-[10px] underline text-muted-foreground hover:text-foreground"
           >
             Copy log
