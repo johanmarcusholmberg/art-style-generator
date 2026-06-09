@@ -212,44 +212,73 @@ export default function ProviderComparison({
           // supabase-js FunctionsHttpError exposes the raw Response via .context
           let httpStatus: number | undefined;
           let responseBody: unknown;
+          let truncated = false;
           const ctx = err?.context;
-          if (ctx && typeof ctx === "object") {
-            httpStatus = (ctx as Response).status;
+          if (ctx && typeof ctx === "object" && typeof (ctx as Response).clone === "function") {
             try {
-              const raw = await (ctx as Response).clone().text();
-              try {
-                responseBody = JSON.parse(raw);
-              } catch {
-                responseBody = raw;
+              const resp = (ctx as Response).clone();
+              httpStatus = resp.status;
+              const reader = resp.body?.getReader();
+              if (reader) {
+                const chunks: Uint8Array[] = [];
+                let total = 0;
+                while (total < MAX_BODY_BYTES) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  chunks.push(value);
+                  total += value.byteLength;
+                }
+                if (total >= MAX_BODY_BYTES) {
+                  truncated = true;
+                  try { await reader.cancel(); } catch { /* ignore */ }
+                }
+                const raw = new TextDecoder().decode(
+                  chunks.reduce((acc, c) => {
+                    const merged = new Uint8Array(acc.length + c.length);
+                    merged.set(acc, 0);
+                    merged.set(c, acc.length);
+                    return merged;
+                  }, new Uint8Array()),
+                );
+                try {
+                  responseBody = JSON.parse(raw);
+                } catch {
+                  // Not JSON — could be HTML error page. Keep as string preview only.
+                  responseBody = raw.slice(0, MAX_STRING_LEN);
+                }
               }
             } catch {
-              /* ignore */
+              /* ignore — leave responseBody undefined */
             }
           }
           const msg =
             (responseBody && typeof responseBody === "object" &&
+              typeof (responseBody as any).error === "string" &&
               (responseBody as any).error) ||
-            err?.message ||
+            (typeof err?.message === "string" && err.message) ||
             "Generation failed";
           const debug: SlotDebug = {
             adapter: a.id,
             startedAt,
             elapsedMs,
-            request: adapterReq,
+            request: sanitizeForDebug(adapterReq),
             ok: false,
-            errorName: err?.name,
-            errorMessage: err?.message,
+            errorName: typeof err?.name === "string" ? err.name : undefined,
+            errorMessage: typeof err?.message === "string" ? err.message : undefined,
             httpStatus,
-            responseBody,
+            responseBody: sanitizeForDebug(responseBody),
+            truncated,
           };
-          console.error(`[ProviderComparison] ${a.id} failed`, debug);
+          if (import.meta.env.DEV) {
+            console.error(`[ProviderComparison] ${a.id} failed`, debug);
+          }
           setSlots((prev) => ({
             ...prev,
-            [a.id]: { loading: false, error: String(msg), debug },
+            [a.id]: { loading: false, error: String(msg).slice(0, 500), debug },
           }));
           toast({
             title: `${a.label} failed`,
-            description: String(msg),
+            description: String(msg).slice(0, 300),
             variant: "destructive",
           });
         }
