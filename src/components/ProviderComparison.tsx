@@ -48,10 +48,23 @@ interface ProviderComparisonProps {
   onSaveResult?: (pick: ComparisonResultPick) => Promise<void>;
 }
 
+interface SlotDebug {
+  adapter: string;
+  startedAt: string;
+  elapsedMs: number;
+  request: unknown;
+  ok: boolean;
+  errorName?: string;
+  errorMessage?: string;
+  httpStatus?: number;
+  responseBody?: unknown;
+}
+
 interface SlotState {
   loading: boolean;
   error?: string;
   response?: NormalizedGenerationResponse;
+  debug?: SlotDebug;
 }
 
 export default function ProviderComparison({
@@ -90,48 +103,103 @@ export default function ProviderComparison({
 
     await Promise.all(
       adapters.map(async (a) => {
+        const baseReq = {
+          prompt: request.prompt,
+          styleKey: request.styleKey,
+          aspectRatio: request.aspectRatio,
+          backgroundStyle: request.backgroundStyle,
+          printMode: request.printMode,
+          referenceImageUrl: request.referenceImageUrl,
+          isEdit: request.isEdit,
+        };
+        const adapterReq =
+          a.id === "lovable"
+            ? { ...baseReq, providerPreference: "sdxl" as const }
+            : a.id === "gemini"
+              ? { ...baseReq, providerPreference: "gemini" as const }
+              : a.id === "replicate"
+                ? { ...baseReq, providerPreference: "sdxl" as const }
+                : { ...baseReq, providerPreference: "openai" as const };
+        const startedAt = new Date().toISOString();
+        const t0 = performance.now();
         try {
-          const baseReq = {
-            prompt: request.prompt,
-            styleKey: request.styleKey,
-            aspectRatio: request.aspectRatio,
-            backgroundStyle: request.backgroundStyle,
-            printMode: request.printMode,
-            referenceImageUrl: request.referenceImageUrl,
-            isEdit: request.isEdit,
-          };
           let response;
           if (a.id === "lovable") {
-            response = await generateWithLovableAdapter({
-              ...baseReq,
-              providerPreference: "sdxl",
-            });
+            response = await generateWithLovableAdapter(adapterReq as any);
           } else if (a.id === "gemini") {
-            response = await generateWithGeminiAdapter({
-              ...baseReq,
-              providerPreference: "gemini",
-            });
+            response = await generateWithGeminiAdapter(adapterReq as any);
           } else if (a.id === "replicate") {
-            response = await generateWithReplicateAdapter({
-              ...baseReq,
-              providerPreference: "sdxl",
-            });
+            response = await generateWithReplicateAdapter(adapterReq as any);
           } else {
-            response = await generateWithOpenAIAdapter({
-              ...baseReq,
-              providerPreference: "openai",
-            });
+            response = await generateWithOpenAIAdapter(adapterReq as any);
           }
-          setSlots((prev) => ({ ...prev, [a.id]: { loading: false, response } }));
-        } catch (err: any) {
-          const msg = err?.message || "Generation failed";
+          const elapsedMs = Math.round(performance.now() - t0);
+          const debug: SlotDebug = {
+            adapter: a.id,
+            startedAt,
+            elapsedMs,
+            request: adapterReq,
+            ok: true,
+            responseBody: {
+              imageUrlPreview:
+                typeof response.imageUrl === "string"
+                  ? response.imageUrl.slice(0, 80) + "…"
+                  : null,
+              provider: response.generationProvider,
+              model: response.generationModel,
+              route: response.executionRoute,
+              width: response.width,
+              height: response.height,
+              metadata: response.metadata,
+            },
+          };
           setSlots((prev) => ({
             ...prev,
-            [a.id]: { loading: false, error: msg },
+            [a.id]: { loading: false, response, debug },
+          }));
+        } catch (err: any) {
+          const elapsedMs = Math.round(performance.now() - t0);
+          // supabase-js FunctionsHttpError exposes the raw Response via .context
+          let httpStatus: number | undefined;
+          let responseBody: unknown;
+          const ctx = err?.context;
+          if (ctx && typeof ctx === "object") {
+            httpStatus = (ctx as Response).status;
+            try {
+              const raw = await (ctx as Response).clone().text();
+              try {
+                responseBody = JSON.parse(raw);
+              } catch {
+                responseBody = raw;
+              }
+            } catch {
+              /* ignore */
+            }
+          }
+          const msg =
+            (responseBody && typeof responseBody === "object" &&
+              (responseBody as any).error) ||
+            err?.message ||
+            "Generation failed";
+          const debug: SlotDebug = {
+            adapter: a.id,
+            startedAt,
+            elapsedMs,
+            request: adapterReq,
+            ok: false,
+            errorName: err?.name,
+            errorMessage: err?.message,
+            httpStatus,
+            responseBody,
+          };
+          console.error(`[ProviderComparison] ${a.id} failed`, debug);
+          setSlots((prev) => ({
+            ...prev,
+            [a.id]: { loading: false, error: String(msg), debug },
           }));
           toast({
             title: `${a.label} failed`,
-            description: msg,
+            description: String(msg),
             variant: "destructive",
           });
         }
@@ -358,6 +426,44 @@ function ComparisonSlot({ label, state, request, onPick, onSave }: ComparisonSlo
               </Button>
             </div>
           </div>
+        </div>
+      )}
+      {state.debug && <DebugLog debug={state.debug} />}
+    </div>
+  );
+}
+
+function DebugLog({ debug }: { debug: SlotDebug }) {
+  const [open, setOpen] = useState(!debug.ok);
+  const json = JSON.stringify(debug, null, 2);
+  return (
+    <div className="border-t border-border">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full px-2.5 py-1 flex items-center justify-between gap-2 hover:bg-muted/40"
+      >
+        <span className="font-display text-[10px] uppercase tracking-wide text-muted-foreground">
+          {debug.ok ? "Debug log" : "Error log"}
+          {debug.httpStatus ? ` · HTTP ${debug.httpStatus}` : ""}
+          {` · ${debug.elapsedMs}ms`}
+        </span>
+        <span className="font-display text-[10px] text-muted-foreground">
+          {open ? "Hide" : "Show"}
+        </span>
+      </button>
+      {open && (
+        <div className="p-2 space-y-1.5">
+          <pre className="text-[10px] leading-snug max-h-64 overflow-auto bg-muted/40 rounded-sm p-2 whitespace-pre-wrap break-all">
+            {json}
+          </pre>
+          <button
+            type="button"
+            onClick={() => navigator.clipboard?.writeText(json)}
+            className="font-display text-[10px] underline text-muted-foreground hover:text-foreground"
+          >
+            Copy log
+          </button>
         </div>
       )}
     </div>
