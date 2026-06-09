@@ -428,6 +428,44 @@ function ComparisonSlot({ label, state, request, onPick, onSave }: ComparisonSlo
           </div>
         </div>
       )}
+      {state.debug && <DebugLog debug={state.debug} />}
+    </div>
+  );
+}
+
+function DebugLog({ debug }: { debug: SlotDebug }) {
+  const [open, setOpen] = useState(!debug.ok);
+  const json = JSON.stringify(debug, null, 2);
+  return (
+    <div className="border-t border-border">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full px-2.5 py-1 flex items-center justify-between gap-2 hover:bg-muted/40"
+      >
+        <span className="font-display text-[10px] uppercase tracking-wide text-muted-foreground">
+          {debug.ok ? "Debug log" : "Error log"}
+          {debug.httpStatus ? ` · HTTP ${debug.httpStatus}` : ""}
+          {` · ${debug.elapsedMs}ms`}
+        </span>
+        <span className="font-display text-[10px] text-muted-foreground">
+          {open ? "Hide" : "Show"}
+        </span>
+      </button>
+      {open && (
+        <div className="p-2 space-y-1.5">
+          <pre className="text-[10px] leading-snug max-h-64 overflow-auto bg-muted/40 rounded-sm p-2 whitespace-pre-wrap break-all">
+            {json}
+          </pre>
+          <button
+            type="button"
+            onClick={() => navigator.clipboard?.writeText(json)}
+            className="font-display text-[10px] underline text-muted-foreground hover:text-foreground"
+          >
+            Copy log
+          </button>
+        </div>
+      )}
     </div>
   );
 }
