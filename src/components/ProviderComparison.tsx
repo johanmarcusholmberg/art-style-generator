@@ -48,10 +48,23 @@ interface ProviderComparisonProps {
   onSaveResult?: (pick: ComparisonResultPick) => Promise<void>;
 }
 
+interface SlotDebug {
+  adapter: string;
+  startedAt: string;
+  elapsedMs: number;
+  request: unknown;
+  ok: boolean;
+  errorName?: string;
+  errorMessage?: string;
+  httpStatus?: number;
+  responseBody?: unknown;
+}
+
 interface SlotState {
   loading: boolean;
   error?: string;
   response?: NormalizedGenerationResponse;
+  debug?: SlotDebug;
 }
 
 export default function ProviderComparison({
