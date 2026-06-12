@@ -552,8 +552,11 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const [modeFilter, setModeFilter] = useState("all");
   const [ratioFilter, setRatioFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  /** Review-status filter. Sources truth from `admin_status`. */
+  const [statusFilter, setStatusFilter] = useState<AdminStatus | "all">("all");
   const [bgChanging, setBgChanging] = useState<"white" | "cream" | null>(null);
   const [bgResult, setBgResult] = useState<{ imageUrl: string; bgStyle: string } | null>(null);
+  const [bulkStatusBusy, setBulkStatusBusy] = useState(false);
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
