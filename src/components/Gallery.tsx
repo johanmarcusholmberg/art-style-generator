@@ -2,8 +2,9 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
   Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
-  FolderPlus, FolderMinus, Printer, ArrowUpCircle, ShoppingBag, Layers,
+  FolderPlus, FolderMinus, Printer, ArrowUpCircle, ShoppingBag, Layers, ChevronDown,
 } from "lucide-react";
+
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,11 +56,14 @@ import EtsyMockupDialog from "@/components/EtsyMockupDialog";
 import RouteBadge from "@/components/RouteBadge";
 import ImportArtworkButton from "@/components/gallery/ImportArtworkButton";
 import { downloadWithBleed, renderRawWithBleed } from "@/lib/raw-download";
+import { runReplicateUpscale } from "@/lib/upscale-providers/replicate";
+import { updateEnhancedAsset } from "@/lib/gallery";
 import {
   buildExportFilename,
   EXPORT_FORMAT_META,
   getStoredExportFormat,
 } from "@/lib/export-formats";
+
 
 interface GalleryImage {
   id: string;
@@ -550,6 +554,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState(false);
+  const [bulkUpscaling, setBulkUpscaling] = useState(false);
+  const [bulkUpscaleProgress, setBulkUpscaleProgress] = useState<{ done: number; total: number; failed: number } | null>(null);
 
   const [collectionFilter, setCollectionFilter] = useState<string | null>(null);
   const [collectionImageIds, setCollectionImageIds] = useState<string[] | null>(null);
@@ -561,21 +567,52 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     ? [styleConfig.themedModeValue, styleConfig.freestyleModeValue, ...(styleConfig.tertiaryModeValue ? [styleConfig.tertiaryModeValue] : [])]
     : null;
 
+  const PAGE_SIZE = 200;
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const [reloadTick, setReloadTick] = useState(0);
   const reloadGallery = useCallback(() => setReloadTick((t) => t + 1), []);
 
   useEffect(() => {
     setLoading(true);
-    fetchGalleryImages()
-      .then((imgs) => setImages(styleModes ? imgs.filter((img: any) => styleModes.includes(img.mode)) : imgs))
+    fetchGalleryImages({ limit: PAGE_SIZE, offset: 0, modes: styleModes ?? undefined })
+      .then((imgs) => {
+        setImages(imgs as GalleryImage[]);
+        setHasMore(imgs.length === PAGE_SIZE);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [refreshKey, reloadTick]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const next = await fetchGalleryImages({
+        limit: PAGE_SIZE,
+        offset: images.length,
+        modes: styleModes ?? undefined,
+      });
+      setImages((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        const merged = [...prev, ...next.filter((n: any) => !seen.has(n.id))];
+        return merged as GalleryImage[];
+      });
+      setHasMore(next.length === PAGE_SIZE);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to load more images");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, images.length, styleModes]);
 
   // Load all collections for bulk actions
   useEffect(() => {
     fetchCollections().then(setAllCollections).catch(console.error);
   }, [refreshKey]);
+
 
   useEffect(() => {
     if (collectionFilter) {
@@ -652,6 +689,100 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       setDownloading(false);
     }
   };
+
+  /**
+   * Bulk HD 4× upscale for selected images.
+   *
+   * Runs `realesrgan_4x` (Real-ESRGAN) on each selected image with a small
+   * concurrency pool. Always pulls the reprocess source (= the original/base
+   * asset) so re-running never compounds on an already-upscaled derivative.
+   * Failures are tallied and surfaced — successful upscales are persisted
+   * via `updateEnhancedAsset` and the gallery row is updated locally.
+   */
+  const handleBulkUpscale = async () => {
+    if (selectedIds.size === 0 || bulkUpscaling) return;
+    const targets = images.filter((img) => selectedIds.has(img.id) && !img.enhanced);
+    const skipped = selectedIds.size - targets.length;
+    if (targets.length === 0) {
+      toast.info("All selected images are already enhanced.");
+      return;
+    }
+    if (skipped > 0) {
+      toast.info(`Skipping ${skipped} already-enhanced image${skipped > 1 ? "s" : ""}.`);
+    }
+
+    setBulkUpscaling(true);
+    setBulkUpscaleProgress({ done: 0, total: targets.length, failed: 0 });
+
+    const CONCURRENCY = 3;
+    let cursor = 0;
+    let done = 0;
+    let failed = 0;
+
+    const runOne = async (img: GalleryImage) => {
+      try {
+        const sourceUrl = getReprocessSourceAssetForImage(img) || img.publicUrl || img.masterUrl;
+        const result = await runReplicateUpscale({
+          imageUrl: sourceUrl,
+          method: "realesrgan",
+          scale: 4,
+        });
+        try {
+          await updateEnhancedAsset(img.id, result.upscaledImageUrl, {
+            enhancementModel: result.provider,
+            upscaleFactor: result.scale,
+            upscaleMode: "realesrgan_4x",
+            enhancedWidthPx: result.width ?? undefined,
+            enhancedHeightPx: result.height ?? undefined,
+          });
+        } catch (persistErr) {
+          console.warn("Bulk upscale: failed to persist enhanced master", persistErr);
+        }
+        const update: Partial<GalleryImage> = {
+          upscale_applied: true,
+          enhanced: true,
+          masterUrl: result.upscaledImageUrl,
+          enhancedUrl: result.upscaledImageUrl,
+          upscale_mode: "realesrgan_4x",
+          upscale_factor: result.scale,
+          enhancement_model: result.provider,
+        };
+        setImages((prev) => prev.map((i) => (i.id === img.id ? { ...i, ...update } : i)));
+        if (selected?.id === img.id) {
+          setSelected((prev) => (prev ? { ...prev, ...update } : prev));
+        }
+      } catch (e) {
+        console.error(`Bulk upscale failed for ${img.id}:`, e);
+        failed++;
+      } finally {
+        done++;
+        setBulkUpscaleProgress({ done, total: targets.length, failed });
+      }
+    };
+
+    const workers = Array.from({ length: Math.min(CONCURRENCY, targets.length) }, async () => {
+      while (cursor < targets.length) {
+        const idx = cursor++;
+        await runOne(targets[idx]);
+      }
+    });
+    await Promise.all(workers);
+
+    setBulkUpscaling(false);
+    setBulkUpscaleProgress(null);
+    setSelectMode(false);
+    setSelectedIds(new Set());
+
+    const succeeded = targets.length - failed;
+    if (failed === 0) {
+      toast.success(`Enhanced ${succeeded} image${succeeded > 1 ? "s" : ""} (HD 4×)`, { duration: 3000 });
+    } else if (succeeded === 0) {
+      toast.error(`Bulk upscale failed for all ${failed} image${failed > 1 ? "s" : ""}`);
+    } else {
+      toast.warning(`Enhanced ${succeeded} · ${failed} failed`);
+    }
+  };
+
 
   const handleBulkCollection = async (collectionId: string) => {
     const ids = Array.from(selectedIds);
@@ -782,10 +913,14 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       setBgResult(null);
       setSelected(null);
       setLoading(true);
-      fetchGalleryImages()
-        .then((imgs) => setImages(styleModes ? imgs.filter((img: any) => styleModes.includes(img.mode)) : imgs))
+      fetchGalleryImages({ limit: PAGE_SIZE, offset: 0, modes: styleModes ?? undefined })
+        .then((imgs) => {
+          setImages(imgs as GalleryImage[]);
+          setHasMore(imgs.length === PAGE_SIZE);
+        })
         .catch(console.error)
         .finally(() => setLoading(false));
+
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     } finally {
@@ -1037,15 +1172,33 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
         {selectMode && selectedIds.size > 0 && (
           <>
-            <Button size="sm" className="font-display text-xs h-8" onClick={handleBatchDownload} disabled={downloading}>
+            <Button size="sm" className="font-display text-xs h-8" onClick={handleBatchDownload} disabled={downloading || bulkUpscaling}>
               {downloading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
               Download {selectedIds.size} as ZIP
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-display text-xs h-8 border-primary/40 text-primary hover:bg-primary/10"
+              onClick={handleBulkUpscale}
+              disabled={bulkUpscaling || downloading}
+              title="Run HD 4× (Real-ESRGAN) on each selected image. Already-enhanced images are skipped."
+            >
+              {bulkUpscaling ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <Sparkles className="h-3 w-3 mr-1" />
+              )}
+              {bulkUpscaling && bulkUpscaleProgress
+                ? `Enhancing ${bulkUpscaleProgress.done}/${bulkUpscaleProgress.total}…`
+                : `Enhance ${selectedIds.size} (HD 4×)`}
             </Button>
 
             {allCollections.length > 0 && (
               <Popover open={bulkPopoverOpen} onOpenChange={setBulkPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="font-display text-xs h-8"
+                  <Button variant="outline" size="sm" className="font-display text-xs h-8" disabled={bulkUpscaling}
                     onClick={() => { setBulkAction("add"); setBulkPopoverOpen(true); }}>
                     <FolderPlus className="h-3 w-3 mr-1" /> Add to folder
                   </Button>
@@ -1073,6 +1226,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
             )}
           </>
         )}
+
 
         {totalPages > 1 && (
           <div className="flex items-center gap-1 ml-auto">
@@ -1138,6 +1292,28 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           ))}
         </div>
       )}
+
+      {/* Load more — fetches the next server-side page and appends to the
+          in-memory set. Client-side pagination above still paginates whatever
+          has been loaded so far. */}
+      {hasMore && filtered.length > 0 && (
+        <div className="flex justify-center mt-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="font-display text-xs"
+          >
+            {loadingMore ? (
+              <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Loading…</>
+            ) : (
+              <><ChevronDown className="h-3 w-3 mr-1" /> Load more</>
+            )}
+          </Button>
+        </div>
+      )}
+
 
       {/* ── Lightbox: Drawer on mobile, Dialog on desktop ── */}
       {selected && lightboxProps && (
