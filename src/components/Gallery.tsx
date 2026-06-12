@@ -105,6 +105,8 @@ interface GalleryImage {
   generation_model?: string | null;
   execution_route?: string | null;
   fallback_used?: boolean | null;
+  /** Formal review lifecycle. Source of truth for review state. */
+  admin_status?: AdminStatus | null;
 }
 
 export interface EditRequest {
