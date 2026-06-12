@@ -39,6 +39,8 @@ import DownloadButton from "@/components/generation/DownloadButton";
 import UploadedImageInput, { type UploadedSource } from "@/components/generation/UploadedImageInput";
 import GeneratedImageActions from "@/components/generation/GeneratedImageActions";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
+import PromptHistoryPanel from "@/components/PromptHistoryPanel";
+import { savePromptHistory } from "@/lib/prompt-history";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription, getPosterPromptHint } from "@/lib/print-formats";
@@ -178,6 +180,8 @@ export default function ImageGenerator({
   const [lastSelectedAdapterId, setLastSelectedAdapterId] = useState<string | null>(null);
   const [lastModelFallbackReason, setLastModelFallbackReason] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
+  // Bumped after each successful prompt-history save so the panel reloads.
+  const [promptHistoryRefresh, setPromptHistoryRefresh] = useState(0);
   // Poster Composer integration (additive — does not change the generator).
   // The user can configure template + text BEFORE generation. After the
   // image is produced we auto-open the Poster Composer pre-filled with
@@ -454,6 +458,17 @@ export default function ImageGenerator({
           description: `Primary generator failed — image was created with ${gen.generationProvider}.`,
         });
       }
+
+      // Best-effort: persist the user's prompt (not the posterHint-augmented
+      // version) to their personal prompt history. Never blocks generation.
+      void savePromptHistory({
+        prompt: activePrompt.trim(),
+        mode: variantStyleKey,
+        provider: gen.generationProvider ?? null,
+        model: gen.generationModel ?? null,
+      }).then((row) => {
+        if (row) setPromptHistoryRefresh((n) => n + 1);
+      });
 
       if (isInlineEditing) {
         setPrompt(activePrompt.trim());
@@ -896,6 +911,11 @@ export default function ImageGenerator({
                       </button>
                     ))}
                   </div>
+                  <PromptHistoryPanel
+                    mode={variantStyleKey}
+                    refreshKey={promptHistoryRefresh}
+                    onUsePrompt={(p) => { if (!promptLocked) setPrompt(p); }}
+                  />
                 </>
               )}
             </>
