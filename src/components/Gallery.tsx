@@ -629,7 +629,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     }
   }, [collectionFilter, refreshKey]);
 
-  useEffect(() => { setCurrentPage(1); }, [modeFilter, ratioFilter, collectionFilter, searchQuery]);
+  useEffect(() => { setCurrentPage(1); }, [modeFilter, ratioFilter, collectionFilter, searchQuery, statusFilter]);
 
   const uniqueRatios = useMemo(
     () => [...new Set(images.map((img) => img.aspect_ratio))].sort(),
@@ -639,14 +639,17 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const searchLower = searchQuery.toLowerCase().trim();
   const filtered = useMemo(
     () =>
-      images.filter(
-        (img) =>
+      images.filter((img) => {
+        const status = ((img as GalleryImage).admin_status || "draft") as AdminStatus;
+        return (
           (modeFilter === "all" || img.mode === modeFilter) &&
           (ratioFilter === "all" || img.aspect_ratio === ratioFilter) &&
           (collectionImageIds === null || collectionImageIds.includes(img.id)) &&
-          (searchLower === "" || img.prompt.toLowerCase().includes(searchLower))
-      ),
-    [images, modeFilter, ratioFilter, collectionImageIds, searchLower]
+          (searchLower === "" || img.prompt.toLowerCase().includes(searchLower)) &&
+          (statusFilter === "all" || status === statusFilter)
+        );
+      }),
+    [images, modeFilter, ratioFilter, collectionImageIds, searchLower, statusFilter]
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
