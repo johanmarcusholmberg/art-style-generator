@@ -1306,10 +1306,11 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       )}
 
       {/* Load more — fetches the next server-side page and appends to the
-          in-memory set. Client-side pagination above still paginates whatever
-          has been loaded so far. */}
-      {hasMore && filtered.length > 0 && (
-        <div className="flex justify-center mt-6">
+          in-memory set. Always shown while the server has more rows, even
+          when current filters hide every loaded image (the next page may
+          contain matches). */}
+      {hasMore && (
+        <div className="flex flex-col items-center gap-1 mt-6">
           <Button
             variant="outline"
             size="sm"
@@ -1323,6 +1324,11 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
               <><ChevronDown className="h-3 w-3 mr-1" /> Load more</>
             )}
           </Button>
+          {filtered.length === 0 && images.length > 0 && (
+            <p className="font-display text-[11px] text-muted-foreground">
+              No matches in the first {images.length} images — try loading more.
+            </p>
+          )}
         </div>
       )}
 
