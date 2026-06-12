@@ -59,6 +59,7 @@ import ImportArtworkButton from "@/components/gallery/ImportArtworkButton";
 import { downloadWithBleed, renderRawWithBleed } from "@/lib/raw-download";
 import { runReplicateUpscale } from "@/lib/upscale-providers/replicate";
 import { updateEnhancedAsset } from "@/lib/gallery";
+import { bulkSetImageAdminStatus, type AdminStatus } from "@/lib/style-lab";
 import {
   buildExportFilename,
   EXPORT_FORMAT_META,
