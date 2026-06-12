@@ -911,6 +911,11 @@ export default function ImageGenerator({
                       </button>
                     ))}
                   </div>
+                  <PromptHistoryPanel
+                    mode={variantStyleKey}
+                    refreshKey={promptHistoryRefresh}
+                    onUsePrompt={(p) => { if (!promptLocked) setPrompt(p); }}
+                  />
                 </>
               )}
             </>
