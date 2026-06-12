@@ -634,6 +634,80 @@ export type Database = {
           },
         ]
       }
+      prompt_history: {
+        Row: {
+          created_at: string
+          generation_job_id: string | null
+          id: string
+          is_favorite: boolean
+          last_used_at: string
+          mode: string
+          model: string | null
+          profile_id: string
+          prompt: string
+          provider: string | null
+          source_image_id: string | null
+          usage_count: number
+        }
+        Insert: {
+          created_at?: string
+          generation_job_id?: string | null
+          id?: string
+          is_favorite?: boolean
+          last_used_at?: string
+          mode: string
+          model?: string | null
+          profile_id: string
+          prompt: string
+          provider?: string | null
+          source_image_id?: string | null
+          usage_count?: number
+        }
+        Update: {
+          created_at?: string
+          generation_job_id?: string | null
+          id?: string
+          is_favorite?: boolean
+          last_used_at?: string
+          mode?: string
+          model?: string | null
+          profile_id?: string
+          prompt?: string
+          provider?: string | null
+          source_image_id?: string | null
+          usage_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_history_generation_job_id_fkey"
+            columns: ["generation_job_id"]
+            isOneToOne: false
+            referencedRelation: "generation_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_history_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_history_source_image_id_fkey"
+            columns: ["source_image_id"]
+            isOneToOne: false
+            referencedRelation: "generated_images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       upscale_jobs: {
         Row: {
           created_at: string
