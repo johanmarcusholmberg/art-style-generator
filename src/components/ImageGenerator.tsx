@@ -39,6 +39,8 @@ import DownloadButton from "@/components/generation/DownloadButton";
 import UploadedImageInput, { type UploadedSource } from "@/components/generation/UploadedImageInput";
 import GeneratedImageActions from "@/components/generation/GeneratedImageActions";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
+import PromptHistoryPanel from "@/components/PromptHistoryPanel";
+import { savePromptHistory } from "@/lib/prompt-history";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription, getPosterPromptHint } from "@/lib/print-formats";
