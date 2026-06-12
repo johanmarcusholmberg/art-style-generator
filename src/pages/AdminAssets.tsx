@@ -3,6 +3,7 @@
  * Admin-only management view for ALL persisted image assets.
  */
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
