@@ -3,6 +3,7 @@ import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
   Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
   FolderPlus, FolderMinus, Printer, ArrowUpCircle, ShoppingBag, Layers, ChevronDown,
+  CheckCircle2, XCircle, Clock,
 } from "lucide-react";
 
 import type { StyleConfig } from "@/lib/style-config";
@@ -58,6 +59,7 @@ import ImportArtworkButton from "@/components/gallery/ImportArtworkButton";
 import { downloadWithBleed, renderRawWithBleed } from "@/lib/raw-download";
 import { runReplicateUpscale } from "@/lib/upscale-providers/replicate";
 import { updateEnhancedAsset } from "@/lib/gallery";
+import { bulkSetImageAdminStatus, type AdminStatus } from "@/lib/style-lab";
 import {
   buildExportFilename,
   EXPORT_FORMAT_META,
@@ -103,6 +105,8 @@ interface GalleryImage {
   generation_model?: string | null;
   execution_route?: string | null;
   fallback_used?: boolean | null;
+  /** Formal review lifecycle. Source of truth for review state. */
+  admin_status?: AdminStatus | null;
 }
 
 export interface EditRequest {
@@ -548,8 +552,11 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const [modeFilter, setModeFilter] = useState("all");
   const [ratioFilter, setRatioFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  /** Review-status filter. Sources truth from `admin_status`. */
+  const [statusFilter, setStatusFilter] = useState<AdminStatus | "all">("all");
   const [bgChanging, setBgChanging] = useState<"white" | "cream" | null>(null);
   const [bgResult, setBgResult] = useState<{ imageUrl: string; bgStyle: string } | null>(null);
+  const [bulkStatusBusy, setBulkStatusBusy] = useState(false);
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -622,7 +629,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     }
   }, [collectionFilter, refreshKey]);
 
-  useEffect(() => { setCurrentPage(1); }, [modeFilter, ratioFilter, collectionFilter, searchQuery]);
+  useEffect(() => { setCurrentPage(1); }, [modeFilter, ratioFilter, collectionFilter, searchQuery, statusFilter]);
 
   const uniqueRatios = useMemo(
     () => [...new Set(images.map((img) => img.aspect_ratio))].sort(),
@@ -632,14 +639,17 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const searchLower = searchQuery.toLowerCase().trim();
   const filtered = useMemo(
     () =>
-      images.filter(
-        (img) =>
+      images.filter((img) => {
+        const status = ((img as GalleryImage).admin_status || "draft") as AdminStatus;
+        return (
           (modeFilter === "all" || img.mode === modeFilter) &&
           (ratioFilter === "all" || img.aspect_ratio === ratioFilter) &&
           (collectionImageIds === null || collectionImageIds.includes(img.id)) &&
-          (searchLower === "" || img.prompt.toLowerCase().includes(searchLower))
-      ),
-    [images, modeFilter, ratioFilter, collectionImageIds, searchLower]
+          (searchLower === "" || img.prompt.toLowerCase().includes(searchLower)) &&
+          (statusFilter === "all" || status === statusFilter)
+        );
+      }),
+    [images, modeFilter, ratioFilter, collectionImageIds, searchLower, statusFilter]
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
@@ -792,6 +802,38 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           `Enhanced ${succeeded} · ${failed} failed. Selection preserved — re-run to retry.`,
         );
       }
+    }
+  };
+
+
+  /**
+   * Bulk review-status update for selected images. Reuses the shared
+   * `bulkSetImageAdminStatus` helper so the DB trigger keeps
+   * `is_rejected` / `is_archived` consistent with `admin_status`.
+   */
+  const handleBulkStatus = async (status: AdminStatus) => {
+    if (selectedIds.size === 0 || bulkStatusBusy) return;
+    const ids = Array.from(selectedIds);
+    setBulkStatusBusy(true);
+    try {
+      await bulkSetImageAdminStatus(ids, status);
+      const idSet = new Set(ids);
+      const patch: Partial<GalleryImage> = {
+        admin_status: status,
+      };
+      setImages((prev) =>
+        prev.map((img) => (idSet.has(img.id) ? { ...img, ...patch } : img)),
+      );
+      const label =
+        status === "needs_review" ? "needs review" : status;
+      toast.success(`Marked ${ids.length} as ${label}`, { duration: 3000 });
+      setSelectMode(false);
+      setSelectedIds(new Set());
+    } catch (e) {
+      console.error("[gallery] bulk status update failed:", e);
+      toast.error("Failed to update status — selection preserved.");
+    } finally {
+      setBulkStatusBusy(false);
     }
   };
 
@@ -1166,9 +1208,22 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           </SelectContent>
         </Select>
 
-        {(modeFilter !== "all" || ratioFilter !== "all" || searchQuery !== "") && (
+        {/* Review status filter — `admin_status` is the source of truth. */}
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as AdminStatus | "all")}>
+          <SelectTrigger className="w-[140px] font-display text-xs h-8"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="needs_review">Needs review</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="archived">Archived</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {(modeFilter !== "all" || ratioFilter !== "all" || searchQuery !== "" || statusFilter !== "all") && (
           <Button variant="ghost" size="sm" className="font-display text-xs h-8 px-2"
-            onClick={() => { setModeFilter("all"); setRatioFilter("all"); setSearchQuery(""); }}>✕</Button>
+            onClick={() => { setModeFilter("all"); setRatioFilter("all"); setSearchQuery(""); setStatusFilter("all"); }}>✕</Button>
         )}
 
         <Button
@@ -1206,6 +1261,44 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                 ? `Enhancing ${bulkUpscaleProgress.done}/${bulkUpscaleProgress.total}…`
                 : `Enhance ${selectedIds.size} (HD 4×)`}
             </Button>
+
+            {/* Bulk review actions — write to admin_status (single source of truth). */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-display text-xs h-8 border-primary/40 text-primary hover:bg-primary/10"
+              onClick={() => handleBulkStatus("approved")}
+              disabled={bulkStatusBusy || bulkUpscaling}
+              title="Mark selected as Approved"
+            >
+              {bulkStatusBusy
+                ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                : <CheckCircle2 className="h-3 w-3 mr-1" />}
+              Approve {selectedIds.size}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-display text-xs h-8 border-destructive/40 text-destructive hover:bg-destructive/10"
+              onClick={() => handleBulkStatus("rejected")}
+              disabled={bulkStatusBusy || bulkUpscaling}
+              title="Mark selected as Rejected"
+            >
+              <XCircle className="h-3 w-3 mr-1" />
+              Reject {selectedIds.size}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-display text-xs h-8"
+              onClick={() => handleBulkStatus("needs_review")}
+              disabled={bulkStatusBusy || bulkUpscaling}
+              title="Mark selected as Needs review"
+            >
+              <Clock className="h-3 w-3 mr-1" />
+              Needs review
+            </Button>
+
 
             {allCollections.length > 0 && (
               <Popover open={bulkPopoverOpen} onOpenChange={setBulkPopoverOpen}>

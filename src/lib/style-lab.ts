@@ -11,6 +11,19 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type ImageRating = 0 | 1 | 2 | 3 | 4 | 5;
 
+/**
+ * Formal review lifecycle. Mirrors the `asset_admin_status` enum in the DB.
+ * Treated as the source of truth — the `sync_generated_image_status` trigger
+ * keeps `is_rejected` / `is_archived` in lock-step whenever this changes,
+ * and vice versa, so callers only need to write to one side.
+ */
+export type AdminStatus =
+  | "draft"
+  | "needs_review"
+  | "approved"
+  | "rejected"
+  | "archived";
+
 // New curation columns are not in the generated Supabase types yet, so
 // the update payloads are cast through `never`. Each helper is a tiny
 // single-purpose write and the column names are validated by the DB.
@@ -18,7 +31,8 @@ type CurationUpdate =
   | { rating: ImageRating }
   | { is_favorite: boolean }
   | { is_archived: boolean }
-  | { is_rejected: boolean };
+  | { is_rejected: boolean }
+  | { admin_status: AdminStatus };
 
 async function updateCurationField(id: string, update: CurationUpdate): Promise<void> {
   const { error } = await supabase
@@ -37,11 +51,37 @@ export async function setImageFavorite(id: string, value: boolean): Promise<void
 }
 
 export async function setImageArchived(id: string, value: boolean): Promise<void> {
+  // Trigger keeps admin_status='archived' in sync.
   return updateCurationField(id, { is_archived: value });
 }
 
 export async function setImageRejected(id: string, value: boolean): Promise<void> {
+  // Trigger keeps admin_status='rejected' in sync.
   return updateCurationField(id, { is_rejected: value });
+}
+
+/**
+ * Direct write to the formal review lifecycle. The DB trigger derives
+ * `is_rejected` / `is_archived` from this so callers don't need to.
+ */
+export async function setImageAdminStatus(id: string, status: AdminStatus): Promise<void> {
+  return updateCurationField(id, { admin_status: status });
+}
+
+/**
+ * Bulk lifecycle update. Returns the count of rows updated locally; on
+ * partial failure throws so the caller can surface it.
+ */
+export async function bulkSetImageAdminStatus(
+  ids: string[],
+  status: AdminStatus,
+): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await supabase
+    .from("generated_images")
+    .update({ admin_status: status } as never)
+    .in("id", ids);
+  if (error) throw error;
 }
 
 
