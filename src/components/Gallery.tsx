@@ -806,6 +806,38 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   };
 
 
+  /**
+   * Bulk review-status update for selected images. Reuses the shared
+   * `bulkSetImageAdminStatus` helper so the DB trigger keeps
+   * `is_rejected` / `is_archived` consistent with `admin_status`.
+   */
+  const handleBulkStatus = async (status: AdminStatus) => {
+    if (selectedIds.size === 0 || bulkStatusBusy) return;
+    const ids = Array.from(selectedIds);
+    setBulkStatusBusy(true);
+    try {
+      await bulkSetImageAdminStatus(ids, status);
+      const idSet = new Set(ids);
+      const patch: Partial<GalleryImage> = {
+        admin_status: status,
+      };
+      setImages((prev) =>
+        prev.map((img) => (idSet.has(img.id) ? { ...img, ...patch } : img)),
+      );
+      const label =
+        status === "needs_review" ? "needs review" : status;
+      toast.success(`Marked ${ids.length} as ${label}`, { duration: 3000 });
+      setSelectMode(false);
+      setSelectedIds(new Set());
+    } catch (e) {
+      console.error("[gallery] bulk status update failed:", e);
+      toast.error("Failed to update status — selection preserved.");
+    } finally {
+      setBulkStatusBusy(false);
+    }
+  };
+
+
   const handleBulkCollection = async (collectionId: string) => {
     const ids = Array.from(selectedIds);
     try {
