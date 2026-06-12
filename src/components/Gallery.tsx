@@ -554,6 +554,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState(false);
+  const [bulkUpscaling, setBulkUpscaling] = useState(false);
+  const [bulkUpscaleProgress, setBulkUpscaleProgress] = useState<{ done: number; total: number; failed: number } | null>(null);
 
   const [collectionFilter, setCollectionFilter] = useState<string | null>(null);
   const [collectionImageIds, setCollectionImageIds] = useState<string[] | null>(null);
@@ -565,21 +567,52 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     ? [styleConfig.themedModeValue, styleConfig.freestyleModeValue, ...(styleConfig.tertiaryModeValue ? [styleConfig.tertiaryModeValue] : [])]
     : null;
 
+  const PAGE_SIZE = 200;
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const [reloadTick, setReloadTick] = useState(0);
   const reloadGallery = useCallback(() => setReloadTick((t) => t + 1), []);
 
   useEffect(() => {
     setLoading(true);
-    fetchGalleryImages()
-      .then((imgs) => setImages(styleModes ? imgs.filter((img: any) => styleModes.includes(img.mode)) : imgs))
+    fetchGalleryImages({ limit: PAGE_SIZE, offset: 0, modes: styleModes ?? undefined })
+      .then((imgs) => {
+        setImages(imgs as GalleryImage[]);
+        setHasMore(imgs.length === PAGE_SIZE);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [refreshKey, reloadTick]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const next = await fetchGalleryImages({
+        limit: PAGE_SIZE,
+        offset: images.length,
+        modes: styleModes ?? undefined,
+      });
+      setImages((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        const merged = [...prev, ...next.filter((n: any) => !seen.has(n.id))];
+        return merged as GalleryImage[];
+      });
+      setHasMore(next.length === PAGE_SIZE);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to load more images");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, images.length, styleModes]);
 
   // Load all collections for bulk actions
   useEffect(() => {
     fetchCollections().then(setAllCollections).catch(console.error);
   }, [refreshKey]);
+
 
   useEffect(() => {
     if (collectionFilter) {
