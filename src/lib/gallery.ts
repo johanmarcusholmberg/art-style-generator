@@ -242,13 +242,30 @@ function storageUrl(path: string | null): string | null {
   return supabase.storage.from("generated-images").getPublicUrl(path).data.publicUrl;
 }
 
-export async function fetchGalleryImages() {
-  const { data, error } = await supabase
+export interface FetchGalleryOptions {
+  /** Page size. Defaults to 200 (no longer hard-capped at 50). */
+  limit?: number;
+  /** Offset for pagination. Defaults to 0. */
+  offset?: number;
+  /** When provided, filter rows server-side to these modes. */
+  modes?: string[];
+}
+
+export async function fetchGalleryImages(opts: FetchGalleryOptions = {}) {
+  const limit = opts.limit ?? 200;
+  const offset = opts.offset ?? 0;
+
+  let query = supabase
     .from("generated_images")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(50);
+    .range(offset, offset + limit - 1);
 
+  if (opts.modes && opts.modes.length > 0) {
+    query = query.in("mode", opts.modes);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
 
   return (data || []).map((img: any) => {
@@ -264,6 +281,7 @@ export async function fetchGalleryImages() {
     };
   });
 }
+
 
 export async function deleteFromGallery(id: string, storagePath: string) {
   // Also fetch enhanced path to clean up
