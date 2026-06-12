@@ -1293,6 +1293,28 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         </div>
       )}
 
+      {/* Load more — fetches the next server-side page and appends to the
+          in-memory set. Client-side pagination above still paginates whatever
+          has been loaded so far. */}
+      {hasMore && filtered.length > 0 && (
+        <div className="flex justify-center mt-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="font-display text-xs"
+          >
+            {loadingMore ? (
+              <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Loading…</>
+            ) : (
+              <><ChevronDown className="h-3 w-3 mr-1" /> Load more</>
+            )}
+          </Button>
+        </div>
+      )}
+
+
       {/* ── Lightbox: Drawer on mobile, Dialog on desktop ── */}
       {selected && lightboxProps && (
         isMobile ? (
