@@ -493,6 +493,8 @@ export type Database = {
       generation_jobs: {
         Row: {
           aspect_ratio: string
+          auto_upscale: boolean
+          auto_upscale_mode: string
           background_style: string
           batch_size: number
           completed_images: number
@@ -517,6 +519,8 @@ export type Database = {
         }
         Insert: {
           aspect_ratio?: string
+          auto_upscale?: boolean
+          auto_upscale_mode?: string
           background_style?: string
           batch_size?: number
           completed_images?: number
@@ -541,6 +545,8 @@ export type Database = {
         }
         Update: {
           aspect_ratio?: string
+          auto_upscale?: boolean
+          auto_upscale_mode?: string
           background_style?: string
           batch_size?: number
           completed_images?: number
