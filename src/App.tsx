@@ -12,6 +12,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Account from "./pages/Account";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAssets from "./pages/AdminAssets";
+import AdminCosts from "./pages/AdminCosts";
 import Review from "./pages/Review";
 import Index from "./pages/Index";
 import PopArt from "./pages/PopArt";
@@ -71,6 +72,7 @@ const App = () => (
               <Route path="/admin/assets" element={protect(<AdminAssets />, true)} />
               {/* Thin alias — opens AdminAssets pre-filtered to needs_review. */}
               <Route path="/review" element={protect(<Review />, true)} />
+              <Route path="/admin/costs" element={protect(<AdminCosts />, true)} />
 
               {/* Generators (protected) */}
               <Route path="/" element={protect(<Index />)} />
