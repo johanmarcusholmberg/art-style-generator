@@ -41,6 +41,9 @@ import GeneratedImageActions from "@/components/generation/GeneratedImageActions
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import PromptHistoryPanel from "@/components/PromptHistoryPanel";
 import { savePromptHistory } from "@/lib/prompt-history";
+import { useVariantFanOut, type VariantTile } from "@/features/generation/useVariantFanOut";
+import VariantGrid from "@/features/generation/VariantGrid";
+import type { NormalizedGenerationResponse } from "@/lib/generation-types";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription, getPosterPromptHint } from "@/lib/print-formats";
