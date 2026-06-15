@@ -739,6 +739,9 @@ export default function AdminAssets() {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/admin/costs">Costs</Link>
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setFoldersOpen(true)}>
               <FolderOpen className="h-4 w-4 mr-2" />
               Asset folders
