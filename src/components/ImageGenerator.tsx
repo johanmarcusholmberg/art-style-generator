@@ -312,6 +312,110 @@ export default function ImageGenerator({
     }
   };
 
+  /**
+   * Build the same NormalizedGenerationRequest used by `generate()` so the
+   * single-shot and variant-fan-out paths produce comparable results.
+   */
+  const buildGenerationRequest = () => {
+    const activePrompt = isInlineEditing ? editPrompt : prompt;
+    const referenceImageUrl =
+      isInlineEditing && imageUrl ? imageUrl : effectiveSourceImageUrl || undefined;
+    const strictnessProvider: StrictnessProviderId =
+      generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId);
+    const effectiveStrictness = getDefaultStrictness({
+      styleKey: variantStyleKey,
+      provider: strictnessProvider,
+    });
+    return {
+      prompt: activePrompt.trim(),
+      styleKey: variantStyleKey,
+      aspectRatio: effectiveAspectRatio,
+      backgroundStyle,
+      printMode: true,
+      providerPreference: generatorPref,
+      referenceImageUrl,
+      isEdit: !!referenceImageUrl,
+      strictness: effectiveStrictness,
+      posterFormatId: selectedPrintFormat.id,
+      posterFormatHint: getPosterPromptHint(selectedPrintFormat.id),
+      targetAspectRatio: selectedPrintFormat.aspectRatioDecimal,
+      modelId: modelSelection.modelId ?? undefined,
+      qualityProfile: modelSelection.qualityProfile,
+      generationStrategy: modelSelection.generationStrategy ?? undefined,
+    };
+  };
+
+  const startVariantFanOut = async () => {
+    const activePrompt = isInlineEditing ? editPrompt : prompt;
+    if (!activePrompt.trim()) return;
+    setSavedTileIds(new Set());
+    setSavingTileId(null);
+    await variantFanOut.start(buildGenerationRequest());
+  };
+
+  const handleKeepVariant = async (tile: VariantTile, response: NormalizedGenerationResponse) => {
+    if (savedTileIds.has(tile.id) || savingTileId !== null) return;
+    setSavingTileId(tile.id);
+    try {
+      const finalPrompt = (isInlineEditing ? editPrompt : prompt).trim();
+      const isPrint = generationMode === "print-ready";
+      const { baseDims, masterDims, readiness } = await probeDimensionsAndReadiness(
+        response.imageUrl,
+        response.imageUrl,
+        isPrint ? selectedPrintFormat.id : null,
+      );
+      const baseOpts = buildSaveOptions();
+      await saveToGallery({
+        ...baseOpts,
+        imageUrl: response.imageUrl,
+        prompt: finalPrompt,
+        baseImageUrl: response.imageUrl,
+        masterImageUrl: response.imageUrl,
+        baseWidthPx: baseDims?.width,
+        baseHeightPx: baseDims?.height,
+        masterWidth: masterDims?.width,
+        masterHeight: masterDims?.height,
+        actualWidthPx: masterDims?.width ?? baseDims?.width,
+        actualHeightPx: masterDims?.height ?? baseDims?.height,
+        printReadiness: readiness,
+        generationProvider: response.generationProvider,
+        generationModel: response.generationModel,
+        providerStrategy: response.strategy,
+        fallbackUsed: response.fallbackUsed,
+        executionRoute: response.executionRoute,
+        assetRole: "base_generation",
+        enhanced: false,
+        enhancedImageUrl: undefined,
+        enhancementModel: undefined,
+        upscaleFactor: undefined,
+      });
+      // Best-effort prompt-history save (mirrors generate()).
+      void savePromptHistory({
+        prompt: finalPrompt,
+        mode: variantStyleKey,
+        provider: response.generationProvider ?? null,
+        model: response.generationModel ?? null,
+      }).then((row) => {
+        if (row) setPromptHistoryRefresh((n) => n + 1);
+      });
+      setSavedTileIds((prev) => {
+        const next = new Set(prev);
+        next.add(tile.id);
+        return next;
+      });
+      toast({ title: "Variant saved", description: "Added to your gallery." });
+      onImageSaved?.();
+    } catch (e) {
+      toast({
+        title: "Save failed",
+        description: e instanceof Error ? e.message : "Could not save variant.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingTileId(null);
+    }
+  };
+
   const generate = async () => {
     const activePrompt = isInlineEditing ? editPrompt : prompt;
     if (!activePrompt.trim()) return;
