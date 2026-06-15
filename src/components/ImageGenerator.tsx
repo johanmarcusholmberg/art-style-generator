@@ -1350,20 +1350,67 @@ export default function ImageGenerator({
           />
         )}
 
+        {/* Variant fan-out toggle — opt-in. When on, the Generate button
+            runs 4 parallel calls and shows a pick-best grid below. */}
+        {!isEditMode && !isInlineEditing && (
+          <label className="flex items-center justify-between gap-2 px-1">
+            <span className="flex items-center gap-2">
+              <Switch
+                checked={variantMode}
+                onCheckedChange={(v) => setVariantMode(!!v)}
+                aria-label="Generate 4 variants"
+              />
+              <span className="font-display text-xs text-foreground">Generate 4 variants</span>
+            </span>
+            <span className="font-display text-[10px] text-muted-foreground">
+              ~4× cost · pick the best
+            </span>
+          </label>
+        )}
+
         <Button
-          onClick={generate}
-          disabled={loading || (!isInlineEditing && !prompt.trim()) || (isInlineEditing && !editPrompt.trim())}
+          onClick={variantMode && !isEditMode && !isInlineEditing ? startVariantFanOut : generate}
+          disabled={
+            loading ||
+            variantFanOut.isRunning ||
+            (!isInlineEditing && !prompt.trim()) ||
+            (isInlineEditing && !editPrompt.trim())
+          }
           className="w-full font-display text-sm tracking-wider h-11"
         >
-          {loading ? (
+          {loading || variantFanOut.isRunning ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {isInlineEditing || isEditMode ? "Editing…" : "Painting…"}
+              {isInlineEditing || isEditMode
+                ? "Editing…"
+                : variantFanOut.isRunning
+                ? "Generating variants…"
+                : "Painting…"}
             </>
+          ) : isInlineEditing || isEditMode ? (
+            "Apply Changes"
+          ) : variantMode ? (
+            "Generate 4 variants"
           ) : (
-            isInlineEditing || isEditMode ? "Apply Changes" : (generateLabel || "Generate poster")
+            generateLabel || "Generate poster"
           )}
         </Button>
+
+        {variantMode && (
+          <VariantGrid
+            tiles={variantFanOut.tiles}
+            busy={variantFanOut.isRunning}
+            onKeep={handleKeepVariant}
+            onDiscard={variantFanOut.discard}
+            onRetry={variantFanOut.retryOne}
+            onDiscardAll={() => {
+              variantFanOut.discardAll();
+              setSavedTileIds(new Set());
+            }}
+            savedTileIds={savedTileIds}
+            savingTileId={savingTileId}
+          />
+        )}
       </div>
 
       <div className="relative min-h-[300px] flex items-center justify-center rounded-sm border border-border bg-card paper-texture">
