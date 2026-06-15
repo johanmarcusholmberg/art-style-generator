@@ -1,46 +1,50 @@
-## Cost Dashboard — `/admin/costs`
+# Variant Fan-Out (Pick-Best)
 
-Admin-only read-only view over `asset_cost_events`. Surfaces what we already record so we can see spend before scaling generation volume. No new tracking, no edits.
+Generate 4 variants from the same prompt + style in parallel, present them in a 2×2 picker, and let you keep the winner(s). Reuses existing generation routing — no provider, prompt, or upscale behavior changes.
 
-### Scope
-- New page `src/pages/AdminCosts.tsx`, route `/admin/costs`, gated by `is_current_user_admin()` like AdminAssets.
-- New lib `src/lib/cost-analytics.ts` — fetch + aggregate (pure, testable).
-- Link from AdminAssets header ("Costs") — single small nav addition.
-- No DB migration. Existing admin SELECT policy already permits this.
+## Why
+Single-shot generation is hit-or-miss for poster quality. Running 4 variants at once raises the chance one survives 300 PPI export without adding manual re-roll churn.
 
-### Data
-Fetch up to 5000 most-recent rows from `asset_cost_events`. Client-side aggregate (matches Style Lab Insights pattern). Existing columns only: `event_type, provider, model, mode, estimated_cost, currency, status, created_at`.
+## UX
 
-### Filters
-- Date range (from/to, defaults: last 30 days)
-- Event type (all / generation / upscale / print_export)
-- Provider (all / dynamic from data)
-- Status (default: succeeded only)
+- New "Generate 4 variants" toggle in the generator panel (off by default).
+- When on, clicking Generate fires 4 concurrent calls through the existing router with the same inputs (prompt, style, aspect, background, print mode, format).
+- Live 2×2 grid below the prompt:
+  - Each tile shows a skeleton → image as it arrives.
+  - Per-tile badges: provider, route, effective PPI (for the current print format), cost.
+  - Per-tile actions: **Keep** (saves to gallery via existing save path), **Discard** (removes from local state), **Open** (lightbox).
+- "Keep all" and "Discard all" buttons above the grid.
+- Failures show inline error + "Retry this tile" (only that one re-runs).
+- Variants are NOT auto-saved. Only kept tiles persist (mirrors existing single-image behavior so we don't bloat the gallery).
 
-### Sections
-1. **Summary cards** — total spend, event count, % with known cost, distinct images touched.
-2. **Spend by provider** — table: provider · events · total cost · avg cost/event.
-3. **Spend by style (mode)** — table: mode · events · total cost.
-4. **Spend by event type** — table: event_type · events · total cost.
-5. **Daily spend** — simple bar list (date · count · cost) for the selected range. No chart lib dependency; use existing styled rows like InsightsPanel.
-6. **Recent events** — last 50 rows with link-out to the image (uses `generated_image_id` → AdminAssets row).
+## Scope guards
+- Single-image flow remains the default and is untouched.
+- No changes to `generation-router`, edge functions, or provider adapters.
+- No new prompt-history rows for discarded tiles; only kept ones save (and thereby record history via existing path).
+- No upscale auto-trigger; user upscales kept tiles manually like today.
+- Hard cap: 4 variants, no user-configurable count (keeps cost predictable).
 
-### Cost-unknown handling
-Mirror `summarizeImageCost`: sum known `estimated_cost`, show "+ N unknown" badge where rows have null cost. Never invent prices.
+## Files
 
-### Tests
-`src/lib/cost-analytics.test.ts` — aggregation helpers (by provider, by mode, by day, summary with unknowns, status filter). No UI tests.
+**New**
+- `src/features/generation/useVariantFanOut.ts` — hook owning the 4-slot state array `{ id, status, result?, error? }`, kicks off 4 parallel `generateImage` calls, exposes `start`, `retryOne`, `discard`, `discardAll`.
+- `src/features/generation/VariantGrid.tsx` — 2×2 responsive grid (stacks on mobile) rendering tiles with badges and actions. Reuses `GeneratorBadge`, `RouteBadge`, `PrintQualityIndicator`.
+- `src/features/generation/useVariantFanOut.test.ts` — unit tests for the hook (mocked router): 4 parallel starts, partial failure handling, retryOne isolation, discard semantics.
 
-### Out of scope
-- Editing/deleting cost events
-- Forecasting or budgets
-- Per-user breakdowns (single-creator app)
-- Charts library
-- Backfilling missing prices
+**Edited**
+- `src/components/ImageGenerator.tsx` — add the toggle, branch to `VariantGrid` when on, wire save-on-keep through existing `useSaveGeneratedImage`.
 
-### Files
-- add: `src/pages/AdminCosts.tsx`
-- add: `src/lib/cost-analytics.ts`
-- add: `src/lib/cost-analytics.test.ts`
-- edit: `src/App.tsx` (route)
-- edit: `src/pages/AdminAssets.tsx` (header link)
+## Tests
+- Hook tests above (4 cases).
+- Run full vitest suite; target: previous 94 passing + 4 new = 98.
+
+## Out of scope
+- Variant diffing/comparison overlay.
+- Server-side batching (the existing client-side parallel calls are enough at N=4).
+- Cost cap UI / spend guard (existing cost dashboard already surfaces this).
+- Auto-pick by quality heuristic.
+
+## Limitations
+- 4 concurrent provider calls = ~4× cost per generate click when toggled on. The toggle's helper text will say so.
+- If the provider rate-limits, some tiles will fail; user retries them individually.
+- Effective PPI badge requires a chosen print format; without one, tiles show resolution only.
