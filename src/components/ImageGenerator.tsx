@@ -1409,7 +1409,7 @@ export default function ImageGenerator({
             }}
             savedTileIds={savedTileIds}
             savingTileId={savingTileId}
-            printFormatId={isPrint ? selectedPrintFormat.id : null}
+            printFormatId={generationMode === "print-ready" ? selectedPrintFormat.id : null}
           />
         )}
       </div>
