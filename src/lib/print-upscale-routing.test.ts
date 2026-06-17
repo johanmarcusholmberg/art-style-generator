@@ -194,3 +194,40 @@ describe("assessSelectedMode", () => {
     expect(a.warning).toBeNull();
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* dialog-availability consistency                                     */
+/* ------------------------------------------------------------------ */
+
+// Must mirror EnhanceForPrintDialog OFFERED_MODES exactly.
+const DIALOG_OFFERED = ["realesrgan_4x", "tile_4x", "tile_8x", "print_plus"] as const;
+
+describe("router never recommends a mode hidden from the dialog", () => {
+  it("recommends tile_8x for 50×70 when 4× modes can't clear the target", () => {
+    const r = recommendPrintUpscaleRoute({
+      sourceWidth: 1424,
+      sourceHeight: 1984,
+      posterFormatId: "print_50x70",
+      availableModes: [...DIALOG_OFFERED],
+    });
+    expect(r.recommendedMode).toBe("tile_8x");
+    expect(r.clearsTarget).toBe(true);
+    expect(DIALOG_OFFERED).toContain(r.recommendedMode);
+  });
+
+  it("any recommendation across common print formats is in the dialog's offered list", () => {
+    const formats = ["print_30x40", "print_50x50", "print_50x70", "print_a4", "print_a3", "print_a2"];
+    for (const f of formats) {
+      const r = recommendPrintUpscaleRoute({
+        sourceWidth: 1424,
+        sourceHeight: 1984,
+        posterFormatId: f,
+        availableModes: [...DIALOG_OFFERED],
+      });
+      if (r.recommendedMode) {
+        expect(DIALOG_OFFERED).toContain(r.recommendedMode);
+      }
+    }
+  });
+});
+
