@@ -418,18 +418,39 @@ function LightboxContent({
           <Button variant="outline" size="sm" onClick={() => downloadImage(img.masterUrl, `art-${img.id}.png`)} className="font-display text-xs">
             <Download className="mr-2 h-4 w-4" /> Download
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPrintExport(img)}
-            disabled={printExporting}
-            className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
-          >
-            {printExporting
-              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              : <Printer className="mr-2 h-4 w-4" />}
-            {hasExport ? "Re-export Print" : "Export Print"}
-          </Button>
+          <div className="inline-flex items-center gap-1.5">
+            <Select
+              value={exportFormat}
+              onValueChange={handleExportFormatChange}
+              disabled={printExporting}
+            >
+              <SelectTrigger
+                aria-label="Print export format"
+                className="h-8 w-[78px] font-display text-[11px] uppercase tracking-wider"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EXPORT_FORMATS.map((f) => (
+                  <SelectItem key={f} value={f} className="font-display text-xs">
+                    {EXPORT_FORMAT_META[f].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPrintExport(img)}
+              disabled={printExporting}
+              className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+            >
+              {printExporting
+                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                : <Printer className="mr-2 h-4 w-4" />}
+              {hasExport ? "Re-export Print" : "Export Print"}
+            </Button>
+          </div>
           <Button
             variant="outline"
             size="sm"
