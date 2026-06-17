@@ -43,6 +43,7 @@ import {
   assessSelectedMode,
   type PrintUpscaleRoutingResult,
 } from "@/lib/print-upscale-routing";
+import { resolveUpscaleSource } from "@/lib/upscale-source";
 import { getPrintFormat } from "@/lib/print-formats";
 
 const COST_PILL: Record<UpscaleCostTier, { label: string; className: string }> = {
