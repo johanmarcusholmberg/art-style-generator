@@ -92,6 +92,9 @@ interface GalleryImage {
   target_height_px?: number;
   actual_width_px?: number;
   actual_height_px?: number;
+  /** Enhanced-master pixel dimensions (set after a successful upscale). */
+  enhanced_width_px?: number | null;
+  enhanced_height_px?: number | null;
   enhanced?: boolean;
   print_format_id?: string | null;
   generation_mode?: string | null;
