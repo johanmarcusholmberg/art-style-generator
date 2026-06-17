@@ -181,6 +181,15 @@ export default function ImageGenerator({
   const [lastResolvedModelId, setLastResolvedModelId] = useState<string | null>(null);
   const [lastSelectedAdapterId, setLastSelectedAdapterId] = useState<string | null>(null);
   const [lastModelFallbackReason, setLastModelFallbackReason] = useState<string | null>(null);
+  // Live probed master dimensions for the currently displayed asset.
+  // Used to feed actual-dimension-aware upscale routing into EnhanceForPrintDialog.
+  // Reset whenever the master URL changes; a probe failure leaves it null
+  // so the dialog falls back to its safe unknown-dimensions behavior.
+  const [liveMasterDims, setLiveMasterDims] = useState<{
+    width: number;
+    height: number;
+    url: string;
+  } | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Variant fan-out — generate 4 in parallel and let the user pick.
   const [variantMode, setVariantMode] = useState(false);
