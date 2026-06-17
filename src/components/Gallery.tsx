@@ -39,6 +39,8 @@ import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import {
   getExportSourceAssetForImage,
   getReprocessSourceAssetForImage,
+  getBaseAssetUrl,
+  getEnhancedAssetUrl,
   getPrintReadiness,
 } from "@/lib/image-assets";
 import { describeExportSource } from "@/lib/asset-selection";
@@ -92,6 +94,9 @@ interface GalleryImage {
   target_height_px?: number;
   actual_width_px?: number;
   actual_height_px?: number;
+  /** Enhanced-master pixel dimensions (set after a successful upscale). */
+  enhanced_width_px?: number | null;
+  enhanced_height_px?: number | null;
   enhanced?: boolean;
   print_format_id?: string | null;
   generation_mode?: string | null;
@@ -209,7 +214,12 @@ interface LightboxContentProps {
   printExporting: boolean;
   onEtsyExport: (img: GalleryImage) => void;
   onEtsyMockup: (img: GalleryImage) => void;
-  onUpscale: (img: GalleryImage, mode: UpscaleMode, recipe?: UpscaleRecipe | null) => void;
+  onUpscale: (
+    img: GalleryImage,
+    mode: UpscaleMode,
+    recipe?: UpscaleRecipe | null,
+    source?: import("@/components/EnhanceForPrintDialog").EnhanceForPrintDialogSourceDecision,
+  ) => void;
   upscaling: boolean;
   upscalingStageLabel: string;
   upscalingProgress: number;
@@ -476,11 +486,25 @@ function LightboxContent({
             hasEnhanced={!!img.enhanced}
             sourceWidth={img.actual_width_px ?? null}
             sourceHeight={img.actual_height_px ?? null}
+            originalSource={{
+              url: getBaseAssetUrl(img),
+              width: img.actual_width_px ?? null,
+              height: img.actual_height_px ?? null,
+            }}
+            enhancedSource={
+              img.enhanced || img.enhancedUrl
+                ? {
+                    url: getEnhancedAssetUrl(img),
+                    width: img.enhanced_width_px ?? null,
+                    height: img.enhanced_height_px ?? null,
+                  }
+                : null
+            }
             posterFormatId={img.print_format_id ?? null}
             alreadyUpscaled={!!img.upscale_applied}
             recommendedRecipe={recommendedRecipe}
             disabled={upscaling}
-            onConfirm={(m, recipe) => onUpscale(img, m, recipe ?? null)}
+            onConfirm={(m, recipe, source) => onUpscale(img, m, recipe ?? null, source)}
             trigger={
               <Button
                 variant="outline"
@@ -1036,12 +1060,31 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     img: GalleryImage,
     mode: UpscaleMode,
     recipe?: UpscaleRecipe | null,
+    source?: import("@/components/EnhanceForPrintDialog").EnhanceForPrintDialogSourceDecision,
   ) => {
     if (mode === "none") return;
-    // ALWAYS reprocess from the original/base image — never from an
-    // already-upscaled derivative. Centralized in image-assets.ts so the
-    // rule is consistent everywhere.
-    const sourceUrl = getReprocessSourceAssetForImage(img) || img.publicUrl || img.masterUrl;
+    // Source URL — honour the user's explicit source choice from the dialog
+    // (Plan #2d). Fall back to the legacy "always from base" rule when no
+    // decision was provided, so callers that haven't been updated still work.
+    const sourceUrl =
+      source?.url ||
+      getReprocessSourceAssetForImage(img) ||
+      img.publicUrl ||
+      img.masterUrl;
+    // Routing source dims — match the actual source the upscaler will read.
+    const routingSourceWidth =
+      source?.width ??
+      (source?.resolved === "enhanced"
+        ? img.enhanced_width_px ?? null
+        : img.actual_width_px ?? null);
+    const routingSourceHeight =
+      source?.height ??
+      (source?.resolved === "enhanced"
+        ? img.enhanced_height_px ?? null
+        : img.actual_height_px ?? null);
+    const sourceWasAlreadyUpscaled =
+      source?.sourceWasAlreadyUpscaled ?? !!img.upscale_applied;
+
     const result = await galleryUpscale(sourceUrl, {
       galleryImageId: img.id,
       mode,
@@ -1067,13 +1110,18 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       // double-count. Best-effort — failures are logged inside helper.
       const routingMetadata = buildUpscaleRoutingMetadata(
         {
-          sourceWidth: img.actual_width_px ?? null,
-          sourceHeight: img.actual_height_px ?? null,
+          sourceWidth: routingSourceWidth,
+          sourceHeight: routingSourceHeight,
           posterFormatId: img.print_format_id ?? null,
-          alreadyUpscaled: !!img.upscale_applied,
+          alreadyUpscaled: sourceWasAlreadyUpscaled,
           availableModes: ["realesrgan_4x", "tile_4x", "tile_8x", "print_plus"],
         },
         mode,
+        {
+          sourceChoice: source?.choice,
+          resolvedSource: source?.resolved,
+          sourceWasAlreadyUpscaled,
+        },
       );
       void recordAssetCostEvent({
         imageId: img.id,

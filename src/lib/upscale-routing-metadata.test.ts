@@ -86,3 +86,40 @@ describe("buildUpscaleRoutingMetadata", () => {
     expect(md.routingReason).toBe("unknown-dimensions-fallback");
   });
 });
+
+describe("buildUpscaleRoutingMetadata — source trail (Plan #2d)", () => {
+  it("includes sourceChoice/resolvedSource/sourceWasAlreadyUpscaled when provided", () => {
+    const md = buildUpscaleRoutingMetadata(
+      {
+        sourceWidth: 5952,
+        sourceHeight: 7936,
+        posterFormatId: "print_30x40",
+        alreadyUpscaled: true,
+        availableModes: ["realesrgan_4x", "tile_4x", "tile_8x", "print_plus"],
+      },
+      "realesrgan_4x",
+      {
+        sourceChoice: "auto",
+        resolvedSource: "enhanced",
+        sourceWasAlreadyUpscaled: true,
+      },
+    );
+    expect(md.sourceChoice).toBe("auto");
+    expect(md.resolvedSource).toBe("enhanced");
+    expect(md.sourceWasAlreadyUpscaled).toBe(true);
+  });
+
+  it("omits source trail when not provided (backward compatible)", () => {
+    const md = buildUpscaleRoutingMetadata(
+      {
+        sourceWidth: 1488,
+        sourceHeight: 1984,
+        posterFormatId: "print_30x40",
+        availableModes: ["realesrgan_4x", "tile_4x", "tile_8x", "print_plus"],
+      },
+      "realesrgan_4x",
+    );
+    expect(md.sourceChoice).toBeUndefined();
+    expect(md.resolvedSource).toBeUndefined();
+  });
+});

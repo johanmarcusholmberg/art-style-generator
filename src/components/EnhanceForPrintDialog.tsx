@@ -43,6 +43,7 @@ import {
   assessSelectedMode,
   type PrintUpscaleRoutingResult,
 } from "@/lib/print-upscale-routing";
+import { resolveUpscaleSource } from "@/lib/upscale-source";
 import { getPrintFormat } from "@/lib/print-formats";
 
 const COST_PILL: Record<UpscaleCostTier, { label: string; className: string }> = {
@@ -72,6 +73,15 @@ const OFFERED_MODES: UpscaleMode[] = [
   "print_plus",    // high cost — ESRGAN → SUPIR
 ];
 
+export interface EnhanceForPrintDialogSourceDecision {
+  choice: "auto" | "original" | "enhanced";
+  resolved: "original" | "enhanced";
+  url: string | null;
+  width: number | null;
+  height: number | null;
+  sourceWasAlreadyUpscaled: boolean;
+}
+
 export interface EnhanceForPrintDialogProps {
   /** Render-prop trigger. The button you pass becomes the dialog opener. */
   trigger: React.ReactNode;
@@ -80,6 +90,13 @@ export interface EnhanceForPrintDialogProps {
   /** Optional source pixel dimensions, used to project output resolution. */
   sourceWidth?: number | null;
   sourceHeight?: number | null;
+  /**
+   * Plan #2d — explicit original/enhanced source candidates. When both are
+   * provided, the dialog exposes a 3-pill source toggle (Auto / Original /
+   * Current enhanced) and threads the selection into `onConfirm`.
+   */
+  originalSource?: { url: string | null; width: number | null; height: number | null } | null;
+  enhancedSource?: { url: string | null; width: number | null; height: number | null } | null;
   /** Optional recipe — used as fallback when print routing has no input. */
   recommendedRecipe?: UpscaleRecipe | null;
   /** Print format id — enables actual-dimension-aware upscale routing. */
@@ -89,7 +106,11 @@ export interface EnhanceForPrintDialogProps {
   /** Disable the dialog (e.g. when something is already running). */
   disabled?: boolean;
   /** Fired when the user confirms a method. */
-  onConfirm: (mode: UpscaleMode, recipe?: UpscaleRecipe | null) => void;
+  onConfirm: (
+    mode: UpscaleMode,
+    recipe?: UpscaleRecipe | null,
+    source?: EnhanceForPrintDialogSourceDecision,
+  ) => void;
 }
 
 export default function EnhanceForPrintDialog({
@@ -97,6 +118,8 @@ export default function EnhanceForPrintDialog({
   hasEnhanced,
   sourceWidth,
   sourceHeight,
+  originalSource,
+  enhancedSource,
   recommendedRecipe,
   posterFormatId,
   alreadyUpscaled,
@@ -105,18 +128,76 @@ export default function EnhanceForPrintDialog({
 }: EnhanceForPrintDialogProps) {
   const [open, setOpen] = useState(false);
 
-  // Actual-dimension-aware print routing (Plan #2). Falls back gracefully
-  // when no posterFormatId / source dimensions are provided.
+  // Source selection — only meaningful when both candidates exist.
+  const bothSourcesAvailable =
+    !!originalSource?.url && !!enhancedSource?.url;
+  const [sourceChoice, setSourceChoice] = useState<"auto" | "original" | "enhanced">(
+    "auto",
+  );
+
+  // Resolve which source to actually use (and route against).
+  const resolvedSource = useMemo(() => {
+    if (!bothSourcesAvailable) {
+      return resolveUpscaleSource({
+        original: {
+          url: originalSource?.url ?? null,
+          width: originalSource?.width ?? sourceWidth ?? null,
+          height: originalSource?.height ?? sourceHeight ?? null,
+        },
+        enhanced: enhancedSource?.url
+          ? {
+              url: enhancedSource.url,
+              width: enhancedSource.width ?? null,
+              height: enhancedSource.height ?? null,
+            }
+          : null,
+        posterFormatId,
+        availableModes: OFFERED_MODES,
+        choice: "auto",
+      });
+    }
+    return resolveUpscaleSource({
+      original: {
+        url: originalSource!.url,
+        width: originalSource!.width,
+        height: originalSource!.height,
+      },
+      enhanced: {
+        url: enhancedSource!.url,
+        width: enhancedSource!.width,
+        height: enhancedSource!.height,
+      },
+      posterFormatId,
+      availableModes: OFFERED_MODES,
+      choice: sourceChoice,
+    });
+  }, [
+    bothSourcesAvailable,
+    originalSource,
+    enhancedSource,
+    posterFormatId,
+    sourceChoice,
+    sourceWidth,
+    sourceHeight,
+  ]);
+
+  // Effective routing inputs — derived from the chosen source's dimensions
+  // (falls back to legacy sourceWidth/Height when no candidates were passed).
+  const effectiveWidth = resolvedSource.width ?? sourceWidth ?? null;
+  const effectiveHeight = resolvedSource.height ?? sourceHeight ?? null;
+  const effectiveAlreadyUpscaled =
+    resolvedSource.sourceWasAlreadyUpscaled || !!alreadyUpscaled;
+
   const routing: PrintUpscaleRoutingResult | null = useMemo(() => {
     if (!posterFormatId) return null;
     return recommendPrintUpscaleRoute({
-      sourceWidth,
-      sourceHeight,
+      sourceWidth: effectiveWidth,
+      sourceHeight: effectiveHeight,
       posterFormatId,
-      alreadyUpscaled,
+      alreadyUpscaled: effectiveAlreadyUpscaled,
       availableModes: OFFERED_MODES,
     });
-  }, [sourceWidth, sourceHeight, posterFormatId, alreadyUpscaled]);
+  }, [effectiveWidth, effectiveHeight, posterFormatId, effectiveAlreadyUpscaled]);
 
   const initialMode: UpscaleMode = (() => {
     const routed = routing?.recommendedMode;
@@ -132,20 +213,25 @@ export default function EnhanceForPrintDialog({
   const [picked, setPicked] = useState<UpscaleMode>(initialMode);
 
   const expectedOutput = useMemo(() => {
-    if (!sourceWidth || !sourceHeight) return null;
+    if (!effectiveWidth || !effectiveHeight) return null;
     const cfg = UPSCALE_MODES[picked];
-    const w = Math.round(sourceWidth * cfg.scaleFactor);
-    const h = Math.round(sourceHeight * cfg.scaleFactor);
+    const w = Math.round(effectiveWidth * cfg.scaleFactor);
+    const h = Math.round(effectiveHeight * cfg.scaleFactor);
     return { w, h, factor: cfg.scaleFactor };
-  }, [picked, sourceWidth, sourceHeight]);
+  }, [picked, effectiveWidth, effectiveHeight]);
 
   const selectedAssessment = useMemo(() => {
     if (!posterFormatId) return null;
     return assessSelectedMode(
-      { sourceWidth, sourceHeight, posterFormatId, alreadyUpscaled },
+      {
+        sourceWidth: effectiveWidth,
+        sourceHeight: effectiveHeight,
+        posterFormatId,
+        alreadyUpscaled: effectiveAlreadyUpscaled,
+      },
       picked,
     );
-  }, [picked, sourceWidth, sourceHeight, posterFormatId, alreadyUpscaled]);
+  }, [picked, effectiveWidth, effectiveHeight, posterFormatId, effectiveAlreadyUpscaled]);
 
   const formatLabel = posterFormatId
     ? getPrintFormat(posterFormatId)?.label
@@ -154,11 +240,28 @@ export default function EnhanceForPrintDialog({
   const pickedCfg = UPSCALE_MODES[picked];
   const isHighCost = pickedCfg.estimatedCost === "high";
 
+  // Soft source-specific warning shown under the toggle.
+  const sourceWarning = (() => {
+    if (!bothSourcesAvailable) return null;
+    if (resolvedSource.resolved === "enhanced") {
+      return "This source has already been upscaled. A second upscale may increase size but can also soften details.";
+    }
+    return "This retries from the original master. It may preserve detail better, but may still need a stronger route to reach target size.";
+  })();
+
   const handleConfirm = () => {
     setOpen(false);
     onConfirm(
       picked,
       recommendedRecipe?.recommendedMode === picked ? recommendedRecipe : null,
+      {
+        choice: sourceChoice,
+        resolved: resolvedSource.resolved,
+        url: resolvedSource.url,
+        width: resolvedSource.width,
+        height: resolvedSource.height,
+        sourceWasAlreadyUpscaled: resolvedSource.sourceWasAlreadyUpscaled,
+      },
     );
   };
 
@@ -180,6 +283,41 @@ export default function EnhanceForPrintDialog({
               : "Pick how to upgrade this image for print. Enhancement runs on a remote GPU and costs vary by method. Real-ESRGAN 4× is the recommended low-cost default."}
           </AlertDialogDescription>
         </AlertDialogHeader>
+
+        {/* Source picker — only when both original and enhanced exist */}
+        {bothSourcesAvailable && (
+          <div className="space-y-1.5 pt-1">
+            <p className="font-display text-[11px] text-muted-foreground uppercase tracking-wider">
+              Upscale from
+            </p>
+            <div className="inline-flex gap-1 p-0.5 rounded-sm border border-border bg-muted/40">
+              {(["auto", "original", "enhanced"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setSourceChoice(c)}
+                  className={cn(
+                    "font-display text-[10px] uppercase tracking-wider px-2 py-1 rounded-sm transition-colors",
+                    sourceChoice === c
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {c === "auto"
+                    ? "Auto"
+                    : c === "original"
+                      ? "Original master"
+                      : "Current enhanced"}
+                </button>
+              ))}
+            </div>
+            {sourceWarning && (
+              <p className="font-display text-[11px] text-muted-foreground leading-snug pt-1">
+                {sourceWarning}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Method picker */}
         <div className="space-y-2 py-2">
