@@ -102,6 +102,51 @@ export function getProviderSizeFromMap<T extends "sdxl" | "openai" | "gemini">(
   return map[posterFormatId] ?? null;
 }
 
+// ── Print-intent ratio-preserving sizing (mirror of provider-print-sizing.ts) ─
+//
+// SDXL hard ceiling matches the frontend registry's nativeMaxLongEdge.
+const SDXL_PRINT_LONG_EDGE = 1984;
+const SDXL_MULTIPLE = 8;
+const ASPECT_TOLERANCE = 0.005;
+
+function snapForRatio(
+  ideal: number,
+  fixedAxis: number,
+  targetRatio: number,
+  mult: number,
+  axis: "width" | "height",
+): number {
+  const floor = Math.max(mult, Math.floor(ideal / mult) * mult);
+  const ceil = Math.max(mult, Math.ceil(ideal / mult) * mult);
+  const ratioVal = (v: number) =>
+    axis === "width" ? v / fixedAxis : fixedAxis / v;
+  const err = (v: number) => Math.abs(ratioVal(v) - targetRatio) / targetRatio;
+  const eF = err(floor);
+  const eC = err(ceil);
+  if (eF <= ASPECT_TOLERANCE && eC <= ASPECT_TOLERANCE) return Math.max(floor, ceil);
+  return eF <= eC ? floor : ceil;
+}
+
+/** SDXL print-intent dimensions that preserve the format ratio at long-edge 1984. */
+export function sdxlPrintSizeForFormat(
+  posterFormatId?: string,
+): { width: number; height: number; exact: boolean } | null {
+  const fmt = getPrintFormat(posterFormatId);
+  if (!fmt) return null;
+  const ratio = fmt.aspectRatioDecimal;
+  let width: number, height: number;
+  if (ratio >= 1) {
+    width = SDXL_PRINT_LONG_EDGE;
+    height = snapForRatio(SDXL_PRINT_LONG_EDGE / ratio, width, ratio, SDXL_MULTIPLE, "height");
+  } else {
+    height = SDXL_PRINT_LONG_EDGE;
+    width = snapForRatio(SDXL_PRINT_LONG_EDGE * ratio, height, ratio, SDXL_MULTIPLE, "width");
+  }
+  const got = width / height;
+  const exact = Math.abs(got - ratio) / ratio <= ASPECT_TOLERANCE;
+  return { width, height, exact };
+}
+
 // ── SDXL ────────────────────────────────────────────────────────────────
 
 /** Snap to a multiple of `mult` (SDXL requires multiples of 8). */
@@ -113,21 +158,33 @@ function snap(n: number, mult = 8): number {
  * Compute SDXL pixel dimensions targeting longest side ≈1344, both axes
  * snapped to multiples of 8. Prefers the format's recommended size when
  * provided; otherwise derives from the aspect-ratio decimal.
+ *
+ * When `sizeIntent === "print"`, uses the ratio-preserving long-edge 1984
+ * helper above so prints don't get upscaled from a small preview source.
  */
 export function sdxlSizeForFormat(
   posterFormatId?: string,
   aspectRatio?: string,
+  sizeIntent: "preview" | "standard" | "print" = "standard",
 ): {
   width: number;
   height: number;
-  source: "map" | "format" | "aspect" | "default";
+  source: "map" | "format" | "aspect" | "default" | "print";
   exact: boolean;
 } {
+  if (sizeIntent === "print") {
+    const print = sdxlPrintSizeForFormat(posterFormatId);
+    if (print) {
+      return { width: print.width, height: print.height, source: "print", exact: print.exact };
+    }
+  }
+
   // 1. Hard map (preferred — single source of truth)
   const mapped = getProviderSizeFromMap("sdxl", posterFormatId);
   if (mapped) {
     return { width: mapped.width, height: mapped.height, source: "map", exact: mapped.exact };
   }
+
 
   // 2. Fallback: derive from format / aspect-ratio (legacy heuristic)
   const format = getPrintFormat(posterFormatId);
