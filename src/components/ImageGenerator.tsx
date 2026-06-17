@@ -1577,6 +1577,8 @@ export default function ImageGenerator({
               styleConfig={styleConfig}
               isUpscaling={isUpscaling}
               canManualUpscale={canManualUpscale}
+              sourceWidth={liveMasterDims?.width ?? null}
+              sourceHeight={liveMasterDims?.height ?? null}
               recommendedRecipe={recommendedRecipe}
               onEnhanceConfirm={handleEnhanceConfirm}
               savedToGallery={savedToGallery}
