@@ -14,6 +14,7 @@ vi.mock("@/lib/generation-router", () => ({
 }));
 
 import { useVariantFanOut } from "./useVariantFanOut";
+import { PROVIDER_MODEL_REGISTRY } from "@/lib/generation-providers/registry";
 
 const req = {
   prompt: "p",
