@@ -9,7 +9,7 @@ describe("buildUpscaleRoutingMetadata", () => {
       {
         sourceWidth: 1488,
         sourceHeight: 1984,
-        posterFormatId: "30x40",
+        posterFormatId: "print_30x40",
         alreadyUpscaled: false,
         availableModes: [...AVAILABLE],
       },
@@ -30,7 +30,7 @@ describe("buildUpscaleRoutingMetadata", () => {
       {
         sourceWidth: 1488,
         sourceHeight: 1984,
-        posterFormatId: "30x40",
+        posterFormatId: "print_30x40",
         availableModes: [...AVAILABLE],
       },
       "print_plus",
@@ -46,7 +46,7 @@ describe("buildUpscaleRoutingMetadata", () => {
       {
         sourceWidth: 1488,
         sourceHeight: 1984,
-        posterFormatId: "30x40",
+        posterFormatId: "print_30x40",
         alreadyUpscaled: true,
         availableModes: [...AVAILABLE],
       },
@@ -62,7 +62,7 @@ describe("buildUpscaleRoutingMetadata", () => {
       {
         sourceWidth: 600,
         sourceHeight: 800,
-        posterFormatId: "50x70",
+        posterFormatId: "print_50x70",
         availableModes: ["realesrgan_4x"],
       },
       "realesrgan_4x",
@@ -76,7 +76,7 @@ describe("buildUpscaleRoutingMetadata", () => {
       {
         sourceWidth: null,
         sourceHeight: null,
-        posterFormatId: "30x40",
+        posterFormatId: "print_30x40",
         availableModes: [...AVAILABLE],
       },
       "realesrgan_4x",
