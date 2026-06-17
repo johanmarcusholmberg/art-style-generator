@@ -118,6 +118,8 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
     styleConfig,
     isUpscaling,
     canManualUpscale,
+    sourceWidth,
+    sourceHeight,
     recommendedRecipe,
     onEnhanceConfirm,
     savedToGallery,
