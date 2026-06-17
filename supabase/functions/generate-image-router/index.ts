@@ -55,7 +55,16 @@ serve(async (req) => {
       strictness,
       posterFormatHint,
       posterFormatId,
+      sizeIntent,
+      requestedWidth,
+      requestedHeight,
     } = body || {};
+
+    const validSizeIntent =
+      sizeIntent === "preview" || sizeIntent === "standard" || sizeIntent === "print"
+        ? sizeIntent
+        : undefined;
+
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(
