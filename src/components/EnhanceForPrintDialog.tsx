@@ -284,6 +284,41 @@ export default function EnhanceForPrintDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
 
+        {/* Source picker — only when both original and enhanced exist */}
+        {bothSourcesAvailable && (
+          <div className="space-y-1.5 pt-1">
+            <p className="font-display text-[11px] text-muted-foreground uppercase tracking-wider">
+              Upscale from
+            </p>
+            <div className="inline-flex gap-1 p-0.5 rounded-sm border border-border bg-muted/40">
+              {(["auto", "original", "enhanced"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setSourceChoice(c)}
+                  className={cn(
+                    "font-display text-[10px] uppercase tracking-wider px-2 py-1 rounded-sm transition-colors",
+                    sourceChoice === c
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {c === "auto"
+                    ? "Auto"
+                    : c === "original"
+                      ? "Original master"
+                      : "Current enhanced"}
+                </button>
+              ))}
+            </div>
+            {sourceWarning && (
+              <p className="font-display text-[11px] text-muted-foreground leading-snug pt-1">
+                {sourceWarning}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Method picker */}
         <div className="space-y-2 py-2">
           {OFFERED_MODES.map((m) => {
