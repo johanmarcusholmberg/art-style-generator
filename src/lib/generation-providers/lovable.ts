@@ -95,7 +95,9 @@ export async function generateWithLovableAdapter(
       backgroundStyle: req.backgroundStyle,
       printMode: req.printMode ?? true,
       generatorPreference: req.providerPreference ?? "auto",
+      sizeIntent: req.sizeIntent ?? "standard",
     };
+
     if (req.strictness) body.strictness = req.strictness;
     if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
     if (req.posterFormatId) body.posterFormatId = req.posterFormatId;
