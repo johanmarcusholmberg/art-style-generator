@@ -253,7 +253,32 @@ export default function EnhanceForPrintDialog({
               SUPIR is the highest-cost method. Use it only for fine-art prints.
             </p>
           )}
+          {routing && routing.target && (
+            <p className="font-display text-[11px] text-muted-foreground pt-1 leading-snug">
+              {sourceWidth && sourceHeight
+                ? `Source: ${sourceWidth}×${sourceHeight} · `
+                : "Source: not measured · "}
+              Target{formatLabel ? ` (${formatLabel})` : ""}: {routing.target.width}×{routing.target.height}
+              {routing.requiredScale != null && ` · Required: ${routing.requiredScale}×`}
+              {routing.recommendedMode &&
+                ` · Recommended: ${UPSCALE_MODES[routing.recommendedMode].shortLabel}`}
+            </p>
+          )}
+          {routing?.warning && (
+            <p className="font-display text-[11px] text-orange-500 flex items-start gap-1 pt-1 leading-snug">
+              <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+              {routing.warning}
+            </p>
+          )}
+          {selectedAssessment?.warning &&
+            selectedAssessment.warning !== routing?.warning && (
+              <p className="font-display text-[11px] text-orange-500 flex items-start gap-1 pt-1 leading-snug">
+                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                {selectedAssessment.warning}
+              </p>
+            )}
         </div>
+
 
         <AlertDialogFooter>
           <AlertDialogCancel className="font-display">Cancel</AlertDialogCancel>
