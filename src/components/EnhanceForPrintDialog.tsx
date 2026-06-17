@@ -113,9 +113,7 @@ export default function EnhanceForPrintDialog({
       sourceHeight,
       posterFormatId,
       alreadyUpscaled,
-      availableModes: OFFERED_MODES.filter((m) => m !== "tile_4x" && m !== "tile_8x"
-        ? true
-        : true), // expose all offered modes to the router
+      availableModes: OFFERED_MODES,
     });
   }, [sourceWidth, sourceHeight, posterFormatId, alreadyUpscaled]);
 
