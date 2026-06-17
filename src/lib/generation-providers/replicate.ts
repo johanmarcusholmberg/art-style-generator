@@ -12,6 +12,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { resolveAdapterSizingOverrides } from "@/lib/provider-print-sizing";
 import type {
   NormalizedGenerationRequest,
   NormalizedGenerationResponse,
@@ -27,18 +28,31 @@ export async function generateWithReplicateAdapter(
     );
   }
 
+  const overrides = resolveAdapterSizingOverrides({
+    provider: "sdxl",
+    modelId: req.modelId,
+    formatId: req.posterFormatId,
+    intent: req.sizeIntent,
+  });
+
   const body: Record<string, unknown> = {
     prompt: req.prompt,
     styleKey: req.styleKey,
     aspectRatio: req.aspectRatio,
     backgroundStyle: req.backgroundStyle,
     printMode: req.printMode ?? true,
+    sizeIntent: overrides?.sizeIntent ?? req.sizeIntent ?? "standard",
   };
+  if (overrides?.requestedWidth && overrides?.requestedHeight) {
+    body.requestedWidth = overrides.requestedWidth;
+    body.requestedHeight = overrides.requestedHeight;
+  }
   if (req.strictness) body.strictness = req.strictness;
   if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
   if (req.posterFormatId) body.posterFormatId = req.posterFormatId;
   if (req.requestedModelId) body.requestedModelId = req.requestedModelId;
   if (req.providerModelId) body.providerModelId = req.providerModelId;
+
 
   const { data, error } = await supabase.functions.invoke(
     "generate-image-direct-replicate",
