@@ -62,9 +62,14 @@ import { updateEnhancedAsset } from "@/lib/gallery";
 import { bulkSetImageAdminStatus, type AdminStatus } from "@/lib/style-lab";
 import {
   buildExportFilename,
+  EXPORT_FORMATS,
   EXPORT_FORMAT_META,
   getStoredExportFormat,
+  setStoredExportFormat,
+  type ExportFormat,
 } from "@/lib/export-formats";
+import { recordAssetCostEvent } from "@/lib/cost-events";
+import { buildUpscaleRoutingMetadata } from "@/lib/upscale-routing-metadata";
 
 
 interface GalleryImage {
