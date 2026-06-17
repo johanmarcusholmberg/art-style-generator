@@ -17,6 +17,10 @@ import {
   type PrintUpscaleRoutingInput,
 } from "@/lib/print-upscale-routing";
 import { UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
+import type {
+  ResolvedUpscaleSource,
+  UpscaleSourceChoice,
+} from "@/lib/upscale-source";
 
 export interface UpscaleRoutingMetadata {
   sourceWidth: number | null;
@@ -35,20 +39,28 @@ export interface UpscaleRoutingMetadata {
   selectedClearsTarget: boolean | null;
   selectedWarning: string | null;
   expectedOutput: { width: number; height: number } | null;
+  /** Optional source-choice trail (Plan #2d). */
+  sourceChoice?: UpscaleSourceChoice;
+  resolvedSource?: ResolvedUpscaleSource;
+  sourceWasAlreadyUpscaled?: boolean;
+}
+
+export interface BuildRoutingMetadataOptions {
+  sourceChoice?: UpscaleSourceChoice;
+  resolvedSource?: ResolvedUpscaleSource;
+  sourceWasAlreadyUpscaled?: boolean;
 }
 
 export function buildUpscaleRoutingMetadata(
   input: PrintUpscaleRoutingInput,
   selectedMode: UpscaleMode,
+  source?: BuildRoutingMetadataOptions,
 ): UpscaleRoutingMetadata {
   const routing = recommendPrintUpscaleRoute(input);
   const assessed = assessSelectedMode(input, selectedMode);
   const cfg = UPSCALE_MODES[selectedMode];
 
   const recommended = routing.recommendedMode;
-  // "manual override" = the user picked something different from the
-  // routing recommendation. Only meaningful when routing actually had
-  // input enough to recommend a mode.
   const matchedRecommendation =
     recommended != null && recommended === selectedMode;
   const manualOverride = recommended != null && recommended !== selectedMode;
@@ -79,5 +91,6 @@ export function buildUpscaleRoutingMetadata(
     selectedClearsTarget: routing.target ? assessed.clearsTarget : null,
     selectedWarning: assessed.warning,
     expectedOutput,
+    ...(source ?? {}),
   };
 }
