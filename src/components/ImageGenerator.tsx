@@ -266,6 +266,33 @@ export default function ImageGenerator({
     [variantStyleKey, mode, lastProviderUsed, generationMode],
   );
 
+  // Live master-asset dimension probe.
+  // Re-runs only when the resolved master URL changes. Skips when the URL
+  // is already the one we measured. Silent failure preserves the safe
+  // unknown-dimensions fallback inside EnhanceForPrintDialog.
+  const liveMasterUrl = enhancedImageUrl || baseImageUrl || imageUrl || null;
+  useEffect(() => {
+    if (!liveMasterUrl) {
+      setLiveMasterDims(null);
+      return;
+    }
+    if (liveMasterDims?.url === liveMasterUrl) return;
+    let cancelled = false;
+    loadImageDimensions(liveMasterUrl)
+      .then((dims) => {
+        if (cancelled || !dims) return;
+        setLiveMasterDims({ width: dims.width, height: dims.height, url: liveMasterUrl });
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        console.warn("[ImageGenerator] live master dimension probe failed:", e);
+        setLiveMasterDims(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [liveMasterUrl, liveMasterDims?.url]);
+
   /**
    * Trigger upscale (shared for auto + manual + re-upscale).
    * ALWAYS runs from the original/base image, never from an already-upscaled
