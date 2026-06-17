@@ -1032,6 +1032,36 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       };
       setImages((prev) => prev.map((i) => i.id === img.id ? { ...i, ...update } : i));
       if (selected?.id === img.id) setSelected((prev) => prev ? { ...prev, ...update } : prev);
+      // Persist routing-decision metadata for audit. Cost is null on
+      // purpose: the actual upscale cost is captured by the upscale
+      // webhook (async) or provider call (sync) and we don't want to
+      // double-count. Best-effort — failures are logged inside helper.
+      const routingMetadata = buildUpscaleRoutingMetadata(
+        {
+          sourceWidth: img.actual_width_px ?? null,
+          sourceHeight: img.actual_height_px ?? null,
+          posterFormatId: img.print_format_id ?? null,
+          alreadyUpscaled: !!img.upscale_applied,
+          availableModes: ["realesrgan_4x", "tile_4x", "print_plus"],
+        },
+        mode,
+      );
+      void recordAssetCostEvent({
+        imageId: img.id,
+        eventType: "upscale_routing",
+        provider: result.provider,
+        mode: result.mode,
+        estimatedCost: null,
+        status: "succeeded",
+        metadata: {
+          ...routingMetadata,
+          actualScale: result.scale,
+          downshifted: !!result.downshifted,
+          async: !!result.async,
+          recipeId: recipe?.id ?? null,
+          surface: "gallery",
+        },
+      });
       const label = UPSCALE_MODES[result.mode]?.shortLabel ?? "Upscale";
       toast.success(
         result.downshifted
