@@ -20,9 +20,11 @@ function overrideModel(id: string, patch: Record<string, unknown>) {
 
 import {
   resolvePrintSize,
+  resolveAdapterSizingOverrides,
   supportsDeterministicSeedReplay,
 } from "./provider-print-sizing";
 import { PRINT_FORMATS } from "./print-formats";
+
 
 describe("resolvePrintSize — preview/standard intent (legacy)", () => {
   it("returns today's small SDXL map for preview", () => {
