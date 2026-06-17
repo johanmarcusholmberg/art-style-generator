@@ -39,6 +39,8 @@ import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import {
   getExportSourceAssetForImage,
   getReprocessSourceAssetForImage,
+  getBaseAssetUrl,
+  getEnhancedAssetUrl,
   getPrintReadiness,
 } from "@/lib/image-assets";
 import { describeExportSource } from "@/lib/asset-selection";
