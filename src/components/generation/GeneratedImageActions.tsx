@@ -211,6 +211,8 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
           hasEnhanced={!!hasEnhanced}
           sourceWidth={sourceWidth ?? null}
           sourceHeight={sourceHeight ?? null}
+          originalSource={originalSource ?? null}
+          enhancedSource={enhancedSource ?? null}
           posterFormatId={selectedPrintFormat.id}
           alreadyUpscaled={!!hasEnhanced}
           recommendedRecipe={recommendedRecipe}
