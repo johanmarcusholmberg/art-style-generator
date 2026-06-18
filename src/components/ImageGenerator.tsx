@@ -1601,8 +1601,26 @@ export default function ImageGenerator({
               styleConfig={styleConfig}
               isUpscaling={isUpscaling}
               canManualUpscale={canManualUpscale}
-              sourceWidth={liveMasterDims?.width ?? null}
-              sourceHeight={liveMasterDims?.height ?? null}
+              sourceWidth={(enhancedProbedDims ?? baseProbedDims)?.width ?? null}
+              sourceHeight={(enhancedProbedDims ?? baseProbedDims)?.height ?? null}
+              originalSource={
+                liveBaseUrl
+                  ? {
+                      url: liveBaseUrl,
+                      width: baseProbedDims?.width ?? null,
+                      height: baseProbedDims?.height ?? null,
+                    }
+                  : null
+              }
+              enhancedSource={
+                liveEnhancedUrl
+                  ? {
+                      url: liveEnhancedUrl,
+                      width: enhancedProbedDims?.width ?? null,
+                      height: enhancedProbedDims?.height ?? null,
+                    }
+                  : null
+              }
               recommendedRecipe={recommendedRecipe}
               onEnhanceConfirm={handleEnhanceConfirm}
               savedToGallery={savedToGallery}
