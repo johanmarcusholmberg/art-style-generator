@@ -244,9 +244,9 @@ export default function EnhanceForPrintDialog({
   const sourceWarning = (() => {
     if (!bothSourcesAvailable) return null;
     if (resolvedSource.resolved === "enhanced") {
-      return "This source has already been upscaled. A second upscale may increase size but can also soften details.";
+      return "Current enhanced — useful when the first upscale looks good but more pixels are needed. Repeated upscales can soften fine detail or introduce subtle artifacts.";
     }
-    return "This retries from the original master. It may preserve detail better, but may still need a stronger route to reach target size.";
+    return "Original master — the cleanest source, best for preserving quality. It may need a stronger upscale route to reach the target size.";
   })();
 
   const handleConfirm = () => {
