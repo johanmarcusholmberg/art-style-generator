@@ -244,9 +244,9 @@ export default function EnhanceForPrintDialog({
   const sourceWarning = (() => {
     if (!bothSourcesAvailable) return null;
     if (resolvedSource.resolved === "enhanced") {
-      return "This source has already been upscaled. A second upscale may increase size but can also soften details.";
+      return "Current enhanced — useful when the first upscale looks good but more pixels are needed. Repeated upscales can soften fine detail or introduce subtle artifacts.";
     }
-    return "This retries from the original master. It may preserve detail better, but may still need a stronger route to reach target size.";
+    return "Original master — the cleanest source, best for preserving quality. It may need a stronger upscale route to reach the target size.";
   })();
 
   const handleConfirm = () => {
@@ -280,7 +280,7 @@ export default function EnhanceForPrintDialog({
           <AlertDialogDescription className="font-display text-xs leading-relaxed">
             {hasEnhanced
               ? "An enhanced master already exists. Running another enhancement will create a new master and use additional credits."
-              : "Pick how to upgrade this image for print. Enhancement runs on a remote GPU and costs vary by method. Real-ESRGAN 4× is the recommended low-cost default."}
+              : "For maximum print quality, use the recommended style-specific upscale. Real-ESRGAN 4× is the default for web and smaller prints. For large formats such as 50×70 cm, Tile 8× is recommended when 4× cannot reach 300 PPI."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
