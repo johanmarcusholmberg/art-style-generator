@@ -280,7 +280,7 @@ export default function EnhanceForPrintDialog({
           <AlertDialogDescription className="font-display text-xs leading-relaxed">
             {hasEnhanced
               ? "An enhanced master already exists. Running another enhancement will create a new master and use additional credits."
-              : "Pick how to upgrade this image for print. Enhancement runs on a remote GPU and costs vary by method. Real-ESRGAN 4× is the recommended low-cost default."}
+              : "For maximum print quality, use the recommended style-specific upscale. Real-ESRGAN 4× is the default for web and smaller prints. For large formats such as 50×70 cm, Tile 8× is recommended when 4× cannot reach 300 PPI."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
