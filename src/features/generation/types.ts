@@ -44,6 +44,12 @@ export interface GenerateInput {
   aspectRatio?: string;
   backgroundStyle?: "white" | "cream";
   sourceImageUrl?: string | null;
+  /**
+   * How strongly an uploaded reference image should influence the output.
+   * Only meaningful when `sourceImageUrl` is set. Defaults to "balanced"
+   * downstream when omitted.
+   */
+  referenceStrength?: ReferenceStrength;
   generationMode?: "standard" | "print-ready";
   printFormatId?: string | null;
 }
