@@ -407,6 +407,7 @@ export default function ImageGenerator({
       providerPreference: generatorPref,
       referenceImageUrl,
       isEdit: !!referenceImageUrl,
+      referenceStrength: referenceImageUrl ? referenceStrength : undefined,
       strictness: effectiveStrictness,
       posterFormatId: selectedPrintFormat.id,
       posterFormatHint: getPosterPromptHint(selectedPrintFormat.id),
