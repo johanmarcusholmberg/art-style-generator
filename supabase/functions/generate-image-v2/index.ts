@@ -268,6 +268,10 @@ serve(async (req) => {
         qualityProfile: typeof qualityProfile === "string" ? qualityProfile : null,
         generationStrategy: typeof generationStrategy === "string" ? generationStrategy : null,
         modelFallbackReason,
+        referenceStrength:
+          typeof referenceStrength === "string" && sourceImageUrl
+            ? referenceStrength
+            : null,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
