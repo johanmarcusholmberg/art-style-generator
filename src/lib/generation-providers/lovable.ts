@@ -104,6 +104,8 @@ export async function generateWithLovableAdapter(
     if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
     if (req.posterFormatId) body.posterFormatId = req.posterFormatId;
     if (req.referenceImageUrl) body.sourceImageUrl = req.referenceImageUrl;
+    if (req.referenceStrength && req.referenceImageUrl)
+      body.referenceStrength = req.referenceStrength;
 
     const r = await supabase.functions.invoke(edgeFn, { body });
     data = r.data;
