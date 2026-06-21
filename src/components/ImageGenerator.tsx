@@ -77,6 +77,12 @@ import {
   getDefaultStrictness,
   type ProviderId as StrictnessProviderId,
 } from "@/lib/style-strictness";
+import {
+  REFERENCE_STRENGTH_OPTIONS,
+  DEFAULT_REFERENCE_STRENGTH,
+  referenceStrengthLabel,
+  type ReferenceStrength,
+} from "@/lib/reference-strength";
 
 
 interface ImageGeneratorProps {
@@ -131,6 +137,12 @@ export default function ImageGenerator({
   // when present so the existing edit/source pipeline is reused.
   const [uploadedSource, setUploadedSource] = useState<UploadedSource | null>(null);
   const effectiveSourceImageUrl = sourceImageUrl || uploadedSource?.url || null;
+  // Reference-image strength — only meaningful when a source image is in play
+  // (uploaded reference OR inline edit on the current image).
+  const [referenceStrength, setReferenceStrength] = useState<ReferenceStrength>(
+    DEFAULT_REFERENCE_STRENGTH,
+  );
+  const [lastReferenceStrength, setLastReferenceStrength] = useState<ReferenceStrength | null>(null);
   // Store the enhanced URL separately from the displayed imageUrl
   const [enhancedImageUrl, setEnhancedImageUrl] = useState<string | null>(null);
   const [isInlineEditing, setIsInlineEditing] = useState(false);
@@ -395,6 +407,7 @@ export default function ImageGenerator({
       providerPreference: generatorPref,
       referenceImageUrl,
       isEdit: !!referenceImageUrl,
+      referenceStrength: referenceImageUrl ? referenceStrength : undefined,
       strictness: effectiveStrictness,
       posterFormatId: selectedPrintFormat.id,
       posterFormatHint: getPosterPromptHint(selectedPrintFormat.id),
@@ -552,6 +565,7 @@ export default function ImageGenerator({
         providerPreference: generatorPref,
         referenceImageUrl,
         isEdit: !!referenceImageUrl,
+        referenceStrength: referenceImageUrl ? referenceStrength : undefined,
         strictness: effectiveStrictness,
         posterFormatId: selectedPrintFormat.id,
         posterFormatHint: getPosterPromptHint(selectedPrintFormat.id),
@@ -612,6 +626,7 @@ export default function ImageGenerator({
             ? (routeMeta.modelFallbackReason as string)
             : null),
       );
+      setLastReferenceStrength(referenceImageUrl ? referenceStrength : null);
 
       console.log(
         `[ImageGenerator] generated provider=${gen.generationProvider} model=${gen.generationModel} ` +
@@ -1107,6 +1122,45 @@ export default function ImageGenerator({
           />
         )}
 
+        {/* Reference strength — shown only when a source/reference image
+            is actually in play (uploaded reference OR inline edit on the
+            current image). Forwarded to the generator as a prompt-side
+            directive (no provider on this path exposes a numeric strength). */}
+        {(effectiveSourceImageUrl || (isInlineEditing && imageUrl)) && (
+          <div className="rounded-sm border border-border bg-card/60 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
+                Reference strength
+              </Label>
+              <span className="font-display text-[10px] text-muted-foreground">
+                Controls how closely the result follows your reference image.
+              </span>
+            </div>
+            <div className="inline-flex flex-wrap items-center gap-1 border border-border rounded-sm p-0.5">
+              {REFERENCE_STRENGTH_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setReferenceStrength(opt.id)}
+                  disabled={loading}
+                  title={opt.description}
+                  className={cn(
+                    "font-display text-xs px-2.5 py-1 rounded-sm transition-colors",
+                    referenceStrength === opt.id
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="font-display text-[10px] text-muted-foreground">
+              {REFERENCE_STRENGTH_OPTIONS.find((o) => o.id === referenceStrength)?.description}
+            </p>
+          </div>
+        )}
+
         {/* Generation Mode selector hidden — defaults to "print-ready" via state. */}
 
         {/* Poster size & Output quality cards hidden — defaults are
@@ -1536,6 +1590,7 @@ export default function ImageGenerator({
                 route={lastExecutionRoute}
                 fallback={lastFallbackUsed}
                 routingReason={lastRoutingReason}
+                referenceStrength={lastReferenceStrength}
                 prompt={prompt}
                 styleKey={styleConfig.styleKey}
               />
@@ -1665,12 +1720,13 @@ interface ResultRouteRowProps {
   route: string | null;
   fallback: boolean;
   routingReason: string | null;
+  referenceStrength: ReferenceStrength | null;
   prompt: string;
   styleKey: string;
 }
 
 function ResultRouteRow({
-  provider, model, route, fallback, routingReason, prompt, styleKey,
+  provider, model, route, fallback, routingReason, referenceStrength, prompt, styleKey,
 }: ResultRouteRowProps) {
   const { rating, setFeedback } = useImageFeedback({
     prompt, styleKey, provider, route,
@@ -1687,6 +1743,14 @@ function ResultRouteRow({
       {routingReason && (
         <span className="font-display text-[10px] text-muted-foreground italic">
           {routingReason}
+        </span>
+      )}
+      {referenceStrength && (
+        <span
+          className="font-display text-[10px] text-muted-foreground italic"
+          title="Reference image strength used for this generation"
+        >
+          ref: {referenceStrengthLabel(referenceStrength)}
         </span>
       )}
       <div className="flex items-center gap-1">

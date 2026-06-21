@@ -1557,6 +1557,7 @@ export function createStyleHandler(styleKey: string) {
         strictness,
         posterFormatHint,
         posterFormatId,
+        referenceStrength,
       } = body || {};
 
       if (!prompt || typeof prompt !== "string") {
@@ -1610,6 +1611,8 @@ export function createStyleHandler(styleKey: string) {
             typeof posterFormatHint === "string" ? posterFormatHint : undefined,
           posterFormatId:
             typeof posterFormatId === "string" ? posterFormatId : undefined,
+          referenceStrength:
+            typeof referenceStrength === "string" ? referenceStrength : undefined,
         });
 
         return new Response(

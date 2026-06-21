@@ -38,6 +38,7 @@ export function useGenerateImage(styleKey: string): UseGenerateImageResult {
           posterFormatId: input.printFormatId ?? undefined,
           referenceImageUrl: input.sourceImageUrl ?? undefined,
           isEdit: !!input.sourceImageUrl,
+          referenceStrength: input.sourceImageUrl ? input.referenceStrength : undefined,
         });
         setImageUrl(res.imageUrl);
         setBaseImageUrl(res.imageUrl);

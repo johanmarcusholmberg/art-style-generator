@@ -150,6 +150,9 @@ serve(async (req) => {
       providerModelId,
       qualityProfile,
       generationStrategy,
+      // Reference-image strength (prompt-side instruction; ignored when
+      // no source image is attached).
+      referenceStrength,
     } = rawBody as Record<string, unknown>;
 
     if (typeof styleKey !== "string" || !styleKey) {
@@ -201,6 +204,7 @@ serve(async (req) => {
       posterFormatHint,
       posterFormatId: posterFormatId ?? printFormatId,
       sourceImageUrl,
+      referenceStrength,
     };
     const innerReq = new Request(req.url, {
       method: "POST",
@@ -264,6 +268,10 @@ serve(async (req) => {
         qualityProfile: typeof qualityProfile === "string" ? qualityProfile : null,
         generationStrategy: typeof generationStrategy === "string" ? generationStrategy : null,
         modelFallbackReason,
+        referenceStrength:
+          typeof referenceStrength === "string" && sourceImageUrl
+            ? referenceStrength
+            : null,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

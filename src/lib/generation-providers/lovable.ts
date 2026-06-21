@@ -65,6 +65,8 @@ export async function generateWithLovableAdapter(
   if (req.providerModelId) v2Body.providerModelId = req.providerModelId;
   if (req.qualityProfile) v2Body.qualityProfile = req.qualityProfile;
   if (req.generationStrategy) v2Body.generationStrategy = req.generationStrategy;
+  if (req.referenceStrength && req.referenceImageUrl)
+    v2Body.referenceStrength = req.referenceStrength;
 
 
   let data: any = null;
@@ -102,6 +104,8 @@ export async function generateWithLovableAdapter(
     if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
     if (req.posterFormatId) body.posterFormatId = req.posterFormatId;
     if (req.referenceImageUrl) body.sourceImageUrl = req.referenceImageUrl;
+    if (req.referenceStrength && req.referenceImageUrl)
+      body.referenceStrength = req.referenceStrength;
 
     const r = await supabase.functions.invoke(edgeFn, { body });
     data = r.data;

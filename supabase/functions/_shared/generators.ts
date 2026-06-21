@@ -36,6 +36,35 @@ export interface ProviderResult {
   providerAdjusted?: boolean;
 }
 
+export type ReferenceStrength =
+  | "inspiration"
+  | "balanced"
+  | "strong_reference"
+  | "near_original";
+
+const REFERENCE_STRENGTH_INSTRUCTIONS: Record<ReferenceStrength, string> = {
+  inspiration:
+    "REFERENCE STRENGTH — Inspiration: Use the uploaded image only as loose inspiration. Allow composition, subject details, colors, and layout to change significantly while preserving the broad idea.",
+  balanced:
+    "REFERENCE STRENGTH — Balanced: Preserve the main subject and overall composition of the uploaded image, but clearly adapt it to the selected art style.",
+  strong_reference:
+    "REFERENCE STRENGTH — Strong reference: Preserve composition, subject, proportions, pose, and major visual details of the uploaded image as much as possible while applying the selected art style.",
+  near_original:
+    "REFERENCE STRENGTH — Near original: Treat the uploaded image as the master source. Make minimal structural changes and mainly apply the selected style.",
+};
+
+function normalizeReferenceStrength(v: unknown): ReferenceStrength | undefined {
+  if (
+    v === "inspiration" ||
+    v === "balanced" ||
+    v === "strong_reference" ||
+    v === "near_original"
+  ) {
+    return v;
+  }
+  return undefined;
+}
+
 export interface GenerateArgs {
   userPrompt: string;
   styleKey: string;
@@ -66,6 +95,12 @@ export interface GenerateArgs {
   /** Optional explicit width/height (SDXL) — overrides format-derived sizing. */
   requestedWidth?: number;
   requestedHeight?: number;
+  /**
+   * Reference-image strength — only honored when isEdit + sourceImageUrl
+   * are set. Today this is prompt-side only (no provider on this path
+   * exposes a numeric strength parameter).
+   */
+  referenceStrength?: ReferenceStrength;
 }
 
 
@@ -85,15 +120,29 @@ export async function generateWithGemini(args: GenerateArgs): Promise<ProviderRe
     posterFormatHint: args.posterFormatHint,
   });
 
+  // Prepend a reference-strength instruction when the user attached a
+  // source image. The gateway path has no numeric image-strength knob,
+  // so the four levels are realized as prompt directives.
+  const refStrength = normalizeReferenceStrength(args.referenceStrength);
+  const promptText =
+    args.isEdit && args.sourceImageUrl && refStrength
+      ? `${REFERENCE_STRENGTH_INSTRUCTIONS[refStrength]}\n\n${compiled}`
+      : compiled;
+  if (args.isEdit && args.sourceImageUrl) {
+    console.log(
+      `[gemini] edit referenceStrength=${refStrength ?? "balanced(default)"}`,
+    );
+  }
+
   const messages = args.isEdit && args.sourceImageUrl
     ? [{
         role: "user",
         content: [
           { type: "image_url", image_url: { url: args.sourceImageUrl } },
-          { type: "text", text: compiled },
+          { type: "text", text: promptText },
         ],
       }]
-    : [{ role: "user", content: compiled }];
+    : [{ role: "user", content: promptText }];
 
   const modelId = "google/gemini-3-pro-image-preview";
 
