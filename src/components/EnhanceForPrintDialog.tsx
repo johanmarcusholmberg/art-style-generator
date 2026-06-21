@@ -394,6 +394,28 @@ export default function EnhanceForPrintDialog({
               ? `${expectedOutput.w} × ${expectedOutput.h} px (${expectedOutput.factor}× of source)`
               : `${pickedCfg.scaleFactor}× resolution`}
           </p>
+          {expectedOutput?.ppi != null && expectedOutput.format && (
+            <p
+              className={cn(
+                "font-display text-[11px] leading-snug",
+                expectedOutput.ppiTier === "preferred"
+                  ? "text-primary"
+                  : expectedOutput.ppiTier === "fallback"
+                    ? "text-orange-500"
+                    : "text-destructive",
+              )}
+            >
+              ≈ {expectedOutput.ppi} PPI at {expectedOutput.format.label}
+              {expectedOutput.ppiTier === "preferred" && " · full print quality (300 PPI)"}
+              {expectedOutput.ppiTier === "fallback" && " · standard print quality (150 PPI)"}
+              {expectedOutput.ppiTier === "below" && " · below 150 PPI — soft print"}
+            </p>
+          )}
+          {bothSourcesAvailable && resolvedSource.width && resolvedSource.height && (
+            <p className="font-display text-[10px] text-muted-foreground leading-snug">
+              Source: {resolvedSource.resolved === "enhanced" ? "current enhanced" : "original master"} · {resolvedSource.width}×{resolvedSource.height} px
+            </p>
+          )}
           {isHighCost && (
             <p className="font-display text-[11px] text-destructive flex items-center gap-1 pt-1">
               <AlertTriangle className="h-3 w-3" />
