@@ -1720,12 +1720,13 @@ interface ResultRouteRowProps {
   route: string | null;
   fallback: boolean;
   routingReason: string | null;
+  referenceStrength: ReferenceStrength | null;
   prompt: string;
   styleKey: string;
 }
 
 function ResultRouteRow({
-  provider, model, route, fallback, routingReason, prompt, styleKey,
+  provider, model, route, fallback, routingReason, referenceStrength, prompt, styleKey,
 }: ResultRouteRowProps) {
   const { rating, setFeedback } = useImageFeedback({
     prompt, styleKey, provider, route,
@@ -1742,6 +1743,14 @@ function ResultRouteRow({
       {routingReason && (
         <span className="font-display text-[10px] text-muted-foreground italic">
           {routingReason}
+        </span>
+      )}
+      {referenceStrength && (
+        <span
+          className="font-display text-[10px] text-muted-foreground italic"
+          title="Reference image strength used for this generation"
+        >
+          ref: {referenceStrengthLabel(referenceStrength)}
         </span>
       )}
       <div className="flex items-center gap-1">
