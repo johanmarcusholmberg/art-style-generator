@@ -77,6 +77,12 @@ import {
   getDefaultStrictness,
   type ProviderId as StrictnessProviderId,
 } from "@/lib/style-strictness";
+import {
+  REFERENCE_STRENGTH_OPTIONS,
+  DEFAULT_REFERENCE_STRENGTH,
+  referenceStrengthLabel,
+  type ReferenceStrength,
+} from "@/lib/reference-strength";
 
 
 interface ImageGeneratorProps {
