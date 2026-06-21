@@ -45,6 +45,13 @@ export interface NormalizedGenerationRequest {
   printMode?: boolean;
   /** Optional reference / source image for image-to-image edits. */
   referenceImageUrl?: string;
+  /**
+   * How strongly the reference image should influence the output.
+   * Only meaningful when `referenceImageUrl` is set. Today this is
+   * implemented as a prompt-side instruction injected by the edge
+   * function (no provider exposes a numeric strength on this path).
+   */
+  referenceStrength?: ReferenceStrength;
   /** True when this is an image edit (forces image-capable provider). */
   isEdit?: boolean;
   /** Style strictness — drives SDXL anchor repetition + negative boost. */
