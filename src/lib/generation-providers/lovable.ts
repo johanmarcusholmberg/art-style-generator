@@ -65,6 +65,8 @@ export async function generateWithLovableAdapter(
   if (req.providerModelId) v2Body.providerModelId = req.providerModelId;
   if (req.qualityProfile) v2Body.qualityProfile = req.qualityProfile;
   if (req.generationStrategy) v2Body.generationStrategy = req.generationStrategy;
+  if (req.referenceStrength && req.referenceImageUrl)
+    v2Body.referenceStrength = req.referenceStrength;
 
 
   let data: any = null;
