@@ -1590,6 +1590,7 @@ export default function ImageGenerator({
                 route={lastExecutionRoute}
                 fallback={lastFallbackUsed}
                 routingReason={lastRoutingReason}
+                referenceStrength={lastReferenceStrength}
                 prompt={prompt}
                 styleKey={styleConfig.styleKey}
               />
