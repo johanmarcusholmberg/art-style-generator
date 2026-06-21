@@ -150,6 +150,9 @@ serve(async (req) => {
       providerModelId,
       qualityProfile,
       generationStrategy,
+      // Reference-image strength (prompt-side instruction; ignored when
+      // no source image is attached).
+      referenceStrength,
     } = rawBody as Record<string, unknown>;
 
     if (typeof styleKey !== "string" || !styleKey) {
