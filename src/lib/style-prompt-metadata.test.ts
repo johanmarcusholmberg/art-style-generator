@@ -7,6 +7,10 @@ import {
   normalizeStyleKey,
 } from "./style-prompt-metadata";
 import { STYLE_CATALOG } from "./style-catalog";
+// Phase 3 parity guard — load the edge runtime's prompt-metadata table
+// directly. The file is pure data + pure helpers with no Deno-specific
+// imports at module top, so Vitest can import it as-is.
+import { STYLE_PROMPT_METADATA as EDGE_STYLE_PROMPT_METADATA } from "../../supabase/functions/_shared/style-prompt-metadata";
 
 describe("normalizeStyleKey", () => {
   it("strips -freestyle suffix", () => {
@@ -110,17 +114,20 @@ describe("catalog wiring", () => {
     expect(meta.printIntentModifier).toBeTruthy();
   });
 
-  it("Style IDs (routes) are unchanged — Phase 2 must not rename anything", () => {
+  it("Style IDs (routes) are unchanged, plus the 3 new phase-3 routes", () => {
     const routes = STYLE_CATALOG.map((s) => s.route).sort();
     expect(routes).toEqual(
       [
         "/",
+        "/artnouveau",
         "/blend",
         "/botanical",
         "/brutalistposter",
         "/graffiti",
         "/lineart",
+        "/loosewatercolor",
         "/mediterranean-heritage",
+        "/midcenturymodern",
         "/minimalism",
         "/modernist-cocktail",
         "/popart",
@@ -136,5 +143,94 @@ describe("catalog wiring", () => {
         "/xeroxzine",
       ].sort(),
     );
+  });
+});
+
+// ── Phase 3 — metadata parity guard ────────────────────────────────────
+// Catches the case where a new style is added to STYLE_CATALOG with
+// negativePromptHints / printIntentModifier but never wired into the
+// edge-runtime prompt-metadata table (which is what the compiler reads
+// at generate time).
+describe("phase 3: client ↔ edge prompt-metadata parity", () => {
+  /** route → expected edge styleKey for catalog entries with prompt metadata */
+  const CATALOG_ROUTE_TO_EDGE_KEY: Record<string, string> = {
+    "/": "japanese",
+    "/popart": "popart",
+    "/lineart": "lineart",
+    "/minimalism": "minimalism",
+    "/graffiti": "graffiti",
+    "/botanical": "botanical",
+    "/urbannoir": "urbannoir",
+    "/screenprint": "screenprint",
+    "/risograph": "risograph",
+    "/retrocomic": "retrocomic",
+    "/pulpmagazine": "pulpmagazine",
+    "/tattooflash": "tattooflash",
+    "/brutalistposter": "brutalistposter",
+    "/xeroxzine": "xeroxzine",
+    "/scandinavian-poster": "scandinavian_poster",
+    "/vintage": "vintage",
+    "/whimsical-japanese": "whimsical_japanese",
+    "/modernist-cocktail": "modernist_cocktail",
+    "/mediterranean-heritage": "mediterranean_heritage",
+    "/blend": "blend",
+    "/artnouveau": "artnouveau",
+    "/midcenturymodern": "midcenturymodern",
+    "/loosewatercolor": "loosewatercolor",
+  };
+
+  it("every catalog entry with prompt metadata has an edge mapping", () => {
+    for (const entry of STYLE_CATALOG) {
+      const hasMeta =
+        (entry.negativePromptHints && entry.negativePromptHints.length > 0) ||
+        !!entry.printIntentModifier;
+      if (!hasMeta) continue;
+      expect(
+        CATALOG_ROUTE_TO_EDGE_KEY[entry.route],
+        `catalog route ${entry.route} has prompt metadata but no edge styleKey mapping in this test — add it to CATALOG_ROUTE_TO_EDGE_KEY`,
+      ).toBeTruthy();
+    }
+  });
+
+  it("every catalog entry with prompt metadata has matching edge STYLE_PROMPT_METADATA", () => {
+    for (const entry of STYLE_CATALOG) {
+      const hasMeta =
+        (entry.negativePromptHints && entry.negativePromptHints.length > 0) ||
+        !!entry.printIntentModifier;
+      if (!hasMeta) continue;
+      const edgeKey = CATALOG_ROUTE_TO_EDGE_KEY[entry.route];
+      const edge = EDGE_STYLE_PROMPT_METADATA[edgeKey];
+      expect(edge, `edge STYLE_PROMPT_METADATA missing entry for ${edgeKey} (${entry.route})`).toBeDefined();
+
+      if (entry.negativePromptHints && entry.negativePromptHints.length > 0) {
+        expect(
+          (edge!.negativeHints ?? []).length,
+          `edge negativeHints missing for ${edgeKey}`,
+        ).toBeGreaterThan(0);
+      }
+      if (entry.printIntentModifier) {
+        expect(
+          edge!.printIntentModifier,
+          `edge printIntentModifier missing for ${edgeKey}`,
+        ).toBeTruthy();
+      }
+    }
+  });
+
+  it("phase-3 styles are present in the edge prompt-metadata table", () => {
+    for (const k of ["artnouveau", "midcenturymodern", "loosewatercolor"]) {
+      expect(EDGE_STYLE_PROMPT_METADATA[k], `missing edge entry for ${k}`).toBeDefined();
+      expect(EDGE_STYLE_PROMPT_METADATA[k].negativeHints?.length ?? 0).toBeGreaterThan(0);
+      expect(EDGE_STYLE_PROMPT_METADATA[k].printIntentModifier).toBeTruthy();
+    }
+  });
+
+  it("Urban Noir edge metadata reflects the repositioned illustrative direction", () => {
+    const n = EDGE_STYLE_PROMPT_METADATA["urbannoir"];
+    expect(n).toBeDefined();
+    expect((n.negativeHints ?? []).map((s) => s.toLowerCase())).toEqual(
+      expect.arrayContaining(["realistic surveillance photo", "soft low-light photo"]),
+    );
+    expect(n.printIntentModifier ?? "").toMatch(/illustrative/i);
   });
 });

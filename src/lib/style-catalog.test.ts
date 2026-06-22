@@ -71,10 +71,53 @@ describe("style-catalog taxonomy (phase 1)", () => {
     expect(getStyleByRoute("/does-not-exist")).toBeUndefined();
   });
 
-  it("getStyleBadge labels variants and grain-heavy styles", () => {
+  it("getStyleBadge labels variants and risky textures", () => {
     const xerox = getStyleByRoute("/xeroxzine")!;
     expect(getStyleBadge(xerox)).toBe("Variant");
-    const noir = getStyleByRoute("/urbannoir")!;
-    expect(getStyleBadge(noir)).toBe("Grain-heavy");
+  });
+
+  // ── Phase 3 — new primary styles ──────────────────────────────────────
+  describe("phase 3: new primary styles", () => {
+    const NEW_ROUTES = ["/artnouveau", "/midcenturymodern", "/loosewatercolor"] as const;
+
+    it.each(NEW_ROUTES)("%s exists as a primary entry with taxonomy metadata", (route) => {
+      const s = getStyleByRoute(route);
+      expect(s, `missing ${route}`).toBeDefined();
+      expect(s!.visibility ?? "primary").toBe("primary");
+      expect(s!.family).toBeTruthy();
+      expect(s!.printSuitability).toBeTruthy();
+      expect(s!.textureProfile).toBeTruthy();
+      expect(s!.shortUserDescription, `${route} missing shortUserDescription`).toBeTruthy();
+      expect(s!.styleIntent).toBeTruthy();
+    });
+
+    it.each(NEW_ROUTES)("%s has negativePromptHints and printIntentModifier", (route) => {
+      const s = getStyleByRoute(route)!;
+      expect((s.negativePromptHints ?? []).length).toBeGreaterThan(0);
+      expect(s.printIntentModifier).toBeTruthy();
+    });
+
+    it("places Art Nouveau under heritage_vintage, Mid-Century under modernist_graphic, Loose Watercolor under painterly", () => {
+      expect(getStyleByRoute("/artnouveau")!.family).toBe("heritage_vintage");
+      expect(getStyleByRoute("/midcenturymodern")!.family).toBe("modernist_graphic");
+      expect(getStyleByRoute("/loosewatercolor")!.family).toBe("painterly");
+    });
+  });
+
+  // ── Phase 3 — Urban Noir repositioning ────────────────────────────────
+  describe("phase 3: Urban Noir repositioning", () => {
+    it("keeps its existing route /urbannoir", () => {
+      expect(getStyleByRoute("/urbannoir")).toBeDefined();
+    });
+
+    it("reflects the illustrative noir direction in its metadata", () => {
+      const n = getStyleByRoute("/urbannoir")!;
+      expect(n.shortUserDescription ?? "").toMatch(/illustration/i);
+      expect(n.printIntentModifier ?? "").toMatch(/illustrative/i);
+      expect((n.negativePromptHints ?? []).map((s) => s.toLowerCase())).toEqual(
+        expect.arrayContaining(["realistic surveillance photo", "soft low-light photo"]),
+      );
+      expect(n.upscaleNotes ?? "").toMatch(/illustrative/i);
+    });
   });
 });
