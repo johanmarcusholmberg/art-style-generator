@@ -207,4 +207,10 @@ export const ALL_STYLES = [
   { value: "brutalistposter-freestyle", label: "⬛ Brutalist Poster Freestyle" },
   { value: "xeroxzine", label: "📋 Xerox Zine" },
   { value: "xeroxzine-freestyle", label: "📋 Xerox Zine Freestyle" },
+  { value: "artnouveau", label: "🌸 Art Nouveau" },
+  { value: "artnouveau-freestyle", label: "🌸 Art Nouveau Freestyle" },
+  { value: "midcenturymodern", label: "🌞 Mid-Century Modern" },
+  { value: "midcenturymodern-freestyle", label: "🌞 Mid-Century Modern Freestyle" },
+  { value: "loosewatercolor", label: "💧 Loose Watercolor" },
+  { value: "loosewatercolor-freestyle", label: "💧 Loose Watercolor Freestyle" },
 ] as const;

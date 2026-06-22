@@ -343,24 +343,29 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     route: "/urbannoir",
     name: "Urban Noir",
     emoji: "🖤",
-    description: "Gritty monochrome street-photography look.",
-    bestFor: "Rain-slick nights, harsh shadows, cinematic moodboards.",
+    description: "High-contrast noir illustration with bold shadows, silhouettes, and cinematic poster drama.",
+    bestFor: "Cinematic noir illustration, bold silhouettes, dramatic shadow posters.",
     category: "Modern & graphic",
     family: "photo_mood",
     visibility: "primary",
-    printSuitability: "risky",
-    textureProfile: "grain_risky",
-    styleIntent: "Cinematic monochrome street mood",
+    printSuitability: "good",
+    textureProfile: "medium_texture",
+    shortUserDescription:
+      "High-contrast noir illustration with bold shadows, silhouettes, and cinematic poster drama.",
+    styleIntent:
+      "Create print-safe noir wall art using illustrative contrast, graphic shadow shapes, and cinematic composition rather than photographic noise.",
     negativePromptHints: [
       "photographic noise",
       "muddy shadows",
       "low-resolution grain",
       "blurry face",
+      "realistic surveillance photo",
+      "soft low-light photo",
     ],
     printIntentModifier:
-      "Prefer illustrative high-contrast noir shapes over photographic grain for large-format print.",
+      "Prefer bold illustrative noir shapes, crisp silhouettes, and controlled high-contrast shadows over photographic grain for large-format print.",
     upscaleNotes:
-      "Grain-heavy style. Prefer illustrative contrast over photographic noise for large prints.",
+      "Grain-heavy if overdone. Prefer illustrative contrast and broad shadow shapes over fine noise for large prints.",
   },
   {
     route: "/minimalism",
@@ -470,6 +475,92 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     ],
     printIntentModifier:
       "Use controlled aged texture and avoid fine noise that may become muddy in large prints.",
+  },
+
+  // Phase 3 — new primary styles
+  {
+    route: "/artnouveau",
+    name: "Art Nouveau",
+    emoji: "🌸",
+    description:
+      "Ornamental decorative poster style with flowing lines, botanical borders, elegant figures, and vintage exhibition-poster composition.",
+    bestFor:
+      "Premium decorative wall art inspired by late-19th-century poster illustration with botanical ornament.",
+    category: "Experimental",
+    family: "heritage_vintage",
+    visibility: "primary",
+    printSuitability: "excellent",
+    textureProfile: "clean",
+    shortUserDescription:
+      "Ornamental decorative poster with flowing lines, botanical borders, and elegant Mucha-style composition.",
+    styleIntent:
+      "Create premium decorative wall art inspired by late-19th-century poster illustration, with graceful linework, organic ornament, and strong central composition.",
+    negativePromptHints: [
+      "photorealistic",
+      "3D render",
+      "corporate minimalism",
+      "messy collage",
+      "harsh cyberpunk",
+      "modern glossy advertising",
+    ],
+    printIntentModifier:
+      "Use clean ornamental linework, readable botanical shapes, and large elegant color areas suitable for crisp poster printing.",
+  },
+  {
+    route: "/midcenturymodern",
+    name: "Mid-Century Modern",
+    emoji: "🌞",
+    description:
+      "Warm 1950s-inspired illustration with simplified shapes, playful geometry, muted colors, and charming poster composition.",
+    bestFor:
+      "Commercial-friendly wall art inspired by mid-century editorial and travel illustration.",
+    category: "Modern & graphic",
+    family: "modernist_graphic",
+    visibility: "primary",
+    printSuitability: "excellent",
+    textureProfile: "flat",
+    shortUserDescription:
+      "Warm 1950s-inspired illustration with simplified shapes and playful editorial-poster composition.",
+    styleIntent:
+      "Create commercial-friendly wall art inspired by mid-century editorial and travel illustration, using simplified forms, warm palettes, and clean graphic structure.",
+    negativePromptHints: [
+      "photorealistic",
+      "3D render",
+      "glossy gradients",
+      "excessive detail",
+      "neon cyberpunk",
+      "cluttered composition",
+    ],
+    printIntentModifier:
+      "Use large simplified shapes, clean silhouettes, warm flat colors, and minimal fine texture for strong large-format print clarity.",
+  },
+  {
+    route: "/loosewatercolor",
+    name: "Loose Watercolor",
+    emoji: "💧",
+    description:
+      "Soft expressive watercolor style with loose washes, gentle pigment blooms, and airy painterly compositions.",
+    bestFor:
+      "Softer painterly wall art that feels handmade and organic, distinct from precise botanical studies.",
+    category: "Illustration",
+    family: "painterly",
+    visibility: "primary",
+    printSuitability: "good",
+    textureProfile: "medium_texture",
+    shortUserDescription:
+      "Soft expressive watercolor with loose washes, gentle pigment blooms, and airy composition.",
+    styleIntent:
+      "Create softer painterly wall art that feels handmade and organic, distinct from the more precise Botanical style.",
+    negativePromptHints: [
+      "photorealistic",
+      "hard vector edges",
+      "3D render",
+      "overly sharp digital detail",
+      "muddy overworked paint",
+      "plastic texture",
+    ],
+    printIntentModifier:
+      "Use broad watercolor washes, clear subject silhouettes, and avoid tiny fragile pigment details that may become muddy in large prints.",
   },
 ];
 

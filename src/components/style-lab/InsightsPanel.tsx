@@ -56,6 +56,9 @@ const STYLE_LABELS: Record<string, string> = {
   pulpmagazine: "📕 Pulp Magazine",
   popart: "🎯 Pop Art",
   vintage: "🍷 Vintage",
+  artnouveau: "🌸 Art Nouveau",
+  midcenturymodern: "🌞 Mid-Century Modern",
+  loosewatercolor: "💧 Loose Watercolor",
 };
 const styleLabel = (k: string) => STYLE_LABELS[k] ?? k;
 

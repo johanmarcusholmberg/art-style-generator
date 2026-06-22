@@ -41,6 +41,9 @@ import NotFound from "./pages/NotFound";
 import ProviderDebug from "./pages/ProviderDebug";
 import StyleControlPanel from "./pages/StyleControlPanel";
 import PrintCalculator from "./pages/PrintCalculator";
+import ArtNouveau from "./pages/ArtNouveau";
+import MidCenturyModern from "./pages/MidCenturyModern";
+import LooseWatercolor from "./pages/LooseWatercolor";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +105,9 @@ const App = () => (
               <Route path="/debug/providers" element={protect(<ProviderDebug />, true)} />
               <Route path="/style-control-panel" element={protect(<StyleControlPanel />, true)} />
               <Route path="/print-calculator" element={protect(<PrintCalculator />)} />
+              <Route path="/artnouveau" element={protect(<ArtNouveau />)} />
+              <Route path="/midcenturymodern" element={protect(<MidCenturyModern />)} />
+              <Route path="/loosewatercolor" element={protect(<LooseWatercolor />)} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

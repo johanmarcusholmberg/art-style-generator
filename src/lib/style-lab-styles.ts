@@ -30,6 +30,9 @@ import {
   WHIMSICALJAPANESE_STYLE,
   MODERNISTCOCKTAIL_STYLE,
   MEDITERRANEAN_HERITAGE_STYLE,
+  ARTNOUVEAU_STYLE,
+  MIDCENTURYMODERN_STYLE,
+  LOOSEWATERCOLOR_STYLE,
 } from "@/lib/style-config";
 
 export interface StyleLabStyle {
@@ -63,6 +66,9 @@ const ROUTE_TO_STYLE_KEY: Record<string, string> = {
   "/whimsical-japanese": WHIMSICALJAPANESE_STYLE.styleKey,
   "/modernist-cocktail": MODERNISTCOCKTAIL_STYLE.styleKey,
   "/mediterranean-heritage": MEDITERRANEAN_HERITAGE_STYLE.styleKey,
+  "/artnouveau": ARTNOUVEAU_STYLE.styleKey,
+  "/midcenturymodern": MIDCENTURYMODERN_STYLE.styleKey,
+  "/loosewatercolor": LOOSEWATERCOLOR_STYLE.styleKey,
 };
 
 /**

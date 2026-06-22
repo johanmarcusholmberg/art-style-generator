@@ -959,3 +959,144 @@ export const MEDITERRANEAN_HERITAGE_STYLE: StyleConfig = {
   themedRules: STYLE_RULES["mediterranean_heritage"],
   freestyleRules: STYLE_RULES["mediterranean_heritage-freestyle"],
 };
+
+export const ARTNOUVEAU_STYLE: StyleConfig = {
+  styleKey: "artnouveau",
+  themedEdgeFn: "generate-image-artnouveau",
+  freestyleEdgeFn: "generate-image-artnouveau-freestyle",
+  themedTabLabel: "🌸 Art Nouveau",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Art Nouveau",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder:
+    "Describe your scene… e.g. 'A Valencia orange spritz bottle surrounded by flowing orange blossoms with decorative borders'",
+  freestylePlaceholder:
+    "Describe any subject… e.g. 'A Mediterranean balcony with bougainvillea in an elegant exhibition poster composition'",
+  prompts: {
+    themed: {
+      generate: [
+        "A Valencia orange spritz bottle surrounded by flowing orange blossoms and decorative Art Nouveau borders",
+        "A Mediterranean balcony with bougainvillea in an elegant vintage exhibition-poster composition",
+        "A botanical cocktail poster with graceful linework, ornate frame, and premium decorative typography",
+      ],
+      edit: [
+        "Add more flowing ornamental linework around the subject",
+        "Strengthen the decorative botanical border",
+        "Push the palette toward muted sage, cream and gold ochre",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A lemon tree framed by an Art Nouveau decorative arch with flowing botanical ornament",
+        "A wine bottle surrounded by elegant Mucha-style floral borders and refined linework",
+        "A coastal scene wrapped in an ornamental Art Nouveau poster frame",
+      ],
+      edit: [
+        "Add a more elaborate decorative arch around the subject",
+        "Increase the ornamental border detail with botanical motifs",
+        "Soften the palette toward refined heritage tones",
+      ],
+    },
+  },
+  themedModeValue: "artnouveau",
+  freestyleModeValue: "artnouveau-freestyle",
+  themedBadge: "🌸",
+  freestyleBadge: "🎨",
+  downloadPrefix: "artnouveau",
+  themedRules: STYLE_RULES["artnouveau"],
+  freestyleRules: STYLE_RULES["artnouveau-freestyle"],
+};
+
+export const MIDCENTURYMODERN_STYLE: StyleConfig = {
+  styleKey: "midcenturymodern",
+  themedEdgeFn: "generate-image-midcenturymodern",
+  freestyleEdgeFn: "generate-image-midcenturymodern-freestyle",
+  themedTabLabel: "🌞 Mid-Century",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Mid-Century Poster",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder:
+    "Describe your scene… e.g. 'A mid-century Valencia street café with oranges and striped awnings'",
+  freestylePlaceholder:
+    "Describe any subject… e.g. 'A 1950s-style coastal travel poster with sailboats and palms'",
+  prompts: {
+    themed: {
+      generate: [
+        "A mid-century Valencia street café with oranges, striped awnings, and simplified sunlit architecture",
+        "A playful 1950s-style coastal travel poster with sailboats, palms, and warm geometric shapes",
+        "A stylized cocktail ingredient poster using simplified bottles, citrus shapes, and retro editorial charm",
+      ],
+      edit: [
+        "Simplify the shapes further and remove fussy detail",
+        "Push the palette toward warm mustard, terracotta, and dusty blue",
+        "Add more breathing room around the central subject",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A retro travel poster of a hillside village with simplified geometric forms",
+        "A mid-century botanical scene with stylized birds and warm muted tones",
+        "A 1950s editorial poster of a coffee cup with playful geometric accents",
+      ],
+      edit: [
+        "Reduce detail and lean into clean silhouettes",
+        "Warm the palette toward editorial mid-century tones",
+        "Add a subtle paper-grain feel without noise",
+      ],
+    },
+  },
+  themedModeValue: "midcenturymodern",
+  freestyleModeValue: "midcenturymodern-freestyle",
+  themedBadge: "🌞",
+  freestyleBadge: "🎨",
+  downloadPrefix: "midcenturymodern",
+  themedRules: STYLE_RULES["midcenturymodern"],
+  freestyleRules: STYLE_RULES["midcenturymodern-freestyle"],
+};
+
+export const LOOSEWATERCOLOR_STYLE: StyleConfig = {
+  styleKey: "loosewatercolor",
+  themedEdgeFn: "generate-image-loosewatercolor",
+  freestyleEdgeFn: "generate-image-loosewatercolor-freestyle",
+  themedTabLabel: "💧 Loose Watercolor",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Watercolor",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder:
+    "Describe your scene… e.g. 'Agua de Valencia ingredients with oranges, cava bottle, and soft botanical washes'",
+  freestylePlaceholder:
+    "Describe any subject… e.g. 'A Mediterranean window with flowers and expressive watercolor blooms'",
+  prompts: {
+    themed: {
+      generate: [
+        "A loose watercolor painting of Agua de Valencia ingredients with oranges, cava bottle, and soft botanical washes",
+        "A Mediterranean window with flowers, sunlight, and expressive watercolor blooms",
+        "A soft painterly botanical cocktail poster with airy white space and gentle handwritten-style composition",
+      ],
+      edit: [
+        "Loosen the brushwork and let the pigment bloom more freely",
+        "Add more airy white space around the subject",
+        "Soften the palette toward gentle natural watercolor tones",
+      ],
+    },
+    freestyle: {
+      generate: [
+        "A loose watercolor of a coffee cup with soft pigment blooms and airy negative space",
+        "A painterly watercolor of olive branches with broad washes and gentle bleed edges",
+        "A soft expressive watercolor of a coastal scene with handmade paper feel",
+      ],
+      edit: [
+        "Make the washes broader and looser",
+        "Remove tight detail in favor of suggestive silhouettes",
+        "Add gentle pigment bloom edges around the subject",
+      ],
+    },
+  },
+  themedModeValue: "loosewatercolor",
+  freestyleModeValue: "loosewatercolor-freestyle",
+  themedBadge: "💧",
+  freestyleBadge: "🎨",
+  downloadPrefix: "loosewatercolor",
+  themedRules: STYLE_RULES["loosewatercolor"],
+  freestyleRules: STYLE_RULES["loosewatercolor-freestyle"],
+};

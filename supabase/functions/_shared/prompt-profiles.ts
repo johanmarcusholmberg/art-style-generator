@@ -87,6 +87,14 @@ export const STYLE_CATEGORY_OVERRIDES: Record<string, StyleCategory> = {
   "urbannoir-freestyle": "photographic_mono",
   xeroxzine: "photographic_mono",
   "xeroxzine-freestyle": "photographic_mono",
+
+  // Phase 3 — new styles
+  artnouveau: "poster_flat",
+  "artnouveau-freestyle": "poster_flat",
+  midcenturymodern: "poster_flat",
+  "midcenturymodern-freestyle": "poster_flat",
+  loosewatercolor: "painterly",
+  "loosewatercolor-freestyle": "painterly",
 };
 
 export function categoryFor(styleKey: string): StyleCategory {
