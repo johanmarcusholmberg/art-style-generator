@@ -128,9 +128,11 @@ export const STYLE_PROMPT_METADATA: Record<string, StylePromptMetadata> = {
       "muddy shadows",
       "low-resolution grain",
       "blurry face",
+      "realistic surveillance photo",
+      "soft low-light photo",
     ],
     printIntentModifier:
-      "Prefer illustrative high-contrast noir shapes over photographic grain for large-format print.",
+      "Prefer bold illustrative noir shapes, crisp silhouettes, and controlled high-contrast shadows over photographic grain for large-format print.",
   },
   tattooflash: {
     negativeHints: ["soft watercolor", "photorealistic shading", "tiny fragile details"],
@@ -150,6 +152,42 @@ export const STYLE_PROMPT_METADATA: Record<string, StylePromptMetadata> = {
     ],
     printIntentModifier:
       "Keep the blended style coherent, with one dominant visual language and print-safe composition.",
+  },
+  artnouveau: {
+    negativeHints: [
+      "photorealistic",
+      "3D render",
+      "corporate minimalism",
+      "messy collage",
+      "harsh cyberpunk",
+      "modern glossy advertising",
+    ],
+    printIntentModifier:
+      "Use clean ornamental linework, readable botanical shapes, and large elegant color areas suitable for crisp poster printing.",
+  },
+  midcenturymodern: {
+    negativeHints: [
+      "photorealistic",
+      "3D render",
+      "glossy gradients",
+      "excessive detail",
+      "neon cyberpunk",
+      "cluttered composition",
+    ],
+    printIntentModifier:
+      "Use large simplified shapes, clean silhouettes, warm flat colors, and minimal fine texture for strong large-format print clarity.",
+  },
+  loosewatercolor: {
+    negativeHints: [
+      "photorealistic",
+      "hard vector edges",
+      "3D render",
+      "overly sharp digital detail",
+      "muddy overworked paint",
+      "plastic texture",
+    ],
+    printIntentModifier:
+      "Use broad watercolor washes, clear subject silhouettes, and avoid tiny fragile pigment details that may become muddy in large prints.",
   },
 };
 

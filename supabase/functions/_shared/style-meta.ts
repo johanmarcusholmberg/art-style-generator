@@ -309,6 +309,37 @@ export const STYLE_META: Record<string, StyleMeta> = {
     ],
     defaultStrictness: "strict",
   },
+
+  artnouveau: {
+    displayName: "Art Nouveau decorative poster",
+    mediumTokens: ["Art Nouveau decorative poster", "Mucha-style ornamental illustration", "vintage exhibition poster"],
+    defaultStrictness: "strict",
+  },
+  "artnouveau-freestyle": {
+    displayName: "Art Nouveau decorative poster",
+    mediumTokens: ["Art Nouveau decorative poster", "Mucha-style ornamental illustration"],
+    defaultStrictness: "strict",
+  },
+  midcenturymodern: {
+    displayName: "Mid-century modern illustration",
+    mediumTokens: ["mid-century modern illustration", "1950s editorial poster", "Charley Harper illustration"],
+    defaultStrictness: "strict",
+  },
+  "midcenturymodern-freestyle": {
+    displayName: "Mid-century modern illustration",
+    mediumTokens: ["mid-century modern illustration", "vintage travel poster"],
+    defaultStrictness: "strict",
+  },
+  loosewatercolor: {
+    displayName: "Loose watercolor illustration",
+    mediumTokens: ["loose expressive watercolor", "soft pigment bloom watercolor", "airy painterly watercolor"],
+    defaultStrictness: "strict",
+  },
+  "loosewatercolor-freestyle": {
+    displayName: "Loose watercolor illustration",
+    mediumTokens: ["loose expressive watercolor", "airy painterly watercolor"],
+    defaultStrictness: "strict",
+  },
 };
 
 /** Fallback-aware lookup. Always returns a usable meta. */

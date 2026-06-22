@@ -53,6 +53,10 @@ const STYLE_KEY_TO_ROUTE: Record<string, string> = {
   modernist_cocktail: "/modernist-cocktail",
   mediterranean_heritage: "/mediterranean-heritage",
   blend: "/blend",
+  // Phase 3
+  artnouveau: "/artnouveau",
+  midcenturymodern: "/midcenturymodern",
+  loosewatercolor: "/loosewatercolor",
 };
 
 export function getCatalogEntryForStyleKey(
