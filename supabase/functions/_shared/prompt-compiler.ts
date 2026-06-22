@@ -1233,6 +1233,11 @@ export function compilePrompt(
   options: CompileOptions = {},
 ): string {
   const rules = STYLE_RULES[styleKey];
+  const styleMeta = getStylePromptMetadata(styleKey);
+  const printIntentLine = buildPrintIntentLine(
+    styleMeta.printIntentModifier,
+    options.printMode,
+  );
 
   // Always-on quality block (print rules + base quality + wall art composition)
   const alwaysOnQuality = [
@@ -1245,6 +1250,11 @@ export function compilePrompt(
   const formatInstruction = buildPosterFormatInstruction(options.posterFormatHint);
 
   if (!rules) {
+    const negativeMerged = mergeNegativeHints([], styleMeta.negativeHints);
+    const negativeLine = negativeMerged.length
+      ? `NEGATIVE STYLE CONSTRAINTS: avoid ${negativeMerged.join(", ")}.`
+      : "";
+
     const sections = [
       `PRIMARY SUBJECT: ${userPrompt}`,
       "",
@@ -1256,6 +1266,8 @@ export function compilePrompt(
       options.aspectRatio ? `The image must have a ${options.aspectRatio} aspect ratio.` : "",
       formatInstruction,
       buildArtworkBgText(options.backgroundStyle),
+      negativeLine,
+      printIntentLine,
       styleStrictSuffix(styleKey),
       "Generate at maximum native resolution. Output the highest fidelity image possible.",
     ];
@@ -1265,6 +1277,11 @@ export function compilePrompt(
   const { aspectRatio, backgroundStyle, isEdit = false, variationIndex } = options;
 
   const edgeSafetyLines = [...EDGE_SAFETY_RULES, ...(rules.edgeSafety || [])];
+
+  // Merge style avoidRules with per-style negative hints (deduped, order
+  // preserved). Hints are appended so existing avoidRules win on ordering.
+  const mergedAvoid = mergeNegativeHints(rules.avoidRules, styleMeta.negativeHints);
+  const avoidSection = mergedAvoid.length ? mergedAvoid.join(". ") : "";
 
   const blockedSection = rules.blockedTraits?.length
     ? `\nBLOCKED TRAITS (must NEVER appear): ${rules.blockedTraits.join(". ")}`
@@ -1294,10 +1311,11 @@ export function compilePrompt(
       formatInstruction,
       `STYLE QUALITY: ${rules.qualityRules.join(". ")}`,
       `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
-      `AVOID: ${rules.avoidRules.join(", ")}`,
+      avoidSection ? `AVOID: ${avoidSection}` : "",
       blockedSection,
       alwaysOnQuality,
       "",
+      printIntentLine,
       styleStrictSuffix(styleKey),
       "Generate at maximum native resolution. Output the highest fidelity image possible.",
     ].filter(Boolean).join("\n");
@@ -1327,7 +1345,7 @@ export function compilePrompt(
     "",
     `EDGE SAFETY: ${edgeSafetyLines.join(". ")}`,
     "",
-    `AVOID: ${rules.avoidRules.join(". ")}`,
+    avoidSection ? `AVOID: ${avoidSection}` : "",
     blockedSection,
     alwaysOnQuality,
     "",
@@ -1335,6 +1353,7 @@ export function compilePrompt(
     ratioText,
     formatInstruction,
     variationText,
+    printIntentLine,
     "",
     styleStrictSuffix(styleKey),
     "Generate at maximum native resolution. Output the highest fidelity image possible.",
