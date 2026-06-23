@@ -156,10 +156,27 @@ const SOFT_PAINTERLY_FAMILY = new Set([
   "lineart",
   "lineart-minimal",
   "minimalism",
+  "loosewatercolor",
+  "loosewatercolor-freestyle",
 ]);
 
-const PHOTOREAL_FAMILY = new Set([
+const PHOTOREAL_FAMILY = new Set<string>([
+  // urbannoir was here but has been repositioned as illustrative noir (Phase 4)
+]);
+
+const DECORATIVE_LINEWORK_FAMILY = new Set([
+  "artnouveau",
+  "artnouveau-freestyle",
+]);
+
+const FLAT_GRAPHIC_FAMILY = new Set([
+  "midcenturymodern",
+  "midcenturymodern-freestyle",
+]);
+
+const ILLUSTRATIVE_NOIR_FAMILY = new Set([
   "urbannoir",
+  "urbannoir-freestyle",
 ]);
 
 /** Coarse provider family — SDXL benefits from stronger cleanup than Gemini/OpenAI. */
@@ -194,6 +211,15 @@ export function resolveUpscaleRecipe(input: ResolveRecipeInput): UpscaleRecipe {
     return printIntent
       ? UPSCALE_RECIPES.poster_print
       : UPSCALE_RECIPES.poster_clean;
+  }
+  if (DECORATIVE_LINEWORK_FAMILY.has(key)) {
+    return UPSCALE_RECIPES.decorative_linework;
+  }
+  if (FLAT_GRAPHIC_FAMILY.has(key)) {
+    return UPSCALE_RECIPES.flat_graphic;
+  }
+  if (ILLUSTRATIVE_NOIR_FAMILY.has(key)) {
+    return UPSCALE_RECIPES.illustrative_noir;
   }
   if (SOFT_PAINTERLY_FAMILY.has(key)) {
     return UPSCALE_RECIPES.painterly_soft;
