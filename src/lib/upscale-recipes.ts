@@ -88,6 +88,36 @@ export const UPSCALE_RECIPES: Record<UpscaleRecipeId, UpscaleRecipe> = {
     preferCleanup: true,
     preferPrint: true,
   },
+  decorative_linework: {
+    id: "decorative_linework",
+    label: "Decorative Poster — Ornamental Linework",
+    reason:
+      "Best for clean decorative poster art; preserves ornamental linework and large flat color areas",
+    recommendedMode: "realesrgan_4x",
+    fallbackMode: "tile_4x",
+    preferCleanup: false,
+    preferPrint: false,
+  },
+  flat_graphic: {
+    id: "flat_graphic",
+    label: "Flat Graphic Poster",
+    reason:
+      "Excellent large-format candidate; clean shapes and flat colors upscale well without painterly artifacts",
+    recommendedMode: "realesrgan_4x",
+    fallbackMode: "tile_4x",
+    preferCleanup: false,
+    preferPrint: false,
+  },
+  illustrative_noir: {
+    id: "illustrative_noir",
+    label: "Illustrative Noir — High Contrast",
+    reason:
+      "Best when generated with bold illustrative shadows rather than photographic noise; preserves silhouettes and hard shadow edges",
+    recommendedMode: "tile_4x",
+    fallbackMode: "realesrgan_4x",
+    preferCleanup: true,
+    preferPrint: false,
+  },
   safe_default: {
     id: "safe_default",
     label: "Safe Default",
