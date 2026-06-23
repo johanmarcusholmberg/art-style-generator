@@ -61,8 +61,8 @@ describe("resolveUpscaleRecipe — Phase 4 styles", () => {
 describe("Large-format escalation participates for Phase 4 styles", () => {
   // Small 1024x1024 source → 50x70cm @ 300 PPI (~5906x8268) requires >4×.
   const largeTargetInput = {
-    sourceWidth: 1024,
-    sourceHeight: 1024,
+    sourceWidth: 1080,
+    sourceHeight: 1080,
     targetWidth: 5906,
     targetHeight: 8268,
     surface: "manual" as const,
