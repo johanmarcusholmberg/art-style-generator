@@ -63,18 +63,22 @@ const SHARP_STYLES = [
   "comic",
   "retrocomic",
   "pulpmagazine",
+  // Phase 4: decorative/flat/illustrative styles upscale well
+  "artnouveau",
+  "midcenturymodern",
+  "urbannoir",
 ];
 
 const SOFT_STYLES = [
   "watercolor",
   "watercolour",
+  "loosewatercolor",
   "botanical",
   "painterly",
   "vintage",
   "risograph",
   "xeroxzine",
   "minimalism",
-  "urbannoir",
 ];
 
 const TEXT_HINT_RE =
