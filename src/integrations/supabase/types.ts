@@ -193,6 +193,78 @@ export type Database = {
         }
         Relationships: []
       }
+      generated_image_assets: {
+        Row: {
+          asset_type: string
+          created_at: string
+          deleted_at: string | null
+          file_size_bytes: number | null
+          generated_image_id: string
+          height_px: number | null
+          id: string
+          mime_type: string | null
+          scale_factor: number | null
+          source_asset_id: string | null
+          storage_bucket: string
+          storage_path: string
+          updated_at: string
+          upscale_method: string | null
+          version_index: number
+          width_px: number | null
+        }
+        Insert: {
+          asset_type: string
+          created_at?: string
+          deleted_at?: string | null
+          file_size_bytes?: number | null
+          generated_image_id: string
+          height_px?: number | null
+          id?: string
+          mime_type?: string | null
+          scale_factor?: number | null
+          source_asset_id?: string | null
+          storage_bucket?: string
+          storage_path: string
+          updated_at?: string
+          upscale_method?: string | null
+          version_index: number
+          width_px?: number | null
+        }
+        Update: {
+          asset_type?: string
+          created_at?: string
+          deleted_at?: string | null
+          file_size_bytes?: number | null
+          generated_image_id?: string
+          height_px?: number | null
+          id?: string
+          mime_type?: string | null
+          scale_factor?: number | null
+          source_asset_id?: string | null
+          storage_bucket?: string
+          storage_path?: string
+          updated_at?: string
+          upscale_method?: string | null
+          version_index?: number
+          width_px?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_image_assets_generated_image_id_fkey"
+            columns: ["generated_image_id"]
+            isOneToOne: false
+            referencedRelation: "generated_images"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_image_assets_source_asset_id_fkey"
+            columns: ["source_asset_id"]
+            isOneToOne: false
+            referencedRelation: "generated_image_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_images: {
         Row: {
           actual_height_px: number | null
