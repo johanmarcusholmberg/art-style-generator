@@ -179,3 +179,45 @@ describe("latestUpscale / originalAsset", () => {
     expect(originalAsset([orig, up1])?.id).toBe("v0");
   });
 });
+
+describe("version persistence semantics (bugfix Phase 5)", () => {
+  it("after a successful save, the asset list includes the new upscale and it becomes default", () => {
+    // Simulates fetchImageAssets returning rows after saveUpscaleAsset insert.
+    const before = [orig];
+    const newUp = asset({
+      id: "v1-new",
+      asset_type: "upscale",
+      version_index: nextVersionIndex(before),
+      width_px: 4096,
+      height_px: 4096,
+      upscale_method: "realesrgan_4x",
+    });
+    const after = [...before, newUp];
+    expect(after.some((a) => a.id === "v1-new")).toBe(true);
+    expect(defaultSelectedAsset(after)?.id).toBe("v1-new");
+    expect(versionLabel(newUp)).toBe("Upscale 1");
+  });
+
+  it("second upscale lands at version 2 and labels accordingly", () => {
+    const after1 = [orig, up1];
+    const newUp2 = asset({
+      id: "v2-new",
+      asset_type: "upscale",
+      version_index: nextVersionIndex(after1),
+      upscale_method: "tile_4x",
+    });
+    expect(newUp2.version_index).toBe(2);
+    expect(versionLabel(newUp2)).toBe("Upscale 2");
+    const after2 = [...after1, newUp2];
+    expect(defaultSelectedAsset(after2)?.id).toBe("v2-new");
+  });
+
+  it("activeAssets treats deleted_at IS NULL as active (.is null semantics, not .eq)", () => {
+    // Mirrors the Postgres .is("deleted_at", null) filter used in fetchImageAssets.
+    const deleted = asset({ id: "vd", deleted_at: "2026-02-01T00:00:00Z" });
+    const partial = asset({ id: "vp", deleted_at: null });
+    const active = activeAssets([orig, deleted, partial]);
+    expect(active.map((a) => a.id).sort()).toEqual(["v0", "vp"]);
+  });
+});
+

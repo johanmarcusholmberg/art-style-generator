@@ -237,6 +237,7 @@ interface LightboxContentProps {
   upscaleCount?: number;
   onVersionsChanged?: () => void;
   onPrintExportFromBest: (img: GalleryImage) => void;
+  versionRefreshKey?: number;
 }
 
 
@@ -252,6 +253,7 @@ function LightboxContent({
   upscaleCount,
   onVersionsChanged,
   onPrintExportFromBest,
+  versionRefreshKey,
 }: LightboxContentProps) {
   const [selectedAsset, setSelectedAsset] = useState<ImageAsset | null>(null);
   const [useBestForExport, setUseBestForExport] = useState(false);
@@ -279,9 +281,11 @@ function LightboxContent({
       <ImagePreviewMockups imageUrl={displayUrl} alt={img.prompt} />
       <VersionSelector
         image={img}
+        refreshKey={versionRefreshKey}
         onSelectedAssetChange={setSelectedAsset}
         onAfterMutation={onVersionsChanged}
       />
+
 
       <div className="space-y-2">
         <p className="font-display text-sm text-foreground">{img.prompt}</p>
@@ -1108,6 +1112,10 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   useEffect(() => { setBgResult(null); }, [selected?.id]);
 
   const [printExporting, setPrintExporting] = useState(false);
+  // Bumped after any external mutation that adds/removes a versioned asset.
+  // Forces the open VersionSelector to re-fetch and show the new version.
+  const [versionRefreshTick, setVersionRefreshTick] = useState(0);
+  const bumpVersionRefresh = useCallback(() => setVersionRefreshTick((n) => n + 1), []);
   const [etsyExportImage, setEtsyExportImage] = useState<GalleryImage | null>(null);
   const [mockupImage, setMockupImage] = useState<GalleryImage | null>(null);
   const {
@@ -1204,7 +1212,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       });
       // Also persist the upscaled output as a new versioned asset so
       // subsequent operations (version selector, "best available" export,
-      // upscale-again-from-original) have a durable record. Best-effort.
+      // upscale-again-from-original) have a durable record.
+      let versionSaved = true;
+      let saveError: unknown = null;
       try {
         const existing = await fetchImageAssets(img.id);
         const origAssetId = existing.find((a) => a.asset_type === "original")?.id ?? null;
@@ -1217,15 +1227,29 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         });
         void refreshUpscaleCounts(images.map((i) => i.id));
       } catch (e) {
-        console.warn("[handleGalleryUpscale] saveUpscaleAsset failed:", e);
+        versionSaved = false;
+        saveError = e;
+        console.error("[handleGalleryUpscale] saveUpscaleAsset failed:", e);
       }
+      // Always bump so any open VersionSelector reloads (and shows the new
+      // row if persistence succeeded, or stays consistent if it didn't).
+      bumpVersionRefresh();
       const label = UPSCALE_MODES[result.mode]?.shortLabel ?? "Upscale";
-      toast.success(
-        result.downshifted
-          ? `Downshifted to tile 4× (8× too large) — saved.`
-          : `Image upscaled via ${label} (${result.scale}×)`,
-        { duration: 4000 },
-      );
+      if (versionSaved) {
+        toast.success(
+          result.downshifted
+            ? `Downshifted to tile 4× (8× too large) — saved.`
+            : `Image upscaled via ${label} (${result.scale}×)`,
+          { duration: 4000 },
+        );
+      } else {
+        const msg = (saveError as any)?.message || "Could not save versioned copy.";
+        toast.error(
+          `Upscale ran but the versioned copy was not saved: ${msg}`,
+          { duration: 6000 },
+        );
+      }
+
     } else {
       toast.error("Upscale failed — original image preserved");
     }
@@ -1396,8 +1420,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       printIntent: selected.generation_mode === "print-ready" || !!selected.print_format_id,
     }),
     upscaleCount: upscaleCounts.get(selected.id) ?? 0,
-    onVersionsChanged: () => { void refreshUpscaleCounts(images.map((i) => i.id)); },
+    onVersionsChanged: () => { void refreshUpscaleCounts(images.map((i) => i.id)); bumpVersionRefresh(); },
     onPrintExportFromBest: handlePrintExportFromBest,
+    versionRefreshKey: versionRefreshTick,
   } : null;
 
 
