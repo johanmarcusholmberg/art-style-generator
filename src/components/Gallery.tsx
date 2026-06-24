@@ -485,16 +485,32 @@ function LightboxContent({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onPrintExport(img)}
+              onClick={() => (useBestForExport ? onPrintExportFromBest(img) : onPrintExport(img))}
               disabled={printExporting}
               className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+              title={useBestForExport ? "Export from best available version" : "Export from selected version"}
             >
               {printExporting
                 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 : <Printer className="mr-2 h-4 w-4" />}
               {hasExport ? "Re-export Print" : "Export Print"}
             </Button>
+            <label className="inline-flex items-center gap-1 font-display text-[11px] text-muted-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={useBestForExport}
+                onChange={(e) => setUseBestForExport(e.target.checked)}
+                className="h-3 w-3 accent-primary"
+              />
+              Best available
+            </label>
           </div>
+          <p className="font-display text-[10px] text-muted-foreground -mt-1">
+            {useBestForExport
+              ? "Export source: Best available (highest-resolution stored version)."
+              : `Export source: Selected version${selectedAsset ? ` · ${selectedAsset.asset_type === "original" ? "Original" : `Upscale ${selectedAsset.version_index}`}${selectedAsset.width_px && selectedAsset.height_px ? ` · ${selectedAsset.width_px}×${selectedAsset.height_px}` : ""}` : ""}.`}
+          </p>
+
           <Button
             variant="outline"
             size="sm"
