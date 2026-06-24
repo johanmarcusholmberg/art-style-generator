@@ -1112,6 +1112,10 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   useEffect(() => { setBgResult(null); }, [selected?.id]);
 
   const [printExporting, setPrintExporting] = useState(false);
+  // Bumped after any external mutation that adds/removes a versioned asset.
+  // Forces the open VersionSelector to re-fetch and show the new version.
+  const [versionRefreshTick, setVersionRefreshTick] = useState(0);
+  const bumpVersionRefresh = useCallback(() => setVersionRefreshTick((n) => n + 1), []);
   const [etsyExportImage, setEtsyExportImage] = useState<GalleryImage | null>(null);
   const [mockupImage, setMockupImage] = useState<GalleryImage | null>(null);
   const {
