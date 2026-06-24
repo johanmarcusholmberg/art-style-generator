@@ -1420,8 +1420,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       printIntent: selected.generation_mode === "print-ready" || !!selected.print_format_id,
     }),
     upscaleCount: upscaleCounts.get(selected.id) ?? 0,
-    onVersionsChanged: () => { void refreshUpscaleCounts(images.map((i) => i.id)); },
+    onVersionsChanged: () => { void refreshUpscaleCounts(images.map((i) => i.id)); bumpVersionRefresh(); },
     onPrintExportFromBest: handlePrintExportFromBest,
+    versionRefreshKey: versionRefreshTick,
   } : null;
 
 
