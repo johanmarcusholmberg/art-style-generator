@@ -72,6 +72,15 @@ import {
 } from "@/lib/export-formats";
 import { recordAssetCostEvent } from "@/lib/cost-events";
 import { buildUpscaleRoutingMetadata } from "@/lib/upscale-routing-metadata";
+import VersionSelector from "@/components/gallery/VersionSelector";
+import {
+  fetchUpscaleCounts,
+  bestAvailableAsset,
+  fetchImageAssets,
+  saveUpscaleAsset,
+  type ImageAsset,
+} from "@/lib/generated-image-assets";
+
 
 
 interface GalleryImage {
@@ -225,7 +234,11 @@ interface LightboxContentProps {
   upscalingProgress: number;
   upscalingJobStatus?: import("@/lib/upscale-modes").UpscaleJobStatus | null;
   recommendedRecipe?: UpscaleRecipe | null;
+  upscaleCount?: number;
+  onVersionsChanged?: () => void;
+  onPrintExportFromBest: (img: GalleryImage) => void;
 }
+
 
 function LightboxContent({
   img, onEdit, onDelete, onCopyUrl,
@@ -236,8 +249,16 @@ function LightboxContent({
   onEtsyMockup,
   onUpscale, upscaling, upscalingStageLabel, upscalingProgress, upscalingJobStatus,
   recommendedRecipe,
+  upscaleCount,
+  onVersionsChanged,
+  onPrintExportFromBest,
 }: LightboxContentProps) {
+  const [selectedAsset, setSelectedAsset] = useState<ImageAsset | null>(null);
+  const [useBestForExport, setUseBestForExport] = useState(false);
+  const displayUrl = selectedAsset?.publicUrl || img.masterUrl;
+  const downloadUrl = selectedAsset?.publicUrl || img.masterUrl;
   const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
+
   const hasExport = !!img.export_storage_path;
   const exportReadiness = printFormat && img.actual_width_px && img.actual_height_px
     ? assessExportReadiness(img.actual_width_px, img.actual_height_px, printFormat)
@@ -255,7 +276,13 @@ function LightboxContent({
   };
   return (
     <div className="space-y-4">
-      <ImagePreviewMockups imageUrl={img.masterUrl} alt={img.prompt} />
+      <ImagePreviewMockups imageUrl={displayUrl} alt={img.prompt} />
+      <VersionSelector
+        image={img}
+        onSelectedAssetChange={setSelectedAsset}
+        onAfterMutation={onVersionsChanged}
+      />
+
       <div className="space-y-2">
         <p className="font-display text-sm text-foreground">{img.prompt}</p>
         <div className="flex flex-wrap gap-2 items-center">
@@ -425,9 +452,16 @@ function LightboxContent({
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2 pt-2">
-          <Button variant="outline" size="sm" onClick={() => downloadImage(img.masterUrl, `art-${img.id}.png`)} className="font-display text-xs">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => downloadImage(downloadUrl, `art-${img.id}${selectedAsset ? `-v${selectedAsset.version_index}` : ""}.png`)}
+            className="font-display text-xs"
+            title={selectedAsset ? `Download ${selectedAsset.asset_type === "original" ? "Original" : `Upscale ${selectedAsset.version_index}`}` : "Download"}
+          >
             <Download className="mr-2 h-4 w-4" /> Download
           </Button>
+
           <div className="inline-flex items-center gap-1.5">
             <Select
               value={exportFormat}
@@ -451,16 +485,32 @@ function LightboxContent({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onPrintExport(img)}
+              onClick={() => (useBestForExport ? onPrintExportFromBest(img) : onPrintExport(img))}
               disabled={printExporting}
               className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+              title={useBestForExport ? "Export from best available version" : "Export from selected version"}
             >
               {printExporting
                 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 : <Printer className="mr-2 h-4 w-4" />}
               {hasExport ? "Re-export Print" : "Export Print"}
             </Button>
+            <label className="inline-flex items-center gap-1 font-display text-[11px] text-muted-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={useBestForExport}
+                onChange={(e) => setUseBestForExport(e.target.checked)}
+                className="h-3 w-3 accent-primary"
+              />
+              Best available
+            </label>
           </div>
+          <p className="font-display text-[10px] text-muted-foreground -mt-1">
+            {useBestForExport
+              ? "Export source: Best available (highest-resolution stored version)."
+              : `Export source: Selected version${selectedAsset ? ` · ${selectedAsset.asset_type === "original" ? "Original" : `Upscale ${selectedAsset.version_index}`}${selectedAsset.width_px && selectedAsset.height_px ? ` · ${selectedAsset.width_px}×${selectedAsset.height_px}` : ""}` : ""}.`}
+          </p>
+
           <Button
             variant="outline"
             size="sm"
@@ -641,13 +691,26 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const [reloadTick, setReloadTick] = useState(0);
   const reloadGallery = useCallback(() => setReloadTick((t) => t + 1), []);
 
+  // Upscale-version counts per image — drives the "N upscales" badge on cards.
+  const [upscaleCounts, setUpscaleCounts] = useState<Map<string, number>>(new Map());
+  const refreshUpscaleCounts = useCallback(async (ids: string[]) => {
+    try {
+      const counts = await fetchUpscaleCounts(ids);
+      setUpscaleCounts(counts);
+    } catch (e) {
+      console.warn("[Gallery] upscale counts failed:", e);
+    }
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     fetchGalleryImages({ limit: PAGE_SIZE, offset: 0, modes: styleModes ?? undefined })
       .then((imgs) => {
         setImages(imgs as GalleryImage[]);
         setHasMore(imgs.length === PAGE_SIZE);
+        void refreshUpscaleCounts(imgs.map((i: any) => i.id));
       })
+
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [refreshKey, reloadTick]);
@@ -1139,6 +1202,23 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           surface: "gallery",
         },
       });
+      // Also persist the upscaled output as a new versioned asset so
+      // subsequent operations (version selector, "best available" export,
+      // upscale-again-from-original) have a durable record. Best-effort.
+      try {
+        const existing = await fetchImageAssets(img.id);
+        const origAssetId = existing.find((a) => a.asset_type === "original")?.id ?? null;
+        await saveUpscaleAsset({
+          generatedImageId: img.id,
+          sourceAssetId: origAssetId,
+          imageUrl: result.imageUrl,
+          method: result.mode,
+          scaleFactor: result.scale,
+        });
+        void refreshUpscaleCounts(images.map((i) => i.id));
+      } catch (e) {
+        console.warn("[handleGalleryUpscale] saveUpscaleAsset failed:", e);
+      }
       const label = UPSCALE_MODES[result.mode]?.shortLabel ?? "Upscale";
       toast.success(
         result.downshifted
@@ -1151,8 +1231,39 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     }
   };
 
+
   // Reset upscale state when changing selected image
   useEffect(() => { resetGalleryUpscale(); }, [selected?.id]);
+
+  /**
+   * Print export from the "Best available" stored asset version
+   * (the largest-resolution non-deleted asset for this image).
+   * Falls back to the regular export when no version data exists.
+   */
+  const handlePrintExportFromBest = useCallback(async (img: GalleryImage) => {
+    try {
+      const assets = await fetchImageAssets(img.id);
+      const best = bestAvailableAsset(assets);
+      if (best) {
+        const augmented = {
+          ...img,
+          masterUrl: best.publicUrl,
+          actual_width_px: best.width_px ?? img.actual_width_px,
+          actual_height_px: best.height_px ?? img.actual_height_px,
+        } as GalleryImage;
+        await handlePrintExport(augmented);
+        toast.info(
+          `Export source: Best available · ${best.asset_type === "original" ? "Original" : `Upscale ${best.version_index}`}${best.width_px && best.height_px ? ` · ${best.width_px}×${best.height_px}` : ""}`,
+          { duration: 4000 },
+        );
+        return;
+      }
+    } catch (e) {
+      console.warn("[handlePrintExportFromBest] falling back:", e);
+    }
+    await handlePrintExport(img);
+  }, []);
+
 
   const handlePrintExport = async (img: GalleryImage) => {
     // Source selection is centralized — exports MUST start from master.
@@ -1284,7 +1395,11 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       generatorFamily: generatorFamilyFromProvider(selected.generation_provider),
       printIntent: selected.generation_mode === "print-ready" || !!selected.print_format_id,
     }),
+    upscaleCount: upscaleCounts.get(selected.id) ?? 0,
+    onVersionsChanged: () => { void refreshUpscaleCounts(images.map((i) => i.id)); },
+    onPrintExportFromBest: handlePrintExportFromBest,
   } : null;
+
 
   return (
     <>
@@ -1492,7 +1607,17 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                 <Badge variant="secondary" className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80 z-30">
                   {img.mode === "japanese" ? "🏯" : "🎨"}
                 </Badge>
+                {(upscaleCounts.get(img.id) ?? 0) > 0 && (
+                  <Badge
+                    variant="default"
+                    className="absolute bottom-1.5 right-1.5 text-[10px] font-display z-30 bg-primary/90"
+                  >
+                    <Sparkles className="h-2.5 w-2.5 mr-1" />
+                    {upscaleCounts.get(img.id)} upscale{(upscaleCounts.get(img.id) ?? 0) === 1 ? "" : "s"}
+                  </Badge>
+                )}
               </button>
+
               <AssetMetaBadges
                 variant="compact"
                 assetRole={(img as any).asset_role || ((img as any).enhanced ? "enhanced_master" : "base_generation")}
