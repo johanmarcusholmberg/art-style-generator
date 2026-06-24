@@ -691,13 +691,26 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const [reloadTick, setReloadTick] = useState(0);
   const reloadGallery = useCallback(() => setReloadTick((t) => t + 1), []);
 
+  // Upscale-version counts per image — drives the "N upscales" badge on cards.
+  const [upscaleCounts, setUpscaleCounts] = useState<Map<string, number>>(new Map());
+  const refreshUpscaleCounts = useCallback(async (ids: string[]) => {
+    try {
+      const counts = await fetchUpscaleCounts(ids);
+      setUpscaleCounts(counts);
+    } catch (e) {
+      console.warn("[Gallery] upscale counts failed:", e);
+    }
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     fetchGalleryImages({ limit: PAGE_SIZE, offset: 0, modes: styleModes ?? undefined })
       .then((imgs) => {
         setImages(imgs as GalleryImage[]);
         setHasMore(imgs.length === PAGE_SIZE);
+        void refreshUpscaleCounts(imgs.map((i: any) => i.id));
       })
+
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [refreshKey, reloadTick]);
