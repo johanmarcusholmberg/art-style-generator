@@ -276,7 +276,13 @@ function LightboxContent({
   };
   return (
     <div className="space-y-4">
-      <ImagePreviewMockups imageUrl={img.masterUrl} alt={img.prompt} />
+      <ImagePreviewMockups imageUrl={displayUrl} alt={img.prompt} />
+      <VersionSelector
+        image={img}
+        onSelectedAssetChange={setSelectedAsset}
+        onAfterMutation={onVersionsChanged}
+      />
+
       <div className="space-y-2">
         <p className="font-display text-sm text-foreground">{img.prompt}</p>
         <div className="flex flex-wrap gap-2 items-center">
@@ -446,9 +452,16 @@ function LightboxContent({
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2 pt-2">
-          <Button variant="outline" size="sm" onClick={() => downloadImage(img.masterUrl, `art-${img.id}.png`)} className="font-display text-xs">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => downloadImage(downloadUrl, `art-${img.id}${selectedAsset ? `-v${selectedAsset.version_index}` : ""}.png`)}
+            className="font-display text-xs"
+            title={selectedAsset ? `Download ${selectedAsset.asset_type === "original" ? "Original" : `Upscale ${selectedAsset.version_index}`}` : "Download"}
+          >
             <Download className="mr-2 h-4 w-4" /> Download
           </Button>
+
           <div className="inline-flex items-center gap-1.5">
             <Select
               value={exportFormat}
