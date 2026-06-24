@@ -234,7 +234,11 @@ interface LightboxContentProps {
   upscalingProgress: number;
   upscalingJobStatus?: import("@/lib/upscale-modes").UpscaleJobStatus | null;
   recommendedRecipe?: UpscaleRecipe | null;
+  upscaleCount?: number;
+  onVersionsChanged?: () => void;
+  onPrintExportFromBest: (img: GalleryImage) => void;
 }
+
 
 function LightboxContent({
   img, onEdit, onDelete, onCopyUrl,
@@ -245,8 +249,16 @@ function LightboxContent({
   onEtsyMockup,
   onUpscale, upscaling, upscalingStageLabel, upscalingProgress, upscalingJobStatus,
   recommendedRecipe,
+  upscaleCount,
+  onVersionsChanged,
+  onPrintExportFromBest,
 }: LightboxContentProps) {
+  const [selectedAsset, setSelectedAsset] = useState<ImageAsset | null>(null);
+  const [useBestForExport, setUseBestForExport] = useState(false);
+  const displayUrl = selectedAsset?.publicUrl || img.masterUrl;
+  const downloadUrl = selectedAsset?.publicUrl || img.masterUrl;
   const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
+
   const hasExport = !!img.export_storage_path;
   const exportReadiness = printFormat && img.actual_width_px && img.actual_height_px
     ? assessExportReadiness(img.actual_width_px, img.actual_height_px, printFormat)
