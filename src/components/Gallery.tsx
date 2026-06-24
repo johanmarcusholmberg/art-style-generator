@@ -1217,6 +1217,36 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   // Reset upscale state when changing selected image
   useEffect(() => { resetGalleryUpscale(); }, [selected?.id]);
 
+  /**
+   * Print export from the "Best available" stored asset version
+   * (the largest-resolution non-deleted asset for this image).
+   * Falls back to the regular export when no version data exists.
+   */
+  const handlePrintExportFromBest = useCallback(async (img: GalleryImage) => {
+    try {
+      const assets = await fetchImageAssets(img.id);
+      const best = bestAvailableAsset(assets);
+      if (best) {
+        const augmented = {
+          ...img,
+          masterUrl: best.publicUrl,
+          actual_width_px: best.width_px ?? img.actual_width_px,
+          actual_height_px: best.height_px ?? img.actual_height_px,
+        } as GalleryImage;
+        await handlePrintExport(augmented);
+        toast.info(
+          `Export source: Best available · ${best.asset_type === "original" ? "Original" : `Upscale ${best.version_index}`}${best.width_px && best.height_px ? ` · ${best.width_px}×${best.height_px}` : ""}`,
+          { duration: 4000 },
+        );
+        return;
+      }
+    } catch (e) {
+      console.warn("[handlePrintExportFromBest] falling back:", e);
+    }
+    await handlePrintExport(img);
+  }, []);
+
+
   const handlePrintExport = async (img: GalleryImage) => {
     // Source selection is centralized — exports MUST start from master.
     const exportSourceUrl = getExportSourceAssetForImage(img);
