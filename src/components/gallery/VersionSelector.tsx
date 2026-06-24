@@ -56,6 +56,8 @@ interface VersionSelectorProps {
     base_width_px?: number | null;
     base_height_px?: number | null;
   };
+  /** Bump from the parent to force an asset re-fetch (e.g. after an external upscale persists). */
+  refreshKey?: number;
   onSelectedAssetChange?: (asset: ImageAsset | null) => void;
   onAfterMutation?: () => void;
 }
@@ -66,6 +68,7 @@ const SELECTOR_MODES: UpscaleMode[] = ["realesrgan_4x", "tile_4x"];
 
 export default function VersionSelector({
   image,
+  refreshKey,
   onSelectedAssetChange,
   onAfterMutation,
 }: VersionSelectorProps) {
@@ -97,7 +100,10 @@ export default function VersionSelector({
 
   useEffect(() => {
     void load();
-  }, [load]);
+    // refreshKey is intentionally a dependency so external mutations
+    // trigger a reload without changing the image identity.
+  }, [load, refreshKey]);
+
 
   const selected = useMemo(
     () => assets.find((a) => a.id === selectedId) ?? null,
