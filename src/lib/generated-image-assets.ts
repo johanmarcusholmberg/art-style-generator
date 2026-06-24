@@ -381,16 +381,17 @@ export interface SaveUpscaleAssetInput {
 export async function saveUpscaleAsset(
   input: SaveUpscaleAssetInput,
 ): Promise<ImageAsset> {
-  const existing = await fetchImageAssets(input.generatedImageId);
-  // Compute version including any soft-deleted rows for monotonicity.
+  // Compute version index including any soft-deleted rows for monotonicity.
   const { data: allRows } = await (supabase as any)
     .from("generated_image_assets")
     .select("version_index, deleted_at")
     .eq("generated_image_id", input.generatedImageId);
-  const versionIdx = nextVersionIndex(((allRows ?? []) as Array<{
+  const rows = (allRows ?? []) as Array<{
     version_index: number;
     deleted_at: string | null;
-  }>) ?? existing);
+  }>;
+  const versionIdx = nextVersionIndex(rows);
+
 
   const blob = await fetchAsBlob(input.imageUrl);
   const mime = input.mimeType || blob.type || "image/png";
