@@ -237,6 +237,7 @@ interface LightboxContentProps {
   upscaleCount?: number;
   onVersionsChanged?: () => void;
   onPrintExportFromBest: (img: GalleryImage) => void;
+  versionRefreshKey?: number;
 }
 
 
