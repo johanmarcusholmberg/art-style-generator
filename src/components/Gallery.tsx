@@ -253,6 +253,7 @@ function LightboxContent({
   upscaleCount,
   onVersionsChanged,
   onPrintExportFromBest,
+  versionRefreshKey,
 }: LightboxContentProps) {
   const [selectedAsset, setSelectedAsset] = useState<ImageAsset | null>(null);
   const [useBestForExport, setUseBestForExport] = useState(false);
@@ -280,9 +281,11 @@ function LightboxContent({
       <ImagePreviewMockups imageUrl={displayUrl} alt={img.prompt} />
       <VersionSelector
         image={img}
+        refreshKey={versionRefreshKey}
         onSelectedAssetChange={setSelectedAsset}
         onAfterMutation={onVersionsChanged}
       />
+
 
       <div className="space-y-2">
         <p className="font-display text-sm text-foreground">{img.prompt}</p>
