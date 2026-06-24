@@ -1202,6 +1202,23 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           surface: "gallery",
         },
       });
+      // Also persist the upscaled output as a new versioned asset so
+      // subsequent operations (version selector, "best available" export,
+      // upscale-again-from-original) have a durable record. Best-effort.
+      try {
+        const existing = await fetchImageAssets(img.id);
+        const origAssetId = existing.find((a) => a.asset_type === "original")?.id ?? null;
+        await saveUpscaleAsset({
+          generatedImageId: img.id,
+          sourceAssetId: origAssetId,
+          imageUrl: result.imageUrl,
+          method: result.mode,
+          scaleFactor: result.scale,
+        });
+        void refreshUpscaleCounts(images.map((i) => i.id));
+      } catch (e) {
+        console.warn("[handleGalleryUpscale] saveUpscaleAsset failed:", e);
+      }
       const label = UPSCALE_MODES[result.mode]?.shortLabel ?? "Upscale";
       toast.success(
         result.downshifted
@@ -1213,6 +1230,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       toast.error("Upscale failed — original image preserved");
     }
   };
+
 
   // Reset upscale state when changing selected image
   useEffect(() => { resetGalleryUpscale(); }, [selected?.id]);
