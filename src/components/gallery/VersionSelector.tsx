@@ -41,6 +41,8 @@ import {
   getVersionPrintReadiness,
   canDeleteAsset,
   pickNextSelectionAfterDelete,
+  probeImageDimensions,
+  updateAssetDimensions,
   type ImageAsset,
 } from "@/lib/generated-image-assets";
 import { runReplicateUpscale } from "@/lib/upscale-providers/replicate";
