@@ -366,8 +366,21 @@ export default function ImageGenerator({
     });
     if (upscaleRunId.current !== runId) return;
     if (result) {
-      setEnhancedImageUrl(result.imageUrl);
-      setImageUrl(result.imageUrl);
+      // Upscalers (notably tiled paths) can drift off the poster ratio
+      // — re-enforce against the selected format so PPI/export checks
+      // stay correct.
+      let enhancedUrl = result.imageUrl;
+      try {
+        const enforced = await enforcePosterRatio({
+          imageUrl: result.imageUrl,
+          formatId: selectedPrintFormat.id,
+        });
+        if (enforced?.url) enhancedUrl = enforced.url;
+      } catch (e) {
+        console.warn("[ImageGenerator] post-upscale ratio enforcement failed", e);
+      }
+      setEnhancedImageUrl(enhancedUrl);
+      setImageUrl(enhancedUrl);
       const label = UPSCALE_MODES[mode].shortLabel;
       toast({
         title: result.downshifted
@@ -377,6 +390,7 @@ export default function ImageGenerator({
           ? "8× output exceeded the 8K limit — used tiled 4× instead."
           : `Image enhanced via ${label} (${result.scale}× resolution).`,
       });
+
     } else {
       toast({
         title: "Upscale failed",
