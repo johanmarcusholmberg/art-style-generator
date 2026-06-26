@@ -159,7 +159,7 @@ async function runRealESRGAN(
   imageUrl: string,
   scale: number,
   apiToken: string,
-): Promise<string | null> {
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   console.log(`[realesrgan] scale=${scale}`);
   const createRes = await fetch("https://api.replicate.com/v1/predictions", {
     method: "POST",
@@ -174,22 +174,34 @@ async function runRealESRGAN(
     }),
   });
   if (!createRes.ok) {
-    console.error("[realesrgan] create failed:", createRes.status, await createRes.text());
-    return null;
+    const text = await createRes.text();
+    console.error("[realesrgan] create failed:", createRes.status, text);
+    return { ok: false, error: `Real-ESRGAN: ${createRes.status} ${text.slice(0, 200)}` };
   }
   let prediction = await createRes.json();
   if (prediction.status === "succeeded" && prediction.output) {
-    return Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+    const out = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+    return { ok: true, url: out };
   }
-  prediction = await pollReplicate(prediction.id, apiToken, 90, 2000);
-  if (!prediction) return null;
-  return Array.isArray(prediction.output) ? prediction.output[0] : prediction.output ?? null;
+  if (prediction.status === "failed") {
+    const errMsg = typeof prediction.error === "string" ? prediction.error : "Replicate refused the input.";
+    return { ok: false, error: errMsg };
+  }
+  const polled = await pollReplicate(prediction.id, apiToken, 90, 2000);
+  if (!polled || !polled.ok) {
+    return { ok: false, error: (polled && !polled.ok) ? polled.error : "Real-ESRGAN failed." };
+  }
+  const out = Array.isArray(polled.prediction.output)
+    ? polled.prediction.output[0]
+    : polled.prediction.output ?? null;
+  if (!out) return { ok: false, error: "Real-ESRGAN returned no image." };
+  return { ok: true, url: out };
 }
 
 async function runSUPIR(
   imageUrl: string,
   apiToken: string,
-): Promise<string | null> {
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   console.log(`[supir] running refine pass`);
   // SUPIR is a refinement model — we run upscale=2 to boost resolution while
   // restoring fine detail. Conservative settings to avoid hallucination.
@@ -224,16 +236,28 @@ async function runSUPIR(
     }),
   });
   if (!createRes.ok) {
-    console.error("[supir] create failed:", createRes.status, await createRes.text());
-    return null;
+    const text = await createRes.text();
+    console.error("[supir] create failed:", createRes.status, text);
+    return { ok: false, error: `SUPIR: ${createRes.status} ${text.slice(0, 200)}` };
   }
   let prediction = await createRes.json();
   if (prediction.status === "succeeded" && prediction.output) {
-    return Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+    const out = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+    return { ok: true, url: out };
   }
-  prediction = await pollReplicate(prediction.id, apiToken, 150, 2000);
-  if (!prediction) return null;
-  return Array.isArray(prediction.output) ? prediction.output[0] : prediction.output ?? null;
+  if (prediction.status === "failed") {
+    const errMsg = typeof prediction.error === "string" ? prediction.error : "SUPIR refused the input.";
+    return { ok: false, error: errMsg };
+  }
+  const polled = await pollReplicate(prediction.id, apiToken, 150, 2000);
+  if (!polled || !polled.ok) {
+    return { ok: false, error: (polled && !polled.ok) ? polled.error : "SUPIR failed." };
+  }
+  const out = Array.isArray(polled.prediction.output)
+    ? polled.prediction.output[0]
+    : polled.prediction.output ?? null;
+  if (!out) return { ok: false, error: "SUPIR returned no image." };
+  return { ok: true, url: out };
 }
 
 Deno.serve(async (req) => {
