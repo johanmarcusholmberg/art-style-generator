@@ -151,7 +151,7 @@ describe("estimateUpscaleOutput / 12K cap", () => {
     );
     // 4096*2=8192, 6144*2=12288 → just over 12K so exceedsCap should be true
     // for OUTPUT reasons, but not for the input-pixel reason.
-    expect(r.warning).toMatch(/12K/i);
+    expect(r.warning).toMatch(/12,000px/i);
   });
   it("allows realesrgan when input pixels are under the cap", () => {
     const r = estimateUpscaleOutput(
