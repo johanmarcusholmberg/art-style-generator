@@ -46,6 +46,8 @@ import VariantGrid from "@/features/generation/VariantGrid";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription, getPosterPromptHint } from "@/lib/print-formats";
+import { enforcePosterRatio } from "@/lib/poster-ratio-enforce";
+
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { EXPORT_FORMAT_META, getStoredExportFormat } from "@/lib/export-formats";
 import { cn } from "@/lib/utils";
@@ -364,8 +366,21 @@ export default function ImageGenerator({
     });
     if (upscaleRunId.current !== runId) return;
     if (result) {
-      setEnhancedImageUrl(result.imageUrl);
-      setImageUrl(result.imageUrl);
+      // Upscalers (notably tiled paths) can drift off the poster ratio
+      // — re-enforce against the selected format so PPI/export checks
+      // stay correct.
+      let enhancedUrl = result.imageUrl;
+      try {
+        const enforced = await enforcePosterRatio({
+          imageUrl: result.imageUrl,
+          formatId: selectedPrintFormat.id,
+        });
+        if (enforced?.url) enhancedUrl = enforced.url;
+      } catch (e) {
+        console.warn("[ImageGenerator] post-upscale ratio enforcement failed", e);
+      }
+      setEnhancedImageUrl(enhancedUrl);
+      setImageUrl(enhancedUrl);
       const label = UPSCALE_MODES[mode].shortLabel;
       toast({
         title: result.downshifted
@@ -375,6 +390,7 @@ export default function ImageGenerator({
           ? "8× output exceeded the 8K limit — used tiled 4× instead."
           : `Image enhanced via ${label} (${result.scale}× resolution).`,
       });
+
     } else {
       toast({
         title: "Upscale failed",
@@ -562,6 +578,9 @@ export default function ImageGenerator({
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
         printMode: true,
+        // The selected poster format is authoritative — propagate the
+        // print intent so adapter-level sizing overrides activate.
+        sizeIntent: "print",
         providerPreference: generatorPref,
         referenceImageUrl,
         isEdit: !!referenceImageUrl,
@@ -575,9 +594,33 @@ export default function ImageGenerator({
         generationStrategy: modelSelection.generationStrategy ?? undefined,
       });
 
-      const baseUrl = gen.imageUrl;
+      // Post-generation ratio enforcement. Providers (notably Gemini)
+      // frequently drift off the requested poster ratio — e.g. 5:7
+      // requested ⇒ 1094×1606 (~2:3) returned. Pad the master to the
+      // exact poster ratio BEFORE exposing it so the gallery save,
+      // upscale, PPI checks, and export pipeline all operate on a
+      // correctly shaped asset.
+      let baseUrl = gen.imageUrl;
+      try {
+        const enforced = await enforcePosterRatio({
+          imageUrl: gen.imageUrl,
+          formatId: selectedPrintFormat.id,
+        });
+        if (enforced) {
+          if (enforced.corrected) {
+            console.log(
+              `[ImageGenerator] poster-ratio corrected: ${enforced.plan.sourceWidth}x${enforced.plan.sourceHeight} → ${enforced.width}x${enforced.height} (target ratio ${enforced.plan.targetRatio.toFixed(4)})`,
+            );
+          }
+          baseUrl = enforced.url;
+        }
+      } catch (e) {
+        console.warn("[ImageGenerator] poster ratio enforcement failed", e);
+      }
+
       setBaseImageUrl(baseUrl);
       setImageUrl(baseUrl);
+
 
       setLastProviderUsed(gen.generationProvider);
       setLastModelUsed(gen.generationModel);

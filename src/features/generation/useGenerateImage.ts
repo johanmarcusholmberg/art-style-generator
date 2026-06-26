@@ -10,6 +10,7 @@
  */
 import { useCallback, useState } from "react";
 import { generateImage } from "@/lib/generation-router";
+import { enforcePosterRatio } from "@/lib/poster-ratio-enforce";
 import type { GenerateInput, UseGenerateImageResult } from "./types";
 
 export function useGenerateImage(styleKey: string): UseGenerateImageResult {
@@ -29,19 +30,42 @@ export function useGenerateImage(styleKey: string): UseGenerateImageResult {
       setIsLoading(true);
       setError(null);
       try {
+        const isPrint = input.generationMode === "print-ready";
         const { response: res } = await generateImage({
           prompt: input.prompt,
           styleKey,
           aspectRatio: input.aspectRatio,
           backgroundStyle: input.backgroundStyle,
-          printMode: input.generationMode === "print-ready",
+          printMode: isPrint,
+          // Print-ready mode must propagate the size intent so adapter
+          // overrides (ratio-preserving sizing) are emitted to providers.
+          sizeIntent: isPrint ? "print" : undefined,
           posterFormatId: input.printFormatId ?? undefined,
           referenceImageUrl: input.sourceImageUrl ?? undefined,
           isEdit: !!input.sourceImageUrl,
           referenceStrength: input.sourceImageUrl ? input.referenceStrength : undefined,
         });
-        setImageUrl(res.imageUrl);
-        setBaseImageUrl(res.imageUrl);
+
+        // Post-generation guard: providers (notably Gemini) often drift
+        // off the requested poster ratio. Pad the master to the exact
+        // poster ratio BEFORE we expose it as `imageUrl` so every
+        // downstream flow (gallery save, upscale, PPI checks, export)
+        // works on a correctly shaped asset.
+        let finalUrl = res.imageUrl;
+        if (isPrint && input.printFormatId) {
+          try {
+            const enforced = await enforcePosterRatio({
+              imageUrl: res.imageUrl,
+              formatId: input.printFormatId,
+            });
+            if (enforced) finalUrl = enforced.url;
+          } catch (e) {
+            console.warn("[useGenerateImage] poster ratio enforcement failed", e);
+          }
+        }
+
+        setImageUrl(finalUrl);
+        setBaseImageUrl(finalUrl);
         setProvider(res.generationProvider);
         setModel(res.generationModel);
         setRoute(res.executionRoute);
@@ -58,6 +82,7 @@ export function useGenerateImage(styleKey: string): UseGenerateImageResult {
     },
     [styleKey],
   );
+
 
   const reset = useCallback(() => {
     setImageUrl(null);
