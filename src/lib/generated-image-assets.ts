@@ -357,7 +357,46 @@ export async function ensureOriginalAssetForImage(img: {
     ...(data as ImageAssetRow),
     publicUrl: publicUrlFor("generated-images", storagePath),
   };
+
+/**
+ * Probe an image URL in the browser and return its natural dimensions, or
+ * null if it can't be decoded. Uses an off-DOM <img> element so it works
+ * for any URL the browser can fetch (CORS rules permitting).
+ */
+export async function probeImageDimensions(
+  url: string,
+): Promise<{ width: number; height: number } | null> {
+  if (typeof window === "undefined" || typeof Image === "undefined") return null;
+  return await new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      if (w > 0 && h > 0) resolve({ width: w, height: h });
+      else resolve(null);
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
 }
+
+/**
+ * Persist measured dimensions back onto an asset row when they were missing
+ * (e.g. legacy upscales saved before the provider reported width/height).
+ */
+export async function updateAssetDimensions(
+  assetId: string,
+  width: number,
+  height: number,
+): Promise<void> {
+  const { error } = await (supabase as any)
+    .from("generated_image_assets")
+    .update({ width_px: width, height_px: height })
+    .eq("id", assetId);
+  if (error) throw error;
+}
+
 
 // ── Upload helpers ──────────────────────────────────────────────────────
 
