@@ -357,6 +357,9 @@ export async function ensureOriginalAssetForImage(img: {
     ...(data as ImageAssetRow),
     publicUrl: publicUrlFor("generated-images", storagePath),
   };
+}
+
+
 
 /**
  * Probe an image URL in the browser and return its natural dimensions, or
