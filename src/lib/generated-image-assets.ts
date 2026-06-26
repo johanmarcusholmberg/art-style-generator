@@ -149,6 +149,7 @@ export interface UpscaleEstimate {
 export function estimateUpscaleOutput(
   source: { width_px: number | null; height_px: number | null },
   scaleFactor: number,
+  opts: { method?: "realesrgan" | "supir" | "tile" } = {},
 ): UpscaleEstimate {
   if (!source.width_px || !source.height_px) {
     return {
@@ -165,15 +166,29 @@ export function estimateUpscaleOutput(
   const h = Math.round(source.height_px * scaleFactor);
   const longEdge = Math.max(w, h);
   const exceedsCap = longEdge > MAX_LONG_EDGE_PX;
+
+  // Input-pixel cap (Replicate Real-ESRGAN GPU limit). Only applies to the
+  // non-tiled HD path; tiled SDXL chunks the input so it isn't limited the
+  // same way.
+  const inputPixels = source.width_px * source.height_px;
+  const exceedsInputCap =
+    opts.method === "realesrgan" && inputPixels > MAX_REALESRGAN_INPUT_PIXELS;
+
+  const blocked = exceedsCap || exceedsInputCap;
+  let warning: string | null = null;
+  if (exceedsCap) {
+    warning = `This upscale would exceed the ${MAX_LONG_EDGE_PX.toLocaleString()}px long-edge limit. Choose a smaller source, a lower upscale mode, or export from the best available version.`;
+  } else if (exceedsInputCap) {
+    const mp = (inputPixels / 1_000_000).toFixed(1);
+    warning = `Selected source is ${mp}MP — too large for HD 4× (limit ~2MP). Pick a smaller version (e.g. Original), or use Tile 4× from this version.`;
+  }
   return {
     estimatedLongEdge: longEdge,
     estimatedWidth: w,
     estimatedHeight: h,
-    exceedsCap,
+    exceedsCap: blocked,
     unknown: false,
-    warning: exceedsCap
-      ? `This upscale would exceed the ${MAX_LONG_EDGE_PX.toLocaleString()}px long-edge limit. Choose a smaller source, a lower upscale mode, or export from the best available version.`
-      : null,
+    warning,
   };
 }
 
