@@ -171,21 +171,23 @@ describe("preparePosterMaster", () => {
 
 describe("ensurePrintMasterInSaveOpts", () => {
   it("rewrites imageUrl/master/dims to the corrected master for print rows", async () => {
-    const { opts, master } = await ensurePrintMasterInSaveOpts({
+    const input: Record<string, unknown> & { imageUrl: string; printFormatId: string } = {
       imageUrl: "https://raw/x.png",
       printFormatId: "print_50x70",
       prompt: "p",
       mode: "test",
-    });
+    };
+    const { opts, master } = await ensurePrintMasterInSaveOpts(input as any);
     expect(master).not.toBeNull();
-    expect(opts.imageUrl).toBe(enforceOutput.url);
-    expect(opts.masterImageUrl).toBe(enforceOutput.url);
-    expect(opts.baseImageUrl).toBe(enforceOutput.url);
-    expect(opts.masterWidth).toBe(enforceOutput.width);
-    expect(opts.masterHeight).toBe(enforceOutput.height);
-    expect(opts.actualWidthPx).toBe(enforceOutput.width);
-    expect(opts.actualHeightPx).toBe(enforceOutput.height);
+    expect((opts as any).imageUrl).toBe(enforceOutput.url);
+    expect((opts as any).masterImageUrl).toBe(enforceOutput.url);
+    expect((opts as any).baseImageUrl).toBe(enforceOutput.url);
+    expect((opts as any).masterWidth).toBe(enforceOutput.width);
+    expect((opts as any).masterHeight).toBe(enforceOutput.height);
+    expect((opts as any).actualWidthPx).toBe(enforceOutput.width);
+    expect((opts as any).actualHeightPx).toBe(enforceOutput.height);
   });
+
 
   it("skips non-print rows untouched", async () => {
     const { opts, master } = await ensurePrintMasterInSaveOpts({
