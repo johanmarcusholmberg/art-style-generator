@@ -133,7 +133,38 @@ describe("estimateUpscaleOutput / 12K cap", () => {
     expect(r.exceedsCap).toBe(false);
     expect(r.warning).toBeNull();
   });
+  it("blocks realesrgan when input pixels exceed the ~2MP GPU cap", () => {
+    // 2000×1500 = 3MP — over the input cap. Output is 8000×6000 (under 12K)
+    // so the failure mode is purely the input-pixel cap.
+    const r = estimateUpscaleOutput(
+      { width_px: 2000, height_px: 1500 },
+      4,
+      { method: "realesrgan" },
+    );
+    expect(r.exceedsCap).toBe(true);
+    expect(r.warning).toMatch(/HD 4×|2MP/i);
+  });
+  it("does NOT apply the realesrgan input cap to tiled mode", () => {
+    const r = estimateUpscaleOutput(
+      { width_px: 4096, height_px: 6144 },
+      2,
+      { method: "tile" },
+    );
+    // 4096*2=8192, 6144*2=12288 → just over 12K so exceedsCap should be true
+    // for OUTPUT reasons, but not for the input-pixel reason.
+    expect(r.warning).toMatch(/12,000px/i);
+  });
+  it("allows realesrgan when input pixels are under the cap", () => {
+    const r = estimateUpscaleOutput(
+      { width_px: 1024, height_px: 1536 },
+      4,
+      { method: "realesrgan" },
+    );
+    expect(r.exceedsCap).toBe(false);
+    expect(r.warning).toBeNull();
+  });
 });
+
 
 describe("getVersionPrintReadiness", () => {
   it("returns unknown when dims are missing", () => {

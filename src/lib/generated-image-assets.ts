@@ -42,6 +42,11 @@ export interface ImageAsset extends ImageAssetRow {
 // 12 K long-edge hard safety cap for any upscale we initiate.
 export const MAX_LONG_EDGE_PX = 12_000;
 
+// Replicate's Real-ESRGAN worker rejects inputs over ~2.1MP (the exact
+// number from the GPU error is 2_096_704). We keep a small safety margin so
+// the frontend blocks before the round-trip.
+export const MAX_REALESRGAN_INPUT_PIXELS = 2_000_000;
+
 // ── Pure helpers (no I/O, easy to unit test) ───────────────────────────
 
 /** Sort assets ascending by version_index. */
@@ -144,6 +149,7 @@ export interface UpscaleEstimate {
 export function estimateUpscaleOutput(
   source: { width_px: number | null; height_px: number | null },
   scaleFactor: number,
+  opts: { method?: "realesrgan" | "supir" | "tile" } = {},
 ): UpscaleEstimate {
   if (!source.width_px || !source.height_px) {
     return {
@@ -160,15 +166,29 @@ export function estimateUpscaleOutput(
   const h = Math.round(source.height_px * scaleFactor);
   const longEdge = Math.max(w, h);
   const exceedsCap = longEdge > MAX_LONG_EDGE_PX;
+
+  // Input-pixel cap (Replicate Real-ESRGAN GPU limit). Only applies to the
+  // non-tiled HD path; tiled SDXL chunks the input so it isn't limited the
+  // same way.
+  const inputPixels = source.width_px * source.height_px;
+  const exceedsInputCap =
+    opts.method === "realesrgan" && inputPixels > MAX_REALESRGAN_INPUT_PIXELS;
+
+  const blocked = exceedsCap || exceedsInputCap;
+  let warning: string | null = null;
+  if (exceedsCap) {
+    warning = `This upscale would exceed the ${MAX_LONG_EDGE_PX.toLocaleString()}px long-edge limit. Choose a smaller source, a lower upscale mode, or export from the best available version.`;
+  } else if (exceedsInputCap) {
+    const mp = (inputPixels / 1_000_000).toFixed(1);
+    warning = `Selected source is ${mp}MP — too large for HD 4× (limit ~2MP). Pick a smaller version (e.g. Original), or use Tile 4× from this version.`;
+  }
   return {
     estimatedLongEdge: longEdge,
     estimatedWidth: w,
     estimatedHeight: h,
-    exceedsCap,
+    exceedsCap: blocked,
     unknown: false,
-    warning: exceedsCap
-      ? `This upscale would exceed the ${MAX_LONG_EDGE_PX.toLocaleString()}px long-edge limit. Choose a smaller source, a lower upscale mode, or export from the best available version.`
-      : null,
+    warning,
   };
 }
 
@@ -339,6 +359,48 @@ export async function ensureOriginalAssetForImage(img: {
   };
 }
 
+
+
+/**
+ * Probe an image URL in the browser and return its natural dimensions, or
+ * null if it can't be decoded. Uses an off-DOM <img> element so it works
+ * for any URL the browser can fetch (CORS rules permitting).
+ */
+export async function probeImageDimensions(
+  url: string,
+): Promise<{ width: number; height: number } | null> {
+  if (typeof window === "undefined" || typeof Image === "undefined") return null;
+  return await new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      if (w > 0 && h > 0) resolve({ width: w, height: h });
+      else resolve(null);
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+/**
+ * Persist measured dimensions back onto an asset row when they were missing
+ * (e.g. legacy upscales saved before the provider reported width/height).
+ */
+export async function updateAssetDimensions(
+  assetId: string,
+  width: number,
+  height: number,
+): Promise<void> {
+  const { error } = await (supabase as any)
+    .from("generated_image_assets")
+    .update({ width_px: width, height_px: height })
+    .eq("id", assetId);
+  if (error) throw error;
+}
+
+
 // ── Upload helpers ──────────────────────────────────────────────────────
 
 function dataUrlToBlob(dataUrl: string): Blob {
@@ -403,6 +465,26 @@ export async function saveUpscaleAsset(
     .upload(path, blob, { contentType: mime });
   if (uploadErr) throw uploadErr;
 
+  // Backfill missing dimensions by decoding the uploaded blob in the
+  // browser. Provider responses sometimes omit width/height; this keeps
+  // future safety checks (input-pixel cap, PPI math) accurate.
+  let measuredWidth = input.width ?? null;
+  let measuredHeight = input.height ?? null;
+  if ((!measuredWidth || !measuredHeight) && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+    try {
+      const objectUrl = URL.createObjectURL(blob);
+      const dims = await probeImageDimensions(objectUrl);
+      URL.revokeObjectURL(objectUrl);
+      if (dims) {
+        measuredWidth = dims.width;
+        measuredHeight = dims.height;
+      }
+    } catch (err) {
+      console.warn("[saveUpscaleAsset] dimension probe failed:", err);
+    }
+  }
+
+
   const insertRow = {
     generated_image_id: input.generatedImageId,
     asset_type: "upscale" as const,
@@ -410,8 +492,8 @@ export async function saveUpscaleAsset(
     source_asset_id: input.sourceAssetId,
     storage_bucket: "generated-images",
     storage_path: path,
-    width_px: input.width ?? null,
-    height_px: input.height ?? null,
+    width_px: measuredWidth,
+    height_px: measuredHeight,
     mime_type: mime,
     file_size_bytes: blob.size ?? null,
     upscale_method: input.method ?? null,

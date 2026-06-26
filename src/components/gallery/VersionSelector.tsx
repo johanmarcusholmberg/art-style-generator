@@ -41,6 +41,8 @@ import {
   getVersionPrintReadiness,
   canDeleteAsset,
   pickNextSelectionAfterDelete,
+  probeImageDimensions,
+  updateAssetDimensions,
   type ImageAsset,
 } from "@/lib/generated-image-assets";
 import { runReplicateUpscale } from "@/lib/upscale-providers/replicate";
@@ -115,28 +117,65 @@ export default function VersionSelector({
   }, [selected, onSelectedAssetChange]);
 
   const scaleFactor = UPSCALE_MODES[mode]?.scaleFactor ?? 4;
+  const replicateMethod: "realesrgan" | "supir" =
+    mode === "realesrgan_4x" ? "realesrgan" : "supir";
   const estimate = useMemo(
     () =>
       selected
         ? estimateUpscaleOutput(
             { width_px: selected.width_px, height_px: selected.height_px },
             scaleFactor,
+            { method: replicateMethod },
           )
         : null,
-    [selected, scaleFactor],
+    [selected, scaleFactor, replicateMethod],
   );
 
   const handleUpscale = useCallback(async () => {
     if (!selected || busy) return;
-    if (estimate?.exceedsCap) {
-      toast.error(estimate.warning || "Upscale would exceed safety cap.");
-      return;
-    }
     setBusy("upscale");
     try {
+      // If source dims are unknown (legacy upscale row), probe the image
+      // first so we can apply the input-pixel safety cap BEFORE round-
+      // tripping to Replicate.
+      let srcW = selected.width_px;
+      let srcH = selected.height_px;
+      if (!srcW || !srcH) {
+        const dims = await probeImageDimensions(selected.publicUrl);
+        if (dims) {
+          srcW = dims.width;
+          srcH = dims.height;
+          // Persist for future runs; best-effort, don't block on failure.
+          updateAssetDimensions(selected.id, dims.width, dims.height).catch((e) =>
+            console.warn("[VersionSelector] persist dims failed:", e),
+          );
+          setAssets((prev) =>
+            prev.map((a) =>
+              a.id === selected.id ? { ...a, width_px: dims.width, height_px: dims.height } : a,
+            ),
+          );
+        }
+      }
+
+      const recomputed = estimateUpscaleOutput(
+        { width_px: srcW, height_px: srcH },
+        scaleFactor,
+        { method: replicateMethod },
+      );
+      if (recomputed.exceedsCap) {
+        toast.error(recomputed.warning || "Upscale would exceed safety cap.");
+        return;
+      }
+      if (recomputed.unknown) {
+        toast.error(
+          "Couldn't read this version's dimensions to verify it's safe to upscale. Try selecting the Original instead.",
+        );
+        return;
+      }
+
       const direct = await runReplicateUpscale({
         imageUrl: selected.publicUrl,
-        method: mode === "realesrgan_4x" ? "realesrgan" : "supir",
+        method: replicateMethod,
         scale: scaleFactor,
       });
       const newAsset = await saveUpscaleAsset({
@@ -159,7 +198,7 @@ export default function VersionSelector({
     } finally {
       setBusy(null);
     }
-  }, [selected, busy, estimate, mode, scaleFactor, image.id, onAfterMutation]);
+  }, [selected, busy, mode, scaleFactor, replicateMethod, image.id, onAfterMutation]);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;

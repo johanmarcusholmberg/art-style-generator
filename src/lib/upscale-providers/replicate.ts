@@ -56,7 +56,22 @@ export async function runReplicateUpscale(
   );
 
   if (error) {
-    throw new Error(error.message || "Direct Replicate enhancement failed.");
+    // FunctionsHttpError surfaces a generic "non-2xx" message; read the
+    // response body to surface the actual provider error to the user.
+    let serverMessage: string | null = null;
+    const ctxResponse = (error as any)?.context?.response;
+    if (ctxResponse && typeof ctxResponse.json === "function") {
+      try {
+        const parsed = await ctxResponse.clone().json();
+        if (parsed?.error) serverMessage = String(parsed.error);
+      } catch {
+        try {
+          const text = await ctxResponse.clone().text();
+          if (text) serverMessage = text.slice(0, 300);
+        } catch { /* ignore */ }
+      }
+    }
+    throw new Error(serverMessage || error.message || "Direct Replicate enhancement failed.");
   }
   if (!data || data.error) {
     throw new Error(data?.error || "Direct Replicate enhancement failed.");
