@@ -124,8 +124,16 @@ export interface GallerySaveOptions {
 }
 
 export async function saveToGallery(opts: GallerySaveOptions) {
-  // Upload the base image
+  // Print-ready invariant: a print row must enter the gallery with a
+  // master that matches the selected poster ratio. The guard pads when
+  // needed and throws when enforcement can't produce a valid master —
+  // we never persist an off-ratio print master.
+  const guarded = await ensurePrintMasterInSaveOpts(opts);
+  opts = guarded.opts;
+
+  // Upload the (now ratio-correct) base image
   const base = await uploadImage(opts.imageUrl, opts.mode);
+
 
   // Upload enhanced image if provided
   let enhancedPath: string | null = null;
