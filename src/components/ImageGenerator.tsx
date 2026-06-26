@@ -564,6 +564,9 @@ export default function ImageGenerator({
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
         printMode: true,
+        // The selected poster format is authoritative — propagate the
+        // print intent so adapter-level sizing overrides activate.
+        sizeIntent: "print",
         providerPreference: generatorPref,
         referenceImageUrl,
         isEdit: !!referenceImageUrl,
@@ -577,9 +580,33 @@ export default function ImageGenerator({
         generationStrategy: modelSelection.generationStrategy ?? undefined,
       });
 
-      const baseUrl = gen.imageUrl;
+      // Post-generation ratio enforcement. Providers (notably Gemini)
+      // frequently drift off the requested poster ratio — e.g. 5:7
+      // requested ⇒ 1094×1606 (~2:3) returned. Pad the master to the
+      // exact poster ratio BEFORE exposing it so the gallery save,
+      // upscale, PPI checks, and export pipeline all operate on a
+      // correctly shaped asset.
+      let baseUrl = gen.imageUrl;
+      try {
+        const enforced = await enforcePosterRatio({
+          imageUrl: gen.imageUrl,
+          formatId: selectedPrintFormat.id,
+        });
+        if (enforced) {
+          if (enforced.corrected) {
+            console.log(
+              `[ImageGenerator] poster-ratio corrected: ${enforced.plan.sourceWidth}x${enforced.plan.sourceHeight} → ${enforced.width}x${enforced.height} (target ratio ${enforced.plan.targetRatio.toFixed(4)})`,
+            );
+          }
+          baseUrl = enforced.url;
+        }
+      } catch (e) {
+        console.warn("[ImageGenerator] poster ratio enforcement failed", e);
+      }
+
       setBaseImageUrl(baseUrl);
       setImageUrl(baseUrl);
+
 
       setLastProviderUsed(gen.generationProvider);
       setLastModelUsed(gen.generationModel);
