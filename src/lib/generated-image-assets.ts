@@ -465,6 +465,26 @@ export async function saveUpscaleAsset(
     .upload(path, blob, { contentType: mime });
   if (uploadErr) throw uploadErr;
 
+  // Backfill missing dimensions by decoding the uploaded blob in the
+  // browser. Provider responses sometimes omit width/height; this keeps
+  // future safety checks (input-pixel cap, PPI math) accurate.
+  let measuredWidth = input.width ?? null;
+  let measuredHeight = input.height ?? null;
+  if ((!measuredWidth || !measuredHeight) && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+    try {
+      const objectUrl = URL.createObjectURL(blob);
+      const dims = await probeImageDimensions(objectUrl);
+      URL.revokeObjectURL(objectUrl);
+      if (dims) {
+        measuredWidth = dims.width;
+        measuredHeight = dims.height;
+      }
+    } catch (err) {
+      console.warn("[saveUpscaleAsset] dimension probe failed:", err);
+    }
+  }
+
+
   const insertRow = {
     generated_image_id: input.generatedImageId,
     asset_type: "upscale" as const,
