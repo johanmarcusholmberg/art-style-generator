@@ -129,7 +129,11 @@ function resolveCandidateModes(input: PrintUpscaleRoutingInput): UpscaleModeConf
         .filter((m): m is UpscaleModeConfig => !!m && m.enabled)
     : getUpscaleOptionsForSurface(input.surface ?? "manual");
   // Routing only cares about modes that actually upscale.
-  return all.filter((m) => m.runs && m.scaleFactor > 1);
+  // `print_target_300` is a dynamic-scale mode whose effective scaleFactor
+  // depends on a calculated plan — the dialog computes that separately
+  // (via `calculatePrintTargetUpscale`). Exclude it from the generic
+  // smallest-clearing picker so routing keeps using fixed-factor modes.
+  return all.filter((m) => m.runs && m.scaleFactor > 1 && m.id !== "print_target_300");
 }
 
 /**

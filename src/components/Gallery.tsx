@@ -1164,6 +1164,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       recipe: recipe
         ? { id: recipe.id, label: recipe.label, reason: recipe.reason }
         : undefined,
+      // Forward the calculated decimal scale for the dynamic print-target route.
+      dynamicScale: source?.dynamicScale ?? undefined,
     });
     if (result) {
       // Post-upscale ratio enforcement — upscalers (especially tiled

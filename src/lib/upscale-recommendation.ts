@@ -59,6 +59,7 @@ export interface UpscaleRecommendation {
 const COST_RANK: Record<UpscaleMode, number> = {
   none: 0,
   realesrgan_4x: 1,
+  print_target_300: 1, // single dynamic Real-ESRGAN pass — same cost tier as 4×
   tile_4x: 2,
   print_plus: 3,
   tile_8x: 4,

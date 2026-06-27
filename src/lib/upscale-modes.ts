@@ -8,7 +8,13 @@
  *   - upscale-image edge function (mode dispatcher)
  */
 
-export type UpscaleMode = "none" | "realesrgan_4x" | "tile_4x" | "tile_8x" | "print_plus";
+export type UpscaleMode =
+  | "none"
+  | "realesrgan_4x"
+  | "tile_4x"
+  | "tile_8x"
+  | "print_plus"
+  | "print_target_300";
 
 export type UpscaleCategory = "off" | "fast" | "print";
 export type UpscaleCostTier = "free" | "low" | "medium" | "high";
@@ -127,7 +133,7 @@ export const UPSCALE_MODES: Record<UpscaleMode, UpscaleModeConfig> = {
     id: "print_plus",
     label: "Print+ (ESRGAN → SUPIR)",
     shortLabel: "Print+",
-    description: "Real-ESRGAN 4× upscale, then SUPIR detail refinement. Best fidelity for print.",
+    description: "Real-ESRGAN 4× upscale, then SUPIR detail refinement. Optional refinement on top of size targeting — does not by itself guarantee 300 PPI.",
     runs: true,
     scaleFactor: 4,
     tiled: false,
@@ -135,8 +141,38 @@ export const UPSCALE_MODES: Record<UpscaleMode, UpscaleModeConfig> = {
     category: "print",
     estimatedTime: "~2–4 min",
     estimatedCost: "high",
-    intendedUse: "Best fidelity for fine-art prints",
+    intendedUse: "Optional refinement for fine-art prints",
     isAutomaticCapable: true,
+    isManualCapable: true,
+    isGalleryCapable: true,
+    requiresOriginalAsset: true,
+    enabled: true,
+  },
+  /**
+   * Dynamic print-target route. Calculates the EXACT scale required from
+   * the corrected poster master to reach the selected print format's 300
+   * PPI pixel target, ceils up to safe provider precision, and calls
+   * Real-ESRGAN with that decimal scale. `scaleFactor` is informational
+   * only — the hook computes the real scale at runtime via
+   * `calculatePrintTargetUpscale`.
+   */
+  print_target_300: {
+    id: "print_target_300",
+    label: "Print Target 300 PPI",
+    shortLabel: "300 PPI",
+    description:
+      "Uses the corrected poster master and calculates the exact scale needed for the selected print format's 300 PPI target. Single Real-ESRGAN pass at a decimal scale — no repeated 4×.",
+    runs: true,
+    // Variable — overridden at runtime per source. 4 is a safe default
+    // for surfaces that need a number (cost rank, expected-output preview).
+    scaleFactor: 4,
+    tiled: false,
+    provider: "replicate/real-esrgan",
+    category: "print",
+    estimatedTime: "~20–60s",
+    estimatedCost: "low",
+    intendedUse: "Best for hitting 300 PPI on the selected print format",
+    isAutomaticCapable: false,
     isManualCapable: true,
     isGalleryCapable: true,
     requiresOriginalAsset: true,
@@ -167,6 +203,7 @@ export const UPSCALE_COST_LABEL: Record<UpscaleCostTier, string> = {
 export const UPSCALE_MODE_OPTIONS: UpscaleModeConfig[] = [
   UPSCALE_MODES.none,
   UPSCALE_MODES.realesrgan_4x,
+  UPSCALE_MODES.print_target_300,
   UPSCALE_MODES.tile_4x,
   UPSCALE_MODES.tile_8x,
   UPSCALE_MODES.print_plus,
@@ -174,8 +211,16 @@ export const UPSCALE_MODE_OPTIONS: UpscaleModeConfig[] = [
 
 export const DEFAULT_UPSCALE_MODE: UpscaleMode = "none";
 
-/** Hard-cap on the longer side of any tiled-8x output (px) */
-export const TILE_8X_MAX_LONG_SIDE = 8192;
+/**
+ * Hard-cap on the longer side of any upscale output (px).
+ *
+ * Unified with the backend dispatcher (`supabase/functions/upscale-image`).
+ * Clarity Upscaler can produce up to ~12K px, and the dynamic print-target
+ * route (`src/lib/print-target-upscale.ts`) uses this as its default
+ * safety cap so 50×70 cm at 300 PPI (5906×8268) is reachable in a single
+ * pass without tripping the guard.
+ */
+export const TILE_8X_MAX_LONG_SIDE = 12288;
 
 /* ------------------------------------------------------------------ */
 /*  Sync vs Async classification                                       */

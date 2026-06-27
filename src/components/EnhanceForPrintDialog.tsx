@@ -45,6 +45,10 @@ import {
 } from "@/lib/print-upscale-routing";
 import { resolveUpscaleSource } from "@/lib/upscale-source";
 import { getPrintFormat } from "@/lib/print-formats";
+import {
+  calculatePrintTargetUpscale,
+  type PrintTargetUpscalePlan,
+} from "@/lib/print-target-upscale";
 
 const COST_PILL: Record<UpscaleCostTier, { label: string; className: string }> = {
   free: {
@@ -67,10 +71,11 @@ const COST_PILL: Record<UpscaleCostTier, { label: string; className: string }> =
 
 /** The modes offered by this dialog, in display order. */
 const OFFERED_MODES: UpscaleMode[] = [
-  "realesrgan_4x", // default — low cost, 4×
-  "tile_4x",       // medium cost, tiled 4×
-  "tile_8x",       // high cost, tiled 8× (needed to clear 50×70 @ 300 PPI)
-  "print_plus",    // high cost — ESRGAN → SUPIR
+  "print_target_300", // dynamic — calculated scale to hit 300 PPI exactly
+  "realesrgan_4x",    // default — low cost, fixed 4×
+  "tile_4x",          // medium cost, tiled 4×
+  "tile_8x",          // high cost, tiled 8×
+  "print_plus",       // high cost — ESRGAN → SUPIR (optional refinement)
 ];
 
 export interface EnhanceForPrintDialogSourceDecision {
@@ -80,6 +85,13 @@ export interface EnhanceForPrintDialogSourceDecision {
   width: number | null;
   height: number | null;
   sourceWasAlreadyUpscaled: boolean;
+  /**
+   * Only set when the user confirmed `print_target_300`. Carries the
+   * calculated decimal scale and full plan so callers can pass it to the
+   * upscaler and persist rich routing metadata.
+   */
+  dynamicScale?: number | null;
+  printTargetPlan?: PrintTargetUpscalePlan | null;
 }
 
 export interface EnhanceForPrintDialogProps {
@@ -199,7 +211,33 @@ export default function EnhanceForPrintDialog({
     });
   }, [effectiveWidth, effectiveHeight, posterFormatId, effectiveAlreadyUpscaled]);
 
+  // Dynamic print-target plan — only meaningful when we know the source
+  // dimensions and have a poster format. Computed once per (source,format)
+  // pair and re-used by both the recommendation and the expected-output
+  // panel so the UI is consistent with what we'll actually request.
+  const printTargetPlan: PrintTargetUpscalePlan | null = useMemo(() => {
+    if (!posterFormatId || !effectiveWidth || !effectiveHeight) return null;
+    try {
+      return calculatePrintTargetUpscale({
+        sourceWidth: effectiveWidth,
+        sourceHeight: effectiveHeight,
+        posterFormatId,
+      });
+    } catch {
+      return null;
+    }
+  }, [effectiveWidth, effectiveHeight, posterFormatId]);
+
   const initialMode: UpscaleMode = (() => {
+    // Prefer the dynamic print-target route when the plan is healthy.
+    if (
+      printTargetPlan &&
+      (printTargetPlan.status === "dynamic_upscale_recommended" ||
+        printTargetPlan.status === "already_ready")
+    ) {
+      if (printTargetPlan.status === "already_ready") return "realesrgan_4x";
+      return "print_target_300";
+    }
     const routed = routing?.recommendedMode;
     if (routed && OFFERED_MODES.includes(routed)) return routed;
     if (
@@ -215,8 +253,14 @@ export default function EnhanceForPrintDialog({
   const expectedOutput = useMemo(() => {
     if (!effectiveWidth || !effectiveHeight) return null;
     const cfg = UPSCALE_MODES[picked];
-    const w = Math.round(effectiveWidth * cfg.scaleFactor);
-    const h = Math.round(effectiveHeight * cfg.scaleFactor);
+    // For the dynamic print-target mode, project from the calculated plan
+    // instead of the placeholder scaleFactor.
+    const effectiveScale =
+      picked === "print_target_300" && printTargetPlan
+        ? printTargetPlan.requestedScale
+        : cfg.scaleFactor;
+    const w = Math.round(effectiveWidth * effectiveScale);
+    const h = Math.round(effectiveHeight * effectiveScale);
     const format = posterFormatId ? getPrintFormat(posterFormatId) : null;
     let ppi: number | null = null;
     let ppiTier: "preferred" | "fallback" | "below" | null = null;
@@ -227,8 +271,8 @@ export default function EnhanceForPrintDialog({
       ppi = Math.round(Math.min(ppiW, ppiH));
       ppiTier = ppi >= 300 ? "preferred" : ppi >= 150 ? "fallback" : "below";
     }
-    return { w, h, factor: cfg.scaleFactor, ppi, ppiTier, format };
-  }, [picked, effectiveWidth, effectiveHeight, posterFormatId]);
+    return { w, h, factor: effectiveScale, ppi, ppiTier, format };
+  }, [picked, effectiveWidth, effectiveHeight, posterFormatId, printTargetPlan]);
 
   const selectedAssessment = useMemo(() => {
     if (!posterFormatId) return null;
@@ -260,6 +304,19 @@ export default function EnhanceForPrintDialog({
   })();
 
   const handleConfirm = () => {
+    // Block dynamic route if the calculated plan is unsafe.
+    if (picked === "print_target_300") {
+      if (
+        !printTargetPlan ||
+        printTargetPlan.status === "source_too_small" ||
+        printTargetPlan.status === "output_too_large" ||
+        printTargetPlan.status === "unsupported_dynamic_scale"
+      ) {
+        // Don't proceed — UI already surfaces the warning. Caller can
+        // re-open and pick a different mode.
+        return;
+      }
+    }
     setOpen(false);
     onConfirm(
       picked,
@@ -271,6 +328,11 @@ export default function EnhanceForPrintDialog({
         width: resolvedSource.width,
         height: resolvedSource.height,
         sourceWasAlreadyUpscaled: resolvedSource.sourceWasAlreadyUpscaled,
+        dynamicScale:
+          picked === "print_target_300" && printTargetPlan
+            ? printTargetPlan.requestedScale
+            : null,
+        printTargetPlan: picked === "print_target_300" ? printTargetPlan : null,
       },
     );
   };
@@ -336,18 +398,38 @@ export default function EnhanceForPrintDialog({
             const isPicked = picked === m;
             const cost = COST_PILL[cfg.estimatedCost];
             const isRoutingPick = routing?.recommendedMode === m;
+            const isPrintTargetRecommended =
+              m === "print_target_300" &&
+              printTargetPlan?.status === "dynamic_upscale_recommended";
             const isRecommended =
-              isRoutingPick || (!routing && recommendedRecipe?.recommendedMode === m);
+              isPrintTargetRecommended ||
+              (m !== "print_target_300" &&
+                (isRoutingPick ||
+                  (!routing && recommendedRecipe?.recommendedMode === m)));
+            const isPrintTargetBlocked =
+              m === "print_target_300" &&
+              (!printTargetPlan ||
+                printTargetPlan.status === "source_too_small" ||
+                printTargetPlan.status === "output_too_large" ||
+                printTargetPlan.status === "unsupported_dynamic_scale");
+            // Show the dynamic scale for print_target_300 instead of the
+            // placeholder 4× from the registry.
+            const displayedScale =
+              m === "print_target_300" && printTargetPlan
+                ? `${printTargetPlan.requestedScale}×`
+                : `${cfg.scaleFactor}×`;
             return (
               <button
                 key={m}
                 type="button"
-                onClick={() => setPicked(m)}
+                onClick={() => !isPrintTargetBlocked && setPicked(m)}
+                disabled={isPrintTargetBlocked}
                 className={cn(
                   "w-full text-left px-3 py-2 rounded-sm border font-display transition-colors",
                   isPicked
                     ? "bg-primary/10 border-primary/50"
                     : "bg-card border-border hover:bg-muted",
+                  isPrintTargetBlocked && "opacity-50 cursor-not-allowed",
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -376,8 +458,14 @@ export default function EnhanceForPrintDialog({
                 </p>
                 <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
                   <span>⏱ {cfg.estimatedTime}</span>
-                  <span>· {cfg.scaleFactor}× output</span>
+                  <span>· {displayedScale} output</span>
                 </div>
+                {m === "print_target_300" && printTargetPlan && isPrintTargetBlocked && (
+                  <p className="text-[10px] text-orange-500 mt-1 leading-snug flex items-start gap-1">
+                    <AlertTriangle className="h-2.5 w-2.5 mt-0.5 shrink-0" />
+                    {printTargetPlan.warning ?? printTargetPlan.reason}
+                  </p>
+                )}
               </button>
             );
           })}
@@ -415,6 +503,40 @@ export default function EnhanceForPrintDialog({
             <p className="font-display text-[10px] text-muted-foreground leading-snug">
               Source: {resolvedSource.resolved === "enhanced" ? "current enhanced" : "original master"} · {resolvedSource.width}×{resolvedSource.height} px
             </p>
+          )}
+          {/* Dynamic print-target readout — only when print_target_300 is picked. */}
+          {picked === "print_target_300" && printTargetPlan && (
+            <div className="rounded-sm border border-primary/30 bg-primary/5 px-2 py-1.5 mt-1 space-y-0.5">
+              <p className="font-display text-[10px] uppercase tracking-wider text-primary">
+                Print Target 300 PPI
+              </p>
+              <p className="font-display text-[11px] text-foreground leading-snug">
+                Current master: {printTargetPlan.sourceWidth}×{printTargetPlan.sourceHeight}
+                {" · "}Target: {printTargetPlan.targetWidth}×{printTargetPlan.targetHeight}
+              </p>
+              <p className="font-display text-[11px] text-muted-foreground leading-snug">
+                Required: {printTargetPlan.requiredScaleRaw.toFixed(3)}×
+                {" · "}Requested: {printTargetPlan.requestedScale}×
+                {printTargetPlan.roundedScaleUp && " (ceiled up)"}
+              </p>
+              <p
+                className={cn(
+                  "font-display text-[11px] leading-snug",
+                  printTargetPlan.clears300Ppi ? "text-primary" : "text-orange-500",
+                )}
+              >
+                Predicted: {printTargetPlan.predictedOutputWidth}×{printTargetPlan.predictedOutputHeight}
+                {" · "}≈ {printTargetPlan.effectivePpiAfterUpscale} PPI
+                {printTargetPlan.clears300Ppi
+                  ? " · clears 300 PPI"
+                  : " · below 300 PPI — not print-ready"}
+              </p>
+              {printTargetPlan.exceedsMaxLongSide && (
+                <p className="font-display text-[10px] text-destructive leading-snug">
+                  Exceeds {printTargetPlan.maxLongSide}px safety cap.
+                </p>
+              )}
+            </div>
           )}
           {isHighCost && (
             <p className="font-display text-[11px] text-destructive flex items-center gap-1 pt-1">

@@ -29,6 +29,7 @@ import {
  */
 const DIRECT_REPLICATE_METHOD: Partial<Record<UpscaleMode, ReplicateUpscaleMethod>> = {
   realesrgan_4x: "realesrgan",
+  print_target_300: "realesrgan", // dynamic decimal scale — see UpscaleOptions.dynamicScale
   print_plus: "supir",
 };
 
@@ -56,6 +57,12 @@ interface UpscaleOptions {
   mode?: UpscaleMode;
   /** Optional recipe metadata — recorded on the upscale_jobs row. */
   recipe?: Pick<UpscaleRecipe, "id" | "label" | "reason"> | null;
+  /**
+   * REQUIRED for `print_target_300`. Decimal scale (e.g. 5.15) calculated
+   * from the corrected poster master by `calculatePrintTargetUpscale`.
+   * Edge function clamps into [2, 8].
+   */
+  dynamicScale?: number;
 }
 
 /**
@@ -144,10 +151,23 @@ export function useUpscale() {
         const directMethod = DIRECT_REPLICATE_METHOD[mode];
         if (directMethod) {
           setStage("upscaling");
+          // Dynamic print-target route requires an explicit calculated scale.
+          let effectiveScale = UPSCALE_MODES[mode].scaleFactor;
+          if (mode === "print_target_300") {
+            if (!opts?.dynamicScale || opts.dynamicScale <= 1) {
+              cleanupTimers();
+              setStage("failed");
+              throw new Error(
+                "print_target_300 requires a calculated dynamicScale (use calculatePrintTargetUpscale).",
+              );
+            }
+            // Edge function clamps into [2, 8]; mirror here for early UX warning.
+            effectiveScale = Math.min(8, Math.max(2, opts.dynamicScale));
+          }
           const direct = await runReplicateUpscale({
             imageUrl: sourceUrl,
             method: directMethod,
-            scale: UPSCALE_MODES[mode].scaleFactor,
+            scale: effectiveScale,
           });
 
           cleanupTimers();
