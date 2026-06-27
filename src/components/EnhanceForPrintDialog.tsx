@@ -398,18 +398,38 @@ export default function EnhanceForPrintDialog({
             const isPicked = picked === m;
             const cost = COST_PILL[cfg.estimatedCost];
             const isRoutingPick = routing?.recommendedMode === m;
+            const isPrintTargetRecommended =
+              m === "print_target_300" &&
+              printTargetPlan?.status === "dynamic_upscale_recommended";
             const isRecommended =
-              isRoutingPick || (!routing && recommendedRecipe?.recommendedMode === m);
+              isPrintTargetRecommended ||
+              (m !== "print_target_300" &&
+                (isRoutingPick ||
+                  (!routing && recommendedRecipe?.recommendedMode === m)));
+            const isPrintTargetBlocked =
+              m === "print_target_300" &&
+              (!printTargetPlan ||
+                printTargetPlan.status === "source_too_small" ||
+                printTargetPlan.status === "output_too_large" ||
+                printTargetPlan.status === "unsupported_dynamic_scale");
+            // Show the dynamic scale for print_target_300 instead of the
+            // placeholder 4× from the registry.
+            const displayedScale =
+              m === "print_target_300" && printTargetPlan
+                ? `${printTargetPlan.requestedScale}×`
+                : `${cfg.scaleFactor}×`;
             return (
               <button
                 key={m}
                 type="button"
-                onClick={() => setPicked(m)}
+                onClick={() => !isPrintTargetBlocked && setPicked(m)}
+                disabled={isPrintTargetBlocked}
                 className={cn(
                   "w-full text-left px-3 py-2 rounded-sm border font-display transition-colors",
                   isPicked
                     ? "bg-primary/10 border-primary/50"
                     : "bg-card border-border hover:bg-muted",
+                  isPrintTargetBlocked && "opacity-50 cursor-not-allowed",
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -438,8 +458,14 @@ export default function EnhanceForPrintDialog({
                 </p>
                 <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
                   <span>⏱ {cfg.estimatedTime}</span>
-                  <span>· {cfg.scaleFactor}× output</span>
+                  <span>· {displayedScale} output</span>
                 </div>
+                {m === "print_target_300" && printTargetPlan && isPrintTargetBlocked && (
+                  <p className="text-[10px] text-orange-500 mt-1 leading-snug flex items-start gap-1">
+                    <AlertTriangle className="h-2.5 w-2.5 mt-0.5 shrink-0" />
+                    {printTargetPlan.warning ?? printTargetPlan.reason}
+                  </p>
+                )}
               </button>
             );
           })}
