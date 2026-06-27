@@ -45,6 +45,10 @@ import {
 } from "@/lib/print-upscale-routing";
 import { resolveUpscaleSource } from "@/lib/upscale-source";
 import { getPrintFormat } from "@/lib/print-formats";
+import {
+  calculatePrintTargetUpscale,
+  type PrintTargetUpscalePlan,
+} from "@/lib/print-target-upscale";
 
 const COST_PILL: Record<UpscaleCostTier, { label: string; className: string }> = {
   free: {
@@ -67,10 +71,11 @@ const COST_PILL: Record<UpscaleCostTier, { label: string; className: string }> =
 
 /** The modes offered by this dialog, in display order. */
 const OFFERED_MODES: UpscaleMode[] = [
-  "realesrgan_4x", // default — low cost, 4×
-  "tile_4x",       // medium cost, tiled 4×
-  "tile_8x",       // high cost, tiled 8× (needed to clear 50×70 @ 300 PPI)
-  "print_plus",    // high cost — ESRGAN → SUPIR
+  "print_target_300", // dynamic — calculated scale to hit 300 PPI exactly
+  "realesrgan_4x",    // default — low cost, fixed 4×
+  "tile_4x",          // medium cost, tiled 4×
+  "tile_8x",          // high cost, tiled 8×
+  "print_plus",       // high cost — ESRGAN → SUPIR (optional refinement)
 ];
 
 export interface EnhanceForPrintDialogSourceDecision {
@@ -80,6 +85,13 @@ export interface EnhanceForPrintDialogSourceDecision {
   width: number | null;
   height: number | null;
   sourceWasAlreadyUpscaled: boolean;
+  /**
+   * Only set when the user confirmed `print_target_300`. Carries the
+   * calculated decimal scale and full plan so callers can pass it to the
+   * upscaler and persist rich routing metadata.
+   */
+  dynamicScale?: number | null;
+  printTargetPlan?: PrintTargetUpscalePlan | null;
 }
 
 export interface EnhanceForPrintDialogProps {
