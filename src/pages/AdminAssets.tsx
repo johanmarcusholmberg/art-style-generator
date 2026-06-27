@@ -354,6 +354,18 @@ export default function AdminAssets() {
     sortBy,
   ]);
 
+  // Reset to first page whenever filter inputs change
+  useEffect(() => {
+    setPage(1);
+  }, [search, providerFilter, statusFilter, folderFilter, hasUpscaledFilter, readinessFilter, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage],
+  );
+
   /* ---------------- Summary stats ---------------- */
 
   const summary = useMemo(() => {
