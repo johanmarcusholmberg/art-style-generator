@@ -211,7 +211,33 @@ export default function EnhanceForPrintDialog({
     });
   }, [effectiveWidth, effectiveHeight, posterFormatId, effectiveAlreadyUpscaled]);
 
+  // Dynamic print-target plan — only meaningful when we know the source
+  // dimensions and have a poster format. Computed once per (source,format)
+  // pair and re-used by both the recommendation and the expected-output
+  // panel so the UI is consistent with what we'll actually request.
+  const printTargetPlan: PrintTargetUpscalePlan | null = useMemo(() => {
+    if (!posterFormatId || !effectiveWidth || !effectiveHeight) return null;
+    try {
+      return calculatePrintTargetUpscale({
+        sourceWidth: effectiveWidth,
+        sourceHeight: effectiveHeight,
+        posterFormatId,
+      });
+    } catch {
+      return null;
+    }
+  }, [effectiveWidth, effectiveHeight, posterFormatId]);
+
   const initialMode: UpscaleMode = (() => {
+    // Prefer the dynamic print-target route when the plan is healthy.
+    if (
+      printTargetPlan &&
+      (printTargetPlan.status === "dynamic_upscale_recommended" ||
+        printTargetPlan.status === "already_ready")
+    ) {
+      if (printTargetPlan.status === "already_ready") return "realesrgan_4x";
+      return "print_target_300";
+    }
     const routed = routing?.recommendedMode;
     if (routed && OFFERED_MODES.includes(routed)) return routed;
     if (
@@ -227,8 +253,14 @@ export default function EnhanceForPrintDialog({
   const expectedOutput = useMemo(() => {
     if (!effectiveWidth || !effectiveHeight) return null;
     const cfg = UPSCALE_MODES[picked];
-    const w = Math.round(effectiveWidth * cfg.scaleFactor);
-    const h = Math.round(effectiveHeight * cfg.scaleFactor);
+    // For the dynamic print-target mode, project from the calculated plan
+    // instead of the placeholder scaleFactor.
+    const effectiveScale =
+      picked === "print_target_300" && printTargetPlan
+        ? printTargetPlan.requestedScale
+        : cfg.scaleFactor;
+    const w = Math.round(effectiveWidth * effectiveScale);
+    const h = Math.round(effectiveHeight * effectiveScale);
     const format = posterFormatId ? getPrintFormat(posterFormatId) : null;
     let ppi: number | null = null;
     let ppiTier: "preferred" | "fallback" | "below" | null = null;
@@ -239,8 +271,8 @@ export default function EnhanceForPrintDialog({
       ppi = Math.round(Math.min(ppiW, ppiH));
       ppiTier = ppi >= 300 ? "preferred" : ppi >= 150 ? "fallback" : "below";
     }
-    return { w, h, factor: cfg.scaleFactor, ppi, ppiTier, format };
-  }, [picked, effectiveWidth, effectiveHeight, posterFormatId]);
+    return { w, h, factor: effectiveScale, ppi, ppiTier, format };
+  }, [picked, effectiveWidth, effectiveHeight, posterFormatId, printTargetPlan]);
 
   const selectedAssessment = useMemo(() => {
     if (!posterFormatId) return null;
@@ -272,6 +304,19 @@ export default function EnhanceForPrintDialog({
   })();
 
   const handleConfirm = () => {
+    // Block dynamic route if the calculated plan is unsafe.
+    if (picked === "print_target_300") {
+      if (
+        !printTargetPlan ||
+        printTargetPlan.status === "source_too_small" ||
+        printTargetPlan.status === "output_too_large" ||
+        printTargetPlan.status === "unsupported_dynamic_scale"
+      ) {
+        // Don't proceed — UI already surfaces the warning. Caller can
+        // re-open and pick a different mode.
+        return;
+      }
+    }
     setOpen(false);
     onConfirm(
       picked,
@@ -283,6 +328,11 @@ export default function EnhanceForPrintDialog({
         width: resolvedSource.width,
         height: resolvedSource.height,
         sourceWasAlreadyUpscaled: resolvedSource.sourceWasAlreadyUpscaled,
+        dynamicScale:
+          picked === "print_target_300" && printTargetPlan
+            ? printTargetPlan.requestedScale
+            : null,
+        printTargetPlan: picked === "print_target_300" ? printTargetPlan : null,
       },
     );
   };
