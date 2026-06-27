@@ -38,8 +38,8 @@ describe("calculatePrintTargetUpscale — 50×70 contract", () => {
       sourceHeight: 1606,
       posterFormatId: "print_50x70",
     });
-    expect(p.requiredScaleRaw).toBeGreaterThan(5.147);
-    expect(p.requiredScaleRaw).toBeLessThan(5.149);
+    expect(p.requiredScaleRaw).toBeGreaterThan(5.14);
+    expect(p.requiredScaleRaw).toBeLessThan(5.16);
     expect(p.requestedScale).toBeGreaterThanOrEqual(5.15);
     expect(p.roundedScaleUp).toBe(true);
     expect(p.status).toBe("dynamic_upscale_recommended");

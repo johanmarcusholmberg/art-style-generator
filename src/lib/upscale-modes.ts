@@ -174,8 +174,16 @@ export const UPSCALE_MODE_OPTIONS: UpscaleModeConfig[] = [
 
 export const DEFAULT_UPSCALE_MODE: UpscaleMode = "none";
 
-/** Hard-cap on the longer side of any tiled-8x output (px) */
-export const TILE_8X_MAX_LONG_SIDE = 8192;
+/**
+ * Hard-cap on the longer side of any upscale output (px).
+ *
+ * Unified with the backend dispatcher (`supabase/functions/upscale-image`).
+ * Clarity Upscaler can produce up to ~12K px, and the dynamic print-target
+ * route (`src/lib/print-target-upscale.ts`) uses this as its default
+ * safety cap so 50×70 cm at 300 PPI (5906×8268) is reachable in a single
+ * pass without tripping the guard.
+ */
+export const TILE_8X_MAX_LONG_SIDE = 12288;
 
 /* ------------------------------------------------------------------ */
 /*  Sync vs Async classification                                       */
