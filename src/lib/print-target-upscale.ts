@@ -22,7 +22,7 @@
  * This module is pure (no I/O, no DOM, no fetch) and fully unit-tested.
  */
 
-import { getPrintFormat, PRINT_FORMATS_BY_ID } from "@/lib/print-formats";
+import { getPrintFormat } from "@/lib/print-formats";
 import { TILE_8X_MAX_LONG_SIDE } from "@/lib/upscale-modes";
 
 /** Real-ESRGAN edge function clamps scale into [2, 8]. */
@@ -138,8 +138,7 @@ export function calculatePrintTargetUpscale(
   const maxLongSide = input.maxLongSide ?? DYNAMIC_DEFAULT_MAX_LONG_SIDE;
   const scalePrecision = input.scalePrecision ?? 2;
 
-  const format =
-    PRINT_FORMATS_BY_ID[input.posterFormatId] ?? getPrintFormat(input.posterFormatId);
+  const format = getPrintFormat(input.posterFormatId);
   if (!format) {
     throw new Error(`calculatePrintTargetUpscale: unknown posterFormatId "${input.posterFormatId}"`);
   }
