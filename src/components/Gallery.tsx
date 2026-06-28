@@ -1165,7 +1165,21 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         ? { id: recipe.id, label: recipe.label, reason: recipe.reason }
         : undefined,
       // Forward the calculated decimal scale for the dynamic print-target route.
-      dynamicScale: source?.dynamicScale ?? undefined,
+      dynamicScale: source?.dynamicScale ?? source?.requestedScale ?? undefined,
+      // 2026-Q2 redesign — explicit routing + corrected-master assertion.
+      upscaleFamily: source?.upscaleFamily,
+      upscaleFlow: source?.upscaleFlow,
+      posterFormatId: source?.posterFormatId ?? img.print_format_id ?? null,
+      sourceWasCorrectedMaster: source?.sourceWasCorrectedMaster,
+      routingMetadata: {
+        sourceChoice: source?.choice,
+        sourceResolved: source?.resolved,
+        sourceWidth: routingSourceWidth,
+        sourceHeight: routingSourceHeight,
+        sourceWasAlreadyUpscaled,
+        printTargetPlan: source?.printTargetPlan ?? null,
+        manualPlan: source?.manualPlan ?? null,
+      },
     });
     if (result) {
       // Post-upscale ratio enforcement — upscalers (especially tiled
