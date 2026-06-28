@@ -540,7 +540,7 @@ export default function EnhanceForPrintDialog({
           {isHighCost && (
             <p className="font-display text-[11px] text-destructive flex items-center gap-1 pt-1">
               <AlertTriangle className="h-3 w-3" />
-              SUPIR is the highest-cost method. Use it only for fine-art prints.
+              This is the highest-cost mode. Use it only when you really need the extra detail.
             </p>
           )}
           {routing && routing.target && (
