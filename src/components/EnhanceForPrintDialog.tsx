@@ -1,22 +1,31 @@
 /**
  * Confirmation dialog before running an upscale / enhancement pass.
  *
- * Surfaces three things up-front so cost-control is explicit:
- *   • Method      — Real-ESRGAN / Tiled SDXL (Clarity)
- *   • Output      — expected scale factor (e.g. 4×) or dynamic print target
- *   • Cost label  — Low / Medium / High (with monetary tier indicator)
+ * Redesigned 2026-Q2 around two clear sections:
+ *   • RECOMMENDED — "Print Target 300 PPI"
+ *       User picks model family (Real-ESRGAN / Clarity). Required scale
+ *       is calculated from the corrected poster master via
+ *       `calculatePrintTargetUpscale` and ceiled up to safe provider
+ *       precision so the predicted output never falls below 300 PPI.
+ *   • ADVANCED   — "Manual upscale"
+ *       User picks model family AND scale (presets 2..8 + custom decimal).
+ *       Predicted output / PPI / warnings come from `planManualUpscale`.
  *
- * Behaviour:
- *   - "Enhance for print" defaults to the cheapest sensible mode (Real-ESRGAN 4×)
- *   - SUPIR / Print+ was retired in 2025-Q4 — the dynamic `print_target_300`
- *     route replaces it for the 300 PPI use case.
- *   - When an enhanced master already exists, the dialog title shifts to
- *     "Re-enhance" so the user knows they'll be re-spending budget
+ * Mode IDs (`print_target_300`, `tile_4x`, `tile_8x`, `clarity_dynamic`)
+ * are NEVER shown to the user. They survive as routing tags carried back
+ * through `onConfirm` so the hook + edge functions know which path to
+ * dispatch and so historical cost-map lookups keep working.
  *
- * Pure presentation — does NOT trigger any network calls. The caller wires
- * `onConfirm(mode)` to the actual upscale runner.
+ * Safety rules baked in:
+ *   - Both flows operate on the corrected poster master only. The
+ *     `sourceWasCorrectedMaster` flag rides along on the source decision
+ *     and `useUpscale` re-asserts it before any provider call.
+ *   - Predicted long side > 12288 px → action disabled.
+ *   - Clarity decimal failure never silently downshifts to 4×/8×.
+ *
+ * SUPIR / Print+ was retired in 2025-Q4 and is intentionally absent.
  */
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,53 +38,97 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ArrowUpCircle, Sparkles, AlertTriangle, Star } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  AlertTriangle,
+  ArrowUpCircle,
+  ChevronDown,
+  Sparkles,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  UPSCALE_MODES,
-  UPSCALE_COST_LABEL,
   type UpscaleMode,
-  type UpscaleCostTier,
+  type UpscaleFamily,
+  type UpscaleFlow,
 } from "@/lib/upscale-modes";
 import type { UpscaleRecipe } from "@/lib/upscale-recipes";
-import {
-  recommendPrintUpscaleRoute,
-  assessSelectedMode,
-  type PrintUpscaleRoutingResult,
-} from "@/lib/print-upscale-routing";
 import { resolveUpscaleSource } from "@/lib/upscale-source";
 import { getPrintFormat } from "@/lib/print-formats";
 import {
   calculatePrintTargetUpscale,
   type PrintTargetUpscalePlan,
 } from "@/lib/print-target-upscale";
+import {
+  planManualUpscale,
+  MANUAL_UPSCALE_PRESETS,
+  type ManualUpscalePlan,
+} from "@/lib/manual-upscale";
 
-const COST_PILL: Record<UpscaleCostTier, { label: string; className: string }> = {
-  free: {
-    label: "Free",
+const FAMILY_LABEL: Record<UpscaleFamily, string> = {
+  realesrgan: "Real-ESRGAN",
+  clarity: "Clarity",
+};
+
+const FAMILY_DESCRIPTION: Record<UpscaleFamily, string> = {
+  realesrgan:
+    "Fast and predictable. Best for clean poster art, illustrations, graphic styles and exact print-size scaling.",
+  clarity:
+    "More detailed and creative. Best for textured, painterly or photographic posters. May slightly reinterpret details.",
+};
+
+type StatusBadge =
+  | "ready"
+  | "needs-upscale"
+  | "will-clear"
+  | "below"
+  | "too-large"
+  | "blocked";
+
+const BADGE_STYLES: Record<StatusBadge, { label: string; className: string }> = {
+  ready: {
+    label: "Ready",
+    className: "bg-primary/15 text-primary border-primary/40",
+  },
+  "needs-upscale": {
+    label: "Needs upscale",
     className: "bg-muted text-muted-foreground border-border",
   },
-  low: {
-    label: "Low cost",
-    className: "bg-primary/10 text-primary border-primary/30",
+  "will-clear": {
+    label: "Will clear 300 PPI",
+    className: "bg-primary/15 text-primary border-primary/40",
   },
-  medium: {
-    label: "Medium cost",
+  below: {
+    label: "Below 300 PPI",
     className: "bg-orange-500/10 text-orange-500 border-orange-500/30",
   },
-  high: {
-    label: "High cost",
+  "too-large": {
+    label: "Too large",
+    className: "bg-destructive/10 text-destructive border-destructive/30",
+  },
+  blocked: {
+    label: "Cannot enhance",
     className: "bg-destructive/10 text-destructive border-destructive/30",
   },
 };
 
-/** The modes offered by this dialog, in display order. */
-const OFFERED_MODES: UpscaleMode[] = [
-  "print_target_300", // dynamic — calculated scale to hit 300 PPI exactly
-  "realesrgan_4x",    // default — low cost, fixed 4×
-  "tile_4x",          // medium cost, tiled 4×
-  "tile_8x",          // high cost, tiled 8×
-];
+function StatusBadge({ kind }: { kind: StatusBadge }) {
+  const s = BADGE_STYLES[kind];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center font-display text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-sm border",
+        s.className,
+      )}
+    >
+      {s.label}
+    </span>
+  );
+}
 
 export interface EnhanceForPrintDialogSourceDecision {
   choice: "auto" | "original" | "enhanced";
@@ -84,44 +137,71 @@ export interface EnhanceForPrintDialogSourceDecision {
   width: number | null;
   height: number | null;
   sourceWasAlreadyUpscaled: boolean;
-  /**
-   * Only set when the user confirmed `print_target_300`. Carries the
-   * calculated decimal scale and full plan so callers can pass it to the
-   * upscaler and persist rich routing metadata.
-   */
-  dynamicScale?: number | null;
+  /** New routing fields (Phase: print upscale redesign 2026-Q2). */
+  upscaleFlow: UpscaleFlow;
+  upscaleFamily: UpscaleFamily;
+  /** Decimal scale we want the provider to run. */
+  requestedScale: number;
+  /** True when the dialog is sure the source is on the poster ratio. */
+  sourceWasCorrectedMaster: boolean;
+  posterFormatId?: string | null;
+  /** Plan when the user confirmed the Recommended flow. */
   printTargetPlan?: PrintTargetUpscalePlan | null;
+  /** Plan when the user confirmed the Advanced manual flow. */
+  manualPlan?: ManualUpscalePlan | null;
+  /** Legacy fields kept for compatibility — set from the new fields. */
+  dynamicScale?: number | null;
 }
 
 export interface EnhanceForPrintDialogProps {
-  /** Render-prop trigger. The button you pass becomes the dialog opener. */
   trigger: React.ReactNode;
-  /** True when an enhanced master already exists. Shifts copy & button. */
   hasEnhanced?: boolean;
-  /** Optional source pixel dimensions, used to project output resolution. */
   sourceWidth?: number | null;
   sourceHeight?: number | null;
-  /**
-   * Plan #2d — explicit original/enhanced source candidates. When both are
-   * provided, the dialog exposes a 3-pill source toggle (Auto / Original /
-   * Current enhanced) and threads the selection into `onConfirm`.
-   */
-  originalSource?: { url: string | null; width: number | null; height: number | null } | null;
-  enhancedSource?: { url: string | null; width: number | null; height: number | null } | null;
-  /** Optional recipe — used as fallback when print routing has no input. */
+  originalSource?: {
+    url: string | null;
+    width: number | null;
+    height: number | null;
+  } | null;
+  enhancedSource?: {
+    url: string | null;
+    width: number | null;
+    height: number | null;
+  } | null;
   recommendedRecipe?: UpscaleRecipe | null;
-  /** Print format id — enables actual-dimension-aware upscale routing. */
   posterFormatId?: string | null;
-  /** True if the source asset has already been upscaled at least once. */
   alreadyUpscaled?: boolean;
-  /** Disable the dialog (e.g. when something is already running). */
   disabled?: boolean;
-  /** Fired when the user confirms a method. */
   onConfirm: (
     mode: UpscaleMode,
     recipe?: UpscaleRecipe | null,
     source?: EnhanceForPrintDialogSourceDecision,
   ) => void;
+}
+
+/** Map a plan + flow into a status badge for the Recommended card. */
+function recommendedBadge(plan: PrintTargetUpscalePlan | null): StatusBadge {
+  if (!plan) return "needs-upscale";
+  if (plan.status === "already_ready") return "ready";
+  if (plan.status === "output_too_large") return "too-large";
+  if (plan.status === "source_too_small") return "blocked";
+  return plan.clears300Ppi ? "will-clear" : "below";
+}
+
+function manualBadge(plan: ManualUpscalePlan | null): StatusBadge {
+  if (!plan) return "needs-upscale";
+  if (plan.status === "output_too_large") return "too-large";
+  if (plan.status === "invalid_scale") return "blocked";
+  if (plan.clears300Ppi) return "will-clear";
+  if (plan.posterFormatId) return "below";
+  return "needs-upscale";
+}
+
+/** Pick the routing mode tag we persist for analytics + cost lookup. */
+function modeForPayload(family: UpscaleFamily, flow: UpscaleFlow): UpscaleMode {
+  if (family === "clarity") return "clarity_dynamic";
+  if (flow === "target_300") return "print_target_300";
+  return "realesrgan_4x";
 }
 
 export default function EnhanceForPrintDialog({
@@ -138,49 +218,30 @@ export default function EnhanceForPrintDialog({
   onConfirm,
 }: EnhanceForPrintDialogProps) {
   const [open, setOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  // Source selection — only meaningful when both candidates exist.
-  const bothSourcesAvailable =
-    !!originalSource?.url && !!enhancedSource?.url;
-  const [sourceChoice, setSourceChoice] = useState<"auto" | "original" | "enhanced">(
-    "auto",
-  );
+  /* ---------- Source picker ---------- */
+  const bothSourcesAvailable = !!originalSource?.url && !!enhancedSource?.url;
+  const [sourceChoice, setSourceChoice] = useState<
+    "auto" | "original" | "enhanced"
+  >("auto");
 
-  // Resolve which source to actually use (and route against).
   const resolvedSource = useMemo(() => {
-    if (!bothSourcesAvailable) {
-      return resolveUpscaleSource({
-        original: {
-          url: originalSource?.url ?? null,
-          width: originalSource?.width ?? sourceWidth ?? null,
-          height: originalSource?.height ?? sourceHeight ?? null,
-        },
-        enhanced: enhancedSource?.url
-          ? {
-              url: enhancedSource.url,
-              width: enhancedSource.width ?? null,
-              height: enhancedSource.height ?? null,
-            }
-          : null,
-        posterFormatId,
-        availableModes: OFFERED_MODES,
-        choice: "auto",
-      });
-    }
     return resolveUpscaleSource({
       original: {
-        url: originalSource!.url,
-        width: originalSource!.width,
-        height: originalSource!.height,
+        url: originalSource?.url ?? null,
+        width: originalSource?.width ?? sourceWidth ?? null,
+        height: originalSource?.height ?? sourceHeight ?? null,
       },
-      enhanced: {
-        url: enhancedSource!.url,
-        width: enhancedSource!.width,
-        height: enhancedSource!.height,
-      },
+      enhanced: enhancedSource?.url
+        ? {
+            url: enhancedSource.url,
+            width: enhancedSource.width ?? null,
+            height: enhancedSource.height ?? null,
+          }
+        : null,
       posterFormatId,
-      availableModes: OFFERED_MODES,
-      choice: sourceChoice,
+      choice: bothSourcesAvailable ? sourceChoice : "auto",
     });
   }, [
     bothSourcesAvailable,
@@ -192,170 +253,159 @@ export default function EnhanceForPrintDialog({
     sourceHeight,
   ]);
 
-  // Effective routing inputs — derived from the chosen source's dimensions
-  // (falls back to legacy sourceWidth/Height when no candidates were passed).
   const effectiveWidth = resolvedSource.width ?? sourceWidth ?? null;
   const effectiveHeight = resolvedSource.height ?? sourceHeight ?? null;
   const effectiveAlreadyUpscaled =
     resolvedSource.sourceWasAlreadyUpscaled || !!alreadyUpscaled;
 
-  const routing: PrintUpscaleRoutingResult | null = useMemo(() => {
-    if (!posterFormatId) return null;
-    return recommendPrintUpscaleRoute({
-      sourceWidth: effectiveWidth,
-      sourceHeight: effectiveHeight,
-      posterFormatId,
-      alreadyUpscaled: effectiveAlreadyUpscaled,
-      availableModes: OFFERED_MODES,
-    });
-  }, [effectiveWidth, effectiveHeight, posterFormatId, effectiveAlreadyUpscaled]);
+  /* ---------- Recommended (target_300) ---------- */
+  const [recFamily, setRecFamily] = useState<UpscaleFamily>("realesrgan");
 
-  // Dynamic print-target plan — only meaningful when we know the source
-  // dimensions and have a poster format. Computed once per (source,format)
-  // pair and re-used by both the recommendation and the expected-output
-  // panel so the UI is consistent with what we'll actually request.
-  const printTargetPlan: PrintTargetUpscalePlan | null = useMemo(() => {
+  const recPlan: PrintTargetUpscalePlan | null = useMemo(() => {
     if (!posterFormatId || !effectiveWidth || !effectiveHeight) return null;
     try {
       return calculatePrintTargetUpscale({
         sourceWidth: effectiveWidth,
         sourceHeight: effectiveHeight,
         posterFormatId,
+        upscaleFamily: recFamily,
       });
     } catch {
       return null;
     }
-  }, [effectiveWidth, effectiveHeight, posterFormatId]);
+  }, [effectiveWidth, effectiveHeight, posterFormatId, recFamily]);
 
-  const initialMode: UpscaleMode = (() => {
-    // Prefer the dynamic print-target route when the plan is healthy.
-    if (
-      printTargetPlan &&
-      (printTargetPlan.status === "dynamic_upscale_recommended" ||
-        printTargetPlan.status === "already_ready")
-    ) {
-      if (printTargetPlan.status === "already_ready") return "realesrgan_4x";
-      return "print_target_300";
-    }
-    const routed = routing?.recommendedMode;
-    if (routed && OFFERED_MODES.includes(routed)) return routed;
-    if (
-      recommendedRecipe?.recommendedMode &&
-      OFFERED_MODES.includes(recommendedRecipe.recommendedMode)
-    ) {
-      return recommendedRecipe.recommendedMode;
-    }
-    return "realesrgan_4x";
-  })();
-  const [picked, setPicked] = useState<UpscaleMode>(initialMode);
+  /* ---------- Advanced (manual) ---------- */
+  const [manFamily, setManFamily] = useState<UpscaleFamily>("realesrgan");
+  const [manScale, setManScale] = useState<number>(4);
+  const [customMode, setCustomMode] = useState(false);
+  const [customInput, setCustomInput] = useState("4.0");
 
-  const expectedOutput = useMemo(() => {
+  const effectiveManScale = customMode
+    ? Number.parseFloat(customInput) || 0
+    : manScale;
+
+  const manPlan: ManualUpscalePlan | null = useMemo(() => {
     if (!effectiveWidth || !effectiveHeight) return null;
-    const cfg = UPSCALE_MODES[picked];
-    // For the dynamic print-target mode, project from the calculated plan
-    // instead of the placeholder scaleFactor.
-    const effectiveScale =
-      picked === "print_target_300" && printTargetPlan
-        ? printTargetPlan.requestedScale
-        : cfg.scaleFactor;
-    const w = Math.round(effectiveWidth * effectiveScale);
-    const h = Math.round(effectiveHeight * effectiveScale);
-    const format = posterFormatId ? getPrintFormat(posterFormatId) : null;
-    let ppi: number | null = null;
-    let ppiTier: "preferred" | "fallback" | "below" | null = null;
-    if (format) {
-      const CM_TO_INCHES = 1 / 2.54;
-      const ppiW = w / (format.widthCm * CM_TO_INCHES);
-      const ppiH = h / (format.heightCm * CM_TO_INCHES);
-      ppi = Math.round(Math.min(ppiW, ppiH));
-      ppiTier = ppi >= 300 ? "preferred" : ppi >= 150 ? "fallback" : "below";
-    }
-    return { w, h, factor: effectiveScale, ppi, ppiTier, format };
-  }, [picked, effectiveWidth, effectiveHeight, posterFormatId, printTargetPlan]);
+    return planManualUpscale({
+      family: manFamily,
+      requestedScale: effectiveManScale,
+      sourceWidth: effectiveWidth,
+      sourceHeight: effectiveHeight,
+      posterFormatId,
+    });
+  }, [
+    manFamily,
+    effectiveManScale,
+    effectiveWidth,
+    effectiveHeight,
+    posterFormatId,
+  ]);
 
-  const selectedAssessment = useMemo(() => {
-    if (!posterFormatId) return null;
-    return assessSelectedMode(
-      {
-        sourceWidth: effectiveWidth,
-        sourceHeight: effectiveHeight,
-        posterFormatId,
-        alreadyUpscaled: effectiveAlreadyUpscaled,
-      },
-      picked,
-    );
-  }, [picked, effectiveWidth, effectiveHeight, posterFormatId, effectiveAlreadyUpscaled]);
-
+  /* ---------- Confirm helpers ---------- */
   const formatLabel = posterFormatId
-    ? getPrintFormat(posterFormatId)?.label
+    ? getPrintFormat(posterFormatId)?.label ?? null
     : null;
 
-  const pickedCfg = UPSCALE_MODES[picked];
-  const isHighCost = pickedCfg.estimatedCost === "high";
+  const buildDecision = (
+    flow: UpscaleFlow,
+    family: UpscaleFamily,
+    requestedScale: number,
+    extra: Partial<EnhanceForPrintDialogSourceDecision> = {},
+  ): EnhanceForPrintDialogSourceDecision => ({
+    choice: sourceChoice,
+    resolved: resolvedSource.resolved,
+    url: resolvedSource.url,
+    width: resolvedSource.width,
+    height: resolvedSource.height,
+    sourceWasAlreadyUpscaled: resolvedSource.sourceWasAlreadyUpscaled,
+    upscaleFlow: flow,
+    upscaleFamily: family,
+    requestedScale,
+    sourceWasCorrectedMaster: false, // useUpscale re-asserts + corrects
+    posterFormatId: posterFormatId ?? null,
+    dynamicScale: family === "realesrgan" ? requestedScale : null,
+    ...extra,
+  });
 
-  // Soft source-specific warning shown under the toggle.
-  const sourceWarning = (() => {
-    if (!bothSourcesAvailable) return null;
-    if (resolvedSource.resolved === "enhanced") {
-      return "Current enhanced — useful when the first upscale looks good but more pixels are needed. Repeated upscales can soften fine detail or introduce subtle artifacts.";
-    }
-    return "Original master — the cleanest source, best for preserving quality. It may need a stronger upscale route to reach the target size.";
-  })();
-
-  const handleConfirm = () => {
-    // Block dynamic route if the calculated plan is unsafe.
-    if (picked === "print_target_300") {
-      if (
-        !printTargetPlan ||
-        printTargetPlan.status === "source_too_small" ||
-        printTargetPlan.status === "output_too_large" ||
-        printTargetPlan.status === "unsupported_dynamic_scale"
-      ) {
-        // Don't proceed — UI already surfaces the warning. Caller can
-        // re-open and pick a different mode.
-        return;
-      }
-    }
+  const handleRecommendedConfirm = () => {
+    if (!recPlan) return;
+    if (
+      recPlan.status === "source_too_small" ||
+      recPlan.status === "output_too_large"
+    )
+      return;
     setOpen(false);
+    const mode = modeForPayload(recFamily, "target_300");
     onConfirm(
-      picked,
-      recommendedRecipe?.recommendedMode === picked ? recommendedRecipe : null,
-      {
-        choice: sourceChoice,
-        resolved: resolvedSource.resolved,
-        url: resolvedSource.url,
-        width: resolvedSource.width,
-        height: resolvedSource.height,
-        sourceWasAlreadyUpscaled: resolvedSource.sourceWasAlreadyUpscaled,
-        dynamicScale:
-          picked === "print_target_300" && printTargetPlan
-            ? printTargetPlan.requestedScale
-            : null,
-        printTargetPlan: picked === "print_target_300" ? printTargetPlan : null,
-      },
+      mode,
+      recommendedRecipe ?? null,
+      buildDecision("target_300", recFamily, recPlan.requestedScale, {
+        printTargetPlan: recPlan,
+      }),
     );
   };
 
+  const handleManualConfirm = () => {
+    if (!manPlan || manPlan.status === "output_too_large" || manPlan.status === "invalid_scale")
+      return;
+    setOpen(false);
+    const mode = modeForPayload(manFamily, "manual");
+    onConfirm(
+      mode,
+      null,
+      buildDecision("manual", manFamily, manPlan.effectiveScale, {
+        manualPlan: manPlan,
+      }),
+    );
+  };
+
+  const recBadge = recommendedBadge(recPlan);
+  const recBlocked =
+    !recPlan ||
+    recPlan.status === "source_too_small" ||
+    recPlan.status === "output_too_large";
+  const recReady = recPlan?.status === "already_ready";
+
+  const recButtonLabel = recReady
+    ? "Already print-ready"
+    : recPlan?.status === "output_too_large" ||
+        recPlan?.status === "source_too_small"
+      ? "Cannot enhance safely"
+      : "Enhance for 300 PPI print";
+
+  const recStatusSentence = !recPlan
+    ? "Select a print format to calculate the target."
+    : recPlan.status === "already_ready"
+      ? "This image already reaches 300 PPI for the selected format."
+      : recPlan.status === "output_too_large"
+        ? `This upscale would exceed the ${recPlan.maxLongSide} px safety limit. Regenerate a larger master or choose a smaller format.`
+        : recPlan.status === "source_too_small"
+          ? "The corrected master is too small to reach 300 PPI safely with this model. Regenerate at a larger size."
+          : recPlan.roundedScaleUp && recPlan.clears300Ppi
+            ? "The result will be slightly above 300 PPI, which is preferred for print. Export will still use the exact selected print dimensions."
+            : recPlan.clears300Ppi
+              ? "This upscale will reach 300 PPI for the selected format."
+              : "This result would still be below 300 PPI and will not be marked print-ready.";
 
   return (
     <AlertDialog open={open} onOpenChange={(o) => !disabled && setOpen(o)}>
       <AlertDialogTrigger asChild disabled={disabled}>
         {trigger}
       </AlertDialogTrigger>
-      <AlertDialogContent className="max-w-md">
+      <AlertDialogContent className="max-w-lg">
         <AlertDialogHeader>
           <AlertDialogTitle className="font-display flex items-center gap-2">
             <ArrowUpCircle className="h-4 w-4 text-primary" />
-            {hasEnhanced ? "Re-enhance image" : "Enhance for print"}
+            Enhance for print
           </AlertDialogTitle>
           <AlertDialogDescription className="font-display text-xs leading-relaxed">
-            {hasEnhanced
-              ? "An enhanced master already exists. Running another enhancement will create a new master and use additional credits."
-              : "For maximum print quality, use the recommended style-specific upscale. Real-ESRGAN 4× is the default for web and smaller prints. For large formats such as 50×70 cm, Tile 8× is recommended when 4× cannot reach 300 PPI."}
+            Your image is first corrected to the selected poster ratio. Then we
+            calculate the upscale needed for print.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        {/* Source picker — only when both original and enhanced exist */}
+        {/* Source picker */}
         {bothSourcesAvailable && (
           <div className="space-y-1.5 pt-1">
             <p className="font-display text-[11px] text-muted-foreground uppercase tracking-wider">
@@ -382,207 +432,280 @@ export default function EnhanceForPrintDialog({
                 </button>
               ))}
             </div>
-            {sourceWarning && (
-              <p className="font-display text-[11px] text-muted-foreground leading-snug pt-1">
-                {sourceWarning}
-              </p>
-            )}
           </div>
         )}
 
-        {/* Method picker */}
-        <div className="space-y-2 py-2">
-          {OFFERED_MODES.map((m) => {
-            const cfg = UPSCALE_MODES[m];
-            const isPicked = picked === m;
-            const cost = COST_PILL[cfg.estimatedCost];
-            const isRoutingPick = routing?.recommendedMode === m;
-            const isPrintTargetRecommended =
-              m === "print_target_300" &&
-              printTargetPlan?.status === "dynamic_upscale_recommended";
-            const isRecommended =
-              isPrintTargetRecommended ||
-              (m !== "print_target_300" &&
-                (isRoutingPick ||
-                  (!routing && recommendedRecipe?.recommendedMode === m)));
-            const isPrintTargetBlocked =
-              m === "print_target_300" &&
-              (!printTargetPlan ||
-                printTargetPlan.status === "source_too_small" ||
-                printTargetPlan.status === "output_too_large" ||
-                printTargetPlan.status === "unsupported_dynamic_scale");
-            // Show the dynamic scale for print_target_300 instead of the
-            // placeholder 4× from the registry.
-            const displayedScale =
-              m === "print_target_300" && printTargetPlan
-                ? `${printTargetPlan.requestedScale}×`
-                : `${cfg.scaleFactor}×`;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => !isPrintTargetBlocked && setPicked(m)}
-                disabled={isPrintTargetBlocked}
-                className={cn(
-                  "w-full text-left px-3 py-2 rounded-sm border font-display transition-colors",
-                  isPicked
-                    ? "bg-primary/10 border-primary/50"
-                    : "bg-card border-border hover:bg-muted",
-                  isPrintTargetBlocked && "opacity-50 cursor-not-allowed",
-                )}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs font-bold text-foreground truncate">
-                      {cfg.label}
-                    </span>
-                    {isRecommended && (
-                      <span className="inline-flex items-center gap-0.5 px-1 rounded-sm bg-primary/15 text-primary text-[9px] uppercase tracking-wider">
-                        <Star className="h-2.5 w-2.5 fill-primary" /> Rec
-                      </span>
-                    )}
-                  </div>
-                  <span
-                    className={cn(
-                      "text-[10px] px-1.5 py-0.5 rounded-sm border font-bold uppercase tracking-wider",
-                      cost.className,
-                    )}
-                    title={UPSCALE_COST_LABEL[cfg.estimatedCost]}
-                  >
-                    {cost.label}
-                  </span>
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                  {cfg.description}
-                </p>
-                <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
-                  <span>⏱ {cfg.estimatedTime}</span>
-                  <span>· {displayedScale} output</span>
-                </div>
-                {m === "print_target_300" && printTargetPlan && isPrintTargetBlocked && (
-                  <p className="text-[10px] text-orange-500 mt-1 leading-snug flex items-start gap-1">
-                    <AlertTriangle className="h-2.5 w-2.5 mt-0.5 shrink-0" />
-                    {printTargetPlan.warning ?? printTargetPlan.reason}
-                  </p>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Expected output */}
-        <div className="rounded-sm border border-border bg-muted/40 px-3 py-2 space-y-1">
-          <p className="font-display text-[11px] text-muted-foreground">
-            Expected output
+        {/* ============ RECOMMENDED ============ */}
+        <div className="space-y-2 pt-1">
+          <p className="font-display text-[10px] text-muted-foreground uppercase tracking-wider">
+            Recommended
           </p>
-          <p className="font-display text-xs text-foreground">
-            <Sparkles className="inline h-3 w-3 mr-1 text-primary" />
-            {expectedOutput
-              ? `${expectedOutput.w} × ${expectedOutput.h} px (${expectedOutput.factor}× of source)`
-              : `${pickedCfg.scaleFactor}× resolution`}
-          </p>
-          {expectedOutput?.ppi != null && expectedOutput.format && (
-            <p
-              className={cn(
-                "font-display text-[11px] leading-snug",
-                expectedOutput.ppiTier === "preferred"
-                  ? "text-primary"
-                  : expectedOutput.ppiTier === "fallback"
-                    ? "text-orange-500"
-                    : "text-destructive",
-              )}
-            >
-              ≈ {expectedOutput.ppi} PPI at {expectedOutput.format.label}
-              {expectedOutput.ppiTier === "preferred" && " · full print quality (300 PPI)"}
-              {expectedOutput.ppiTier === "fallback" && " · standard print quality (150 PPI)"}
-              {expectedOutput.ppiTier === "below" && " · below 150 PPI — soft print"}
-            </p>
-          )}
-          {bothSourcesAvailable && resolvedSource.width && resolvedSource.height && (
-            <p className="font-display text-[10px] text-muted-foreground leading-snug">
-              Source: {resolvedSource.resolved === "enhanced" ? "current enhanced" : "original master"} · {resolvedSource.width}×{resolvedSource.height} px
-            </p>
-          )}
-          {/* Dynamic print-target readout — only when print_target_300 is picked. */}
-          {picked === "print_target_300" && printTargetPlan && (
-            <div className="rounded-sm border border-primary/30 bg-primary/5 px-2 py-1.5 mt-1 space-y-0.5">
-              <p className="font-display text-[10px] uppercase tracking-wider text-primary">
+          <div className="rounded-sm border border-primary/40 bg-primary/5 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-display text-sm font-bold text-foreground">
                 Print Target 300 PPI
               </p>
-              <p className="font-display text-[11px] text-foreground leading-snug">
-                Current master: {printTargetPlan.sourceWidth}×{printTargetPlan.sourceHeight}
-                {" · "}Target: {printTargetPlan.targetWidth}×{printTargetPlan.targetHeight}
-              </p>
-              <p className="font-display text-[11px] text-muted-foreground leading-snug">
-                Required: {printTargetPlan.requiredScaleRaw.toFixed(3)}×
-                {" · "}Requested: {printTargetPlan.requestedScale}×
-                {printTargetPlan.roundedScaleUp && " (ceiled up)"}
-              </p>
-              <p
-                className={cn(
-                  "font-display text-[11px] leading-snug",
-                  printTargetPlan.clears300Ppi ? "text-primary" : "text-orange-500",
-                )}
-              >
-                Predicted: {printTargetPlan.predictedOutputWidth}×{printTargetPlan.predictedOutputHeight}
-                {" · "}≈ {printTargetPlan.effectivePpiAfterUpscale} PPI
-                {printTargetPlan.clears300Ppi
-                  ? " · clears 300 PPI"
-                  : " · below 300 PPI — not print-ready"}
-              </p>
-              {printTargetPlan.exceedsMaxLongSide && (
-                <p className="font-display text-[10px] text-destructive leading-snug">
-                  Exceeds {printTargetPlan.maxLongSide}px safety cap.
-                </p>
-              )}
+              <StatusBadge kind={recBadge} />
             </div>
-          )}
-          {isHighCost && (
-            <p className="font-display text-[11px] text-destructive flex items-center gap-1 pt-1">
-              <AlertTriangle className="h-3 w-3" />
-              This is the highest-cost mode. Use it only when you really need the extra detail.
+            <p className="font-display text-[11px] text-muted-foreground leading-snug">
+              Best for print. Uses the corrected poster master and calculates the
+              exact upscale needed for the selected format.
             </p>
-          )}
-          {routing && routing.target && (
-            <p className="font-display text-[11px] text-muted-foreground pt-1 leading-snug">
-              {sourceWidth && sourceHeight
-                ? `Source: ${sourceWidth}×${sourceHeight} · `
-                : "Source: not measured · "}
-              Target{formatLabel ? ` (${formatLabel})` : ""}: {routing.target.width}×{routing.target.height}
-              {routing.requiredScale != null && ` · Required: ${routing.requiredScale}×`}
-              {routing.recommendedMode &&
-                ` · Recommended: ${UPSCALE_MODES[routing.recommendedMode].shortLabel}`}
+
+            {/* Family selector */}
+            <div className="inline-flex gap-1 p-0.5 rounded-sm border border-border bg-background">
+              {(["realesrgan", "clarity"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setRecFamily(f)}
+                  className={cn(
+                    "font-display text-[11px] px-2 py-1 rounded-sm transition-colors",
+                    recFamily === f
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {FAMILY_LABEL[f]}
+                </button>
+              ))}
+            </div>
+            <p className="font-display text-[10px] text-muted-foreground leading-snug">
+              {FAMILY_DESCRIPTION[recFamily]}
             </p>
-          )}
-          {routing?.warning && (
-            <p className="font-display text-[11px] text-orange-500 flex items-start gap-1 pt-1 leading-snug">
-              <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-              {routing.warning}
-            </p>
-          )}
-          {selectedAssessment?.warning &&
-            selectedAssessment.warning !== routing?.warning && (
-              <p className="font-display text-[11px] text-orange-500 flex items-start gap-1 pt-1 leading-snug">
-                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                {selectedAssessment.warning}
-              </p>
+
+            {/* Readout */}
+            {recPlan && (
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 font-display text-[11px] text-foreground/90 pt-1">
+                <span className="text-muted-foreground">Selected format:</span>
+                <span className="text-right">{formatLabel ?? "—"}</span>
+                <span className="text-muted-foreground">Corrected master:</span>
+                <span className="text-right">
+                  {recPlan.sourceWidth}×{recPlan.sourceHeight} px
+                </span>
+                <span className="text-muted-foreground">Target (300 PPI):</span>
+                <span className="text-right">
+                  {recPlan.targetWidth}×{recPlan.targetHeight} px
+                </span>
+                <span className="text-muted-foreground">Required scale:</span>
+                <span className="text-right">
+                  {recPlan.requiredScaleRaw.toFixed(3)}×
+                </span>
+                <span className="text-muted-foreground">Requested scale:</span>
+                <span className="text-right">{recPlan.requestedScale}×</span>
+                <span className="text-muted-foreground">Predicted:</span>
+                <span className="text-right">
+                  {recPlan.predictedOutputWidth}×{recPlan.predictedOutputHeight} px
+                </span>
+              </div>
             )}
+
+            <p
+              className={cn(
+                "font-display text-[11px] leading-snug pt-0.5",
+                recBlocked
+                  ? "text-destructive"
+                  : recReady
+                    ? "text-muted-foreground"
+                    : recPlan?.clears300Ppi
+                      ? "text-primary"
+                      : "text-orange-500",
+              )}
+            >
+              {recStatusSentence}
+            </p>
+
+            <Button
+              onClick={handleRecommendedConfirm}
+              disabled={recBlocked || recReady}
+              className="font-display w-full"
+            >
+              <Sparkles className="mr-2 h-3.5 w-3.5" />
+              {recButtonLabel}
+            </Button>
+          </div>
         </div>
 
+        {/* ============ ADVANCED ============ */}
+        <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted/50 transition-colors"
+            >
+              <span className="font-display text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                Advanced — Manual upscale
+                <StatusBadge kind="needs-upscale" />
+              </span>
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 text-muted-foreground transition-transform",
+                  advancedOpen && "rotate-180",
+                )}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 pt-2">
+            <div className="rounded-sm border border-border bg-card p-3 space-y-2">
+              <p className="font-display text-[11px] text-muted-foreground leading-snug">
+                Choose the model and scale yourself. Useful for experiments,
+                extra detail, or non-standard outputs.
+              </p>
+
+              {/* Family */}
+              <div className="inline-flex gap-1 p-0.5 rounded-sm border border-border bg-background">
+                {(["realesrgan", "clarity"] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setManFamily(f)}
+                    className={cn(
+                      "font-display text-[11px] px-2 py-1 rounded-sm transition-colors",
+                      manFamily === f
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {FAMILY_LABEL[f]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Scale presets */}
+              <div className="space-y-1">
+                <p className="font-display text-[10px] text-muted-foreground uppercase tracking-wider">
+                  Scale
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {MANUAL_UPSCALE_PRESETS.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        setCustomMode(false);
+                        setManScale(s);
+                      }}
+                      className={cn(
+                        "font-display text-[11px] px-2 py-1 rounded-sm border transition-colors",
+                        !customMode && manScale === s
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-foreground border-border hover:bg-muted",
+                      )}
+                    >
+                      {s}×
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setCustomMode(true)}
+                    className={cn(
+                      "font-display text-[11px] px-2 py-1 rounded-sm border transition-colors",
+                      customMode
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-foreground border-border hover:bg-muted",
+                    )}
+                  >
+                    Custom
+                  </button>
+                  {customMode && (
+                    <Input
+                      type="number"
+                      step="0.05"
+                      min="1.05"
+                      max="8"
+                      value={customInput}
+                      onChange={(e) => setCustomInput(e.target.value)}
+                      className="h-7 w-20 text-xs"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Manual readout */}
+              {manPlan && (
+                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 font-display text-[11px] text-foreground/90 pt-1">
+                  <span className="text-muted-foreground">Model:</span>
+                  <span className="text-right">{FAMILY_LABEL[manFamily]}</span>
+                  <span className="text-muted-foreground">Effective scale:</span>
+                  <span className="text-right">{manPlan.effectiveScale}×</span>
+                  <span className="text-muted-foreground">Predicted output:</span>
+                  <span className="text-right">
+                    {manPlan.predictedWidth}×{manPlan.predictedHeight} px
+                  </span>
+                  {manPlan.predictedEffectivePpi != null && formatLabel && (
+                    <>
+                      <span className="text-muted-foreground">Predicted PPI:</span>
+                      <span
+                        className={cn(
+                          "text-right",
+                          manPlan.clears300Ppi
+                            ? "text-primary"
+                            : "text-orange-500",
+                        )}
+                      >
+                        {manPlan.predictedEffectivePpi} PPI for {formatLabel}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Warnings */}
+              {manPlan?.warnings.map((w, i) => (
+                <p
+                  key={i}
+                  className={cn(
+                    "font-display text-[11px] flex items-start gap-1 leading-snug",
+                    manPlan.exceededLimit
+                      ? "text-destructive"
+                      : "text-orange-500",
+                  )}
+                >
+                  <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                  {w}
+                </p>
+              ))}
+
+              <Button
+                onClick={handleManualConfirm}
+                disabled={
+                  !manPlan ||
+                  manPlan.status === "output_too_large" ||
+                  manPlan.status === "invalid_scale"
+                }
+                variant="outline"
+                className="font-display w-full"
+              >
+                <Sparkles className="mr-2 h-3.5 w-3.5" />
+                Run manual upscale
+                {manPlan && ` (${FAMILY_LABEL[manFamily]} ${manPlan.effectiveScale}×)`}
+              </Button>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        <p className="font-display text-[10px] text-muted-foreground text-center pt-1">
+          Final exports use the exact dimensions for the selected print format.
+        </p>
 
         <AlertDialogFooter>
           <AlertDialogCancel className="font-display">Cancel</AlertDialogCancel>
+          {/* Primary action lives inside each section card. The footer
+              cancel-only mirrors the new two-action layout. */}
           <AlertDialogAction
-            onClick={handleConfirm}
-            className={cn(
-              "font-display",
-              isHighCost &&
-                "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-            )}
+            asChild
+            className="hidden"
+            aria-hidden
           >
-            {hasEnhanced ? "Re-enhance" : "Enhance for print"}
+            <span />
           </AlertDialogAction>
         </AlertDialogFooter>
+        {hasEnhanced && (
+          <p className="font-display text-[10px] text-muted-foreground text-center -mt-2">
+            An enhanced master already exists — running another pass will create
+            a new version.
+          </p>
+        )}
       </AlertDialogContent>
     </AlertDialog>
   );
