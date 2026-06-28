@@ -280,37 +280,15 @@ export function calculatePrintTargetUpscale(
     };
   }
 
-  // Clarity decimal scale is unverified — refuse dynamic scaling there for now.
-  if (upscaleFamily === "clarity") {
-    return {
-      posterFormatId: input.posterFormatId,
-      targetDpi,
-      targetWidth: target.width,
-      targetHeight: target.height,
-      sourceWidth: input.sourceWidth,
-      sourceHeight: input.sourceHeight,
-      requiredScaleRaw,
-      requiredScaleRounded,
-      requestedScale,
-      predictedOutputWidth: predW,
-      predictedOutputHeight: predH,
-      predictedLongSide,
-      effectivePpiAfterUpscale: effectivePpi,
-      clears300Ppi: clears,
-      exceedsMaxLongSide: false,
-      status: "unsupported_dynamic_scale",
-      reason: "Clarity decimal scale_factor is not verified; dynamic target upscale routes through Real-ESRGAN.",
-      warning: "Dynamic scaling via Clarity is not enabled. Use Real-ESRGAN dynamic or fixed Clarity 4×/8×.",
-      upscaleFamily,
-      scalePrecision,
-      maxLongSide,
-      roundedScaleUp,
-      noUpscaleNeeded: false,
-    };
-  }
+  // Clarity dynamic decimal scale_factor IS supported on the async path.
+  // Both families fall through to the regular recommended branch.
 
   // Real-ESRGAN can request scales in [2, 8]. Sub-2× still needs scale=2.
-  if (requestedScale < REALESRGAN_DYNAMIC_MIN_SCALE) {
+  // Clarity has no provider minimum, so we keep sub-2 scales there.
+  if (
+    upscaleFamily === "realesrgan" &&
+    requestedScale < REALESRGAN_DYNAMIC_MIN_SCALE
+  ) {
     const clampedScale = REALESRGAN_DYNAMIC_MIN_SCALE;
     const cpW = Math.round(input.sourceWidth * clampedScale);
     const cpH = Math.round(input.sourceHeight * clampedScale);
