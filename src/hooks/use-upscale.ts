@@ -240,7 +240,7 @@ export function useUpscale() {
             effectiveScale = Math.min(8, Math.max(2, opts.dynamicScale));
           }
           const direct = await runReplicateUpscale({
-            imageUrl: sourceUrl,
+            imageUrl: effectiveSourceUrl,
             method: directMethod,
             scale: effectiveScale,
           });
@@ -276,13 +276,51 @@ export function useUpscale() {
           return result;
         }
 
+        /* ---------------- CLARITY DYNAMIC PATH (async) ---------------- */
+        // Explicit contract — see `upscale-image` edge fn. The dispatcher
+        // routes on `upscaleFamily === "clarity"` and uses the supplied
+        // decimal `requestedScale`/`scale_factor` instead of the legacy
+        // `tile_4x` / `tile_8x` mode branches. No silent fallback.
+        const isClarityDynamic =
+          mode === "clarity_dynamic" || opts?.upscaleFamily === "clarity";
+        if (isClarityDynamic) {
+          if (!opts?.dynamicScale || opts.dynamicScale <= 1) {
+            cleanupTimers();
+            setStage("failed");
+            throw new Error(
+              "Clarity dynamic upscale requires a calculated dynamicScale (use calculatePrintTargetUpscale or planManualUpscale).",
+            );
+          }
+          if (!opts.posterFormatId || !sourceWasCorrectedMaster) {
+            cleanupTimers();
+            setStage("failed");
+            throw new Error(
+              "Clarity dynamic upscale requires a corrected poster master.",
+            );
+          }
+        }
+
         const { data, error } = await supabase.functions.invoke("upscale-image", {
-          body: {
-            imageUrl: sourceUrl,
-            mode,
-            galleryImageId: opts?.galleryImageId,
-            recipe: opts?.recipe ?? undefined,
-          },
+          body: isClarityDynamic
+            ? {
+                imageUrl: effectiveSourceUrl,
+                mode: "clarity_dynamic",
+                upscaleFlow: opts?.upscaleFlow ?? "manual",
+                upscaleFamily: "clarity",
+                requestedScale: opts!.dynamicScale,
+                scale_factor: opts!.dynamicScale,
+                sourceWasCorrectedMaster: true,
+                posterFormatId: opts!.posterFormatId,
+                galleryImageId: opts?.galleryImageId,
+                recipe: opts?.recipe ?? undefined,
+                metadata: opts?.routingMetadata ?? undefined,
+              }
+            : {
+                imageUrl: effectiveSourceUrl,
+                mode,
+                galleryImageId: opts?.galleryImageId,
+                recipe: opts?.recipe ?? undefined,
+              },
         });
 
         if (error) throw error;
