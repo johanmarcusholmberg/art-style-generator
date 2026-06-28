@@ -165,6 +165,37 @@ export const UPSCALE_MODES: Record<UpscaleMode, UpscaleModeConfig> = {
     requiresOriginalAsset: true,
     enabled: true,
   },
+  /**
+   * Dynamic Clarity route. Used by the Recommended target-300 flow and the
+   * Advanced manual flow when the user picks the Clarity family. Stored on
+   * jobs/cost rows so historical analytics can distinguish a decimal
+   * Clarity pass from the fixed `tile_4x`/`tile_8x` legacy presets.
+   *
+   * Hidden from every surface picker (`isAutomaticCapable / isManualCapable
+   * / isGalleryCapable = false`) — the dialog never lists it as an option
+   * because the model family / scale is chosen via the new family + scale
+   * controls. Excluded from `UPSCALE_MODE_OPTIONS` for the same reason.
+   */
+  clarity_dynamic: {
+    id: "clarity_dynamic",
+    label: "Clarity (dynamic)",
+    shortLabel: "Clarity",
+    description:
+      "Tiled SDXL refinement at a calculated decimal scale. Used for the dynamic 300 PPI target flow and Advanced manual upscale with the Clarity family.",
+    runs: true,
+    scaleFactor: 4, // informational only — real scale is decimal at runtime
+    tiled: true,
+    provider: "replicate/clarity-upscaler",
+    category: "print",
+    estimatedTime: "~1–3 min",
+    estimatedCost: "medium",
+    intendedUse: "Detailed/creative Clarity at an exact print target",
+    isAutomaticCapable: false,
+    isManualCapable: false,
+    isGalleryCapable: false,
+    requiresOriginalAsset: true,
+    enabled: true,
+  },
 };
 
 /** Filter options by the surface they appear in (auto / manual / gallery). */
