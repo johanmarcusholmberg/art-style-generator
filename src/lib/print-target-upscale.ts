@@ -343,7 +343,7 @@ export function calculatePrintTargetUpscale(
     clears300Ppi: clears,
     exceedsMaxLongSide: false,
     status: "dynamic_upscale_recommended",
-    reason: `Dynamic Real-ESRGAN ${requestedScale}× clears the ${target.width}×${target.height} target (≥ ${targetDpi} PPI at ${format.label}).`,
+    reason: `Dynamic ${upscaleFamily === "clarity" ? "Clarity" : "Real-ESRGAN"} ${requestedScale}× clears the ${target.width}×${target.height} target (≥ ${targetDpi} PPI at ${format.label}).`,
     warning: null,
     upscaleFamily,
     scalePrecision,
