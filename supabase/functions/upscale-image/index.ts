@@ -19,7 +19,17 @@ const corsHeaders = {
  * The frontend always sends one shared body: { imageUrl, mode }
  */
 
-type UpscaleMode = "none" | "realesrgan_4x" | "tile_4x" | "tile_8x";
+type UpscaleMode =
+  | "none"
+  | "realesrgan_4x"
+  | "tile_4x"
+  | "tile_8x"
+  /**
+   * Dynamic Clarity at a calculated decimal scale (Recommended target_300
+   * flow + Advanced manual flow with the Clarity family). See the explicit
+   * request contract in the `clarity_dynamic` branch of `serve(...)`.
+   */
+  | "clarity_dynamic";
 
 // Raised from 8192 → 12288. Clarity Upscaler can handle outputs up to ~12K px
 // on the long side, so this allows 8× to actually run on typical 1024–1536 px
@@ -363,7 +373,7 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-    if (mode === "tile_4x" || mode === "tile_8x") {
+    if (mode === "tile_4x" || mode === "tile_8x" || mode === "clarity_dynamic") {
       const supabaseAdmin = createSupabaseAdmin();
 
       // Single Clarity stage at the requested scale.
@@ -375,7 +385,83 @@ serve(async (req) => {
       let preDownscaled = false;
       let sourceForReplicate = imageUrl;
 
-      if (mode === "tile_4x") {
+      /* ============================================================== */
+      /* CLARITY DYNAMIC CONTRACT (2026-Q2 redesign)                    */
+      /* -------------------------------------------------------------- */
+      /* Request body shape — enforced strictly:                        */
+      /*   {                                                            */
+      /*     imageUrl: string,                                          */
+      /*     mode: "clarity_dynamic",                                   */
+      /*     upscaleFlow: "target_300" | "manual",                      */
+      /*     upscaleFamily: "clarity",                                  */
+      /*     requestedScale: number,   // decimal scale, e.g. 5.15      */
+      /*     scale_factor: number,     // same value, passthrough       */
+      /*     sourceWasCorrectedMaster: true,                            */
+      /*     posterFormatId: string,                                    */
+      /*     galleryImageId?: string,                                   */
+      /*     recipe?, metadata?                                         */
+      /*   }                                                            */
+      /*                                                                */
+      /* Decimal `scale_factor` is forwarded to Clarity Upscaler        */
+      /* unchanged — no tile_4x / tile_8x routing involvement.          */
+      /* No silent fallback if scale validation fails: the request 4xx. */
+      /* ============================================================== */
+      if (mode === "clarity_dynamic") {
+        const upscaleFlow: unknown = body.upscaleFlow;
+        const upscaleFamily: unknown = body.upscaleFamily;
+        const requestedScale: unknown = body.requestedScale;
+        const scaleFactorRaw: unknown = body.scale_factor;
+        const sourceWasCorrectedMaster: unknown = body.sourceWasCorrectedMaster;
+        const posterFormatId: unknown = body.posterFormatId;
+
+        const scale =
+          typeof requestedScale === "number"
+            ? requestedScale
+            : typeof scaleFactorRaw === "number"
+              ? scaleFactorRaw
+              : NaN;
+
+        if (
+          upscaleFamily !== "clarity" ||
+          (upscaleFlow !== "target_300" && upscaleFlow !== "manual") ||
+          !Number.isFinite(scale) ||
+          scale <= 1 ||
+          scale > 8 ||
+          sourceWasCorrectedMaster !== true ||
+          typeof posterFormatId !== "string" ||
+          posterFormatId.length === 0
+        ) {
+          return new Response(
+            JSON.stringify({
+              error:
+                "Invalid clarity_dynamic payload: requires upscaleFamily='clarity', upscaleFlow in {target_300,manual}, requestedScale in (1,8], sourceWasCorrectedMaster=true, and posterFormatId.",
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
+        // 12,288 px safety cap mirrors the client-side block. If a runaway
+        // scale somehow squeaks through, refuse — never silently downshift.
+        const dims = await fetchImageDimensions(imageUrl);
+        if (dims) {
+          const projectedLong = Math.max(dims.w, dims.h) * scale;
+          if (projectedLong > TILE_8X_MAX_LONG_SIDE) {
+            return new Response(
+              JSON.stringify({
+                error: `Clarity dynamic ${scale.toFixed(2)}× would produce ${Math.round(projectedLong)} px on the long side, exceeding the ${TILE_8X_MAX_LONG_SIDE} px safety cap.`,
+              }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
+        }
+
+        firstStageProvider = "replicate/clarity-upscaler";
+        appliedScale = scale;
+        predictionBody = clarityPredictionBody(imageUrl, scale);
+        console.log(
+          `[async clarity_dynamic] flow=${upscaleFlow} scale=${scale} format=${posterFormatId}`,
+        );
+      } else if (mode === "tile_4x") {
         firstStageProvider = "replicate/clarity-upscaler";
         appliedScale = 4;
         predictionBody = clarityPredictionBody(imageUrl, 4);
