@@ -23,6 +23,10 @@ const UPSCALE_COST_BY_METHOD: Record<string, number> = {
   print_plus: 0.05,
   tile_4x: 0.04,
   tile_8x: 0.08,
+  // Dynamic Clarity at decimal scale (Recommended target-300 + Advanced manual).
+  // Priced at the medium tile tier since one Clarity pass dominates cost.
+  clarity_dynamic: 0.06,
+  "replicate/clarity-upscaler": 0.06,
 };
 
 export function estimateGenerationCost(
