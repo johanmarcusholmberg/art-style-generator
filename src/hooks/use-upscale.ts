@@ -9,6 +9,8 @@ import {
   type UpscaleMode,
   type UpscaleStage,
   type UpscaleJobStatus,
+  type UpscaleFamily,
+  type UpscaleFlow,
 } from "@/lib/upscale-modes";
 import {
   resolveUpscaleRecipe,
@@ -20,12 +22,17 @@ import {
   runReplicateUpscale,
   type ReplicateUpscaleMethod,
 } from "@/lib/upscale-providers/replicate";
+import { isWithinPosterRatio, preparePosterMaster } from "@/lib/poster-master";
 
 /**
  * Modes that route through the dedicated direct-Replicate edge function
  * (`upscale-image-replicate`) instead of the legacy `upscale-image` dispatcher.
  *
  * These modes have NO Lovable fallback — failures surface to the user.
+ *
+ * `clarity_dynamic` is intentionally absent: Clarity stays on the async
+ * `upscale-image` route so the webhook + `upscale_jobs` table own the
+ * lifecycle (a Clarity pass can run 1–3 min, well past the 150s sync cap).
  */
 const DIRECT_REPLICATE_METHOD: Partial<Record<UpscaleMode, ReplicateUpscaleMethod>> = {
   realesrgan_4x: "realesrgan",
@@ -57,11 +64,33 @@ interface UpscaleOptions {
   /** Optional recipe metadata — recorded on the upscale_jobs row. */
   recipe?: Pick<UpscaleRecipe, "id" | "label" | "reason"> | null;
   /**
-   * REQUIRED for `print_target_300`. Decimal scale (e.g. 5.15) calculated
-   * from the corrected poster master by `calculatePrintTargetUpscale`.
-   * Edge function clamps into [2, 8].
+   * REQUIRED for `print_target_300` and `clarity_dynamic`. Decimal scale
+   * (e.g. 5.15) calculated from the corrected poster master by
+   * `calculatePrintTargetUpscale` or `planManualUpscale`. Edge functions
+   * clamp into the family's supported range.
    */
   dynamicScale?: number;
+  /* ------------------------------------------------------------------ */
+  /* Print Upscale Redesign 2026-Q2 — new routing/safety opts.          */
+  /* ------------------------------------------------------------------ */
+  /** Model family. Determines whether we go direct (realesrgan) or async (clarity). */
+  upscaleFamily?: UpscaleFamily;
+  /** target_300 = Recommended flow, manual = Advanced flow. Logged to job. */
+  upscaleFlow?: UpscaleFlow;
+  /**
+   * Source poster format. When set, useUpscale REQUIRES the source to be a
+   * corrected master on this ratio and corrects it if not (no silent
+   * provider call against an off-ratio source).
+   */
+  posterFormatId?: string | null;
+  /**
+   * Dialog's promise the source is already a corrected poster master. We
+   * still re-verify the ratio before any provider call — this flag only
+   * affects whether we can skip the correction round-trip in the happy path.
+   */
+  sourceWasCorrectedMaster?: boolean;
+  /** Optional routing metadata persisted onto the upscale_jobs row. */
+  routingMetadata?: Record<string, unknown>;
 }
 
 /**
