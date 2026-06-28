@@ -13,7 +13,6 @@ export type UpscaleMode =
   | "realesrgan_4x"
   | "tile_4x"
   | "tile_8x"
-  | "print_plus"
   | "print_target_300";
 
 export type UpscaleCategory = "off" | "fast" | "print";
@@ -129,27 +128,9 @@ export const UPSCALE_MODES: Record<UpscaleMode, UpscaleModeConfig> = {
     requiresOriginalAsset: true,
     enabled: true,
   },
-  print_plus: {
-    id: "print_plus",
-    label: "Print+ (ESRGAN → SUPIR)",
-    shortLabel: "Print+",
-    description: "Real-ESRGAN 4× upscale, then SUPIR detail refinement. Optional refinement on top of size targeting — does not by itself guarantee 300 PPI.",
-    runs: true,
-    scaleFactor: 4,
-    tiled: false,
-    provider: "replicate/real-esrgan+supir",
-    category: "print",
-    estimatedTime: "~2–4 min",
-    estimatedCost: "high",
-    intendedUse: "Optional refinement for fine-art prints",
-    isAutomaticCapable: true,
-    isManualCapable: true,
-    isGalleryCapable: true,
-    requiresOriginalAsset: true,
-    enabled: true,
-  },
   /**
    * Dynamic print-target route. Calculates the EXACT scale required from
+
    * the corrected poster master to reach the selected print format's 300
    * PPI pixel target, ceils up to safe provider precision, and calls
    * Real-ESRGAN with that decimal scale. `scaleFactor` is informational
@@ -206,7 +187,6 @@ export const UPSCALE_MODE_OPTIONS: UpscaleModeConfig[] = [
   UPSCALE_MODES.print_target_300,
   UPSCALE_MODES.tile_4x,
   UPSCALE_MODES.tile_8x,
-  UPSCALE_MODES.print_plus,
 ];
 
 export const DEFAULT_UPSCALE_MODE: UpscaleMode = "none";
@@ -264,12 +244,10 @@ export type UpscaleStage =
   | "tiling"
   | "upscaling"
   | "stitching"
-  | "refining"
   | "saving"
   | "done"
   | "failed"
-  | "downshifted"
-  | "refine_failed";
+  | "downshifted";
 
 export const UPSCALE_STAGE_LABELS: Record<UpscaleStage, string> = {
   idle: "",
@@ -279,12 +257,10 @@ export const UPSCALE_STAGE_LABELS: Record<UpscaleStage, string> = {
   tiling: "Preparing tiles…",
   upscaling: "Upscaling…",
   stitching: "Stitching final image…",
-  refining: "Enhancing for print quality (SUPIR)…",
   saving: "Saving image…",
   done: "Upscale complete",
   failed: "Upscale failed",
   downshifted: "Downshifted to 4× (8× too large)",
-  refine_failed: "SUPIR refine failed — kept ESRGAN result",
 };
 
 /** Approximate progress percentage per stage, for the progress bar. */
@@ -294,12 +270,11 @@ export const UPSCALE_STAGE_PROGRESS: Record<UpscaleStage, number> = {
   optimizing: 18,
   cleanup: 28,
   tiling: 40,
-  upscaling: 55,
-  stitching: 75,
-  refining: 88,
+  upscaling: 60,
+  stitching: 80,
   saving: 95,
   done: 100,
   failed: 0,
   downshifted: 0,
-  refine_failed: 100,
 };
+

@@ -200,7 +200,7 @@ describe("assessSelectedMode", () => {
 /* ------------------------------------------------------------------ */
 
 // Must mirror EnhanceForPrintDialog OFFERED_MODES exactly.
-const DIALOG_OFFERED = ["realesrgan_4x", "tile_4x", "tile_8x", "print_plus"] as const;
+const DIALOG_OFFERED = ["realesrgan_4x", "tile_4x", "tile_8x"] as const;
 
 describe("router never recommends a mode hidden from the dialog", () => {
   it("recommends tile_8x for 50×70 when 4× modes can't clear the target", () => {

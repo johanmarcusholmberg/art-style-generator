@@ -83,7 +83,7 @@ export const UPSCALE_RECIPES: Record<UpscaleRecipeId, UpscaleRecipe> = {
     id: "photo_restore",
     label: "Photoreal — Restore",
     reason: "Stronger cleanup & detail recovery for photoreal output",
-    recommendedMode: "print_plus",
+    recommendedMode: "tile_4x",
     fallbackMode: "tile_4x",
     preferCleanup: true,
     preferPrint: true,

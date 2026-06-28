@@ -2,28 +2,29 @@
  * Direct Replicate enhancement edge function.
  *
  * This is the dedicated, no-fallback path used by the "Enhance for print"
- * dialog. It accepts a method (`realesrgan` | `supir`) and runs that single
- * Replicate model end-to-end. There is intentionally NO Lovable fallback —
- * if Replicate fails, the caller gets a clear error and can retry.
+ * dialog. It runs Real-ESRGAN end-to-end. There is intentionally NO Lovable
+ * fallback — if Replicate fails, the caller gets a clear error and can retry.
+ *
+ * NOTE: The legacy `method: "supir"` (Print+) branch was removed in 2025-Q4.
+ * Any historical client that still posts `method: "supir"` will be rejected
+ * with a clear 400 — the dynamic Real-ESRGAN route (decimal scale 2..8)
+ * covers the 300 PPI use case more cheaply and deterministically.
  *
  * Inputs (POST body):
  *   - image_url   : string  (preferred)
  *   - storage_path: string  (alternative — resolved against generated-images bucket)
- *   - method      : "realesrgan" | "supir"   (default: "realesrgan")
- *   - scale       : number                    (default: 4 for realesrgan; ignored for supir)
+ *   - method      : "realesrgan"   (default; "supir" is rejected)
+ *   - scale       : number (default 4; clamped to 2..8)
  *
  * Returns 200 JSON:
  *   {
- *     upscaled_image_url: string, // public URL on generated-images bucket
+ *     upscaled_image_url: string,
  *     width:  number | null,
  *     height: number | null,
- *     method: "realesrgan" | "supir",
+ *     method: "realesrgan",
  *     scale:  number,
- *     provider: "replicate/real-esrgan" | "replicate/supir",
+ *     provider: "replicate/real-esrgan",
  *   }
- *
- * Returns 4xx/5xx JSON `{ error: string }` on failure. The caller MUST NOT
- * attempt to silently re-route to another provider.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -34,12 +35,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-type Method = "realesrgan" | "supir";
+type Method = "realesrgan";
 
 const REAL_ESRGAN_VERSION =
   "f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa";
-const SUPIR_VERSION =
-  "2267e729dcfa0b7f5e6b5e7e5d7e4d5b3c2a1d0e9f8a7b6c5d4e3f2a1b0c9d8e";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -198,67 +197,8 @@ async function runRealESRGAN(
   return { ok: true, url: out };
 }
 
-async function runSUPIR(
-  imageUrl: string,
-  apiToken: string,
-): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  console.log(`[supir] running refine pass`);
-  // SUPIR is a refinement model — we run upscale=2 to boost resolution while
-  // restoring fine detail. Conservative settings to avoid hallucination.
-  const createRes = await fetch("https://api.replicate.com/v1/predictions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-      "Content-Type": "application/json",
-      Prefer: "wait",
-    },
-    body: JSON.stringify({
-      version: SUPIR_VERSION,
-      input: {
-        image: imageUrl,
-        upscale: 2,
-        a_prompt:
-          "cinematic, hyper detailed, highest quality, masterpiece, intricate detail, clean edges",
-        n_prompt:
-          "blurry, deformed, disfigured, low quality, jpeg artifacts, watermark, text",
-        edm_steps: 30,
-        s_stage1: -1,
-        s_stage2: 1,
-        s_cfg: 7.5,
-        s_churn: 5,
-        s_noise: 1.003,
-        color_fix_type: "Wavelet",
-        linear_CFG: true,
-        linear_s_stage2: false,
-        spt_linear_CFG: 4,
-        spt_linear_s_stage2: 0,
-      },
-    }),
-  });
-  if (!createRes.ok) {
-    const text = await createRes.text();
-    console.error("[supir] create failed:", createRes.status, text);
-    return { ok: false, error: `SUPIR: ${createRes.status} ${text.slice(0, 200)}` };
-  }
-  let prediction = await createRes.json();
-  if (prediction.status === "succeeded" && prediction.output) {
-    const out = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-    return { ok: true, url: out };
-  }
-  if (prediction.status === "failed") {
-    const errMsg = typeof prediction.error === "string" ? prediction.error : "SUPIR refused the input.";
-    return { ok: false, error: errMsg };
-  }
-  const polled = await pollReplicate(prediction.id, apiToken, 150, 2000);
-  if (!polled || !polled.ok) {
-    return { ok: false, error: (polled && !polled.ok) ? polled.error : "SUPIR failed." };
-  }
-  const out = Array.isArray(polled.prediction.output)
-    ? polled.prediction.output[0]
-    : polled.prediction.output ?? null;
-  if (!out) return { ok: false, error: "SUPIR returned no image." };
-  return { ok: true, url: out };
-}
+// runSUPIR removed in 2025-Q4 — see file header.
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -278,10 +218,17 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const method: Method = (body.method === "supir" ? "supir" : "realesrgan");
-    const scale: number = method === "supir"
-      ? 2
-      : Math.max(2, Math.min(8, Number(body.scale ?? 4)));
+    if (body.method && body.method !== "realesrgan") {
+      return new Response(
+        JSON.stringify({
+          error:
+            `Method "${body.method}" is no longer supported. Use "realesrgan" (or the dynamic print_target_300 route).`,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const method: Method = "realesrgan";
+    const scale: number = Math.max(2, Math.min(8, Number(body.scale ?? 4)));
 
     let imageUrl: string | null = typeof body.image_url === "string"
       ? body.image_url
@@ -301,9 +248,7 @@ Deno.serve(async (req) => {
     }
 
     const t0 = Date.now();
-    const result = method === "supir"
-      ? await runSUPIR(imageUrl, apiToken)
-      : await runRealESRGAN(imageUrl, scale, apiToken);
+    const result = await runRealESRGAN(imageUrl, scale, apiToken);
     console.log(`[enhance] method=${method} elapsed=${Date.now() - t0}ms`);
 
     if (!result.ok) {
@@ -336,7 +281,7 @@ Deno.serve(async (req) => {
     }
 
     const dims = await fetchImageDimensions(hosted.publicUrl);
-    const provider = method === "supir" ? "replicate/supir" : "replicate/real-esrgan";
+    const provider = "replicate/real-esrgan";
 
     return new Response(
       JSON.stringify({

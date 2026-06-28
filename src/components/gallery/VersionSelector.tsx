@@ -65,8 +65,9 @@ interface VersionSelectorProps {
 }
 
 // Modes we currently allow from the version selector. Real-ESRGAN is the
-// safest default everywhere; tile_4x is the next step up for print.
-const SELECTOR_MODES: UpscaleMode[] = ["realesrgan_4x", "tile_4x"];
+// safest default everywhere. Print+ / SUPIR was removed in 2025-Q4; the
+// version selector now only exposes the direct Real-ESRGAN route.
+const SELECTOR_MODES: UpscaleMode[] = ["realesrgan_4x"];
 
 export default function VersionSelector({
   image,
@@ -117,8 +118,8 @@ export default function VersionSelector({
   }, [selected, onSelectedAssetChange]);
 
   const scaleFactor = UPSCALE_MODES[mode]?.scaleFactor ?? 4;
-  const replicateMethod: "realesrgan" | "supir" =
-    mode === "realesrgan_4x" ? "realesrgan" : "supir";
+  // Only Real-ESRGAN is wired through the direct Replicate route now.
+  const replicateMethod: "realesrgan" = "realesrgan";
   const estimate = useMemo(
     () =>
       selected

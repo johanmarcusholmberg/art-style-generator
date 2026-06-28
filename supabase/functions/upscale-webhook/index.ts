@@ -300,193 +300,17 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Pipeline metadata stored on the job (e.g. provider, scale, supir flags)
+      // Pipeline metadata stored on the job (e.g. provider, scale)
       const pipeline = (job.pipeline as Record<string, unknown>) || {};
       const provider = (pipeline.provider as string) || "replicate";
       const scale = (pipeline.scale as number) || 4;
 
-      // For print_plus we may want to chain SUPIR after ESRGAN. The job row's
-      // `pipeline.next` field tells us what to do after this stage.
-      const next = pipeline.next as string | undefined;
+      // SUPIR / print_plus stage-2 chaining was removed in 2025-Q4. If we
+      // ever encounter a legacy `pipeline.next === "supir_refine"` from a
+      // job created before the migration, we no-op the chain and treat the
+      // ESRGAN result as the final output (graceful read-only fallback).
       const upload = await uploadEnhancedFromUrl(outputUrl);
 
-      if (next === "supir_refine" && upload) {
-        // Stage 1 of print_plus done (ESRGAN). Now create stage 2 (SUPIR).
-        const replicateToken = Deno.env.get("REPLICATE_API_TOKEN");
-        if (!replicateToken) {
-          await supabase
-            .from("upscale_jobs")
-            .update({
-              status: "failed",
-              error_message: "REPLICATE_API_TOKEN not configured for SUPIR stage",
-              finished_at: new Date().toISOString(),
-            })
-            .eq("id", jobToken);
-          return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders });
-        }
-
-        // Webhook URL for stage 2 reuses the same job id.
-        const webhookUrl =
-          `${SUPABASE_URL}/functions/v1/upscale-webhook?token=${jobToken}`;
-
-        try {
-          const supirRes = await fetch("https://api.replicate.com/v1/predictions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${replicateToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              version: "2267e729dcfa0b7f5e6b5e7e5d7e4d5b3c2a1d0e9f8a7b6c5d4e3f2a1b0c9d8e",
-              input: {
-                image: upload.publicUrl,
-                upscale: 1,
-                a_prompt:
-                  "cinematic, hyper detailed, highest quality, masterpiece, intricate detail, clean edges",
-                n_prompt:
-                  "painting, oil painting, illustration, drawing, art, sketch, anime, cartoon, cgi, render, 3d, blurry, deformed, disfigured, low quality, jpeg artifacts",
-                edm_steps: 30,
-                s_stage1: -1,
-                s_stage2: 1,
-                s_cfg: 7.5,
-                s_churn: 5,
-                s_noise: 1.003,
-                color_fix_type: "Wavelet",
-                linear_CFG: true,
-                linear_s_stage2: false,
-                spt_linear_CFG: 4,
-                spt_linear_s_stage2: 0,
-              },
-              webhook: webhookUrl,
-              webhook_events_filter: ["completed"],
-            }),
-          });
-
-          if (!supirRes.ok) {
-            const txt = await supirRes.text();
-            console.error("[webhook] SUPIR stage create failed:", supirRes.status, txt);
-            // Fallback: keep the ESRGAN result as the final output.
-            await supabase
-              .from("upscale_jobs")
-              .update({
-                status: "succeeded",
-                output_url: upload.publicUrl,
-                pipeline: {
-                  ...pipeline,
-                  next: undefined,
-                  esrganIntermediateUrl: upload.publicUrl,
-                  supirAttempted: true,
-                  supirSucceeded: false,
-                  refineFailed: true,
-                },
-                finished_at: new Date().toISOString(),
-              })
-              .eq("id", jobToken);
-
-            // Persist ESRGAN result on the gallery image
-            if (job.image_id) {
-              const persisted = await persistEnhancedAsset(
-                job.image_id,
-                upload.filename,
-                provider,
-                scale,
-                job.mode,
-                { width: upload.width, height: upload.height },
-              );
-              const newReadiness = classifyReadiness(upload.width, upload.height);
-              await recordUpscaleCostEvent({
-                imageId: job.image_id,
-                jobId: jobToken,
-                mode: job.mode,
-                provider,
-                status: "succeeded",
-                estimatedCost: estimateUpscaleCost(job.mode),
-                metadata: {
-                  label: job.mode,
-                  scale,
-                  completed_at: new Date().toISOString(),
-                  refine_failed: true,
-                  previous_dimensions: persisted.prevDims.width
-                    ? persisted.prevDims
-                    : null,
-                  new_dimensions:
-                    upload.width && upload.height
-                      ? { width: upload.width, height: upload.height }
-                      : null,
-                  previous_print_readiness: persisted.prevReadiness,
-                  new_print_readiness: newReadiness.level,
-                  effective_ppi: newReadiness.ppi,
-                },
-              });
-            }
-            return new Response(JSON.stringify({ ok: true, fallback: true }), { status: 200, headers: corsHeaders });
-          }
-
-          const supirJson = await supirRes.json();
-          await supabase
-            .from("upscale_jobs")
-            .update({
-              status: "processing",
-              replicate_prediction_id: supirJson.id,
-              pipeline: {
-                ...pipeline,
-                next: undefined, // stage 2 is the final step
-                esrganIntermediateUrl: upload.publicUrl,
-                supirAttempted: true,
-              },
-            })
-            .eq("id", jobToken);
-          return new Response(JSON.stringify({ ok: true, stage: "supir_started" }), { status: 200, headers: corsHeaders });
-        } catch (err) {
-          console.error("[webhook] SUPIR stage error:", err);
-          // Fallback: keep ESRGAN result.
-          await supabase
-            .from("upscale_jobs")
-            .update({
-              status: "succeeded",
-              output_url: upload.publicUrl,
-              pipeline: { ...pipeline, refineFailed: true },
-              finished_at: new Date().toISOString(),
-            })
-            .eq("id", jobToken);
-          if (job.image_id) {
-            const persisted = await persistEnhancedAsset(
-              job.image_id,
-              upload.filename,
-              provider,
-              scale,
-              job.mode,
-              { width: upload.width, height: upload.height },
-            );
-            const newReadiness = classifyReadiness(upload.width, upload.height);
-            await recordUpscaleCostEvent({
-              imageId: job.image_id,
-              jobId: jobToken,
-              mode: job.mode,
-              provider,
-              status: "succeeded",
-              estimatedCost: estimateUpscaleCost(job.mode),
-              metadata: {
-                label: job.mode,
-                scale,
-                completed_at: new Date().toISOString(),
-                refine_failed: true,
-                previous_dimensions: persisted.prevDims.width
-                  ? persisted.prevDims
-                  : null,
-                new_dimensions:
-                  upload.width && upload.height
-                    ? { width: upload.width, height: upload.height }
-                    : null,
-                previous_print_readiness: persisted.prevReadiness,
-                new_print_readiness: newReadiness.level,
-                effective_ppi: newReadiness.ppi,
-              },
-            });
-          }
-          return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders });
-        }
-      }
 
       // Final stage (or single-stage modes): persist as enhanced asset.
       if (!upload) {
@@ -529,7 +353,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      const supirSucceeded = pipeline.supirAttempted === true; // we only set this when SUPIR ran; if it ran and we got here, it succeeded
       await supabase
         .from("upscale_jobs")
         .update({
@@ -537,7 +360,6 @@ Deno.serve(async (req) => {
           output_url: upload.publicUrl,
           pipeline: {
             ...pipeline,
-            supirSucceeded: supirSucceeded || undefined,
             finalAsset: upload.filename,
           },
           finished_at: new Date().toISOString(),
@@ -557,7 +379,6 @@ Deno.serve(async (req) => {
             label: job.mode,
             scale,
             completed_at: new Date().toISOString(),
-            supir_succeeded: supirSucceeded || undefined,
             previous_dimensions:
               persisted && persisted.prevDims.width
                 ? persisted.prevDims

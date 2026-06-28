@@ -30,7 +30,6 @@ import {
 const DIRECT_REPLICATE_METHOD: Partial<Record<UpscaleMode, ReplicateUpscaleMethod>> = {
   realesrgan_4x: "realesrgan",
   print_target_300: "realesrgan", // dynamic decimal scale — see UpscaleOptions.dynamicScale
-  print_plus: "supir",
 };
 
 // Backwards-compatible re-exports (older callers expect these symbols)
@@ -69,10 +68,11 @@ interface UpscaleOptions {
  * Shared upscale abstraction.
  *
  * Two execution paths:
- *   - SYNC: `none`, `realesrgan_4x` — finishes within the edge fn request.
- *   - ASYNC: `tile_4x`, `tile_8x`, `print_plus` — edge fn returns 202 with a
- *     job id; we subscribe to the `upscale_jobs` row via Realtime and update
- *     the UI when the webhook marks the job succeeded/failed.
+ *   - SYNC: `none`, `realesrgan_4x`, `print_target_300` — finishes within the
+ *     edge fn request via the direct Replicate route.
+ *   - ASYNC: `tile_4x`, `tile_8x` — edge fn returns 202 with a job id; we
+ *     subscribe to the `upscale_jobs` row via Realtime and update the UI
+ *     when the webhook marks the job succeeded/failed.
  */
 export function useUpscale() {
   const [stage, setStage] = useState<UpscaleStage>("idle");
@@ -132,11 +132,9 @@ export function useUpscale() {
         ? ["preparing", "upscaling"]
         : mode === "tile_8x"
           ? ["preparing", "optimizing", "cleanup", "tiling", "upscaling", "stitching"]
-          : mode === "print_plus"
-            ? ["preparing", "cleanup", "upscaling", "refining"]
-            : UPSCALE_MODES[mode].tiled
-              ? ["preparing", "cleanup", "tiling", "upscaling", "stitching"]
-              : ["preparing", "cleanup", "upscaling"];
+          : UPSCALE_MODES[mode].tiled
+            ? ["preparing", "cleanup", "tiling", "upscaling", "stitching"]
+            : ["preparing", "cleanup", "upscaling"];
       let stageIdx = 0;
       stageTimer.current = setInterval(() => {
         stageIdx = Math.min(stageIdx + 1, stages.length - 1);
@@ -145,7 +143,7 @@ export function useUpscale() {
 
       try {
         /* ---------------- DIRECT REPLICATE PATH ---------------- */
-        // For realesrgan_4x and print_plus we bypass the legacy dispatcher
+        // For realesrgan_4x (and the dynamic print_target_300 route) we bypass
         // and call the dedicated direct-Replicate edge function. There is
         // no Lovable fallback on this path — failures bubble up.
         const directMethod = DIRECT_REPLICATE_METHOD[mode];
@@ -243,10 +241,8 @@ export function useUpscale() {
                   };
                   setJobStatus(row.status);
 
-                  // Surface SUPIR mid-flight transitions
-                  if (row.pipeline?.next === undefined && row.pipeline?.supirAttempted && row.status === "processing") {
-                    setStage("refining");
-                  }
+                  // (SUPIR refining stage removed with Print+ in 2025-Q4.)
+
 
                   if (row.status === "succeeded" && row.output_url) {
                     cleanupTimers();
@@ -259,7 +255,7 @@ export function useUpscale() {
                       async: true,
                       jobId: newJobId,
                     };
-                    setStage(row.pipeline?.refineFailed ? "refine_failed" : "done");
+                    setStage("done");
                     asyncResolverRef.current?.(result);
                     asyncResolverRef.current = null;
                     cleanupChannel();
@@ -310,9 +306,7 @@ export function useUpscale() {
           }
         }
 
-        if (data.pipeline?.refineFailed) {
-          setStage("refine_failed");
-        } else if (result.downshifted) {
+        if (result.downshifted) {
           setStage("downshifted");
         } else {
           setStage("done");
@@ -329,7 +323,7 @@ export function useUpscale() {
     [cleanupTimers, cleanupChannel],
   );
 
-  const isRunning = ["preparing", "optimizing", "cleanup", "tiling", "upscaling", "stitching", "refining", "saving"].includes(stage);
+  const isRunning = ["preparing", "optimizing", "cleanup", "tiling", "upscaling", "stitching", "saving"].includes(stage);
   const stageLabel = UPSCALE_STAGE_LABELS[stage];
   const progress = UPSCALE_STAGE_PROGRESS[stage];
 

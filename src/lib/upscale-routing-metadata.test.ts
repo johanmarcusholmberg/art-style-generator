@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildUpscaleRoutingMetadata } from "./upscale-routing-metadata";
 
-const AVAILABLE = ["realesrgan_4x", "tile_4x", "print_plus"] as const;
+const AVAILABLE = ["realesrgan_4x", "tile_4x", "tile_8x"] as const;
 
 describe("buildUpscaleRoutingMetadata", () => {
   it("records recommended-mode metadata for a normal upscale", () => {
@@ -33,12 +33,12 @@ describe("buildUpscaleRoutingMetadata", () => {
         posterFormatId: "print_30x40",
         availableModes: [...AVAILABLE],
       },
-      "print_plus",
+      "tile_8x",
     );
     expect(md.manualOverride).toBe(true);
     expect(md.matchedRecommendation).toBe(false);
     expect(md.recommendedMode).toBe("realesrgan_4x");
-    expect(md.selectedMode).toBe("print_plus");
+    expect(md.selectedMode).toBe("tile_8x");
   });
 
   it("records alreadyUpscaled on a repeat upscale", () => {
@@ -95,7 +95,7 @@ describe("buildUpscaleRoutingMetadata — source trail (Plan #2d)", () => {
         sourceHeight: 7936,
         posterFormatId: "print_30x40",
         alreadyUpscaled: true,
-        availableModes: ["realesrgan_4x", "tile_4x", "tile_8x", "print_plus"],
+        availableModes: ["realesrgan_4x", "tile_4x", "tile_8x"],
       },
       "realesrgan_4x",
       {
@@ -115,7 +115,7 @@ describe("buildUpscaleRoutingMetadata — source trail (Plan #2d)", () => {
         sourceWidth: 1488,
         sourceHeight: 1984,
         posterFormatId: "print_30x40",
-        availableModes: ["realesrgan_4x", "tile_4x", "tile_8x", "print_plus"],
+        availableModes: ["realesrgan_4x", "tile_4x", "tile_8x"],
       },
       "realesrgan_4x",
     );

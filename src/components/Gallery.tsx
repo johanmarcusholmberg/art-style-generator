@@ -1206,7 +1206,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           sourceHeight: routingSourceHeight,
           posterFormatId: img.print_format_id ?? null,
           alreadyUpscaled: sourceWasAlreadyUpscaled,
-          availableModes: ["realesrgan_4x", "tile_4x", "tile_8x", "print_plus"],
+          availableModes: ["realesrgan_4x", "tile_4x", "tile_8x"],
         },
         mode,
         {

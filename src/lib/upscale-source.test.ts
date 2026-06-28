@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveUpscaleSource } from "./upscale-source";
 
-const AVAILABLE = ["realesrgan_4x", "tile_4x", "tile_8x", "print_plus"] as const;
+const AVAILABLE = ["realesrgan_4x", "tile_4x", "tile_8x"] as const;
 
 const ORIGINAL = {
   url: "https://cdn.example/original.png",

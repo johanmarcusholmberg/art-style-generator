@@ -2,14 +2,14 @@
  * Confirmation dialog before running an upscale / enhancement pass.
  *
  * Surfaces three things up-front so cost-control is explicit:
- *   • Method      — Real-ESRGAN / Tiled SDXL / SUPIR
- *   • Output      — expected scale factor (e.g. 4×)
+ *   • Method      — Real-ESRGAN / Tiled SDXL (Clarity)
+ *   • Output      — expected scale factor (e.g. 4×) or dynamic print target
  *   • Cost label  — Low / Medium / High (with monetary tier indicator)
  *
  * Behaviour:
  *   - "Enhance for print" defaults to the cheapest sensible mode (Real-ESRGAN 4×)
- *   - SUPIR ("Print+") is reachable here too, but always behind a clear
- *     "High cost" label and never auto-selected
+ *   - SUPIR / Print+ was retired in 2025-Q4 — the dynamic `print_target_300`
+ *     route replaces it for the 300 PPI use case.
  *   - When an enhanced master already exists, the dialog title shifts to
  *     "Re-enhance" so the user knows they'll be re-spending budget
  *
@@ -75,7 +75,6 @@ const OFFERED_MODES: UpscaleMode[] = [
   "realesrgan_4x",    // default — low cost, fixed 4×
   "tile_4x",          // medium cost, tiled 4×
   "tile_8x",          // high cost, tiled 8×
-  "print_plus",       // high cost — ESRGAN → SUPIR (optional refinement)
 ];
 
 export interface EnhanceForPrintDialogSourceDecision {

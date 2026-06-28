@@ -7,13 +7,19 @@
  * and the user can retry.
  *
  * Methods:
- *   - "realesrgan" — Low cost, fast 4× super-resolution
- *   - "supir"      — High cost, detail-restoration refinement (≈2×)
+ *   - "realesrgan" — Low cost, fast 4× super-resolution. Also serves the
+ *     dynamic `print_target_300` route (decimal scale clamped 2..8 by the
+ *     edge function).
+ *
+ * NOTE: The legacy "supir" method (Print+) was removed in 2025-Q4 because
+ * the dynamic Real-ESRGAN route covers the 300 PPI use case more cheaply.
+ * Historical rows that recorded `provider: "replicate/supir"` are still
+ * read correctly by the admin cost views and the version selector.
  */
 
 import { supabase } from "@/integrations/supabase/client";
 
-export type ReplicateUpscaleMethod = "realesrgan" | "supir";
+export type ReplicateUpscaleMethod = "realesrgan";
 
 export interface ReplicateUpscaleInput {
   imageUrl?: string;
@@ -33,7 +39,7 @@ export interface ReplicateUpscaleResult {
   method: ReplicateUpscaleMethod;
   scale: number;
   /** Provider tag persisted on the gallery row (`enhancement_model` column). */
-  provider: "replicate/real-esrgan" | "replicate/supir";
+  provider: "replicate/real-esrgan";
 }
 
 export async function runReplicateUpscale(
@@ -56,8 +62,6 @@ export async function runReplicateUpscale(
   );
 
   if (error) {
-    // FunctionsHttpError surfaces a generic "non-2xx" message; read the
-    // response body to surface the actual provider error to the user.
     let serverMessage: string | null = null;
     const ctxResponse = (error as any)?.context?.response;
     if (ctxResponse && typeof ctxResponse.json === "function") {
@@ -87,8 +91,7 @@ export async function runReplicateUpscale(
     height: typeof data.height === "number" ? data.height : null,
     method: data.method ?? input.method,
     scale: typeof data.scale === "number" ? data.scale : (input.scale ?? 4),
-    provider: data.provider ?? (input.method === "supir"
-      ? "replicate/supir"
-      : "replicate/real-esrgan"),
+    provider: data.provider ?? "replicate/real-esrgan",
   };
 }
+

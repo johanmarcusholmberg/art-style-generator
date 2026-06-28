@@ -46,7 +46,7 @@ describe("recommendUpscale", () => {
     const r = recommendUpscale(400, 560, fmt5070, 300);
     expect(r.reachesTarget).toBe(false);
     // Strongest by PPI should be tile_8x (even after possible downshift).
-    expect(["tile_8x", "tile_4x", "print_plus", "realesrgan_4x"]).toContain(r.recommended.mode);
+    expect(["tile_8x", "tile_4x", "realesrgan_4x"]).toContain(r.recommended.mode);
   });
 
   it("flags tile_8x downshift when output would exceed cap", () => {
