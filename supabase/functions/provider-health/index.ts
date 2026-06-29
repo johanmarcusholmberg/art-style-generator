@@ -30,8 +30,8 @@ function quickStatus(providerId: "gemini" | "sdxl" | "openai"): HealthRow {
   if (providerId === "openai") {
     const key = Deno.env.get("OPENAI_API_KEY");
     return key
-      ? { providerId, modelId: "gpt-image-1", status: "ready", message: "OPENAI_API_KEY present (direct, no Lovable credits)", testedAt }
-      : { providerId, modelId: "gpt-image-1", status: "missing-key", message: "OPENAI_API_KEY not configured", testedAt };
+      ? { providerId, modelId: "gpt-image-2", status: "ready", message: "OPENAI_API_KEY present (direct, no Lovable credits)", testedAt }
+      : { providerId, modelId: "gpt-image-2", status: "missing-key", message: "OPENAI_API_KEY not configured", testedAt };
   }
   const key = Deno.env.get("REPLICATE_API_TOKEN");
   return key
@@ -52,7 +52,7 @@ async function liveTest(providerId: "gemini" | "sdxl" | "openai"): Promise<Healt
     if (!key) {
       return {
         providerId,
-        modelId: "gpt-image-1",
+        modelId: "gpt-image-2",
         status: "missing-key",
         message: "OPENAI_API_KEY not configured",
         testedAt,
@@ -66,7 +66,7 @@ async function liveTest(providerId: "gemini" | "sdxl" | "openai"): Promise<Healt
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-image-1",
+          model: "gpt-image-2",
           prompt: "a single red apple on a plain white background, minimalist",
           size: "1024x1024",
           n: 1,
@@ -78,7 +78,7 @@ async function liveTest(providerId: "gemini" | "sdxl" | "openai"): Promise<Healt
         const text = await res.text().catch(() => "");
         return {
           providerId,
-          modelId: "gpt-image-1",
+          modelId: "gpt-image-2",
           status: res.status === 401 ? "missing-key" : "connection-failed",
           message: `OpenAI ${res.status}: ${text.slice(0, 160)}`,
           latencyMs,
@@ -92,7 +92,7 @@ async function liveTest(providerId: "gemini" | "sdxl" | "openai"): Promise<Healt
         : item?.url;
       return {
         providerId,
-        modelId: "gpt-image-1",
+        modelId: "gpt-image-2",
         status: "ready",
         message: "Live test succeeded",
         latencyMs,
@@ -102,7 +102,7 @@ async function liveTest(providerId: "gemini" | "sdxl" | "openai"): Promise<Healt
     } catch (err) {
       return {
         providerId,
-        modelId: "gpt-image-1",
+        modelId: "gpt-image-2",
         status: "connection-failed",
         message: err instanceof Error ? err.message : String(err),
         latencyMs: Date.now() - start,

@@ -87,7 +87,7 @@ describe("resolvePrintSize — OpenAI branches by model capability", () => {
   it("gpt-image-1 stays on the three fixed sizes, even at print intent", () => {
     const r = resolvePrintSize({
       provider: "openai",
-      modelId: "openai:gpt-image-1",
+      modelId: "openai:gpt-image-2",
       formatId: "print_50x70",
       intent: "print",
     }) as any;
@@ -97,11 +97,11 @@ describe("resolvePrintSize — OpenAI branches by model capability", () => {
 
   it("a flex-enabled model uses ratio-preserving dimensions", () => {
     // Temporarily flag the OpenAI entry as flexible for this test.
-    overrideModel("openai:gpt-image-1", { supportsFlexibleDimensions: true });
+    overrideModel("openai:gpt-image-2", { supportsFlexibleDimensions: true });
     try {
       const r = resolvePrintSize({
         provider: "openai",
-        modelId: "openai:gpt-image-1",
+        modelId: "openai:gpt-image-2",
         formatId: "print_50x70",
         intent: "print",
       }) as any;
@@ -113,7 +113,7 @@ describe("resolvePrintSize — OpenAI branches by model capability", () => {
       const target = 5 / 7;
       expect(Math.abs(ratio - target) / target).toBeLessThan(0.005);
     } finally {
-      overrideModel("openai:gpt-image-1", { supportsFlexibleDimensions: false });
+      overrideModel("openai:gpt-image-2", { supportsFlexibleDimensions: false });
     }
   });
 });
@@ -156,11 +156,11 @@ describe("supportsDeterministicSeedReplay", () => {
   });
 
   it("returns true once a model opts in", () => {
-    overrideModel("openai:gpt-image-1", { supportsDeterministicSeedReplay: true });
+    overrideModel("openai:gpt-image-2", { supportsDeterministicSeedReplay: true });
     try {
-      expect(supportsDeterministicSeedReplay("openai:gpt-image-1")).toBe(true);
+      expect(supportsDeterministicSeedReplay("openai:gpt-image-2")).toBe(true);
     } finally {
-      overrideModel("openai:gpt-image-1", { supportsDeterministicSeedReplay: false });
+      overrideModel("openai:gpt-image-2", { supportsDeterministicSeedReplay: false });
     }
   });
 
@@ -202,7 +202,7 @@ describe("resolveAdapterSizingOverrides — sizeIntent wire format", () => {
   it("print intent + fixed-size OpenAI model emits NO requestedSize", () => {
     const o = resolveAdapterSizingOverrides({
       provider: "openai",
-      modelId: "openai:gpt-image-1",
+      modelId: "openai:gpt-image-2",
       formatId: "print_50x70",
       intent: "print",
     }) as any;
@@ -211,18 +211,18 @@ describe("resolveAdapterSizingOverrides — sizeIntent wire format", () => {
   });
 
   it("print intent + flexible OpenAI model emits requestedSize", () => {
-    overrideModel("openai:gpt-image-1", { supportsFlexibleDimensions: true });
+    overrideModel("openai:gpt-image-2", { supportsFlexibleDimensions: true });
     try {
       const o = resolveAdapterSizingOverrides({
         provider: "openai",
-        modelId: "openai:gpt-image-1",
+        modelId: "openai:gpt-image-2",
         formatId: "print_50x70",
         intent: "print",
       }) as any;
       expect(o.requestedSize).toMatch(/^\d+x\d+$/);
       expect(["1024x1024", "1024x1536", "1536x1024"]).not.toContain(o.requestedSize);
     } finally {
-      overrideModel("openai:gpt-image-1", { supportsFlexibleDimensions: false });
+      overrideModel("openai:gpt-image-2", { supportsFlexibleDimensions: false });
     }
   });
 

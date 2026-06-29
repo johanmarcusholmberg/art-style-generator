@@ -157,7 +157,7 @@ describe("useVariantFanOut", () => {
       await act(async () => {
         await result.current.start({
           ...req,
-          modelId: "openai:gpt-image-1",
+          modelId: "openai:gpt-image-2",
         } as never);
       });
 
@@ -177,7 +177,7 @@ describe("useVariantFanOut", () => {
 
     it("re-runs at sizeIntent='print' when the model supports deterministic seed replay", async () => {
       // Opt the model in just for this test.
-      const entry = PROVIDER_MODEL_REGISTRY.find((m) => m.id === "openai:gpt-image-1")!;
+      const entry = PROVIDER_MODEL_REGISTRY.find((m) => m.id === "openai:gpt-image-2")!;
       entry.supportsDeterministicSeedReplay = true;
       try {
         generateImage.mockImplementation((r: any) =>
@@ -196,7 +196,7 @@ describe("useVariantFanOut", () => {
         await act(async () => {
           await result.current.start({
             ...req,
-            modelId: "openai:gpt-image-1",
+            modelId: "openai:gpt-image-2",
           } as never);
         });
 
