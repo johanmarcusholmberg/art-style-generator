@@ -2,7 +2,7 @@
  * Direct OpenAI adapter (adapter 4).
  *
  * Calls a dedicated edge function (`generate-image-direct-openai`) that
- * hits OpenAI's GPT Image API (`gpt-image-1`) without going through the
+ * hits OpenAI's GPT Image API (`gpt-image-2`) without going through the
  * Lovable gateway. The OpenAI API key stays server-side.
  *
  * OpenAI's text encoder handles natural-language prompts well, so this
