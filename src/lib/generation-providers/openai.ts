@@ -45,17 +45,13 @@ export async function generateWithOpenAIAdapter(
     printMode: req.printMode ?? true,
     sizeIntent: overrides?.sizeIntent ?? req.sizeIntent ?? "standard",
   };
-  // Only forward an explicit size for flexible-dim models — the edge fn
-  // will reject non-legal sizes on gpt-image-1.
+  // Forward explicit pixel size for flexible-dim models (gpt-image-2).
   if (overrides?.requestedSize) body.requestedSize = overrides.requestedSize;
 
   if (req.strictness) body.strictness = req.strictness;
   if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
   if (req.posterFormatId) body.posterFormatId = req.posterFormatId;
   if (req.requestedModelId) body.requestedModelId = req.requestedModelId;
-  // The direct OpenAI edge function only supports gpt-image-1 today; we
-  // forward the requested provider model so it can record a mismatch when
-  // a future caller pins something else.
   if (req.providerModelId) body.providerModelId = req.providerModelId;
 
   const { data, error } = await supabase.functions.invoke(
@@ -73,7 +69,7 @@ export async function generateWithOpenAIAdapter(
     width: data.width,
     height: data.height,
     generationProvider: "openai",
-    generationModel: data.model ?? "gpt-image-1",
+    generationModel: data.model ?? "gpt-image-2",
     prompt: req.prompt,
     styleKey: req.styleKey,
     fallbackUsed: false,
@@ -90,8 +86,8 @@ export async function generateWithOpenAIAdapter(
       sizeSource: data.sizeSource,
       requestedModelId: req.requestedModelId ?? null,
       modelFallbackReason:
-        req.providerModelId && req.providerModelId !== (data.model ?? "gpt-image-1")
-          ? `requested ${req.providerModelId} but adapter ran ${data.model ?? "gpt-image-1"}`
+        req.providerModelId && req.providerModelId !== (data.model ?? "gpt-image-2")
+          ? `requested ${req.providerModelId} but adapter ran ${data.model ?? "gpt-image-2"}`
           : null,
     },
   };
