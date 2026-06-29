@@ -214,7 +214,7 @@ describe("resolveAdapterSizingOverrides — sizeIntent wire format", () => {
     expect(o.aspectRatioPreserved).toBe(true);
   });
 
-  it("print intent + fixed-size OpenAI model emits NO requestedSize", () => {
+  it("print intent + gpt-image-2 (flexible) emits exact requestedSize for 50x70", () => {
     const o = resolveAdapterSizingOverrides({
       provider: "openai",
       modelId: "openai:gpt-image-2",
@@ -222,11 +222,12 @@ describe("resolveAdapterSizingOverrides — sizeIntent wire format", () => {
       intent: "print",
     }) as any;
     expect(o.sizeIntent).toBe("print");
-    expect(o.requestedSize).toBeUndefined();
+    expect(o.requestedSize).toBe("1600x2240");
+    expect(["1024x1024", "1024x1536", "1536x1024"]).not.toContain(o.requestedSize);
   });
 
-  it("print intent + flexible OpenAI model emits requestedSize", () => {
-    overrideModel("openai:gpt-image-2", { supportsFlexibleDimensions: true });
+  it("print intent + non-flex OpenAI model emits NO requestedSize (legacy fixed-size branch)", () => {
+    overrideModel("openai:gpt-image-2", { supportsFlexibleDimensions: false });
     try {
       const o = resolveAdapterSizingOverrides({
         provider: "openai",
@@ -234,10 +235,10 @@ describe("resolveAdapterSizingOverrides — sizeIntent wire format", () => {
         formatId: "print_50x70",
         intent: "print",
       }) as any;
-      expect(o.requestedSize).toMatch(/^\d+x\d+$/);
-      expect(["1024x1024", "1024x1536", "1536x1024"]).not.toContain(o.requestedSize);
+      expect(o.sizeIntent).toBe("print");
+      expect(o.requestedSize).toBeUndefined();
     } finally {
-      overrideModel("openai:gpt-image-2", { supportsFlexibleDimensions: false });
+      overrideModel("openai:gpt-image-2", { supportsFlexibleDimensions: true });
     }
   });
 
