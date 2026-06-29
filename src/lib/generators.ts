@@ -61,17 +61,17 @@ export const GENERATOR_PROVIDERS: Record<ResolvedProviderId, GeneratorProvider> 
   },
   openai: {
     providerId: "openai",
-    modelId: "gpt-image-1",
+    modelId: "gpt-image-2",
     displayName: "OpenAI",
     shortLabel: "OpenAI",
     enabled: true,
     qualityTier: "premium",
     speedTier: "medium",
-    intendedUse: "Premium prompt-adherence — strong for posters, travel prints, complex compositions",
+    intendedUse: "Premium prompt-adherence with exact poster pixel sizes — strong for posters, travel prints, complex compositions",
     supportsTextToImage: true,
-    supportsImageToImage: false, // gpt-image-1 edits handled separately; not wired in this phase
+    supportsImageToImage: false, // gpt-image-2 edits handled separately; not wired in this phase
     fallbackPriority: 3,
-    description: "OpenAI gpt-image-1 — direct API call (does not use Lovable credits). Best for posters and prompt-faithful compositions.",
+    description: "OpenAI gpt-image-2 — direct API call (does not use Lovable credits). Exact poster pixel sizes per format.",
   },
 };
 
