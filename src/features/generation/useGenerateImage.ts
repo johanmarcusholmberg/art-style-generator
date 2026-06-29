@@ -47,18 +47,30 @@ export function useGenerateImage(styleKey: string): UseGenerateImageResult {
         });
 
         // Post-generation guard: providers (notably Gemini) often drift
-        // off the requested poster ratio. Pad the master to the exact
-        // poster ratio BEFORE we expose it as `imageUrl` so every
-        // downstream flow (gallery save, upscale, PPI checks, export)
-        // works on a correctly shaped asset.
+        // off the requested poster ratio. Normalize the master BEFORE we
+        // expose it as `imageUrl`. For OpenAI gpt-image-2 we ask for
+        // exact pixel dims, so any drift is small — crop instead of
+        // padding to avoid white borders. Other providers stay on pad.
         let finalUrl = res.imageUrl;
+        const correctionMode =
+          res.generationProvider === "openai" ? ("crop" as const) : ("pad" as const);
         if (isPrint && input.printFormatId) {
           try {
             const enforced = await enforcePosterRatio({
               imageUrl: res.imageUrl,
               formatId: input.printFormatId,
+              mode: correctionMode,
             });
-            if (enforced) finalUrl = enforced.url;
+            if (enforced) {
+              finalUrl = enforced.url;
+              if (enforced.corrected) {
+                console.log(
+                  `[useGenerateImage] ratio-corrected provider=${res.generationProvider} ` +
+                    `mode=${correctionMode} ${enforced.plan.sourceWidth}x${enforced.plan.sourceHeight}` +
+                    ` → ${enforced.width}x${enforced.height}`,
+                );
+              }
+            }
           } catch (e) {
             console.warn("[useGenerateImage] poster ratio enforcement failed", e);
           }

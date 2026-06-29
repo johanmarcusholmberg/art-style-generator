@@ -215,13 +215,15 @@ export function sdxlSizeForFormat(
   };
 }
 
-// ── OpenAI gpt-image-1 ──────────────────────────────────────────────────
+// ── OpenAI gpt-image-1 (legacy fixed sizes) ─────────────────────────────
 
 export type OpenAISize = "1024x1024" | "1024x1536" | "1536x1024";
 
 /**
- * Pick the closest gpt-image-1 supported size for the given poster format
- * (or aspect-ratio token fallback).
+ * Pick the closest gpt-image-1 supported size for the given poster format.
+ * Legacy: only used for the fixed-size gpt-image-1 model. gpt-image-2
+ * MUST go through `openaiGptImage2SizeForFormat` so we never accidentally
+ * use 1024×1536 or another near-ratio fallback.
  */
 export function openaiSizeForFormat(
   posterFormatId?: string,
@@ -253,6 +255,83 @@ export function openaiSizeForFormat(
   if (ratio > 1.05) return { size: "1536x1024", width: 1536, height: 1024, source, exact: false };
   if (ratio < 0.95) return { size: "1024x1536", width: 1024, height: 1536, source, exact: false };
   return { size: "1024x1024", width: 1024, height: 1024, source, exact: false };
+}
+
+// ── OpenAI gpt-image-2 (exact pixel sizes per poster format) ────────────
+//
+// Mirror of `src/lib/openai-gpt-image-2-sizes.ts`. Keep in sync.
+// No near-ratio fallback; no fixed 1024×1536 / 1024×1024. The selected
+// format directly determines the requested W×H.
+
+export type OpenAIOrientation = "portrait" | "landscape";
+
+const GPT_IMAGE_2_PORTRAIT_SIZES: Record<string, { width: number; height: number }> = {
+  print_50x70: { width: 1600, height: 2240 }, // 5:7
+  print_a4: { width: 1120, height: 1584 },    // ISO-A
+  print_a3: { width: 1584, height: 2240 },    // ISO-A
+  print_a2: { width: 2240, height: 3168 },    // ISO-A
+};
+
+/**
+ * Resolve the exact gpt-image-2 W×H for a poster format. Returns null when
+ * the format has no exact mapping (caller may compute a ratio-preserving
+ * size as a secondary path — never a legacy 1024×x fallback).
+ */
+export function openaiGptImage2SizeForFormat(
+  posterFormatId?: string,
+  orientation?: OpenAIOrientation,
+): {
+  size: string;
+  width: number;
+  height: number;
+  orientation: OpenAIOrientation;
+  source: "exact-map" | "ratio-computed" | "default";
+  exact: boolean;
+} | null {
+  if (!posterFormatId) return null;
+  const base = GPT_IMAGE_2_PORTRAIT_SIZES[posterFormatId];
+  if (base) {
+    const fmt = getPrintFormat(posterFormatId);
+    const inferred: OpenAIOrientation =
+      orientation ?? (fmt && fmt.aspectRatioDecimal > 1 ? "landscape" : "portrait");
+    const w = inferred === "landscape" ? base.height : base.width;
+    const h = inferred === "landscape" ? base.width : base.height;
+    return {
+      size: `${w}x${h}`,
+      width: w,
+      height: h,
+      orientation: inferred,
+      source: "exact-map",
+      exact: true,
+    };
+  }
+
+  // Secondary path for unmapped formats (e.g. print_50x50, print_30x40).
+  // Compute a ratio-preserving size at long edge 2240 (multiple of 16).
+  const fmt = getPrintFormat(posterFormatId);
+  if (!fmt) return null;
+  const ratio = fmt.aspectRatioDecimal;
+  const LONG = 2240;
+  const MULT = 16;
+  const snapMult = (n: number) => Math.max(MULT, Math.round(n / MULT) * MULT);
+  let w: number, h: number;
+  if (ratio >= 1) {
+    w = LONG;
+    h = snapMult(LONG / ratio);
+  } else {
+    h = LONG;
+    w = snapMult(LONG * ratio);
+  }
+  const got = w / h;
+  const exact = Math.abs(got - ratio) / ratio <= ASPECT_TOLERANCE;
+  return {
+    size: `${w}x${h}`,
+    width: w,
+    height: h,
+    orientation: ratio > 1 ? "landscape" : "portrait",
+    source: "ratio-computed",
+    exact,
+  };
 }
 
 // ── Gemini ──────────────────────────────────────────────────────────────

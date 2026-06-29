@@ -30,15 +30,18 @@ export const POSTER_RATIO_TOLERANCE = 0.005;
 
 export interface PosterRatioPlan {
   /** "none" when the source already matches within tolerance. */
-  method: "none" | "pad";
+  method: "none" | "pad" | "crop";
   sourceWidth: number;
   sourceHeight: number;
   /** Final canvas dimensions after the plan is applied. */
   outputWidth: number;
   outputHeight: number;
-  /** Padding offsets (top/left). When method is "none" both are 0. */
+  /** Padding offsets (top/left). When method != "pad" both are 0. */
   padLeft: number;
   padTop: number;
+  /** Crop offsets (top/left). When method != "crop" both are 0. */
+  cropLeft: number;
+  cropTop: number;
   /** Target ratio (width / height) requested by the poster format. */
   targetRatio: number;
   /** Source ratio prior to correction. */
@@ -47,16 +50,20 @@ export interface PosterRatioPlan {
   ratioError: number;
 }
 
+export type RatioCorrectionMode = "pad" | "crop";
+
 /**
- * Decide how to pad an image so its aspect ratio matches the poster
- * format's target. Returns method="none" if the source is already
- * within tolerance. Padding is always added evenly on the short axis
- * — no stretching, no cropping.
+ * Decide how to correct an image so its aspect ratio matches the poster
+ * format's target. Default mode is "pad" (preserves the entire image, adds
+ * neutral background to the short axis). Mode "crop" centre-crops the
+ * long axis to reach the exact ratio — used when the provider was asked
+ * for exact pixel dims and any drift is small + safe to trim.
  */
 export function planPosterRatioCorrection(
   sourceWidth: number,
   sourceHeight: number,
   formatId: string,
+  mode: RatioCorrectionMode = "pad",
 ): PosterRatioPlan | null {
   const fmt = getPrintFormat(formatId);
   if (!fmt) return null;
@@ -75,6 +82,38 @@ export function planPosterRatioCorrection(
       outputHeight: sourceHeight,
       padLeft: 0,
       padTop: 0,
+      cropLeft: 0,
+      cropTop: 0,
+      targetRatio: target,
+      sourceRatio: source,
+      ratioError,
+    };
+  }
+
+  if (mode === "crop") {
+    let outputWidth: number;
+    let outputHeight: number;
+    if (source > target) {
+      // Image is wider than target → crop horizontally to match.
+      outputHeight = sourceHeight;
+      outputWidth = Math.round(sourceHeight * target);
+    } else {
+      // Image is taller than target → crop vertically to match.
+      outputWidth = sourceWidth;
+      outputHeight = Math.round(sourceWidth / target);
+    }
+    const cropLeft = Math.round((sourceWidth - outputWidth) / 2);
+    const cropTop = Math.round((sourceHeight - outputHeight) / 2);
+    return {
+      method: "crop",
+      sourceWidth,
+      sourceHeight,
+      outputWidth,
+      outputHeight,
+      padLeft: 0,
+      padTop: 0,
+      cropLeft,
+      cropTop,
       targetRatio: target,
       sourceRatio: source,
       ratioError,
@@ -103,6 +142,8 @@ export function planPosterRatioCorrection(
     outputHeight,
     padLeft,
     padTop,
+    cropLeft: 0,
+    cropTop: 0,
     targetRatio: target,
     sourceRatio: source,
     ratioError,
@@ -139,16 +180,18 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob> {
 
 /**
  * Enforce the poster format ratio on a freshly generated image. When the
- * provider returned an off-ratio asset, this pads it to the exact ratio
- * (centred, neutral white background) and uploads the corrected PNG.
- * Returns the original URL untouched when the image already matches
- * within tolerance.
+ * provider returned an off-ratio asset, this corrects it to the exact
+ * ratio (padded by default; cropped when `mode: "crop"` is passed) and
+ * uploads the corrected PNG. Returns the original URL untouched when the
+ * image already matches within tolerance.
  */
 export async function enforcePosterRatio(input: {
   imageUrl: string;
   formatId: string;
-  /** Background color used for padding (defaults to white). */
+  /** Background color used for padding (defaults to white). Ignored when mode="crop". */
   background?: string;
+  /** "pad" (default) preserves the entire image; "crop" trims the long axis. */
+  mode?: RatioCorrectionMode;
 }): Promise<PosterRatioEnforcementResult | null> {
   const fmt = getPrintFormat(input.formatId);
   if (!fmt) return null;
@@ -157,7 +200,8 @@ export async function enforcePosterRatio(input: {
   const sourceWidth = img.naturalWidth || img.width;
   const sourceHeight = img.naturalHeight || img.height;
 
-  const plan = planPosterRatioCorrection(sourceWidth, sourceHeight, input.formatId);
+  const mode: RatioCorrectionMode = input.mode ?? "pad";
+  const plan = planPosterRatioCorrection(sourceWidth, sourceHeight, input.formatId, mode);
   if (!plan) return null;
 
   if (plan.method === "none") {
@@ -176,9 +220,24 @@ export async function enforcePosterRatio(input: {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context unavailable");
 
-  ctx.fillStyle = input.background ?? "#FFFFFF";
-  ctx.fillRect(0, 0, plan.outputWidth, plan.outputHeight);
-  ctx.drawImage(img, plan.padLeft, plan.padTop, sourceWidth, sourceHeight);
+  if (plan.method === "pad") {
+    ctx.fillStyle = input.background ?? "#FFFFFF";
+    ctx.fillRect(0, 0, plan.outputWidth, plan.outputHeight);
+    ctx.drawImage(img, plan.padLeft, plan.padTop, sourceWidth, sourceHeight);
+  } else {
+    // crop: draw the cropped region into a canvas of the target size.
+    ctx.drawImage(
+      img,
+      plan.cropLeft,
+      plan.cropTop,
+      plan.outputWidth,
+      plan.outputHeight,
+      0,
+      0,
+      plan.outputWidth,
+      plan.outputHeight,
+    );
+  }
 
   const blob = await canvasToBlob(canvas, "image/png");
   const filename = `normalized-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;

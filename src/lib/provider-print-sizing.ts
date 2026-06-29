@@ -24,6 +24,7 @@
 import { getPrintFormat, isAspectRatioMatch } from "@/lib/print-formats";
 import { getModelById } from "@/lib/generation-providers/registry";
 import { getProviderSize } from "@/lib/provider-size-map";
+import { gptImage2SizeForFormat } from "@/lib/openai-gpt-image-2-sizes";
 
 export type SizeIntent = "preview" | "standard" | "print";
 
@@ -141,11 +142,27 @@ function resolveOpenAIPrintSize(
   const flexible = !!model?.supportsFlexibleDimensions;
 
   if (flexible) {
-    // Flexible-dimension OpenAI models (e.g. gpt-image-2). The long edge
-    // caps at 2048; dims are emitted as multiples of 8 to allow a tight
-    // aspect-ratio fit across 5:7, 3:4, and ISO-A formats.
-    const LONG = 2048;
-    const MULT = 8;
+    // Flexible-dimension OpenAI models (gpt-image-2). When the poster
+    // format has an exact pixel mapping, use it verbatim — no near-ratio
+    // fallback, no white padding, no legacy fixed sizes.
+    const exact = gptImage2SizeForFormat(formatId);
+    if (exact) {
+      return {
+        provider: "openai",
+        size: `${exact.width}x${exact.height}`,
+        width: exact.width,
+        height: exact.height,
+        exact: true,
+        aspectRatioPreserved: true,
+        intent: "print",
+        flexible: true,
+      };
+    }
+    // Unmapped formats (e.g. print_50x50, print_30x40): compute a
+    // ratio-preserving size capped at the model's long edge. Dimensions
+    // are multiples of 16 to satisfy gpt-image-2.
+    const LONG = Math.min(3168, model?.nativeMaxLongEdge ?? 2048);
+    const MULT = 16;
     let width: number, height: number;
     if (ratio >= 1) {
       width = LONG;

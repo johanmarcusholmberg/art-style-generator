@@ -1,15 +1,12 @@
 /**
- * Direct OpenAI (gpt-image-1) edge function — adapter 4 backend.
+ * Direct OpenAI (gpt-image-2) edge function — adapter 4 backend.
  *
  * Calls OpenAI's Image API directly using OPENAI_API_KEY. Independent of
- * Lovable's gateway and credits. Uses the current GPT Image API path
- * (`/v1/images/generations` with model `gpt-image-1`) — NOT the legacy
- * DALL·E-only `/images/generations?model=dall-e-3` shape.
+ * Lovable's gateway and credits. Uses gpt-image-2 with exact poster-format
+ * pixel sizes (no legacy 1024×1536 / 1024×1024 / auto fallbacks).
  *
  * Reuses the SAME shared `compilePrompt()` used by the Gemini path so
- * style adherence stays consistent across providers — OpenAI's text
- * encoder behaves more like Gemini than SDXL, so the natural-language
- * compiled prompt is the right choice (not the front-loaded SDXL form).
+ * style adherence stays consistent across providers.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -18,7 +15,7 @@ import {
   STYLE_RULES,
   compilePromptForOpenAI,
 } from "../_shared/prompt-compiler.ts";
-import { openaiSizeForFormat } from "../_shared/provider-sizing.ts";
+import { openaiGptImage2SizeForFormat } from "../_shared/provider-sizing.ts";
 
 interface Body {
   prompt?: string;
@@ -33,12 +30,14 @@ interface Body {
   posterFormatHint?: string;
   posterFormatId?: string;
   sizeIntent?: "preview" | "standard" | "print";
-  /** Explicit "WxH" override (flexible-dim models only). */
+  /** Explicit "WxH" override (gpt-image-2 only, multiples of 16). */
   requestedSize?: string;
+  /** Optional explicit portrait/landscape override. */
+  orientation?: "portrait" | "landscape";
 }
 
 
-const OPENAI_MODEL = "gpt-image-1";
+const OPENAI_MODEL = "gpt-image-2";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -59,6 +58,7 @@ serve(async (req) => {
       posterFormatId,
       sizeIntent,
       requestedSize,
+      orientation,
     } = body || {};
 
 
@@ -93,7 +93,7 @@ serve(async (req) => {
     // Use the OpenAI-tuned compiler — same canonical prompt as Gemini, plus
     // a category-aware PROVIDER GUIDANCE tail that locks illustration /
     // non-photorealism for poster, screen-print, and minimal styles where
-    // gpt-image-1 tends to drift toward photographic output.
+    // OpenAI sometimes drifts toward photographic output.
     const compiled = compilePromptForOpenAI(trimmedPrompt, styleKey, {
       aspectRatio,
       backgroundStyle,
@@ -106,25 +106,47 @@ serve(async (req) => {
     });
     const compiledPrompt = compiled.prompt;
 
-    const sized = openaiSizeForFormat(posterFormatId, aspectRatio);
-    let size: string = sized.size;
-    let width = sized.width;
-    let height = sized.height;
-    let sizeSource: string = sized.source;
+    // Exact poster-format pixel size for gpt-image-2. No legacy
+    // 1024×1024 / 1024×1536 fallbacks for mapped formats; no white-border
+    // padding; the selected format directly controls the requested W×H.
+    const exactSized = openaiGptImage2SizeForFormat(
+      posterFormatId,
+      orientation === "portrait" || orientation === "landscape" ? orientation : undefined,
+    );
+    let size: string;
+    let width: number;
+    let height: number;
+    let sizeSource: string;
+    let providerExactMatch: boolean;
+    if (exactSized) {
+      size = exactSized.size;
+      width = exactSized.width;
+      height = exactSized.height;
+      sizeSource = exactSized.source;
+      providerExactMatch = exactSized.exact;
+    } else {
+      // No format selected — fall back to a square 1024×1024 default.
+      size = "1024x1024";
+      width = 1024;
+      height = 1024;
+      sizeSource = "default";
+      providerExactMatch = false;
+    }
     // Honor adapter-provided "WxH" override (capability-gated client-side).
     if (typeof requestedSize === "string" && /^\d{3,4}x\d{3,4}$/.test(requestedSize)) {
       const [w, h] = requestedSize.split("x").map(Number);
-      if (w >= 256 && w <= 2048 && h >= 256 && h <= 2048 && w % 8 === 0 && h % 8 === 0) {
+      if (w >= 256 && w <= 4096 && h >= 256 && h <= 4096 && w % 16 === 0 && h % 16 === 0) {
         size = requestedSize; width = w; height = h; sizeSource = "override";
       }
     }
     const startedAt = Date.now();
 
     console.log(
-      `[direct-openai] style=${styleKey} category=${compiled.category} ` +
-        `prompt_len=${compiledPrompt.length} size=${size} sizeSource=${sizeSource} ` +
-        `sizeIntent=${sizeIntent ?? "standard"} exact=${sized.exact} posterFormatId=${posterFormatId ?? "none"} quality=${quality ?? "high"}`,
+      `[direct-openai] model=${OPENAI_MODEL} style=${styleKey} category=${compiled.category} ` +
+        `prompt_len=${compiledPrompt.length} requestedSize=${size} sizeSource=${sizeSource} ` +
+        `sizeIntent=${sizeIntent ?? "standard"} exact=${providerExactMatch} posterFormatId=${posterFormatId ?? "none"} quality=${quality ?? "high"}`,
     );
+
 
 
     const res = await fetch("https://api.openai.com/v1/images/generations", {
@@ -160,7 +182,7 @@ serve(async (req) => {
 
     const json = await res.json();
     const item = Array.isArray(json?.data) ? json.data[0] : null;
-    // gpt-image-1 returns base64 by default (`b64_json`). We re-emit as a
+    // gpt-image-2 returns base64 by default (`b64_json`). We re-emit as a
     // data URL so the rest of the pipeline (which expects a string URL)
     // can persist it via the existing master-asset upload flow.
     let imageUrl: string | null = null;
@@ -178,7 +200,10 @@ serve(async (req) => {
     }
 
     const elapsedMs = Date.now() - startedAt;
-    console.log(`[direct-openai] ✓ elapsed=${elapsedMs}ms size=${size}`);
+    console.log(
+      `[direct-openai] ✓ model=${OPENAI_MODEL} elapsed=${elapsedMs}ms requestedSize=${size} ` +
+        `posterFormatId=${posterFormatId ?? "none"}`,
+    );
 
     return new Response(
       JSON.stringify({
@@ -193,9 +218,9 @@ serve(async (req) => {
         requestedHeight: height,
         requestedSize: size,
         requestedAspectRatio: aspectRatio ?? null,
-        providerExactMatch: sized.exact,
-        providerAdjusted: !sized.exact,
-        sizeSource: sized.source,
+        providerExactMatch,
+        providerAdjusted: !providerExactMatch,
+        sizeSource,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
