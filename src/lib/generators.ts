@@ -105,7 +105,7 @@ export const GENERATOR_OPTIONS: GeneratorOption[] = [
     id: "openai",
     label: "OpenAI",
     shortLabel: "OpenAI",
-    description: "OpenAI gpt-image-1 — direct call (no Lovable credits). Premium prompt adherence; never silently falls back.",
+    description: "OpenAI gpt-image-2 — direct call (no Lovable credits). Premium prompt adherence with exact poster pixel sizes; never silently falls back.",
   },
 ];
 
