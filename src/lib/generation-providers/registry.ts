@@ -130,7 +130,7 @@ export const PROVIDER_MODEL_REGISTRY: ProviderModelEntry[] = [
     supportedAspectRatios: COMMON_RATIOS,
     nativeMaxLongEdge: 3200,
     supportsTextToImage: true,
-    supportsImageToImage: false,
+    supportsImageToImage: true,
     supportsUpscale: true,
     supportsStrictMode: true,
     supportsNegativePrompt: false,
