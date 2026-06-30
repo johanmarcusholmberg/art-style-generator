@@ -10,8 +10,10 @@
  * the structured style-config / prompt-compiler pipeline as the single
  * source of truth.
  *
- * Like the other "direct_*" adapters, this is text-to-image only in this
- * phase. Image edits are still handled by the Lovable adapter.
+ * Supports both text-to-image and image-to-image (reference upload). For
+ * edits the edge function POSTs to OpenAI's `/v1/images/edits` endpoint
+ * and the user's reference-strength selection is translated into a prompt
+ * directive prepended to the compiled style prompt.
  */
 
 import { supabase } from "@/integrations/supabase/client";
