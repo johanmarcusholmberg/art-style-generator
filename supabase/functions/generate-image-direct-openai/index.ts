@@ -17,6 +17,35 @@ import {
 } from "../_shared/prompt-compiler.ts";
 import { openaiGptImage2SizeForFormat } from "../_shared/provider-sizing.ts";
 
+type ReferenceStrength =
+  | "inspiration"
+  | "balanced"
+  | "strong_reference"
+  | "near_original";
+
+const REFERENCE_STRENGTH_INSTRUCTIONS: Record<ReferenceStrength, string> = {
+  inspiration:
+    "REFERENCE STRENGTH — Inspiration: Use the uploaded image only as loose inspiration. Allow composition, subject details, colors, and layout to change significantly while preserving the broad idea.",
+  balanced:
+    "REFERENCE STRENGTH — Balanced: Preserve the main subject and overall composition of the uploaded image, but clearly adapt it to the selected art style.",
+  strong_reference:
+    "REFERENCE STRENGTH — Strong reference: Preserve composition, subject, proportions, pose, and major visual details of the uploaded image as much as possible while applying the selected art style.",
+  near_original:
+    "REFERENCE STRENGTH — Near original: Treat the uploaded image as the master source. Make minimal structural changes and mainly apply the selected style.",
+};
+
+function normalizeReferenceStrength(v: unknown): ReferenceStrength | undefined {
+  if (
+    v === "inspiration" ||
+    v === "balanced" ||
+    v === "strong_reference" ||
+    v === "near_original"
+  ) {
+    return v;
+  }
+  return undefined;
+}
+
 interface Body {
   prompt?: string;
   styleKey?: string;
@@ -34,10 +63,39 @@ interface Body {
   requestedSize?: string;
   /** Optional explicit portrait/landscape override. */
   orientation?: "portrait" | "landscape";
+  /** Image-to-image: reference image (http(s) or data: URL). */
+  sourceImageUrl?: string;
+  /** True when caller wants the OpenAI image-edits endpoint. */
+  isEdit?: boolean;
+  /** Reference strength selection — see REFERENCE_STRENGTH_INSTRUCTIONS. */
+  referenceStrength?: ReferenceStrength;
 }
 
 
 const OPENAI_MODEL = "gpt-image-2";
+
+async function fetchReferenceImageAsBlob(url: string): Promise<{ blob: Blob; filename: string }> {
+  // Supports both http(s) and data: URLs. The OpenAI images-edits endpoint
+  // accepts PNG / JPEG / WEBP. We pass through the original bytes and let
+  // OpenAI sniff the mime type from the filename.
+  if (url.startsWith("data:")) {
+    const match = /^data:([^;,]+)?(?:;base64)?,(.*)$/s.exec(url);
+    if (!match) throw new Error("Invalid data: URL for reference image");
+    const mime = match[1] || "image/png";
+    const isB64 = url.includes(";base64,");
+    const bytes = isB64
+      ? Uint8Array.from(atob(match[2]), (c) => c.charCodeAt(0))
+      : new TextEncoder().encode(decodeURIComponent(match[2]));
+    const ext = mime.split("/")[1] || "png";
+    return { blob: new Blob([bytes], { type: mime }), filename: `reference.${ext}` };
+  }
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Failed to fetch reference image: HTTP ${r.status}`);
+  const mime = r.headers.get("content-type") || "image/png";
+  const blob = new Blob([await r.arrayBuffer()], { type: mime });
+  const ext = (mime.split("/")[1] || "png").split("+")[0];
+  return { blob, filename: `reference.${ext}` };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
