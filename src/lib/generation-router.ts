@@ -104,14 +104,46 @@ export function resolveAdapterChain(
   pref: GeneratorPreference,
   req: NormalizedGenerationRequest,
 ): ResolvedChain {
-  // Image edits ALWAYS go through the Lovable adapter — only it has a
-  // working image-to-image dispatch today.
+  // Image edits: by default route through the Lovable adapter (only it
+  // historically supports image-to-image). EXCEPTION: when the user
+  // explicitly selected the OpenAI provider or pinned a gpt-image-2-class
+  // model that advertises `supportsImageToImage`, route the edit through
+  // the OpenAI adapter so reference-image edits actually use the chosen
+  // model and respect the reference-strength selection.
   const isEdit = !!req.referenceImageUrl || !!req.isEdit;
   const requestedModelId = req.modelId;
   if (isEdit) {
+    // Pinned model path — does the requested model support i2i via openai?
+    if (requestedModelId) {
+      const entry = getModelById(requestedModelId);
+      if (
+        entry &&
+        entry.enabled &&
+        entry.adapterId === "openai" &&
+        entry.supportsImageToImage
+      ) {
+        const candidate = ADAPTERS.openai;
+        return {
+          chain: [candidate],
+          reason: `edit + pinned openai modelId=${entry.id} → direct OpenAI image-edit`,
+          requestedModelId,
+          resolvedModelId: entry.id,
+          resolvedAdapterId: candidate.id,
+        };
+      }
+    }
+    // Manual OpenAI preference also unlocks the OpenAI image-edit path
+    // (fail loudly — no silent Lovable fallback).
+    if (pref === "openai") {
+      return {
+        chain: [ADAPTERS.openai],
+        reason: "edit + manual openai → direct OpenAI image-edit (no fallback)",
+        requestedModelId,
+      };
+    }
     return {
       chain: [ADAPTERS.lovable],
-      reason: "edit → Lovable adapter (only image-to-image-capable path)",
+      reason: "edit → Lovable adapter (image-to-image-capable path)",
       requestedModelId,
       modelFallbackReason: requestedModelId
         ? "edit forces Lovable adapter; modelId ignored"
