@@ -216,25 +216,53 @@ serve(async (req) => {
     console.log(
       `[direct-openai] model=${OPENAI_MODEL} style=${styleKey} category=${compiled.category} ` +
         `prompt_len=${compiledPrompt.length} requestedSize=${size} sizeSource=${sizeSource} ` +
-        `sizeIntent=${sizeIntent ?? "standard"} exact=${providerExactMatch} posterFormatId=${posterFormatId ?? "none"} quality=${quality ?? "high"}`,
+        `sizeIntent=${sizeIntent ?? "standard"} exact=${providerExactMatch} posterFormatId=${posterFormatId ?? "none"} quality=${quality ?? "high"} ` +
+        `editMode=${editMode} referenceStrength=${editMode ? (refStrength ?? "balanced(default)") : "n/a"}`,
     );
 
-
-
-    const res = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: OPENAI_MODEL,
-        prompt: compiledPrompt,
-        size,
-        n: 1,
-        quality: quality ?? "high",
-      }),
-    });
+    let res: Response;
+    let apiRoute: "generations" | "edits";
+    if (editMode) {
+      apiRoute = "edits";
+      let refImage: { blob: Blob; filename: string };
+      try {
+        refImage = await fetchReferenceImageAsBlob(sourceImageUrl!);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Failed to load reference image";
+        return new Response(
+          JSON.stringify({ error: msg }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      const form = new FormData();
+      form.append("model", OPENAI_MODEL);
+      form.append("prompt", compiledPrompt);
+      form.append("size", size);
+      form.append("n", "1");
+      form.append("quality", quality ?? "high");
+      form.append("image", refImage.blob, refImage.filename);
+      res = await fetch("https://api.openai.com/v1/images/edits", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+        body: form,
+      });
+    } else {
+      apiRoute = "generations";
+      res = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: OPENAI_MODEL,
+          prompt: compiledPrompt,
+          size,
+          n: 1,
+          quality: quality ?? "high",
+        }),
+      });
+    }
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
