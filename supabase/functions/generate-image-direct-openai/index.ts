@@ -117,7 +117,12 @@ serve(async (req) => {
       sizeIntent,
       requestedSize,
       orientation,
+      sourceImageUrl,
+      isEdit,
+      referenceStrength,
     } = body || {};
+    const editMode = !!sourceImageUrl && (isEdit !== false);
+    const refStrength = normalizeReferenceStrength(referenceStrength);
 
 
     if (!prompt || typeof prompt !== "string") {
