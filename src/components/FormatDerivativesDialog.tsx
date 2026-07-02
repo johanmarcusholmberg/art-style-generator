@@ -93,7 +93,7 @@ export default function FormatDerivativesDialog({
       for (const cand of candidates) {
         if (!selected.has(cand.formatId) || !cand.plan) continue;
         if (cand.requiresConfirmation && !acknowledged.has(cand.formatId)) {
-          toast.warning(`${cand.format?.displayName ?? cand.formatId} needs confirmation`);
+          toast.warning(`${cand.format?.label ?? cand.formatId} needs confirmation`);
           continue;
         }
         const result = await executeFormatDerivative({
@@ -108,7 +108,7 @@ export default function FormatDerivativesDialog({
         });
         if (!validation.ok) {
           toast.error(
-            `${cand.format?.displayName ?? cand.formatId}: ${validation.errors.join(", ")}`,
+            `${cand.format?.label ?? cand.formatId}: ${validation.errors.join(", ")}`,
           );
           continue;
         }
@@ -136,7 +136,7 @@ export default function FormatDerivativesDialog({
           a.remove();
         }
         toast.success(
-          `${cand.format?.displayName ?? cand.formatId} ready (${result.width}×${result.height}, ~${validation.achievablePpi} PPI)`,
+          `${cand.format?.label ?? cand.formatId} ready (${result.width}×${result.height}, ~${validation.achievablePpi} PPI)`,
         );
       }
     } catch (err) {
@@ -195,7 +195,7 @@ export default function FormatDerivativesDialog({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-display text-sm">
-                          {c.format?.displayName ?? c.formatId}
+                          {c.format?.label ?? c.formatId}
                         </span>
                         <Badge variant="outline" className="text-[10px]">
                           {plan.outputWidth}×{plan.outputHeight}
