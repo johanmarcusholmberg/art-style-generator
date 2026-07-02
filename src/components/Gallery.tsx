@@ -49,6 +49,7 @@ import AssetMetaBadges from "@/components/AssetMetaBadges";
 import { classifyPrintReadiness } from "@/lib/image-metadata";
 import { enforcePosterRatio } from "@/lib/poster-ratio-enforce";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
+import FormatDerivativesDialog from "@/components/FormatDerivativesDialog";
 
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { useUpscale } from "@/hooks/use-upscale";
