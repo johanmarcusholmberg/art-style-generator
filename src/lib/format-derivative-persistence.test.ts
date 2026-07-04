@@ -227,3 +227,68 @@ describe("persistFormatDerivative — failure paths trigger fallback download", 
     expect(res.fallbackDownload.blob).toBe(blob);
   });
 });
+
+describe("crop_box JSON serialization + insert-payload fidelity", () => {
+  it("crop_box has the exact {x,y,width,height} shape from the plan", () => {
+    const row = buildDerivativeInsertRow({
+      sourceImageId: "src-1",
+      plan,
+      storagePath: "p.png",
+      publicUrl: "https://stub/p.png",
+    });
+    const cb = row.crop_box as Record<string, unknown>;
+    expect(Object.keys(cb).sort()).toEqual(["height", "width", "x", "y"]);
+    expect(typeof cb.x).toBe("number");
+    expect(typeof cb.y).toBe("number");
+    expect(typeof cb.width).toBe("number");
+    expect(typeof cb.height).toBe("number");
+    expect(cb).toEqual(plan.cropBox);
+  });
+
+  it("crop_box survives a JSON round-trip unchanged (jsonb-safe)", () => {
+    const row = buildDerivativeInsertRow({
+      sourceImageId: "src-1",
+      plan,
+      storagePath: "p.png",
+      publicUrl: "https://stub/p.png",
+    });
+    const roundTripped = JSON.parse(JSON.stringify(row.crop_box));
+    expect(roundTripped).toEqual(plan.cropBox);
+    // Guarantee no extra fields sneak in during serialization.
+    expect(Object.keys(roundTripped).sort()).toEqual([
+      "height",
+      "width",
+      "x",
+      "y",
+    ]);
+  });
+
+  it("insert payload receives crop_box byte-for-byte as built (same reference)", async () => {
+    const stub = makeSupabaseStub({ insertRowId: "derived-1" });
+    const res = await persistFormatDerivative(
+      { sourceImageId: "src-1", plan, blob },
+      { supabase: stub.supabase, now: () => 7 },
+    );
+    expect(res.persisted).toBe(true);
+    expect(stub.insertCalls).toHaveLength(1);
+    const sentCropBox = stub.insertCalls[0].row.crop_box;
+    // Deep equality with the plan.
+    expect(sentCropBox).toEqual(plan.cropBox);
+    // And equal to the round-tripped JSON form the DB would store.
+    expect(JSON.parse(JSON.stringify(sentCropBox))).toEqual(plan.cropBox);
+    // And equal to what the success metadata reports.
+    if (res.persisted) expect(res.metadata.cropBox).toEqual(sentCropBox);
+  });
+
+  it("crop_box coordinates match the plan's crop math for 50x70 → A3", () => {
+    // 1600x2240 (5:7) → A3 1584x2240: 8px side-crop, full height.
+    expect(plan.cropBox).toEqual({ x: 8, y: 0, width: 1584, height: 2240 });
+    const row = buildDerivativeInsertRow({
+      sourceImageId: "src-1",
+      plan,
+      storagePath: "p.png",
+      publicUrl: "https://stub/p.png",
+    });
+    expect(row.crop_box).toEqual({ x: 8, y: 0, width: 1584, height: 2240 });
+  });
+});
