@@ -213,6 +213,61 @@ export default function BackendInfo() {
           <Row label="Build" value={import.meta.env.PROD ? "production" : "development"} />
         </section>
 
+        <section className="bg-card border border-border rounded-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold">Live probes</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Direct browser calls to REST, Auth, and Storage using the anon key.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={runAll} disabled={running}>
+              {running ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3 mr-1" />
+              )}
+              Re-run
+            </Button>
+          </div>
+
+          {log.length === 0 ? (
+            <div className="text-xs text-muted-foreground py-6 text-center">No probes yet.</div>
+          ) : (
+            <div className="rounded-md border border-border bg-muted/30 divide-y divide-border max-h-96 overflow-auto">
+              {log.map((e) => (
+                <div key={e.id} className="px-3 py-2 text-xs font-mono flex items-start gap-2">
+                  <span className="text-muted-foreground shrink-0">{e.ts}</span>
+                  <span
+                    className={`shrink-0 w-16 font-semibold ${
+                      e.ok
+                        ? "text-emerald-600"
+                        : e.status === null
+                          ? "text-destructive"
+                          : "text-amber-600"
+                    }`}
+                  >
+                    {e.status ?? "ERR"}
+                  </span>
+                  <span className="shrink-0 w-16 text-muted-foreground">{e.ms}ms</span>
+                  <span className="shrink-0 w-24 truncate">{e.target}</span>
+                  <span className="truncate text-muted-foreground" title={e.detail}>
+                    {e.detail || e.url}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-3 text-[11px] text-muted-foreground leading-relaxed">
+            <strong>ERR / "network: Failed to fetch"</strong> = the request never
+            reached the backend (DNS, CORS, TLS, or the project is offline).{" "}
+            <strong>5xx</strong> = the backend received it but failed internally.{" "}
+            <strong>4xx</strong> = reached the backend and was rejected (usually
+            auth/permissions).
+          </div>
+        </section>
+
         {!refsAgree && (
           <div className="rounded-md border border-destructive/50 bg-destructive/5 p-4 text-sm">
             <div className="flex items-start gap-2">
