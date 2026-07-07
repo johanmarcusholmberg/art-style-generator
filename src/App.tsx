@@ -44,6 +44,7 @@ import PrintCalculator from "./pages/PrintCalculator";
 import ArtNouveau from "./pages/ArtNouveau";
 import MidCenturyModern from "./pages/MidCenturyModern";
 import LooseWatercolor from "./pages/LooseWatercolor";
+import BackendInfo from "./pages/BackendInfo";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
               {/* Public auth routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/backend-info" element={<BackendInfo />} />
 
               {/* Account */}
               <Route path="/account" element={protect(<Account />)} />
