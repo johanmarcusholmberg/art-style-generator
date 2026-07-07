@@ -67,30 +67,44 @@ export default function BackendInfo() {
     ts: string;
     target: string;
     url: string;
+    method: string;
     status: number | null;
+    statusText: string;
     ms: number;
     ok: boolean;
     detail: string;
+    body: string;
+    headers: Record<string, string>;
+    errorName?: string;
+    errorStack?: string;
   };
   const [log, setLog] = useState<ProbeEntry[]>([]);
   const [running, setRunning] = useState(false);
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const idRef = useRef(0);
 
   const append = (entry: Omit<ProbeEntry, "id" | "ts">) => {
     idRef.current += 1;
-    setLog((prev) => [
-      { ...entry, id: idRef.current, ts: new Date().toISOString().slice(11, 23) },
-      ...prev,
-    ].slice(0, 40));
+    const id = idRef.current;
+    setLog((prev) =>
+      [{ ...entry, id, ts: new Date().toISOString().slice(11, 23) }, ...prev].slice(0, 40),
+    );
+    // Auto-expand failing entries so the full error is visible immediately.
+    setExpanded((prev) => ({ ...prev, [id]: !entry.ok }));
   };
 
   const probe = useCallback(
     async (target: string, path: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const full = url ? `${url}${path}` : path;
       if (!url || !key) {
-        append({ target, url: path, status: null, ms: 0, ok: false, detail: "env missing" });
+        append({
+          target, url: full, method, status: null, statusText: "", ms: 0,
+          ok: false, detail: "env missing (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY)",
+          body: "", headers: {},
+        });
         return;
       }
-      const full = `${url}${path}`;
       const started = performance.now();
       try {
         const res = await fetch(full, {
@@ -102,19 +116,34 @@ export default function BackendInfo() {
           },
         });
         const ms = Math.round(performance.now() - started);
-        let detail = res.statusText || "";
-        if (!res.ok) {
-          try {
-            detail = (await res.text()).slice(0, 200);
-          } catch {
-            /* ignore */
-          }
+        let body = "";
+        try {
+          body = await res.text();
+        } catch {
+          /* ignore body read failures */
         }
-        append({ target, url: path, status: res.status, ms, ok: res.ok, detail });
+        const headers: Record<string, string> = {};
+        res.headers.forEach((v, k) => {
+          headers[k] = v;
+        });
+        append({
+          target, url: full, method,
+          status: res.status, statusText: res.statusText, ms, ok: res.ok,
+          detail: res.ok ? (res.statusText || "ok") : (body.slice(0, 400) || res.statusText || "error"),
+          body, headers,
+        });
       } catch (err) {
         const ms = Math.round(performance.now() - started);
         const msg = err instanceof Error ? err.message : String(err);
-        append({ target, url: path, status: null, ms, ok: false, detail: `network: ${msg}` });
+        const name = err instanceof Error ? err.name : "Error";
+        const stack = err instanceof Error ? err.stack ?? "" : "";
+        append({
+          target, url: full, method,
+          status: null, statusText: "", ms, ok: false,
+          detail: `network: ${msg}`,
+          body: "", headers: {},
+          errorName: name, errorStack: stack,
+        });
       }
     },
     [url, key],
@@ -234,30 +263,68 @@ export default function BackendInfo() {
           {log.length === 0 ? (
             <div className="text-xs text-muted-foreground py-6 text-center">No probes yet.</div>
           ) : (
-            <div className="rounded-md border border-border bg-muted/30 divide-y divide-border max-h-96 overflow-auto">
-              {log.map((e) => (
-                <div key={e.id} className="px-3 py-2 text-xs font-mono flex items-start gap-2">
-                  <span className="text-muted-foreground shrink-0">{e.ts}</span>
-                  <span
-                    className={`shrink-0 w-16 font-semibold ${
-                      e.ok
-                        ? "text-emerald-600"
-                        : e.status === null
-                          ? "text-destructive"
-                          : "text-amber-600"
-                    }`}
-                  >
-                    {e.status ?? "ERR"}
-                  </span>
-                  <span className="shrink-0 w-16 text-muted-foreground">{e.ms}ms</span>
-                  <span className="shrink-0 w-24 truncate">{e.target}</span>
-                  <span className="truncate text-muted-foreground" title={e.detail}>
-                    {e.detail || e.url}
-                  </span>
-                </div>
-              ))}
+            <div className="rounded-md border border-border bg-muted/30 divide-y divide-border max-h-[32rem] overflow-auto">
+              {log.map((e) => {
+                const isOpen = !!expanded[e.id];
+                const fullReport =
+                  `${e.ts}  ${e.method} ${e.url}\n` +
+                  `status: ${e.status ?? "ERR"} ${e.statusText}\n` +
+                  `latency: ${e.ms}ms\n` +
+                  (e.errorName ? `error: ${e.errorName}: ${e.detail}\n` : "") +
+                  (e.errorStack ? `stack:\n${e.errorStack}\n` : "") +
+                  (Object.keys(e.headers).length
+                    ? `\nresponse headers:\n${Object.entries(e.headers).map(([k, v]) => `  ${k}: ${v}`).join("\n")}\n`
+                    : "") +
+                  (e.body ? `\nbody:\n${e.body}\n` : "");
+                return (
+                  <div key={e.id} className="text-xs font-mono">
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((p) => ({ ...p, [e.id]: !isOpen }))}
+                      className="w-full text-left px-3 py-2 flex items-start gap-2 hover:bg-muted/50"
+                    >
+                      <span className="text-muted-foreground shrink-0">{e.ts}</span>
+                      <span
+                        className={`shrink-0 w-16 font-semibold ${
+                          e.ok
+                            ? "text-emerald-600"
+                            : e.status === null
+                              ? "text-destructive"
+                              : "text-amber-600"
+                        }`}
+                      >
+                        {e.status ?? "ERR"}
+                      </span>
+                      <span className="shrink-0 w-16 text-muted-foreground">{e.ms}ms</span>
+                      <span className="shrink-0 w-28 truncate">{e.target}</span>
+                      <span className="truncate text-muted-foreground flex-1">
+                        {e.detail || e.url}
+                      </span>
+                      <span className="shrink-0 text-muted-foreground">{isOpen ? "▾" : "▸"}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="px-3 pb-3 space-y-2">
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[11px]"
+                            onClick={() => void navigator.clipboard.writeText(fullReport)}
+                          >
+                            Copy full report
+                          </Button>
+                        </div>
+                        <pre className="whitespace-pre-wrap break-all bg-background border border-border rounded p-3 text-[11px] leading-relaxed max-h-96 overflow-auto">
+{fullReport}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
+
 
           <div className="mt-3 text-[11px] text-muted-foreground leading-relaxed">
             <strong>ERR / "network: Failed to fetch"</strong> = the request never
