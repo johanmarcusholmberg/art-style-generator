@@ -81,29 +81,41 @@ export default function BackendInfo() {
   const [log, setLog] = useState<ProbeEntry[]>([]);
   const [running, setRunning] = useState(false);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const idRef = useRef(0);
+  const runIdRef = useRef(0);
 
-  const append = (entry: Omit<ProbeEntry, "id" | "ts">) => {
+  type RunSummary = {
+    runId: number;
+    ts: string;
+    durationMs: number;
+    total: number;
+    okCount: number;
+    failCount: number;
+    entries: ProbeEntry[];
+  };
+  const [runs, setRuns] = useState<RunSummary[]>([]);
+  const [expandedRuns, setExpandedRuns] = useState<Record<number, boolean>>({});
+
+  const append = (entry: Omit<ProbeEntry, "id" | "ts">): ProbeEntry => {
     idRef.current += 1;
     const id = idRef.current;
-    setLog((prev) =>
-      [{ ...entry, id, ts: new Date().toISOString().slice(11, 23) }, ...prev].slice(0, 40),
-    );
-    // Auto-expand failing entries so the full error is visible immediately.
+    const full: ProbeEntry = { ...entry, id, ts: new Date().toISOString().slice(11, 23) };
+    setLog((prev) => [full, ...prev].slice(0, 40));
     setExpanded((prev) => ({ ...prev, [id]: !entry.ok }));
+    return full;
   };
 
   const probe = useCallback(
-    async (target: string, path: string, init?: RequestInit) => {
+    async (target: string, path: string, init?: RequestInit): Promise<ProbeEntry> => {
       const method = init?.method ?? "GET";
       const full = url ? `${url}${path}` : path;
       if (!url || !key) {
-        append({
+        return append({
           target, url: full, method, status: null, statusText: "", ms: 0,
           ok: false, detail: "env missing (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY)",
           body: "", headers: {},
         });
-        return;
       }
       const started = performance.now();
       try {
@@ -126,7 +138,7 @@ export default function BackendInfo() {
         res.headers.forEach((v, k) => {
           headers[k] = v;
         });
-        append({
+        return append({
           target, url: full, method,
           status: res.status, statusText: res.statusText, ms, ok: res.ok,
           detail: res.ok ? (res.statusText || "ok") : (body.slice(0, 400) || res.statusText || "error"),
@@ -137,7 +149,7 @@ export default function BackendInfo() {
         const msg = err instanceof Error ? err.message : String(err);
         const name = err instanceof Error ? err.name : "Error";
         const stack = err instanceof Error ? err.stack ?? "" : "";
-        append({
+        return append({
           target, url: full, method,
           status: null, statusText: "", ms, ok: false,
           detail: `network: ${msg}`,
@@ -151,15 +163,41 @@ export default function BackendInfo() {
 
   const runAll = useCallback(async () => {
     setRunning(true);
-    await probe("REST root", "/rest/v1/");
-    await probe("Auth settings", "/auth/v1/settings");
-    await probe("Storage health", "/storage/v1/bucket", { method: "GET" });
+    const runStarted = performance.now();
+    const entries: ProbeEntry[] = [];
+    entries.push(await probe("REST root", "/rest/v1/"));
+    entries.push(await probe("Auth settings", "/auth/v1/settings"));
+    entries.push(await probe("Storage health", "/storage/v1/bucket", { method: "GET" }));
+    const durationMs = Math.round(performance.now() - runStarted);
+    runIdRef.current += 1;
+    const summary: RunSummary = {
+      runId: runIdRef.current,
+      ts: new Date().toISOString().slice(11, 23),
+      durationMs,
+      total: entries.length,
+      okCount: entries.filter((e) => e.ok).length,
+      failCount: entries.filter((e) => !e.ok).length,
+      entries,
+    };
+    setRuns((prev) => [summary, ...prev].slice(0, 20));
     setRunning(false);
   }, [probe]);
 
   useEffect(() => {
     void runAll();
   }, [runAll]);
+
+  // Automatic re-probe every 30s while enabled and tab is visible.
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void runAll();
+      }
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [autoRefresh, runAll]);
+
 
   return (
     <div className="min-h-screen bg-background paper-texture">
@@ -243,22 +281,35 @@ export default function BackendInfo() {
         </section>
 
         <section className="bg-card border border-border rounded-md p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
             <div>
               <h2 className="text-sm font-semibold">Live probes</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Direct browser calls to REST, Auth, and Storage using the anon key.
+                {autoRefresh ? " Auto re-probes every 30s while this tab is visible." : ""}
               </p>
             </div>
-            <Button size="sm" variant="outline" onClick={runAll} disabled={running}>
-              {running ? (
-                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3 w-3 mr-1" />
-              )}
-              Re-run
-            </Button>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={autoRefresh}
+                  onChange={(e) => setAutoRefresh(e.target.checked)}
+                  className="h-3.5 w-3.5"
+                />
+                Auto (30s)
+              </label>
+              <Button size="sm" variant="outline" onClick={runAll} disabled={running}>
+                {running ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                )}
+                Re-run
+              </Button>
+            </div>
           </div>
+
 
           {log.length === 0 ? (
             <div className="text-xs text-muted-foreground py-6 text-center">No probes yet.</div>
@@ -334,6 +385,85 @@ export default function BackendInfo() {
             auth/permissions).
           </div>
         </section>
+
+        <section className="bg-card border border-border rounded-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold">Run history</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Last {runs.length} of up to 20 probe runs. Click a row to inspect that run's probes.
+              </p>
+            </div>
+          </div>
+
+          {runs.length === 0 ? (
+            <div className="text-xs text-muted-foreground py-6 text-center">No runs yet.</div>
+          ) : (
+            <div className="rounded-md border border-border bg-muted/30 divide-y divide-border max-h-96 overflow-auto">
+              {runs.map((r) => {
+                const isOpen = !!expandedRuns[r.runId];
+                const allOk = r.failCount === 0;
+                return (
+                  <div key={r.runId} className="text-xs font-mono">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedRuns((p) => ({ ...p, [r.runId]: !isOpen }))}
+                      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-muted/50"
+                    >
+                      <span className="text-muted-foreground shrink-0">{r.ts}</span>
+                      <span className="shrink-0 w-12 text-muted-foreground">#{r.runId}</span>
+                      <span
+                        className={`shrink-0 w-24 font-semibold ${
+                          allOk ? "text-emerald-600" : "text-destructive"
+                        }`}
+                      >
+                        {r.okCount}/{r.total} ok
+                      </span>
+                      <span className="shrink-0 w-20 text-muted-foreground">{r.durationMs}ms</span>
+                      <span className="truncate text-muted-foreground flex-1">
+                        {allOk
+                          ? "all probes succeeded"
+                          : `${r.failCount} failing: ${r.entries
+                              .filter((e) => !e.ok)
+                              .map((e) => e.target)
+                              .join(", ")}`}
+                      </span>
+                      <span className="shrink-0 text-muted-foreground">{isOpen ? "▾" : "▸"}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="px-3 pb-3 space-y-1">
+                        {r.entries.map((e) => (
+                          <div
+                            key={e.id}
+                            className="flex items-center gap-2 px-2 py-1 rounded bg-background border border-border"
+                          >
+                            <span
+                              className={`shrink-0 w-14 font-semibold ${
+                                e.ok
+                                  ? "text-emerald-600"
+                                  : e.status === null
+                                    ? "text-destructive"
+                                    : "text-amber-600"
+                              }`}
+                            >
+                              {e.status ?? "ERR"}
+                            </span>
+                            <span className="shrink-0 w-14 text-muted-foreground">{e.ms}ms</span>
+                            <span className="shrink-0 w-28 truncate">{e.target}</span>
+                            <span className="truncate text-muted-foreground flex-1">
+                              {e.detail}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
 
         {!refsAgree && (
           <div className="rounded-md border border-destructive/50 bg-destructive/5 p-4 text-sm">
