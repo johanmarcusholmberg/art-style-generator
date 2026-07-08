@@ -81,29 +81,41 @@ export default function BackendInfo() {
   const [log, setLog] = useState<ProbeEntry[]>([]);
   const [running, setRunning] = useState(false);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const idRef = useRef(0);
+  const runIdRef = useRef(0);
 
-  const append = (entry: Omit<ProbeEntry, "id" | "ts">) => {
+  type RunSummary = {
+    runId: number;
+    ts: string;
+    durationMs: number;
+    total: number;
+    okCount: number;
+    failCount: number;
+    entries: ProbeEntry[];
+  };
+  const [runs, setRuns] = useState<RunSummary[]>([]);
+  const [expandedRuns, setExpandedRuns] = useState<Record<number, boolean>>({});
+
+  const append = (entry: Omit<ProbeEntry, "id" | "ts">): ProbeEntry => {
     idRef.current += 1;
     const id = idRef.current;
-    setLog((prev) =>
-      [{ ...entry, id, ts: new Date().toISOString().slice(11, 23) }, ...prev].slice(0, 40),
-    );
-    // Auto-expand failing entries so the full error is visible immediately.
+    const full: ProbeEntry = { ...entry, id, ts: new Date().toISOString().slice(11, 23) };
+    setLog((prev) => [full, ...prev].slice(0, 40));
     setExpanded((prev) => ({ ...prev, [id]: !entry.ok }));
+    return full;
   };
 
   const probe = useCallback(
-    async (target: string, path: string, init?: RequestInit) => {
+    async (target: string, path: string, init?: RequestInit): Promise<ProbeEntry> => {
       const method = init?.method ?? "GET";
       const full = url ? `${url}${path}` : path;
       if (!url || !key) {
-        append({
+        return append({
           target, url: full, method, status: null, statusText: "", ms: 0,
           ok: false, detail: "env missing (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY)",
           body: "", headers: {},
         });
-        return;
       }
       const started = performance.now();
       try {
@@ -126,7 +138,7 @@ export default function BackendInfo() {
         res.headers.forEach((v, k) => {
           headers[k] = v;
         });
-        append({
+        return append({
           target, url: full, method,
           status: res.status, statusText: res.statusText, ms, ok: res.ok,
           detail: res.ok ? (res.statusText || "ok") : (body.slice(0, 400) || res.statusText || "error"),
@@ -137,7 +149,7 @@ export default function BackendInfo() {
         const msg = err instanceof Error ? err.message : String(err);
         const name = err instanceof Error ? err.name : "Error";
         const stack = err instanceof Error ? err.stack ?? "" : "";
-        append({
+        return append({
           target, url: full, method,
           status: null, statusText: "", ms, ok: false,
           detail: `network: ${msg}`,
@@ -151,15 +163,41 @@ export default function BackendInfo() {
 
   const runAll = useCallback(async () => {
     setRunning(true);
-    await probe("REST root", "/rest/v1/");
-    await probe("Auth settings", "/auth/v1/settings");
-    await probe("Storage health", "/storage/v1/bucket", { method: "GET" });
+    const runStarted = performance.now();
+    const entries: ProbeEntry[] = [];
+    entries.push(await probe("REST root", "/rest/v1/"));
+    entries.push(await probe("Auth settings", "/auth/v1/settings"));
+    entries.push(await probe("Storage health", "/storage/v1/bucket", { method: "GET" }));
+    const durationMs = Math.round(performance.now() - runStarted);
+    runIdRef.current += 1;
+    const summary: RunSummary = {
+      runId: runIdRef.current,
+      ts: new Date().toISOString().slice(11, 23),
+      durationMs,
+      total: entries.length,
+      okCount: entries.filter((e) => e.ok).length,
+      failCount: entries.filter((e) => !e.ok).length,
+      entries,
+    };
+    setRuns((prev) => [summary, ...prev].slice(0, 20));
     setRunning(false);
   }, [probe]);
 
   useEffect(() => {
     void runAll();
   }, [runAll]);
+
+  // Automatic re-probe every 30s while enabled and tab is visible.
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void runAll();
+      }
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [autoRefresh, runAll]);
+
 
   return (
     <div className="min-h-screen bg-background paper-texture">
