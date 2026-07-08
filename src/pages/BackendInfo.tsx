@@ -386,6 +386,85 @@ export default function BackendInfo() {
           </div>
         </section>
 
+        <section className="bg-card border border-border rounded-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold">Run history</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Last {runs.length} of up to 20 probe runs. Click a row to inspect that run's probes.
+              </p>
+            </div>
+          </div>
+
+          {runs.length === 0 ? (
+            <div className="text-xs text-muted-foreground py-6 text-center">No runs yet.</div>
+          ) : (
+            <div className="rounded-md border border-border bg-muted/30 divide-y divide-border max-h-96 overflow-auto">
+              {runs.map((r) => {
+                const isOpen = !!expandedRuns[r.runId];
+                const allOk = r.failCount === 0;
+                return (
+                  <div key={r.runId} className="text-xs font-mono">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedRuns((p) => ({ ...p, [r.runId]: !isOpen }))}
+                      className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-muted/50"
+                    >
+                      <span className="text-muted-foreground shrink-0">{r.ts}</span>
+                      <span className="shrink-0 w-12 text-muted-foreground">#{r.runId}</span>
+                      <span
+                        className={`shrink-0 w-24 font-semibold ${
+                          allOk ? "text-emerald-600" : "text-destructive"
+                        }`}
+                      >
+                        {r.okCount}/{r.total} ok
+                      </span>
+                      <span className="shrink-0 w-20 text-muted-foreground">{r.durationMs}ms</span>
+                      <span className="truncate text-muted-foreground flex-1">
+                        {allOk
+                          ? "all probes succeeded"
+                          : `${r.failCount} failing: ${r.entries
+                              .filter((e) => !e.ok)
+                              .map((e) => e.target)
+                              .join(", ")}`}
+                      </span>
+                      <span className="shrink-0 text-muted-foreground">{isOpen ? "▾" : "▸"}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="px-3 pb-3 space-y-1">
+                        {r.entries.map((e) => (
+                          <div
+                            key={e.id}
+                            className="flex items-center gap-2 px-2 py-1 rounded bg-background border border-border"
+                          >
+                            <span
+                              className={`shrink-0 w-14 font-semibold ${
+                                e.ok
+                                  ? "text-emerald-600"
+                                  : e.status === null
+                                    ? "text-destructive"
+                                    : "text-amber-600"
+                              }`}
+                            >
+                              {e.status ?? "ERR"}
+                            </span>
+                            <span className="shrink-0 w-14 text-muted-foreground">{e.ms}ms</span>
+                            <span className="shrink-0 w-28 truncate">{e.target}</span>
+                            <span className="truncate text-muted-foreground flex-1">
+                              {e.detail}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+
         {!refsAgree && (
           <div className="rounded-md border border-destructive/50 bg-destructive/5 p-4 text-sm">
             <div className="flex items-start gap-2">
