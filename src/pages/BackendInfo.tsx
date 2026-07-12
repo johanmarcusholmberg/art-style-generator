@@ -10,9 +10,13 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertTriangle, Loader2, RefreshCw, GitBranch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
