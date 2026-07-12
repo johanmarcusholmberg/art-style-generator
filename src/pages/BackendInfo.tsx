@@ -609,7 +609,7 @@ function PushTargetPreflight() {
           />
           <CheckLine
             ok={!!branchOk}
-            label={`Branch (${c?.effective_branch ?? branch || "default"})`}
+            label={`Branch (${c?.effective_branch ?? (branch || "default")})`}
             detail={
               c?.branch
                 ? `${c.branch.status} · HEAD=${c.branch.head_sha?.slice(0, 12) ?? "—"}`
