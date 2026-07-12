@@ -489,3 +489,204 @@ export default function BackendInfo() {
     </div>
   );
 }
+
+// -------------------------------------------------------------------
+// Push-target preflight
+// Confirms the {owner, repo, branch, expected_sha} the user is about to
+// poll matches what the GitHub connector actually sees.
+// -------------------------------------------------------------------
+
+type PreflightResult = {
+  input: { owner: string; repo: string; branch: string; expected_sha: string | null };
+  checks: {
+    repo?: { ok: boolean; status: number; full_name?: string | null; default_branch?: string | null; private?: boolean | null; detail: string };
+    effective_branch?: string;
+    branch?: { ok: boolean; status: number; head_sha: string | null; detail: string };
+    expected_sha?: { ok: boolean; matches_head: boolean; exists_in_repo: boolean; status: number; detail: string };
+    workflow_runs?: {
+      ok: boolean; status: number; sha: string; count: number;
+      runs: Array<{ id: number; name: string; event: string; status: string; conclusion: string | null; html_url: string; run_started_at: string; head_branch: string }>;
+    };
+    input?: { ok: boolean; detail: string };
+  };
+};
+
+function PushTargetPreflight() {
+  const [owner, setOwner] = useState("");
+  const [repo, setRepo] = useState("");
+  const [branch, setBranch] = useState("");
+  const [sha, setSha] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<PreflightResult | null>(null);
+
+  const run = async () => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke<PreflightResult>("github-ci-check", {
+        body: { owner, repo, branch, expected_sha: sha },
+      });
+      if (error) throw error;
+      setResult(data ?? null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const c = result?.checks;
+  const repoOk = c?.repo?.ok;
+  const branchOk = c?.branch?.ok;
+  const shaCheck = c?.expected_sha;
+  const shaOk = !sha.trim() || shaCheck?.matches_head;
+  const allOk = repoOk && branchOk && shaOk;
+
+  return (
+    <section className="bg-card border border-border rounded-md p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <GitBranch className="h-4 w-4" /> Push-target preflight
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Confirm owner/repo/branch (and optional commit SHA) match what the GitHub
+            connector sees before polling CI results.
+          </p>
+        </div>
+        {result && (
+          allOk ? (
+            <Badge variant="secondary" className="gap-1">
+              <CheckCircle2 className="h-3 w-3" /> Target confirmed
+            </Badge>
+          ) : (
+            <Badge variant="destructive" className="gap-1">
+              <AlertTriangle className="h-3 w-3" /> Mismatch
+            </Badge>
+          )
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <Label className="text-xs">Owner</Label>
+          <Input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="e.g. myuser" />
+        </div>
+        <div>
+          <Label className="text-xs">Repo</Label>
+          <Input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="e.g. myrepo" />
+        </div>
+        <div>
+          <Label className="text-xs">Branch (optional — defaults to repo default)</Label>
+          <Input value={branch} onChange={(e) => setBranch(e.target.value)} placeholder="main" />
+        </div>
+        <div>
+          <Label className="text-xs">Expected commit SHA (optional)</Label>
+          <Input value={sha} onChange={(e) => setSha(e.target.value)} placeholder="e8becbb…" />
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <Button size="sm" onClick={run} disabled={loading || !owner.trim() || !repo.trim()}>
+          {loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+          Verify target
+        </Button>
+        {error && <span className="text-xs text-destructive">{error}</span>}
+      </div>
+
+      {result && (
+        <div className="mt-4 space-y-2 text-xs font-mono">
+          <CheckLine
+            ok={!!repoOk}
+            label="Repo"
+            detail={
+              c?.repo
+                ? `${c.repo.status} · ${c.repo.full_name ?? "—"} · default=${c.repo.default_branch ?? "—"}${c.repo.private ? " · private" : ""}`
+                : "no result"
+            }
+          />
+          <CheckLine
+            ok={!!branchOk}
+            label={`Branch (${c?.effective_branch ?? branch || "default"})`}
+            detail={
+              c?.branch
+                ? `${c.branch.status} · HEAD=${c.branch.head_sha?.slice(0, 12) ?? "—"}`
+                : "not checked"
+            }
+          />
+          {sha.trim() && (
+            <CheckLine
+              ok={!!shaCheck?.matches_head}
+              warn={!shaCheck?.matches_head && !!shaCheck?.exists_in_repo}
+              label="Expected SHA"
+              detail={shaCheck?.detail ?? "not checked"}
+            />
+          )}
+          {c?.workflow_runs && (
+            <div className="mt-3 rounded border border-border bg-muted/30 p-3">
+              <div className="text-[11px] text-muted-foreground mb-2">
+                Workflow runs for {c.workflow_runs.sha.slice(0, 12)} · {c.workflow_runs.count} found
+              </div>
+              {c.workflow_runs.runs.length === 0 ? (
+                <div className="text-[11px] text-muted-foreground">
+                  No workflow runs recorded yet for this commit.
+                  {sha.trim() && !shaCheck?.matches_head
+                    ? " (Commit isn't HEAD of the branch — CI may only trigger on the branch head.)"
+                    : " Actions may not have started yet."}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {c.workflow_runs.runs.map((r) => (
+                    <a
+                      key={r.id}
+                      href={r.html_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 hover:bg-muted/50 rounded px-1 py-1"
+                    >
+                      <span
+                        className={`w-16 font-semibold ${
+                          r.conclusion === "success"
+                            ? "text-emerald-600"
+                            : r.conclusion === "failure"
+                              ? "text-destructive"
+                              : "text-amber-600"
+                        }`}
+                      >
+                        {r.conclusion ?? r.status}
+                      </span>
+                      <span className="w-32 truncate">{r.name}</span>
+                      <span className="w-16 text-muted-foreground">{r.event}</span>
+                      <span className="text-muted-foreground truncate flex-1">{r.head_branch}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mt-2 text-[11px] text-muted-foreground leading-relaxed">
+            <strong>Guard rule:</strong> only poll CI after "Target confirmed". If the
+            expected SHA is not HEAD of the branch, the push has not landed on the
+            branch the connector is querying — polling will return stale or empty runs.
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CheckLine({ ok, warn, label, detail }: { ok: boolean; warn?: boolean; label: string; detail: string }) {
+  const color = ok ? "text-emerald-600" : warn ? "text-amber-600" : "text-destructive";
+  const icon = ok ? "✓" : warn ? "!" : "✗";
+  return (
+    <div className="flex items-start gap-2">
+      <span className={`w-4 font-bold ${color}`}>{icon}</span>
+      <span className="w-40 shrink-0">{label}</span>
+      <span className="text-muted-foreground flex-1 break-all">{detail}</span>
+    </div>
+  );
+}
+
