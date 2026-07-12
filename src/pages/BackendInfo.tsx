@@ -467,6 +467,8 @@ export default function BackendInfo() {
             </div>
           )}
         </section>
+        <PushTargetPreflight />
+
 
 
         {!refsAgree && (
