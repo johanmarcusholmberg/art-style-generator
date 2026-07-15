@@ -1,18 +1,20 @@
 /**
  * /access?key=SECRET
  *
- * Exchanges the shared secret in the URL for a one-time magic sign-in link
- * via the `quick-access` edge function, then navigates the browser to that
- * link to complete Supabase auth. The key never touches the app database
- * and is only ever sent to the edge function.
+ * Calls the `quick-access` edge function, which validates the shared secret
+ * and returns a ready-made session (access_token + refresh_token). We hand
+ * those to `supabase.auth.setSession`, which is a local operation — no
+ * browser POST to /auth/v1/token, so it works even when the preview iframe's
+ * fetch proxy interferes with Supabase auth endpoints.
  */
 import { useEffect, useState } from "react";
-import { useSearchParams, Navigate } from "react-router-dom";
+import { useSearchParams, Navigate, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function QuickAccess() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const key = params.get("key") ?? "";
   const [error, setError] = useState<string | null>(null);
 
@@ -23,20 +25,13 @@ export default function QuickAccess() {
     }
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase.functions.invoke("quick-access", {
-        method: "GET" as never,
-        body: undefined,
-        // functions.invoke doesn't take query params; fall back to fetch:
-      } as never);
-
-      // Prefer a direct fetch so we can pass the key as a query string.
       try {
         const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(
           /\/$/,
           "",
         );
         const res = await fetch(
-          `${base}/functions/v1/quick-access?key=${encodeURIComponent(key)}&redirect=${encodeURIComponent(window.location.origin)}`,
+          `${base}/functions/v1/quick-access?key=${encodeURIComponent(key)}`,
           {
             headers: {
               apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
@@ -45,22 +40,31 @@ export default function QuickAccess() {
         );
         const payload = await res.json();
         if (cancelled) return;
-        if (!res.ok || !payload?.link) {
+        if (!res.ok || !payload?.access_token || !payload?.refresh_token) {
           setError(payload?.error ?? "Access denied.");
           return;
         }
-        window.location.href = payload.link;
+
+        const { error: sessionErr } = await supabase.auth.setSession({
+          access_token: payload.access_token,
+          refresh_token: payload.refresh_token,
+        });
+
+        if (cancelled) return;
+        if (sessionErr) {
+          setError(sessionErr.message);
+          return;
+        }
+
+        navigate("/", { replace: true });
       } catch (e) {
         if (!cancelled) setError((e as Error).message);
       }
-      // Suppress unused warnings from the invoke stub above.
-      void data;
-      void error;
     })();
     return () => {
       cancelled = true;
     };
-  }, [key]);
+  }, [key, navigate]);
 
   if (!key) return <Navigate to="/login" replace />;
 
