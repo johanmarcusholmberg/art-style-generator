@@ -12,9 +12,14 @@ import { Loader2 } from "lucide-react";
 interface Props {
   children: React.ReactNode;
   adminOnly?: boolean;
+  quickAccessAllowed?: boolean;
 }
 
-export default function RequireAuth({ children, adminOnly = false }: Props) {
+export default function RequireAuth({
+  children,
+  adminOnly = false,
+  quickAccessAllowed = true,
+}: Props) {
   const { access } = useAuth();
   const location = useLocation();
 
@@ -33,6 +38,14 @@ export default function RequireAuth({ children, adminOnly = false }: Props) {
         replace
         state={{ from: location.pathname + location.search }}
       />
+    );
+  }
+
+  if (access.kind === "quick_access") {
+    return adminOnly || !quickAccessAllowed ? (
+      <Navigate to="/" replace />
+    ) : (
+      <>{children}</>
     );
   }
 

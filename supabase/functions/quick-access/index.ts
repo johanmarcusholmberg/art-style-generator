@@ -1,10 +1,7 @@
-// Quick-access: exchanges a shared secret key for a ready-to-use Supabase session.
-// GET /quick-access?key=<ACCESS_LINK_SECRET>
-// Returns { access_token, refresh_token, expires_in, token_type, user }
-// The client calls supabase.auth.setSession(...) locally — no browser POST to
-// /auth/v1/token, so it works even when the preview iframe's fetch proxy
-// interferes with Supabase auth endpoints.
-import { createClient } from "npm:@supabase/supabase-js@2";
+// Quick-access: validates a shared secret and issues a signed app-only access
+// token. It deliberately does NOT call the backend auth endpoints. The token is
+// only used by the frontend route guard to open generator pages without the
+// regular login flow; privileged admin/data paths still require real auth.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,6 +15,63 @@ function safeEqual(a: string, b: string) {
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
+}
+
+const encoder = new TextEncoder();
+
+function base64UrlEncode(bytes: Uint8Array) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function base64UrlDecode(input: string) {
+  const normalized = input.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(
+    normalized.length + ((4 - (normalized.length % 4)) % 4),
+    "=",
+  );
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+async function sign(payload: string, secret: string) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+  return base64UrlEncode(new Uint8Array(signature));
+}
+
+async function issueToken(secret: string) {
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + 60 * 60 * 24 * 30;
+  const payload = base64UrlEncode(
+    encoder.encode(
+      JSON.stringify({ v: 1, kind: "quick_access", iat: now, exp }),
+    ),
+  );
+  return {
+    token: `${payload}.${await sign(payload, secret)}`,
+    expires_at: new Date(exp * 1000).toISOString(),
+  };
+}
+
+async function verifyToken(token: string, secret: string) {
+  const [payload, signature, extra] = token.split(".");
+  if (!payload || !signature || extra) return false;
+  const expected = await sign(payload, secret);
+  if (!safeEqual(signature, expected)) return false;
+  const decoded = JSON.parse(new TextDecoder().decode(base64UrlDecode(payload)));
+  const now = Math.floor(Date.now() / 1000);
+  return decoded?.kind === "quick_access" && decoded?.exp > now;
 }
 
 function json(status: number, body: unknown) {
@@ -38,62 +92,29 @@ Deno.serve(async (req) => {
       url.searchParams.get("key") ?? req.headers.get("x-access-key") ?? "";
 
     const secret = Deno.env.get("ACCESS_LINK_SECRET") ?? "";
-    const email = Deno.env.get("ACCESS_LINK_EMAIL") ?? "";
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    if (!secret) {
+      return json(500, { error: "Quick access is not configured" });
+    }
 
-    if (!secret || !email || !supabaseUrl || !serviceRoleKey || !anonKey) {
-      return json(500, { error: "Server not configured" });
+    if (req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      const token =
+        typeof body?.token === "string"
+          ? body.token
+          : req.headers.get("x-quick-access-token") ?? "";
+      if (!token) return json(401, { error: "Missing quick-access token" });
+      const ok = await verifyToken(token, secret).catch(() => false);
+      return ok
+        ? json(200, { ok: true, mode: "quick_access" })
+        : json(401, { error: "Quick-access token is invalid or expired" });
     }
 
     if (!providedKey || !safeEqual(providedKey, secret)) {
       return json(401, { error: "Invalid access key" });
     }
 
-    const admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    // 1) Mint a one-time magic link — we only need the hashed_token from it.
-    const { data: linkData, error: linkErr } = await admin.auth.admin
-      .generateLink({ type: "magiclink", email });
-
-    if (linkErr || !linkData?.properties?.hashed_token) {
-      return json(500, {
-        error: linkErr?.message ?? "Failed to generate access token",
-      });
-    }
-
-    const hashedToken = linkData.properties.hashed_token;
-
-    // 2) Redeem the hashed token server-side via verifyOtp to obtain a real
-    // access_token + refresh_token. This is the same call the browser would
-    // make when following the magic link, but done here so the client never
-    // has to hit /auth/v1/token itself.
-    const verifyClient = createClient(supabaseUrl, anonKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    const { data: verified, error: verifyErr } = await verifyClient.auth
-      .verifyOtp({ type: "magiclink", token_hash: hashedToken });
-
-    if (verifyErr || !verified?.session) {
-      return json(500, {
-        error: verifyErr?.message ?? "Failed to redeem access token",
-      });
-    }
-
-    const { access_token, refresh_token, expires_in, token_type } =
-      verified.session;
-
-    return json(200, {
-      access_token,
-      refresh_token,
-      expires_in,
-      token_type,
-      user: verified.user,
-    });
+    const issued = await issueToken(secret);
+    return json(200, { ok: true, mode: "quick_access", ...issued });
   } catch (e) {
     return json(500, { error: (e as Error).message ?? "Unknown error" });
   }

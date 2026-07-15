@@ -50,8 +50,12 @@ import QuickAccess from "./pages/QuickAccess";
 const queryClient = new QueryClient();
 
 
-const protect = (node: React.ReactNode, adminOnly = false) => (
-  <RequireAuth adminOnly={adminOnly}>{node}</RequireAuth>
+const protect = (
+  node: React.ReactNode,
+  adminOnly = false,
+  quickAccessAllowed = !adminOnly,
+) => (
+  <RequireAuth adminOnly={adminOnly} quickAccessAllowed={quickAccessAllowed}>{node}</RequireAuth>
 );
 
 const App = () => (
@@ -72,7 +76,7 @@ const App = () => (
               <Route path="/access" element={<QuickAccess />} />
 
               {/* Account */}
-              <Route path="/account" element={protect(<Account />)} />
+              <Route path="/account" element={protect(<Account />, false, false)} />
 
               {/* Admin */}
               <Route path="/admin" element={protect(<AdminUsers />, true)} />
