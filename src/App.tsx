@@ -45,6 +45,7 @@ import ArtNouveau from "./pages/ArtNouveau";
 import MidCenturyModern from "./pages/MidCenturyModern";
 import LooseWatercolor from "./pages/LooseWatercolor";
 import BackendInfo from "./pages/BackendInfo";
+import QuickAccess from "./pages/QuickAccess";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/backend-info" element={<BackendInfo />} />
+              <Route path="/access" element={<QuickAccess />} />
 
               {/* Account */}
               <Route path="/account" element={protect(<Account />)} />
