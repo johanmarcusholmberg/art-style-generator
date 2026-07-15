@@ -38,10 +38,15 @@ export default function QuickAccess() {
             },
           },
         );
-        const payload = await res.json();
+        const payload = await res.json().catch(() => ({}));
         if (cancelled) return;
         if (!res.ok || !payload?.access_token || !payload?.refresh_token) {
-          setError(payload?.error ?? "Access denied.");
+          const msg =
+            payload?.error ??
+            (res.status === 401
+              ? "Invalid access key — make sure the ?key=… in the URL matches the ACCESS_LINK_SECRET you saved."
+              : `Access denied (HTTP ${res.status}).`);
+          setError(msg);
           return;
         }
 
