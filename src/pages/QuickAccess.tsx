@@ -2,19 +2,30 @@
  * /access?key=SECRET
  *
  * Calls the `quick-access` edge function, which validates the shared secret
- * and returns a ready-made session (access_token + refresh_token). We hand
- * those to `supabase.auth.setSession`, which is a local operation — no
- * browser POST to /auth/v1/token, so it works even when the preview iframe's
- * fetch proxy interferes with Supabase auth endpoints.
+ * and returns a signed app-only token. This deliberately does not use the
+ * regular backend auth session flow.
  */
 import { useEffect, useState } from "react";
 import { useSearchParams, Navigate, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { setQuickAccessToken } from "@/lib/quick-access";
+import { useAuth } from "@/contexts/AuthContext";
+
+function errorMessage(payload: unknown, status: number) {
+  if (payload && typeof payload === "object" && "error" in payload) {
+    const value = (payload as { error?: unknown }).error;
+    if (typeof value === "string" && value.trim()) return value;
+    if (value && typeof value === "object") return JSON.stringify(value);
+  }
+  return status === 401
+    ? "Invalid access key — make sure the ?key=… in the URL matches the secret you saved."
+    : `Access denied (HTTP ${status}).`;
+}
 
 export default function QuickAccess() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const { refresh } = useAuth();
   const key = params.get("key") ?? "";
   const [error, setError] = useState<string | null>(null);
 
@@ -40,36 +51,26 @@ export default function QuickAccess() {
         );
         const payload = await res.json().catch(() => ({}));
         if (cancelled) return;
-        if (!res.ok || !payload?.access_token || !payload?.refresh_token) {
-          const msg =
-            payload?.error ??
-            (res.status === 401
-              ? "Invalid access key — make sure the ?key=… in the URL matches the ACCESS_LINK_SECRET you saved."
-              : `Access denied (HTTP ${res.status}).`);
-          setError(msg);
+        if (!res.ok || !payload?.token) {
+          setError(errorMessage(payload, res.status));
           return;
         }
 
-        const { error: sessionErr } = await supabase.auth.setSession({
-          access_token: payload.access_token,
-          refresh_token: payload.refresh_token,
-        });
-
-        if (cancelled) return;
-        if (sessionErr) {
-          setError(sessionErr.message);
-          return;
-        }
+        setQuickAccessToken(payload.token);
+        await refresh();
 
         navigate("/", { replace: true });
       } catch (e) {
-        if (!cancelled) setError((e as Error).message);
+        if (!cancelled) {
+          const message = e instanceof Error ? e.message : JSON.stringify(e);
+          setError(message || "Quick access failed.");
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [key, navigate]);
+  }, [key, navigate, refresh]);
 
   if (!key) return <Navigate to="/login" replace />;
 

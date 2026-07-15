@@ -46,7 +46,7 @@ export default function Login() {
   }, [searchParams]);
 
   // Already signed in → bounce home
-  if (access.kind === "active") {
+  if (access.kind === "active" || access.kind === "quick_access") {
     const target = (location.state as { from?: string } | null)?.from ?? "/";
     return <Navigate to={target} replace />;
   }

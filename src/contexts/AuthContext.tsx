@@ -22,6 +22,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { clearQuickAccessToken, getQuickAccessToken } from "@/lib/quick-access";
 
 export type AppRole = "admin" | "user";
 export type ProfileStatus = "active" | "disabled" | "pending";
@@ -46,6 +47,7 @@ export interface ProfileRow {
 export type AccessState =
   | { kind: "loading" }
   | { kind: "anonymous" }
+  | { kind: "quick_access" }
   | { kind: "no_profile"; email: string } // signed in to auth but not in allowlist
   | { kind: "disabled"; profile: ProfileRow }
   | { kind: "active"; profile: ProfileRow; role: AppRole };
@@ -65,8 +67,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [access, setAccess] = useState<AccessState>({ kind: "loading" });
   const initialChecked = useRef(false);
 
+  const verifyQuickAccess = useCallback(async () => {
+    const token = getQuickAccessToken();
+    if (!token) return false;
+    try {
+      const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, "");
+      const res = await fetch(`${base}/functions/v1/quick-access`, {
+        method: "POST",
+        headers: {
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token }),
+      });
+      if (res.ok) return true;
+    } catch (e) {
+      console.warn("Quick access verification failed", e);
+    }
+    clearQuickAccessToken();
+    return false;
+  }, []);
+
   const loadAccess = useCallback(async (currentSession: Session | null) => {
     if (!currentSession?.user) {
+      if (await verifyQuickAccess()) {
+        setAccess({ kind: "quick_access" });
+        return;
+      }
       setAccess({ kind: "anonymous" });
       return;
     }
@@ -108,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const role: AppRole = roleRow?.role === "admin" ? "admin" : "user";
     setAccess({ kind: "active", profile: profile as ProfileRow, role });
-  }, []);
+  }, [verifyQuickAccess]);
 
   useEffect(() => {
     // 1) Listener FIRST so we don't miss the first SIGNED_IN event.
@@ -133,6 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadAccess]);
 
   const signOut = useCallback(async () => {
+    clearQuickAccessToken();
     await supabase.auth.signOut();
     setAccess({ kind: "anonymous" });
   }, []);
