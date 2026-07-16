@@ -35,6 +35,19 @@ export interface JobItemRow {
   error_message: string | null;
   created_at: string;
   updated_at: string;
+  // Durable / lease-based worker columns.
+  attempt_count: number;
+  lease_token: string | null;
+  lease_expires_at: string | null;
+  heartbeat_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  position: number;
+  provider_label: string | null;
+  raw_image_url: string | null;
+  enforced_image_url: string | null;
+  ratio_enforcement_status: string;
+  result_metadata: Record<string, unknown> | null;
 }
 
 export function useBatchJobs() {
