@@ -333,9 +333,9 @@ describe("durable-persist-idempotent", () => {
 
   describe("retry from every interruption point", () => {
     it("retry before Storage upload (fail on first upload)", async () => {
-      const r = await runUntilSuccess(makeArgs(), (attempt) => ({
-        ...makeRepo(),
-        failAt: attempt === 1 ? { uploadStorage: 1 } : {},
+      const r = await runUntilSuccess(makeArgs(), (attempt) => (
+        
+        attempt === 1 ? { uploadStorage: 1 } : {}
       }));
       expect(r.shared.storage).toHaveLength(1);
       expect(r.shared.images).toHaveLength(1);
@@ -344,9 +344,9 @@ describe("durable-persist-idempotent", () => {
     });
 
     it("retry after Storage upload but before image insert", async () => {
-      const r = await runUntilSuccess(makeArgs(), (attempt) => ({
-        ...makeRepo(),
-        failAt: attempt === 1 ? { insertImage: 1 } : {},
+      const r = await runUntilSuccess(makeArgs(), (attempt) => (
+        
+        attempt === 1 ? { insertImage: 1 } : {}
       }));
       expect(r.shared.storage).toHaveLength(1); // upsert idempotent
       expect(r.shared.images).toHaveLength(1);
@@ -355,9 +355,9 @@ describe("durable-persist-idempotent", () => {
     });
 
     it("retry after generated_images insert but before cost event", async () => {
-      const r = await runUntilSuccess(makeArgs(), (attempt) => ({
-        ...makeRepo(),
-        failAt: attempt === 1 ? { insertCost: 1 } : {},
+      const r = await runUntilSuccess(makeArgs(), (attempt) => (
+        
+        attempt === 1 ? { insertCost: 1 } : {}
       }));
       expect(r.shared.images).toHaveLength(1);
       expect(r.shared.costs).toHaveLength(1);
@@ -365,9 +365,9 @@ describe("durable-persist-idempotent", () => {
     });
 
     it("retry after cost-event insert but before prompt history", async () => {
-      const r = await runUntilSuccess(makeArgs(), (attempt) => ({
-        ...makeRepo(),
-        failAt: attempt === 1 ? { insertPh: 1 } : {},
+      const r = await runUntilSuccess(makeArgs(), (attempt) => (
+        
+        attempt === 1 ? { insertPh: 1 } : {}
       }));
       expect(r.shared.images).toHaveLength(1);
       expect(r.shared.costs).toHaveLength(1);
