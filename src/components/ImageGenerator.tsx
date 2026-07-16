@@ -61,8 +61,11 @@ import ModelSelector, { type ModelSelectorValue } from "@/components/generation/
 // (kept in Gallery for the lightbox).
 import {
   type GeneratorPreference,
+  type ResolvedProviderId,
+  GENERATOR_PROVIDERS,
   loadGeneratorPreference,
 } from "@/lib/generators";
+
 import {
   resolveUpscaleRecipe,
   generatorFamilyFromProvider,
