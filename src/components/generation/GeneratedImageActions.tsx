@@ -110,29 +110,8 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
     onPrintExport,
     onStartInlineEdit,
     onRemoveImage,
-    posterOpen,
-    onPosterOpenChange,
-    posterTemplateId,
-    posterTextMode,
-    posterSafeAreaEnabled,
-    composerTitle,
-    composerSubtitle,
-    composerDescription,
-    composerIngredientsRaw,
-    lastPosterSnapshot,
-    onRegenerate,
-    isRegenerating,
   } = props;
 
-  const ingredientsList = composerIngredientsRaw
-    .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const hasComposerText =
-    !!composerTitle.trim() ||
-    !!composerSubtitle.trim() ||
-    !!composerDescription.trim() ||
-    ingredientsList.length > 0;
 
   return (
     <div className="flex flex-wrap gap-2 items-center justify-center">
