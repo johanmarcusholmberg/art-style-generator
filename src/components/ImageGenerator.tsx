@@ -636,26 +636,8 @@ export default function ImageGenerator({
         setEditPrompt("");
       }
 
-      // Snapshot poster config used for this generation. We auto-open the
-      // Poster Composer when:
-      //   - composer mode is active (poster-friendly band was reserved)
-      //   - OR the user typed any text in either mode
-      // This gives the user a ready-to-export poster immediately.
-      const snapshot = {
-        templateId: posterTemplateId,
-        textMode: posterTextMode,
-        title: composerTitle.trim(),
-        subtitle: composerSubtitle.trim(),
-        description: composerDescription.trim(),
-        ingredients: ingredientsList,
-      };
-      setLastPosterSnapshot(snapshot);
-      const shouldAutoOpen =
-        !isInlineEditing &&
-        (posterTextMode === "composer" || hasComposerText);
-      if (shouldAutoOpen) {
-        setPosterOpen(true);
-      }
+
+
 
       setLoading(false);
 
