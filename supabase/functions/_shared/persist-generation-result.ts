@@ -8,6 +8,12 @@
  *   3. Insert a row into `generated_images` so it shows up in galleries.
  *   4. Return the storage path, gallery id and a public URL for realtime.
  *
+ * B1.1 update: accepts and persists the full metadata-parity column set
+ * (provider/model/route/print-format/dimensions/upscale linkage). Side-
+ * effect ownership between server-inserted rows and any client-owned
+ * post-processing is finalized in B1.2 — this turn only broadens the
+ * server row so parity is possible.
+ *
  * Callers MUST await this before calling complete_generation_item.
  */
 
@@ -25,6 +31,34 @@ export interface PersistArgs {
   targetHeightPx?: number | null;
   enhanced?: boolean;
   providerLabel?: string | null;
+  // ── B1.1 parity fields (all optional / nullable) ──────────────────────
+  actualWidthPx?: number | null;
+  actualHeightPx?: number | null;
+  generationProvider?: string | null;
+  generationModel?: string | null;
+  providerStrategy?: string | null;
+  fallbackUsed?: boolean | null;
+  executionRoute?: string | null;
+  printFormatId?: string | null;
+  generationMode?: string | null;
+  provider?: string | null;
+  model?: string | null;
+  route?: string | null;
+  estimatedCost?: number | null;
+  currency?: string | null;
+  promptVersion?: string | null;
+  requestedModelId?: string | null;
+  resolvedModelId?: string | null;
+  selectedAdapterId?: string | null;
+  qualityProfile?: string | null;
+  generationStrategy?: string | null;
+  modelFallbackReason?: string | null;
+  sourceImageUrl?: string | null;
+  sourceStoragePath?: string | null;
+  sourceFileName?: string | null;
+  upscaleApplied?: boolean | null;
+  upscaleMethod?: string | null;
+  upscaleFactor?: number | null;
 }
 
 export interface PersistResult {
@@ -75,12 +109,32 @@ export async function persistGenerationResult(
       mode: args.mode,
       aspect_ratio: args.aspectRatio,
       storage_path: filename,
+      master_storage_path: filename,
       print_size: args.printSize ?? null,
       quality_mode: args.qualityMode ?? "quality",
       target_ppi: args.targetPpi ?? null,
       target_width_px: args.targetWidthPx ?? null,
       target_height_px: args.targetHeightPx ?? null,
+      actual_width_px: args.actualWidthPx ?? null,
+      actual_height_px: args.actualHeightPx ?? null,
       enhanced: args.enhanced ?? false,
+      generation_provider: args.generationProvider ?? null,
+      generation_model: args.generationModel ?? null,
+      provider_strategy: args.providerStrategy ?? null,
+      fallback_used: args.fallbackUsed ?? false,
+      execution_route: args.executionRoute ?? null,
+      print_format_id: args.printFormatId ?? null,
+      generation_mode: args.generationMode ?? null,
+      asset_role: "base_generation",
+      provider: args.provider ?? null,
+      model: args.model ?? null,
+      route: args.route ?? null,
+      estimated_cost: args.estimatedCost ?? null,
+      currency: args.currency ?? "USD",
+      prompt_version: args.promptVersion ?? null,
+      upscale_applied: args.upscaleApplied ?? false,
+      upscale_method: args.upscaleMethod ?? null,
+      upscale_factor: args.upscaleFactor ?? null,
     })
     .select("id")
     .single();
