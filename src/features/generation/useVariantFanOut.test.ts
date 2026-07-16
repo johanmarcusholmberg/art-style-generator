@@ -13,13 +13,20 @@ vi.mock("@/lib/generation-router", () => ({
   generateImage: (...args: unknown[]) => generateImage(...args),
 }));
 
-import { useVariantFanOut } from "./useVariantFanOut";
+import { useVariantFanOut, type VariantRequest } from "./useVariantFanOut";
 import { PROVIDER_MODEL_REGISTRY } from "@/lib/generation-providers/registry";
 
-const req = {
+const baseReq = {
   prompt: "p",
   styleKey: "lineart",
 } as const;
+
+/** Build N fan-out requests from the same base (any extra fields merged in). */
+function makeReqs(n: number, extra: Record<string, unknown> = {}): VariantRequest[] {
+  return Array.from({ length: n }, () => ({
+    request: { ...baseReq, ...extra } as never,
+  }));
+}
 
 function makeResponse(idx: number) {
   return {
@@ -49,17 +56,16 @@ describe("useVariantFanOut", () => {
       return Promise.resolve(makeResponse(i));
     });
 
-    const { result } = renderHook(() => useVariantFanOut(4));
+    const { result } = renderHook(() => useVariantFanOut());
 
     await act(async () => {
-      await result.current.start(req as never);
+      await result.current.start(makeReqs(4));
     });
 
     expect(generateImage).toHaveBeenCalledTimes(4);
+    expect(result.current.tiles).toHaveLength(4);
     expect(result.current.tiles.every((t) => t.status === "done")).toBe(true);
     expect(result.current.isRunning).toBe(false);
-    // Every fan-out call must run at preview intent — never print —
-    // even when the caller passes `sizeIntent: "print"`.
     for (const call of generateImage.mock.calls) {
       expect(call[0].sizeIntent).toBe("preview");
     }
@@ -67,9 +73,9 @@ describe("useVariantFanOut", () => {
 
   it("forces sizeIntent='preview' even when the caller asks for print", async () => {
     generateImage.mockResolvedValue(makeResponse(0));
-    const { result } = renderHook(() => useVariantFanOut(2));
+    const { result } = renderHook(() => useVariantFanOut());
     await act(async () => {
-      await result.current.start({ ...req, sizeIntent: "print" } as never);
+      await result.current.start(makeReqs(2, { sizeIntent: "print" }));
     });
     for (const call of generateImage.mock.calls) {
       expect(call[0].sizeIntent).toBe("preview");
@@ -85,9 +91,9 @@ describe("useVariantFanOut", () => {
       return Promise.resolve(makeResponse(i));
     });
 
-    const { result } = renderHook(() => useVariantFanOut(4));
+    const { result } = renderHook(() => useVariantFanOut());
     await act(async () => {
-      await result.current.start(req as never);
+      await result.current.start(makeReqs(4));
     });
 
     expect(result.current.tiles[1].status).toBe("error");
@@ -104,9 +110,9 @@ describe("useVariantFanOut", () => {
       return Promise.resolve(makeResponse(i));
     });
 
-    const { result } = renderHook(() => useVariantFanOut(4));
+    const { result } = renderHook(() => useVariantFanOut());
     await act(async () => {
-      await result.current.start(req as never);
+      await result.current.start(makeReqs(4));
     });
     expect(result.current.tiles[2].status).toBe("error");
 
@@ -120,28 +126,39 @@ describe("useVariantFanOut", () => {
     expect(result.current.tiles[2].response?.imageUrl).toContain("99");
   });
 
-  it("discardAll resets every tile to idle", async () => {
+  it("discardAll clears every tile", async () => {
     generateImage.mockResolvedValue(makeResponse(0));
-    const { result } = renderHook(() => useVariantFanOut(4));
+    const { result } = renderHook(() => useVariantFanOut());
     await act(async () => {
-      await result.current.start(req as never);
+      await result.current.start(makeReqs(4));
     });
     expect(result.current.tiles.every((t) => t.status === "done")).toBe(true);
 
     act(() => result.current.discardAll());
-    expect(result.current.tiles.every((t) => t.status === "idle")).toBe(true);
+    expect(result.current.tiles).toHaveLength(0);
 
     // After discardAll, retryOne is a no-op (no stored request).
     await act(async () => {
       await result.current.retryOne(0);
     });
-    expect(result.current.tiles[0].status).toBe("idle");
+    expect(result.current.tiles).toHaveLength(0);
+  });
+
+  it("propagates per-tile provider label so tiles can be named before completion", async () => {
+    generateImage.mockResolvedValue(makeResponse(0));
+    const { result } = renderHook(() => useVariantFanOut());
+    await act(async () => {
+      await result.current.start([
+        { request: { ...baseReq } as never, providerLabel: "Gemini" },
+        { request: { ...baseReq } as never, providerLabel: "OpenAI" },
+      ]);
+    });
+    expect(result.current.tiles.map((t) => t.providerLabel)).toEqual(["Gemini", "OpenAI"]);
   });
 
   describe("keepAtPrintResolution", () => {
     it("returns the existing preview asset when no deterministic replay is available", async () => {
       generateImage.mockImplementation((r: any) => {
-        // Echo the requested modelId so the hook can read it.
         const baseIdx = generateImage.mock.calls.length - 1;
         return Promise.resolve({
           ...makeResponse(baseIdx),
@@ -153,12 +170,11 @@ describe("useVariantFanOut", () => {
         });
       });
 
-      const { result } = renderHook(() => useVariantFanOut(2));
+      const { result } = renderHook(() => useVariantFanOut());
       await act(async () => {
-        await result.current.start({
-          ...req,
-          modelId: "openai:gpt-image-2",
-        } as never);
+        await result.current.start(
+          makeReqs(2, { modelId: "openai:gpt-image-2" }),
+        );
       });
 
       const initialCalls = generateImage.mock.calls.length;
@@ -169,14 +185,11 @@ describe("useVariantFanOut", () => {
 
       expect(outcome.regenerated).toBe(false);
       expect(outcome.reason).toBe("no-replay-support");
-      // No extra generation call was made — we did NOT silently replace
-      // the user's chosen variant with a regenerated image.
       expect(generateImage).toHaveBeenCalledTimes(initialCalls);
       expect(outcome.response.imageUrl).toBe(result.current.tiles[0].response?.imageUrl);
     });
 
     it("re-runs at sizeIntent='print' when the model supports deterministic seed replay", async () => {
-      // Opt the model in just for this test.
       const entry = PROVIDER_MODEL_REGISTRY.find((m) => m.id === "openai:gpt-image-2")!;
       entry.supportsDeterministicSeedReplay = true;
       try {
@@ -192,12 +205,11 @@ describe("useVariantFanOut", () => {
           }),
         );
 
-        const { result } = renderHook(() => useVariantFanOut(1));
+        const { result } = renderHook(() => useVariantFanOut());
         await act(async () => {
-          await result.current.start({
-            ...req,
-            modelId: "openai:gpt-image-2",
-          } as never);
+          await result.current.start(
+            makeReqs(1, { modelId: "openai:gpt-image-2" }),
+          );
         });
 
         let outcome: any;
@@ -207,7 +219,6 @@ describe("useVariantFanOut", () => {
 
         expect(outcome.regenerated).toBe(true);
         expect(outcome.response.imageUrl).toBe("print.png");
-        // The replay call passed sizeIntent: "print".
         const lastCall = generateImage.mock.calls.at(-1)?.[0];
         expect(lastCall?.sizeIntent).toBe("print");
       } finally {

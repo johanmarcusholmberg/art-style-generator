@@ -61,8 +61,11 @@ import ModelSelector, { type ModelSelectorValue } from "@/components/generation/
 // (kept in Gallery for the lightbox).
 import {
   type GeneratorPreference,
+  type ResolvedProviderId,
+  GENERATOR_PROVIDERS,
   loadGeneratorPreference,
 } from "@/lib/generators";
+
 import {
   resolveUpscaleRecipe,
   generatorFamilyFromProvider,
@@ -203,9 +206,17 @@ export default function ImageGenerator({
   const [compareOpen, setCompareOpen] = useState(false);
   // Variant fan-out — generate 4 in parallel and let the user pick.
   const [variantMode, setVariantMode] = useState(false);
+  // Which generators are included in the fan-out. Defaults to all three
+  // concrete providers so the toggle keeps the previous "run everywhere"
+  // behavior when the user first enables Variant mode.
+  const VARIANT_PROVIDER_IDS: ResolvedProviderId[] = ["sdxl", "gemini", "openai"];
+  const [selectedVariantProviders, setSelectedVariantProviders] = useState<Set<ResolvedProviderId>>(
+    () => new Set<ResolvedProviderId>(VARIANT_PROVIDER_IDS),
+  );
   const [savedTileIds, setSavedTileIds] = useState<Set<number>>(new Set());
   const [savingTileId, setSavingTileId] = useState<number | null>(null);
-  const variantFanOut = useVariantFanOut(4);
+  const variantFanOut = useVariantFanOut();
+
   // Bumped after each successful prompt-history save so the panel reloads.
   const [promptHistoryRefresh, setPromptHistoryRefresh] = useState(0);
 
@@ -404,10 +415,21 @@ export default function ImageGenerator({
   const startVariantFanOut = async () => {
     const activePrompt = isInlineEditing ? editPrompt : prompt;
     if (!activePrompt.trim()) return;
+    if (selectedVariantProviders.size === 0) return;
     setSavedTileIds(new Set());
     setSavingTileId(null);
-    await variantFanOut.start(buildGenerationRequest());
+    const baseReq = buildGenerationRequest();
+    // One request per selected generator — override providerPreference so
+    // each tile deterministically runs on the chosen provider (never Auto).
+    const reqs = VARIANT_PROVIDER_IDS
+      .filter((id) => selectedVariantProviders.has(id))
+      .map((id) => ({
+        request: { ...baseReq, providerPreference: id as GeneratorPreference },
+        providerLabel: GENERATOR_PROVIDERS[id].displayName,
+      }));
+    await variantFanOut.start(reqs);
   };
+
 
   const handleKeepVariant = async (tile: VariantTile, response: NormalizedGenerationResponse) => {
     if (savedTileIds.has(tile.id) || savingTileId !== null) return;
@@ -1420,22 +1442,56 @@ export default function ImageGenerator({
           />
         )}
 
-        {/* Variant fan-out toggle — opt-in. When on, the Generate button
-            runs 4 parallel calls and shows a pick-best grid below. */}
+        {/* Variant fan-out — opt-in. Pick which generators to fan out to;
+            one variant is produced per selected provider. */}
         {!isEditMode && !isInlineEditing && (
-          <label className="flex items-center justify-between gap-2 px-1">
-            <span className="flex items-center gap-2">
-              <Switch
-                checked={variantMode}
-                onCheckedChange={(v) => setVariantMode(!!v)}
-                aria-label="Generate 4 variants"
-              />
-              <span className="font-display text-xs text-foreground">Generate 4 variants</span>
-            </span>
-            <span className="font-display text-[10px] text-muted-foreground">
-              ~4× cost · pick the best
-            </span>
-          </label>
+          <div className="space-y-2 px-1">
+            <label className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <Switch
+                  checked={variantMode}
+                  onCheckedChange={(v) => setVariantMode(!!v)}
+                  aria-label="Generate variants across selected generators"
+                />
+                <span className="font-display text-xs text-foreground">
+                  Generate variants
+                </span>
+              </span>
+              <span className="font-display text-[10px] text-muted-foreground">
+                {selectedVariantProviders.size}× cost · pick the best
+              </span>
+            </label>
+            {variantMode && (
+              <div className="flex flex-wrap gap-2 pl-9">
+                {VARIANT_PROVIDER_IDS.map((id) => {
+                  const active = selectedVariantProviders.has(id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() =>
+                        setSelectedVariantProviders((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(id)) next.delete(id);
+                          else next.add(id);
+                          return next;
+                        })
+                      }
+                      className={cn(
+                        "font-display text-[11px] px-2.5 py-1 rounded-sm border transition-colors",
+                        active
+                          ? "border-primary bg-primary/15 text-foreground"
+                          : "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
+                      )}
+                      aria-pressed={active}
+                    >
+                      {GENERATOR_PROVIDERS[id].displayName}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         <Button
@@ -1444,7 +1500,8 @@ export default function ImageGenerator({
             loading ||
             variantFanOut.isRunning ||
             (!isInlineEditing && !prompt.trim()) ||
-            (isInlineEditing && !editPrompt.trim())
+            (isInlineEditing && !editPrompt.trim()) ||
+            (variantMode && !isEditMode && !isInlineEditing && selectedVariantProviders.size === 0)
           }
           className="w-full font-display text-sm tracking-wider h-11"
         >
@@ -1460,11 +1517,15 @@ export default function ImageGenerator({
           ) : isInlineEditing || isEditMode ? (
             "Apply Changes"
           ) : variantMode ? (
-            "Generate 4 variants"
+            selectedVariantProviders.size === 0
+              ? "Select at least one generator"
+              : `Generate ${selectedVariantProviders.size} variant${selectedVariantProviders.size === 1 ? "" : "s"}`
           ) : (
             generateLabel || "Generate poster"
           )}
         </Button>
+
+
 
         {variantMode && (
           <VariantGrid
