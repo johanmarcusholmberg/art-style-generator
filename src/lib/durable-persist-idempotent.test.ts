@@ -222,16 +222,14 @@ function makeArgs(overrides: Partial<DurablePersistArgs> = {}): DurablePersistAr
 
 async function runUntilSuccess(
   args: DurablePersistArgs,
-  makeFailingRepo: (attempt: number) => ReturnType<typeof makeRepo>,
+  perAttemptFailAt: (attempt: number) => FailAt,
   maxAttempts = 8,
 ) {
   // Share underlying state across attempts.
   const shared = makeRepo();
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const failing = makeFailingRepo(attempt);
-    // Rebind repo to write into the shared state but with failure injection
-    // at the specified call number for THIS attempt only.
-    const injected = injectFailures(shared, failing.failAt);
+    const failAt = perAttemptFailAt(attempt);
+    const injected = injectFailures(shared, failAt);
     try {
       const result = await persistDurableGenerationResult(injected.repo, args);
       return { shared, result, attempts: attempt };
