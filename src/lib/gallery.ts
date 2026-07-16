@@ -214,8 +214,10 @@ export async function saveToGallery(opts: GallerySaveOptions) {
       estimated_cost: opts.estimatedCost ?? null,
       currency: opts.currency || "USD",
       prompt_version: opts.promptVersion || null,
-      base_image_url: opts.baseImageUrl || null,
-      master_image_url: opts.masterImageUrl || null,
+      // Guard: never persist base64 data URLs in text columns — they bloat
+      // the row and can push SELECT * queries into statement timeout.
+      base_image_url: opts.baseImageUrl && !opts.baseImageUrl.startsWith("data:") ? opts.baseImageUrl : null,
+      master_image_url: opts.masterImageUrl && !opts.masterImageUrl.startsWith("data:") ? opts.masterImageUrl : null,
       master_width: opts.masterWidth || null,
       master_height: opts.masterHeight || null,
       print_readiness: opts.printReadiness || null,
