@@ -278,6 +278,17 @@ export function useDurableGeneration(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoHydrate, styleKey]);
 
+  // DB polling fallback — if realtime hiccups, re-hydrate the snapshot
+  // every 15s while the job is still active. Cheap: one row + short list.
+  useEffect(() => {
+    if (!jobId) return;
+    if (jobStatus !== "queued" && jobStatus !== "processing") return;
+    const id = setInterval(() => {
+      void hydrate();
+    }, 15000);
+    return () => clearInterval(id);
+  }, [jobId, jobStatus, hydrate]);
+
   return {
     jobId,
     jobStatus,
