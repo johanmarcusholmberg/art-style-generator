@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle, LayoutPanelTop, Info } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle, Info } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +9,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import PosterComposer from "@/features/poster-composer/PosterComposer";
-import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "@/features/poster-composer/poster-templates";
-import type { PosterTemplateId, PosterTextMode } from "@/features/poster-composer/poster-types";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
 import { describeExportSource } from "@/lib/asset-selection";
@@ -211,37 +208,7 @@ export default function ImageGenerator({
   const variantFanOut = useVariantFanOut(4);
   // Bumped after each successful prompt-history save so the panel reloads.
   const [promptHistoryRefresh, setPromptHistoryRefresh] = useState(0);
-  // Poster Composer integration (additive — does not change the generator).
-  // The user can configure template + text BEFORE generation. After the
-  // image is produced we auto-open the Poster Composer pre-filled with
-  // their inputs so the poster is ready to export immediately.
-  //
-  // Two text modes drive how we use the user-entered text:
-  //   - "composer" (default): text is NOT sent to the generator. We only
-  //                            ask the model to leave a clean empty band.
-  //   - "generated":          title/subtitle ARE injected into the prompt
-  //                            so the model bakes typography into the art.
-  const [posterTemplateId, setPosterTemplateId] = useState<PosterTemplateId>("fika");
-  const [posterTextMode, setPosterTextMode] = useState<PosterTextMode>("composer");
-  // STRICT: safe-area is OFF by default and must be explicitly enabled —
-  // never auto-enabled by template selection.
-  const [posterSafeAreaEnabled, setPosterSafeAreaEnabled] = useState(false);
-  const [composerTitle, setComposerTitle] = useState("");
-  const [composerSubtitle, setComposerSubtitle] = useState("");
-  const [composerDescription, setComposerDescription] = useState("");
-  const [composerIngredientsRaw, setComposerIngredientsRaw] = useState("");
-  const [posterOpen, setPosterOpen] = useState(false);
-  // Snapshot of poster config used for the most recent generation. We
-  // pass this (not the live form values) into PosterComposer so the
-  // dialog stays consistent if the user edits inputs after generating.
-  const [lastPosterSnapshot, setLastPosterSnapshot] = useState<{
-    templateId: PosterTemplateId;
-    textMode: PosterTextMode;
-    title: string;
-    subtitle: string;
-    description: string;
-    ingredients: string[];
-  } | null>(null);
+
   const { toast } = useToast();
 
   // Shared upscale hook
@@ -534,44 +501,8 @@ export default function ImageGenerator({
         styleKey: variantStyleKey,
         provider: strictnessProvider,
       });
-      // Optional poster-composer hint — additive only. Appended to the
-      // user prompt so the existing prompt compiler is untouched.
-      //
-      // STRICT rules (must match Poster Composer behaviour):
-      //   - composer mode: only emit a "leave clean empty space" hint when
-      //     the user has BOTH enabled the safe area AND entered some text.
-      //     Composer text fields are NEVER sent to the generator.
-      //   - generated mode: only emit "include this text" when the user
-      //     typed a title/subtitle. Safe area is irrelevant here.
-      //   - otherwise: no hint, no layout reservation, full artwork.
-      const ingredientsList = composerIngredientsRaw
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const hasComposerText =
-        !!composerTitle.trim() ||
-        !!composerSubtitle.trim() ||
-        !!composerDescription.trim() ||
-        ingredientsList.length > 0;
-      const shouldReserveTextArea =
-        posterTextMode === "composer" &&
-        posterSafeAreaEnabled &&
-        hasComposerText;
-      let posterHint = "";
-      if (shouldReserveTextArea) {
-        posterHint =
-          "Leave clean empty space at the bottom of the image for later text layout, with minimal details in that area.";
-      } else if (posterTextMode === "generated" && hasComposerText) {
-        const parts: string[] = [];
-        if (composerTitle.trim()) parts.push(`title "${composerTitle.trim()}"`);
-        if (composerSubtitle.trim()) parts.push(`subtitle "${composerSubtitle.trim()}"`);
-        if (parts.length > 0) {
-          posterHint = `Include the following text inside the image as integrated typography: ${parts.join(", ")}.`;
-        }
-      }
-      const promptForGen = posterHint
-        ? `${activePrompt.trim()} ${posterHint}`
-        : activePrompt.trim();
+      const promptForGen = activePrompt.trim();
+
       const { response: gen, diagnostics } = await generateImage({
         prompt: promptForGen,
         styleKey: variantStyleKey,
@@ -705,26 +636,8 @@ export default function ImageGenerator({
         setEditPrompt("");
       }
 
-      // Snapshot poster config used for this generation. We auto-open the
-      // Poster Composer when:
-      //   - composer mode is active (poster-friendly band was reserved)
-      //   - OR the user typed any text in either mode
-      // This gives the user a ready-to-export poster immediately.
-      const snapshot = {
-        templateId: posterTemplateId,
-        textMode: posterTextMode,
-        title: composerTitle.trim(),
-        subtitle: composerSubtitle.trim(),
-        description: composerDescription.trim(),
-        ingredients: ingredientsList,
-      };
-      setLastPosterSnapshot(snapshot);
-      const shouldAutoOpen =
-        !isInlineEditing &&
-        (posterTextMode === "composer" || hasComposerText);
-      if (shouldAutoOpen) {
-        setPosterOpen(true);
-      }
+
+
 
       setLoading(false);
 
@@ -1732,19 +1645,8 @@ export default function ImageGenerator({
               onPrintExport={handlePrintExport}
               onStartInlineEdit={handleStartInlineEdit}
               onRemoveImage={handleRemoveImage}
-              posterOpen={posterOpen}
-              onPosterOpenChange={setPosterOpen}
-              posterTemplateId={posterTemplateId}
-              posterTextMode={posterTextMode}
-              posterSafeAreaEnabled={posterSafeAreaEnabled}
-              composerTitle={composerTitle}
-              composerSubtitle={composerSubtitle}
-              composerDescription={composerDescription}
-              composerIngredientsRaw={composerIngredientsRaw}
-              lastPosterSnapshot={lastPosterSnapshot}
-              onRegenerate={generate}
-              isRegenerating={loading}
             />
+
           </div>
         )}
 

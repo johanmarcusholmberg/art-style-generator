@@ -5,14 +5,7 @@
  * All business logic remains in ImageGenerator; this component is a pure
  * presentation wrapper around the action buttons, toggles, and dialogs.
  */
-import { Loader2, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, LayoutPanelTop } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Loader2, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,13 +20,11 @@ import {
 import { Button } from "@/components/ui/button";
 import DownloadButton from "@/components/generation/DownloadButton";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
-import PosterComposer from "@/features/poster-composer/PosterComposer";
 import type { StyleConfig } from "@/lib/style-config";
 import type { PrintFormat } from "@/lib/print-formats";
 import type { PrintSize } from "@/components/PrintSizeSelector";
 import type { UpscaleMode } from "@/lib/upscale-modes";
 import type { UpscaleRecipe } from "@/lib/upscale-recipes";
-import type { PosterTemplateId, PosterTextMode } from "@/features/poster-composer/poster-types";
 
 export interface GeneratedImageActionsProps {
   // Image state
@@ -83,27 +74,8 @@ export interface GeneratedImageActionsProps {
   // Remove
   onRemoveImage: () => void;
 
-  // Poster composer state
-  posterOpen: boolean;
-  onPosterOpenChange: (open: boolean) => void;
-  posterTemplateId: PosterTemplateId;
-  posterTextMode: PosterTextMode;
-  posterSafeAreaEnabled: boolean;
-  composerTitle: string;
-  composerSubtitle: string;
-  composerDescription: string;
-  composerIngredientsRaw: string;
-  lastPosterSnapshot: {
-    templateId: PosterTemplateId;
-    textMode: PosterTextMode;
-    title: string;
-    subtitle: string;
-    description: string;
-    ingredients: string[];
-  } | null;
-  onRegenerate: () => void | Promise<void>;
-  isRegenerating: boolean;
 }
+
 
 export default function GeneratedImageActions(props: GeneratedImageActionsProps) {
   const {
@@ -138,29 +110,8 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
     onPrintExport,
     onStartInlineEdit,
     onRemoveImage,
-    posterOpen,
-    onPosterOpenChange,
-    posterTemplateId,
-    posterTextMode,
-    posterSafeAreaEnabled,
-    composerTitle,
-    composerSubtitle,
-    composerDescription,
-    composerIngredientsRaw,
-    lastPosterSnapshot,
-    onRegenerate,
-    isRegenerating,
   } = props;
 
-  const ingredientsList = composerIngredientsRaw
-    .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const hasComposerText =
-    !!composerTitle.trim() ||
-    !!composerSubtitle.trim() ||
-    !!composerDescription.trim() ||
-    ingredientsList.length > 0;
 
   return (
     <div className="flex flex-wrap gap-2 items-center justify-center">
@@ -289,53 +240,8 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
         <Pencil className="mr-2 h-4 w-4" /> Edit Image
       </Button>
 
-      {/* Create Poster — opens an additive composer dialog. */}
-      <Dialog open={posterOpen} onOpenChange={onPosterOpenChange}>
-        <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="font-display text-xs tracking-wider border-primary/40 text-primary hover:bg-primary/10"
-          >
-            <LayoutPanelTop className="mr-2 h-4 w-4" /> Create Poster
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display">Poster Composer</DialogTitle>
-          </DialogHeader>
-          <PosterComposer
-            imageUrl={
-              hasEnhanced && enhancedImageUrl
-                ? enhancedImageUrl
-                : imageUrl ?? ""
-            }
-            filenameBase={`${styleConfig.downloadPrefix}-${mode}`}
-            printFormatId={selectedPrintFormat.id}
-            initialTemplateId={lastPosterSnapshot?.templateId ?? posterTemplateId}
-            initialTextMode={lastPosterSnapshot?.textMode ?? posterTextMode}
-            initialText={
-              lastPosterSnapshot
-                ? {
-                    title: lastPosterSnapshot.title || undefined,
-                    subtitle: lastPosterSnapshot.subtitle || undefined,
-                    description: lastPosterSnapshot.description || undefined,
-                    ingredients:
-                      lastPosterSnapshot.ingredients.length > 0
-                        ? lastPosterSnapshot.ingredients
-                        : undefined,
-                  }
-                : {
-                    title: composerTitle || undefined,
-                    subtitle: composerSubtitle || undefined,
-                    description: composerDescription || undefined,
-                  }
-            }
-            onRegenerate={onRegenerate}
-            isRegenerating={isRegenerating}
-          />
-        </DialogContent>
-      </Dialog>
+
+
 
       {savedToGallery && (
         <span className="text-xs text-primary flex items-center gap-1 font-display">
