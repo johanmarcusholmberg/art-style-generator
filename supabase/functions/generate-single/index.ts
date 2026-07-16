@@ -162,7 +162,7 @@ serve(async (req) => {
       provider: outcome.providerId,
       model: outcome.modelId,
       route: executionRoute,
-      estimatedCost: outcome.estimatedCost ?? null,
+      estimatedCost: null,
       currency: "USD",
       promptVersion: null,
       sourceImageUrl: payload.sourceImageUrl ?? null,
