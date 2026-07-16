@@ -41,6 +41,8 @@ export interface DurableItemRow {
   completed_at: string | null;
   updated_at: string;
   position: number;
+  result_metadata?: unknown;
+  error_message?: string | null;
 }
 
 /** Storage keys — pure, deterministic, per-style. */

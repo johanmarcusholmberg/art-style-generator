@@ -159,7 +159,7 @@ export function useDurableGeneration(
       supabase
         .from("generation_job_items")
         .select(
-          "id,job_id,status,image_url,enforced_image_url,raw_image_url,ratio_enforcement_status,storage_path,completed_at,updated_at,position",
+          "id,job_id,status,image_url,enforced_image_url,raw_image_url,ratio_enforcement_status,storage_path,completed_at,updated_at,position,result_metadata,error_message",
         )
         .eq("job_id", storedJobId)
         .order("position", { ascending: true }),
@@ -233,8 +233,11 @@ export function useDurableGeneration(
           p_items: itemPayload as unknown as never,
         });
         if (error || !data) throw new Error(error?.message ?? "Failed to create job");
-        const created = Array.isArray(data) ? (data[0] as { job_id: string }) : (data as { job_id: string });
+        const created = Array.isArray(data)
+          ? (data[0] as { job_id: string; item_ids: string[] })
+          : (data as { job_id: string; item_ids: string[] });
         const jid = created.job_id;
+        const firstItemId = created.item_ids?.[0];
 
         writeLS(currentJobKey(styleKey), jid);
         setJobId(jid);
@@ -243,10 +246,13 @@ export function useDurableGeneration(
         setStaleTerminal(false);
         attach(jid);
 
-        // Fire the durable worker; do not await — realtime will update UI.
-        supabase.functions
-          .invoke("generate-single", { body: { jobId: jid } })
-          .catch((err) => console.error("[useDurableGeneration] generate-single dispatch:", err));
+        // Fire the durable worker per item; do not await — realtime will
+        // update UI. `generate-single` expects `itemId` (not `jobId`).
+        if (firstItemId) {
+          supabase.functions
+            .invoke("generate-single", { body: { itemId: firstItemId } })
+            .catch((err) => console.error("[useDurableGeneration] generate-single dispatch:", err));
+        }
 
         return jid;
       } finally {
@@ -271,6 +277,17 @@ export function useDurableGeneration(
     return () => detach();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoHydrate, styleKey]);
+
+  // DB polling fallback — if realtime hiccups, re-hydrate the snapshot
+  // every 15s while the job is still active. Cheap: one row + short list.
+  useEffect(() => {
+    if (!jobId) return;
+    if (jobStatus !== "queued" && jobStatus !== "processing") return;
+    const id = setInterval(() => {
+      void hydrate();
+    }, 15000);
+    return () => clearInterval(id);
+  }, [jobId, jobStatus, hydrate]);
 
   return {
     jobId,
