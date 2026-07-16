@@ -1598,6 +1598,30 @@ export default function ImageGenerator({
           )}
         </Button>
 
+        {durableFailure && !loading && (
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-sm border border-destructive/40 bg-destructive/10 px-3 py-2">
+            <div className="flex items-start gap-2 min-w-0">
+              <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="font-display text-xs font-bold text-destructive">Generation failed</p>
+                <p className="font-display text-[11px] text-muted-foreground truncate">
+                  {durableFailure.message}
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDurableRetry}
+              className="font-display text-xs h-7 flex-shrink-0"
+            >
+              Retry
+            </Button>
+          </div>
+        )}
+
+
+
 
 
         {variantMode && (
