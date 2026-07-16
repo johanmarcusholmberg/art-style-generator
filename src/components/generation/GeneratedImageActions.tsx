@@ -289,53 +289,8 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
         <Pencil className="mr-2 h-4 w-4" /> Edit Image
       </Button>
 
-      {/* Create Poster — opens an additive composer dialog. */}
-      <Dialog open={posterOpen} onOpenChange={onPosterOpenChange}>
-        <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="font-display text-xs tracking-wider border-primary/40 text-primary hover:bg-primary/10"
-          >
-            <LayoutPanelTop className="mr-2 h-4 w-4" /> Create Poster
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display">Poster Composer</DialogTitle>
-          </DialogHeader>
-          <PosterComposer
-            imageUrl={
-              hasEnhanced && enhancedImageUrl
-                ? enhancedImageUrl
-                : imageUrl ?? ""
-            }
-            filenameBase={`${styleConfig.downloadPrefix}-${mode}`}
-            printFormatId={selectedPrintFormat.id}
-            initialTemplateId={lastPosterSnapshot?.templateId ?? posterTemplateId}
-            initialTextMode={lastPosterSnapshot?.textMode ?? posterTextMode}
-            initialText={
-              lastPosterSnapshot
-                ? {
-                    title: lastPosterSnapshot.title || undefined,
-                    subtitle: lastPosterSnapshot.subtitle || undefined,
-                    description: lastPosterSnapshot.description || undefined,
-                    ingredients:
-                      lastPosterSnapshot.ingredients.length > 0
-                        ? lastPosterSnapshot.ingredients
-                        : undefined,
-                  }
-                : {
-                    title: composerTitle || undefined,
-                    subtitle: composerSubtitle || undefined,
-                    description: composerDescription || undefined,
-                  }
-            }
-            onRegenerate={onRegenerate}
-            isRegenerating={isRegenerating}
-          />
-        </DialogContent>
-      </Dialog>
+
+
 
       {savedToGallery && (
         <span className="text-xs text-primary flex items-center gap-1 font-display">
