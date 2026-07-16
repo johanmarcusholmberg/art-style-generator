@@ -336,7 +336,7 @@ describe("durable-persist-idempotent", () => {
       const r = await runUntilSuccess(makeArgs(), (attempt) => (
         
         attempt === 1 ? { uploadStorage: 1 } : {}
-      }));
+      ));
       expect(r.shared.storage).toHaveLength(1);
       expect(r.shared.images).toHaveLength(1);
       expect(r.shared.costs).toHaveLength(1);
@@ -347,7 +347,7 @@ describe("durable-persist-idempotent", () => {
       const r = await runUntilSuccess(makeArgs(), (attempt) => (
         
         attempt === 1 ? { insertImage: 1 } : {}
-      }));
+      ));
       expect(r.shared.storage).toHaveLength(1); // upsert idempotent
       expect(r.shared.images).toHaveLength(1);
       expect(r.shared.costs).toHaveLength(1);
@@ -358,7 +358,7 @@ describe("durable-persist-idempotent", () => {
       const r = await runUntilSuccess(makeArgs(), (attempt) => (
         
         attempt === 1 ? { insertCost: 1 } : {}
-      }));
+      ));
       expect(r.shared.images).toHaveLength(1);
       expect(r.shared.costs).toHaveLength(1);
       expect(r.shared.prompts).toHaveLength(1);
@@ -368,7 +368,7 @@ describe("durable-persist-idempotent", () => {
       const r = await runUntilSuccess(makeArgs(), (attempt) => (
         
         attempt === 1 ? { insertPh: 1 } : {}
-      }));
+      ));
       expect(r.shared.images).toHaveLength(1);
       expect(r.shared.costs).toHaveLength(1);
       expect(r.shared.prompts).toHaveLength(1);
