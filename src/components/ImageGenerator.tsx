@@ -415,10 +415,21 @@ export default function ImageGenerator({
   const startVariantFanOut = async () => {
     const activePrompt = isInlineEditing ? editPrompt : prompt;
     if (!activePrompt.trim()) return;
+    if (selectedVariantProviders.size === 0) return;
     setSavedTileIds(new Set());
     setSavingTileId(null);
-    await variantFanOut.start(buildGenerationRequest());
+    const baseReq = buildGenerationRequest();
+    // One request per selected generator — override providerPreference so
+    // each tile deterministically runs on the chosen provider (never Auto).
+    const reqs = VARIANT_PROVIDER_IDS
+      .filter((id) => selectedVariantProviders.has(id))
+      .map((id) => ({
+        request: { ...baseReq, providerPreference: id as GeneratorPreference },
+        providerLabel: GENERATOR_PROVIDERS[id].displayName,
+      }));
+    await variantFanOut.start(reqs);
   };
+
 
   const handleKeepVariant = async (tile: VariantTile, response: NormalizedGenerationResponse) => {
     if (savedTileIds.has(tile.id) || savingTileId !== null) return;
