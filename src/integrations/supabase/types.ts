@@ -147,6 +147,7 @@ export type Database = {
           estimated_cost: number | null
           event_type: string
           generated_image_id: string
+          generation_job_item_id: string | null
           id: string
           metadata: Json | null
           mode: string | null
@@ -160,6 +161,7 @@ export type Database = {
           estimated_cost?: number | null
           event_type: string
           generated_image_id: string
+          generation_job_item_id?: string | null
           id?: string
           metadata?: Json | null
           mode?: string | null
@@ -173,6 +175,7 @@ export type Database = {
           estimated_cost?: number | null
           event_type?: string
           generated_image_id?: string
+          generation_job_item_id?: string | null
           id?: string
           metadata?: Json | null
           mode?: string | null
@@ -420,6 +423,8 @@ export type Database = {
           export_width: number | null
           fallback_used: boolean | null
           folder_id: string | null
+          generation_job_id: string | null
+          generation_job_item_id: string | null
           generation_mode: string | null
           generation_model: string | null
           generation_provider: string | null
@@ -496,6 +501,8 @@ export type Database = {
           export_width?: number | null
           fallback_used?: boolean | null
           folder_id?: string | null
+          generation_job_id?: string | null
+          generation_job_item_id?: string | null
           generation_mode?: string | null
           generation_model?: string | null
           generation_provider?: string | null
@@ -572,6 +579,8 @@ export type Database = {
           export_width?: number | null
           fallback_used?: boolean | null
           folder_id?: string | null
+          generation_job_id?: string | null
+          generation_job_item_id?: string | null
           generation_mode?: string | null
           generation_model?: string | null
           generation_provider?: string | null
@@ -748,6 +757,9 @@ export type Database = {
           print_size: string | null
           profile_id: string
           prompt: string
+          source_gallery_image_id: string | null
+          source_item_id: string | null
+          source_job_id: string | null
           speed_mode: string
           status: string
           style_grid_styles: string[] | null
@@ -779,6 +791,9 @@ export type Database = {
           print_size?: string | null
           profile_id: string
           prompt: string
+          source_gallery_image_id?: string | null
+          source_item_id?: string | null
+          source_job_id?: string | null
           speed_mode?: string
           status?: string
           style_grid_styles?: string[] | null
@@ -810,6 +825,9 @@ export type Database = {
           print_size?: string | null
           profile_id?: string
           prompt?: string
+          source_gallery_image_id?: string | null
+          source_item_id?: string | null
+          source_job_id?: string | null
           speed_mode?: string
           status?: string
           style_grid_styles?: string[] | null
@@ -905,6 +923,7 @@ export type Database = {
         Row: {
           created_at: string
           generation_job_id: string | null
+          generation_job_item_id: string | null
           id: string
           is_favorite: boolean
           last_used_at: string
@@ -919,6 +938,7 @@ export type Database = {
         Insert: {
           created_at?: string
           generation_job_id?: string | null
+          generation_job_item_id?: string | null
           id?: string
           is_favorite?: boolean
           last_used_at?: string
@@ -933,6 +953,7 @@ export type Database = {
         Update: {
           created_at?: string
           generation_job_id?: string | null
+          generation_job_item_id?: string | null
           id?: string
           is_favorite?: boolean
           last_used_at?: string
@@ -1207,6 +1228,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      find_image_for_job_item: { Args: { p_item_id: string }; Returns: string }
       find_recoverable_items: {
         Args: { p_max?: number }
         Returns: {
