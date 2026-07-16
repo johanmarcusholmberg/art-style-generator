@@ -501,44 +501,8 @@ export default function ImageGenerator({
         styleKey: variantStyleKey,
         provider: strictnessProvider,
       });
-      // Optional poster-composer hint — additive only. Appended to the
-      // user prompt so the existing prompt compiler is untouched.
-      //
-      // STRICT rules (must match Poster Composer behaviour):
-      //   - composer mode: only emit a "leave clean empty space" hint when
-      //     the user has BOTH enabled the safe area AND entered some text.
-      //     Composer text fields are NEVER sent to the generator.
-      //   - generated mode: only emit "include this text" when the user
-      //     typed a title/subtitle. Safe area is irrelevant here.
-      //   - otherwise: no hint, no layout reservation, full artwork.
-      const ingredientsList = composerIngredientsRaw
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const hasComposerText =
-        !!composerTitle.trim() ||
-        !!composerSubtitle.trim() ||
-        !!composerDescription.trim() ||
-        ingredientsList.length > 0;
-      const shouldReserveTextArea =
-        posterTextMode === "composer" &&
-        posterSafeAreaEnabled &&
-        hasComposerText;
-      let posterHint = "";
-      if (shouldReserveTextArea) {
-        posterHint =
-          "Leave clean empty space at the bottom of the image for later text layout, with minimal details in that area.";
-      } else if (posterTextMode === "generated" && hasComposerText) {
-        const parts: string[] = [];
-        if (composerTitle.trim()) parts.push(`title "${composerTitle.trim()}"`);
-        if (composerSubtitle.trim()) parts.push(`subtitle "${composerSubtitle.trim()}"`);
-        if (parts.length > 0) {
-          posterHint = `Include the following text inside the image as integrated typography: ${parts.join(", ")}.`;
-        }
-      }
-      const promptForGen = posterHint
-        ? `${activePrompt.trim()} ${posterHint}`
-        : activePrompt.trim();
+      const promptForGen = activePrompt.trim();
+
       const { response: gen, diagnostics } = await generateImage({
         prompt: promptForGen,
         styleKey: variantStyleKey,
