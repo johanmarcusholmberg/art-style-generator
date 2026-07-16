@@ -14,6 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
+      _archive_generation_job_items: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          gallery_image_id: string | null
+          id: string
+          image_url: string | null
+          job_id: string
+          prompt_variant: string
+          seed: number | null
+          status: string
+          storage_path: string | null
+          style: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          gallery_image_id?: string | null
+          id?: string
+          image_url?: string | null
+          job_id: string
+          prompt_variant: string
+          seed?: number | null
+          status?: string
+          storage_path?: string | null
+          style?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          gallery_image_id?: string | null
+          id?: string
+          image_url?: string | null
+          job_id?: string
+          prompt_variant?: string
+          seed?: number | null
+          status?: string
+          storage_path?: string | null
+          style?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      _archive_generation_jobs: {
+        Row: {
+          aspect_ratio: string
+          auto_upscale: boolean
+          auto_upscale_mode: string
+          background_style: string
+          batch_size: number
+          completed_images: number
+          created_at: string
+          failed_images: number
+          hd_enhance: boolean
+          id: string
+          job_type: string
+          matrix_variables: Json | null
+          mode: string
+          print_size: string | null
+          prompt: string
+          speed_mode: string
+          status: string
+          style_grid_styles: string[] | null
+          target_height_px: number | null
+          target_ppi: number | null
+          target_width_px: number | null
+          total_images: number
+          updated_at: string
+          white_frame: boolean
+        }
+        Insert: {
+          aspect_ratio?: string
+          auto_upscale?: boolean
+          auto_upscale_mode?: string
+          background_style?: string
+          batch_size?: number
+          completed_images?: number
+          created_at?: string
+          failed_images?: number
+          hd_enhance?: boolean
+          id?: string
+          job_type?: string
+          matrix_variables?: Json | null
+          mode?: string
+          print_size?: string | null
+          prompt: string
+          speed_mode?: string
+          status?: string
+          style_grid_styles?: string[] | null
+          target_height_px?: number | null
+          target_ppi?: number | null
+          target_width_px?: number | null
+          total_images?: number
+          updated_at?: string
+          white_frame?: boolean
+        }
+        Update: {
+          aspect_ratio?: string
+          auto_upscale?: boolean
+          auto_upscale_mode?: string
+          background_style?: string
+          batch_size?: number
+          completed_images?: number
+          created_at?: string
+          failed_images?: number
+          hd_enhance?: boolean
+          id?: string
+          job_type?: string
+          matrix_variables?: Json | null
+          mode?: string
+          print_size?: string | null
+          prompt?: string
+          speed_mode?: string
+          status?: string
+          style_grid_styles?: string[] | null
+          target_height_px?: number | null
+          target_ppi?: number | null
+          target_width_px?: number | null
+          total_images?: number
+          updated_at?: string
+          white_frame?: boolean
+        }
+        Relationships: []
+      }
       asset_cost_events: {
         Row: {
           created_at: string
@@ -504,42 +630,81 @@ export type Database = {
       }
       generation_job_items: {
         Row: {
+          attempt_count: number
+          completed_at: string | null
           created_at: string
+          enforced_image_url: string | null
           error_message: string | null
           gallery_image_id: string | null
+          heartbeat_at: string | null
           id: string
           image_url: string | null
           job_id: string
+          lease_expires_at: string | null
+          lease_token: string | null
+          position: number
           prompt_variant: string
+          provider_label: string | null
+          ratio_enforcement_status: string
+          raw_image_url: string | null
+          request_payload: Json
+          result_metadata: Json | null
           seed: number | null
+          started_at: string | null
           status: string
           storage_path: string | null
           style: string | null
           updated_at: string
         }
         Insert: {
+          attempt_count?: number
+          completed_at?: string | null
           created_at?: string
+          enforced_image_url?: string | null
           error_message?: string | null
           gallery_image_id?: string | null
+          heartbeat_at?: string | null
           id?: string
           image_url?: string | null
           job_id: string
+          lease_expires_at?: string | null
+          lease_token?: string | null
+          position?: number
           prompt_variant: string
+          provider_label?: string | null
+          ratio_enforcement_status?: string
+          raw_image_url?: string | null
+          request_payload?: Json
+          result_metadata?: Json | null
           seed?: number | null
+          started_at?: string | null
           status?: string
           storage_path?: string | null
           style?: string | null
           updated_at?: string
         }
         Update: {
+          attempt_count?: number
+          completed_at?: string | null
           created_at?: string
+          enforced_image_url?: string | null
           error_message?: string | null
           gallery_image_id?: string | null
+          heartbeat_at?: string | null
           id?: string
           image_url?: string | null
           job_id?: string
+          lease_expires_at?: string | null
+          lease_token?: string | null
+          position?: number
           prompt_variant?: string
+          provider_label?: string | null
+          ratio_enforcement_status?: string
+          raw_image_url?: string | null
+          request_payload?: Json
+          result_metadata?: Json | null
           seed?: number | null
+          started_at?: string | null
           status?: string
           storage_path?: string | null
           style?: string | null
@@ -570,18 +735,23 @@ export type Database = {
           background_style: string
           batch_size: number
           completed_images: number
+          context_key: string | null
           created_at: string
           failed_images: number
+          generation_mode: string
           hd_enhance: boolean
           id: string
+          idempotency_key: string
           job_type: string
           matrix_variables: Json | null
           mode: string
           print_size: string | null
+          profile_id: string
           prompt: string
           speed_mode: string
           status: string
           style_grid_styles: string[] | null
+          style_key: string
           target_height_px: number | null
           target_ppi: number | null
           target_width_px: number | null
@@ -596,18 +766,23 @@ export type Database = {
           background_style?: string
           batch_size?: number
           completed_images?: number
+          context_key?: string | null
           created_at?: string
           failed_images?: number
+          generation_mode?: string
           hd_enhance?: boolean
           id?: string
+          idempotency_key: string
           job_type?: string
           matrix_variables?: Json | null
           mode?: string
           print_size?: string | null
+          profile_id: string
           prompt: string
           speed_mode?: string
           status?: string
           style_grid_styles?: string[] | null
+          style_key: string
           target_height_px?: number | null
           target_ppi?: number | null
           target_width_px?: number | null
@@ -622,18 +797,23 @@ export type Database = {
           background_style?: string
           batch_size?: number
           completed_images?: number
+          context_key?: string | null
           created_at?: string
           failed_images?: number
+          generation_mode?: string
           hd_enhance?: boolean
           id?: string
+          idempotency_key?: string
           job_type?: string
           matrix_variables?: Json | null
           mode?: string
           print_size?: string | null
+          profile_id?: string
           prompt?: string
           speed_mode?: string
           status?: string
           style_grid_styles?: string[] | null
+          style_key?: string
           target_height_px?: number | null
           target_ppi?: number | null
           target_width_px?: number | null
@@ -641,7 +821,22 @@ export type Database = {
           updated_at?: string
           white_frame?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "generation_jobs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_jobs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -951,12 +1146,85 @@ export type Database = {
       }
     }
     Functions: {
+      claim_generation_item: {
+        Args: { p_item_id: string; p_lease_seconds?: number }
+        Returns: {
+          attempt_count: number
+          id: string
+          job_id: string
+          lease_token: string
+          provider_label: string
+          request_payload: Json
+        }[]
+      }
       cleanup_old_deleted_images: { Args: never; Returns: undefined }
+      complete_generation_item: {
+        Args: {
+          p_enforced_image_url: string
+          p_gallery_image_id: string
+          p_item_id: string
+          p_lease_token: string
+          p_ratio_status: string
+          p_raw_image_url: string
+          p_result_metadata: Json
+          p_storage_path: string
+        }
+        Returns: boolean
+      }
+      create_generation_job: {
+        Args: {
+          p_aspect_ratio: string
+          p_background_style: string
+          p_context_key: string
+          p_generation_mode: string
+          p_idempotency_key: string
+          p_items: Json
+          p_job_type: string
+          p_prompt: string
+          p_style_key: string
+        }
+        Returns: {
+          item_ids: string[]
+          job_id: string
+        }[]
+      }
       current_profile_id: { Args: never; Returns: string }
+      expire_exhausted_items: { Args: never; Returns: number }
+      fail_generation_item: {
+        Args: {
+          p_error: string
+          p_item_id: string
+          p_lease_token: string
+          p_terminal: boolean
+        }
+        Returns: boolean
+      }
+      finalize_ratio_enforcement: {
+        Args: {
+          p_enforced_image_url: string
+          p_item_id: string
+          p_storage_path: string
+        }
+        Returns: boolean
+      }
+      find_recoverable_items: {
+        Args: { p_max?: number }
+        Returns: {
+          id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_profile_id: string
+        }
+        Returns: boolean
+      }
+      heartbeat_generation_item: {
+        Args: {
+          p_item_id: string
+          p_lease_seconds?: number
+          p_lease_token: string
         }
         Returns: boolean
       }
