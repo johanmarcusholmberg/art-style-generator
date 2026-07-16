@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle, LayoutPanelTop, Info } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle, Info } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +9,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import PosterComposer from "@/features/poster-composer/PosterComposer";
-import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "@/features/poster-composer/poster-templates";
-import type { PosterTemplateId, PosterTextMode } from "@/features/poster-composer/poster-types";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
 import { describeExportSource } from "@/lib/asset-selection";
