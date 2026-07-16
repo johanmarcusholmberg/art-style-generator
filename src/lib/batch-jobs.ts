@@ -46,77 +46,83 @@ function expandMatrix(basePrompt: string, variables: Record<string, string[]>): 
 
 /**
  * Creates a generation job with items and kicks off background processing.
- * Returns the job ID.
+ * Uses the SECURITY DEFINER `create_generation_job` RPC so the job is created
+ * atomically with idempotency, profile ownership, and per-item request
+ * payloads that the server worker can reproduce.
  */
 export async function createBatchJob(config: BatchJobConfig): Promise<string> {
-  const items: Array<{ prompt_variant: string; style: string | null }> = [];
+  interface Item {
+    prompt: string;
+    styleKey: string;
+    providerLabel?: string;
+  }
+  const items: Item[] = [];
 
   if (config.jobType === "style-grid" && config.styleGridStyles?.length) {
     for (const style of config.styleGridStyles) {
       for (let i = 0; i < config.batchSize; i++) {
-        items.push({ prompt_variant: config.prompt, style });
+        items.push({ prompt: config.prompt, styleKey: style, providerLabel: style });
       }
     }
   } else if (config.jobType === "matrix" && config.matrixVariables) {
     const prompts = expandMatrix(config.prompt, config.matrixVariables);
     for (const p of prompts) {
-      // batchSize acts as variations per combination in matrix mode
       for (let i = 0; i < config.batchSize; i++) {
-        items.push({ prompt_variant: p, style: null });
+        items.push({ prompt: p, styleKey: config.mode });
       }
     }
   } else {
     for (let i = 0; i < config.batchSize; i++) {
-      items.push({ prompt_variant: config.prompt, style: null });
+      items.push({ prompt: config.prompt, styleKey: config.mode });
     }
   }
 
   const totalImages = items.length;
 
-  const { data: job, error: jobError } = await supabase
-    .from("generation_jobs")
-    .insert({
-      prompt: config.prompt,
-      mode: config.mode,
-      batch_size: config.batchSize,
-      total_images: totalImages,
-      aspect_ratio: config.aspectRatio,
-      print_size: config.printSize,
-      hd_enhance: config.hdEnhance,
-      white_frame: false,
-      background_style: config.backgroundStyle,
-      speed_mode: config.speedMode,
-      job_type: config.jobType,
-      style_grid_styles: config.styleGridStyles || null,
-      matrix_variables: config.matrixVariables || null,
-      status: "queued",
-      target_ppi: config.targetPpi || null,
-      target_width_px: config.targetWidthPx || null,
-      target_height_px: config.targetHeightPx || null,
-    } as any)
-    .select("id")
-    .single();
+  // Deterministic idempotency key so a duplicate submit reuses the job.
+  const idempotencyKey =
+    (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`) + `-b${totalImages}`;
 
-  if (jobError || !job) throw new Error(jobError?.message || "Failed to create job");
-
-  const jobItems = items.map((item) => ({
-    job_id: job.id,
-    prompt_variant: item.prompt_variant,
-    style: item.style,
-    seed: Math.floor(Math.random() * 999999),
-    status: "queued" as const,
+  // Build per-item request_payload the server worker can execute directly.
+  const itemPayloads = items.map((it) => ({
+    prompt: it.prompt,
+    styleKey: it.styleKey,
+    providerLabel: it.providerLabel ?? null,
+    aspectRatio: config.aspectRatio,
+    backgroundStyle: config.backgroundStyle,
+    generationMode: config.hdEnhance ? "print-ready" : "standard",
+    printSize: config.printSize,
+    qualityMode: config.speedMode === "fast" ? "web" : "quality",
+    targetPpi: config.targetPpi ?? null,
+    targetWidthPx: config.targetWidthPx ?? null,
+    targetHeightPx: config.targetHeightPx ?? null,
+    mode: config.mode,
   }));
 
-  const { error: itemsError } = await supabase.from("generation_job_items").insert(jobItems);
-  if (itemsError) throw new Error(itemsError.message);
+  const { data, error } = await supabase.rpc("create_generation_job", {
+    p_idempotency_key: idempotencyKey,
+    p_job_type: config.jobType,
+    p_style_key: config.mode,
+    p_generation_mode: config.hdEnhance ? "print-ready" : "standard",
+    p_context_key: config.jobType === "style-grid" ? "style-grid" : null,
+    p_prompt: config.prompt,
+    p_aspect_ratio: config.aspectRatio,
+    p_background_style: config.backgroundStyle,
+    p_items: itemPayloads as unknown as never,
+  });
+  if (error || !data || (Array.isArray(data) && data.length === 0)) {
+    throw new Error(error?.message || "Failed to create job");
+  }
+  const jobId = Array.isArray(data) ? (data[0] as { job_id: string }).job_id : (data as { job_id: string }).job_id;
 
   // Fire and forget — the edge function handles everything from here
   supabase.functions
-    .invoke("batch-generate", { body: { jobId: job.id } })
+    .invoke("batch-generate", { body: { jobId } })
     .catch((err) => console.error("Failed to invoke batch-generate:", err));
 
-  return job.id;
+  return jobId;
 }
+
 
 export async function cancelJob(jobId: string) {
   // Cancel the job — only if it's still in a cancellable state
