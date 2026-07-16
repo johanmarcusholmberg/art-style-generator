@@ -5,14 +5,7 @@
  * All business logic remains in ImageGenerator; this component is a pure
  * presentation wrapper around the action buttons, toggles, and dialogs.
  */
-import { Loader2, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, LayoutPanelTop } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Loader2, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,13 +20,11 @@ import {
 import { Button } from "@/components/ui/button";
 import DownloadButton from "@/components/generation/DownloadButton";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
-import PosterComposer from "@/features/poster-composer/PosterComposer";
 import type { StyleConfig } from "@/lib/style-config";
 import type { PrintFormat } from "@/lib/print-formats";
 import type { PrintSize } from "@/components/PrintSizeSelector";
 import type { UpscaleMode } from "@/lib/upscale-modes";
 import type { UpscaleRecipe } from "@/lib/upscale-recipes";
-import type { PosterTemplateId, PosterTextMode } from "@/features/poster-composer/poster-types";
 
 export interface GeneratedImageActionsProps {
   // Image state
