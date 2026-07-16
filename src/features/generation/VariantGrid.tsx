@@ -120,8 +120,16 @@ function VariantTileCard({
     >
       <div className="relative flex-1 min-h-0 bg-muted/30 flex items-center justify-center">
         {tile.status === "loading" && (
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            {tile.providerLabel && (
+              <span className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                {tile.providerLabel}
+              </span>
+            )}
+          </div>
         )}
+
         {tile.status === "error" && (
           <div className="p-3 text-center space-y-2">
             <AlertTriangle className="h-5 w-5 text-amber-500 mx-auto" />
