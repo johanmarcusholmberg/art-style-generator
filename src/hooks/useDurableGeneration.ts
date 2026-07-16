@@ -159,7 +159,7 @@ export function useDurableGeneration(
       supabase
         .from("generation_job_items")
         .select(
-          "id,job_id,status,image_url,enforced_image_url,raw_image_url,ratio_enforcement_status,storage_path,completed_at,updated_at,position",
+          "id,job_id,status,image_url,enforced_image_url,raw_image_url,ratio_enforcement_status,storage_path,completed_at,updated_at,position,result_metadata,error_message",
         )
         .eq("job_id", storedJobId)
         .order("position", { ascending: true }),
