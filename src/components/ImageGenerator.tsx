@@ -242,6 +242,21 @@ export default function ImageGenerator({
   const savedGalleryIdRef = useRef<string | null>(null);
   const upscaleRunId = useRef(0);
 
+  // ── Durable server-owned single-image path ─────────────────────────
+  // Only the ordinary "Generate" flow is wired here. Variant fan-out and
+  // print-replay still use the in-tab paths in this pass.
+  const durable = useDurableGeneration({
+    styleKey: variantStyleKey,
+    autoHydrate: true,
+  });
+  const processedItemsRef = useRef<Set<string>>(new Set());
+  const activePromptRef = useRef<string>("");
+  const activeRefImageRef = useRef<string | undefined>(undefined);
+  const activeRefStrengthRef = useRef<ReferenceStrength | null>(null);
+  const [durableFailure, setDurableFailure] = useState<{ itemId: string; message: string } | null>(
+    null,
+  );
+
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
   // Poster format is the single source of truth for aspect ratio across
   // generation, preview, composer, and export. Standard mode used to drive
