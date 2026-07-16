@@ -206,9 +206,17 @@ export default function ImageGenerator({
   const [compareOpen, setCompareOpen] = useState(false);
   // Variant fan-out — generate 4 in parallel and let the user pick.
   const [variantMode, setVariantMode] = useState(false);
+  // Which generators are included in the fan-out. Defaults to all three
+  // concrete providers so the toggle keeps the previous "run everywhere"
+  // behavior when the user first enables Variant mode.
+  const VARIANT_PROVIDER_IDS: ResolvedProviderId[] = ["sdxl", "gemini", "openai"];
+  const [selectedVariantProviders, setSelectedVariantProviders] = useState<Set<ResolvedProviderId>>(
+    () => new Set<ResolvedProviderId>(VARIANT_PROVIDER_IDS),
+  );
   const [savedTileIds, setSavedTileIds] = useState<Set<number>>(new Set());
   const [savingTileId, setSavingTileId] = useState<number | null>(null);
-  const variantFanOut = useVariantFanOut(4);
+  const variantFanOut = useVariantFanOut();
+
   // Bumped after each successful prompt-history save so the panel reloads.
   const [promptHistoryRefresh, setPromptHistoryRefresh] = useState(0);
 
