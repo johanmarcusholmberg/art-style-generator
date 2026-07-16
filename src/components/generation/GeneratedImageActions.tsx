@@ -74,27 +74,8 @@ export interface GeneratedImageActionsProps {
   // Remove
   onRemoveImage: () => void;
 
-  // Poster composer state
-  posterOpen: boolean;
-  onPosterOpenChange: (open: boolean) => void;
-  posterTemplateId: PosterTemplateId;
-  posterTextMode: PosterTextMode;
-  posterSafeAreaEnabled: boolean;
-  composerTitle: string;
-  composerSubtitle: string;
-  composerDescription: string;
-  composerIngredientsRaw: string;
-  lastPosterSnapshot: {
-    templateId: PosterTemplateId;
-    textMode: PosterTextMode;
-    title: string;
-    subtitle: string;
-    description: string;
-    ingredients: string[];
-  } | null;
-  onRegenerate: () => void | Promise<void>;
-  isRegenerating: boolean;
 }
+
 
 export default function GeneratedImageActions(props: GeneratedImageActionsProps) {
   const {
