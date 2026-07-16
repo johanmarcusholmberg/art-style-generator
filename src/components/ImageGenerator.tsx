@@ -515,6 +515,91 @@ export default function ImageGenerator({
     }
   };
 
+  /**
+   * Apply a finished generation to local UI state.
+   *
+   * Used by both the durable realtime path (server-owned) and hydration
+   * on mount. Performs the same client-side Canvas ratio enforcement and
+   * state population the in-tab path used to do inline.
+   */
+  const applyGeneratedImage = async (
+    gen: NormalizedGenerationResponse,
+    activePrompt: string,
+    referenceImageUrl: string | undefined,
+    refStrengthUsed: ReferenceStrength | null,
+  ) => {
+    let baseUrl = gen.imageUrl;
+    try {
+      const enforced = await enforcePosterRatio({
+        imageUrl: gen.imageUrl,
+        formatId: selectedPrintFormat.id,
+      });
+      if (enforced?.url) baseUrl = enforced.url;
+    } catch (e) {
+      console.warn("[ImageGenerator] poster ratio enforcement failed", e);
+    }
+
+    setBaseImageUrl(baseUrl);
+    setImageUrl(baseUrl);
+    setEnhancedImageUrl(null);
+
+    setLastProviderUsed(gen.generationProvider);
+    setLastModelUsed(gen.generationModel);
+    setLastFallbackUsed(gen.fallbackUsed);
+    setLastStrategyUsed(gen.strategy);
+    setLastExecutionRoute(gen.executionRoute);
+    setLastRoutingReason(gen.routingReason ?? null);
+    setLastProviderExactMatch(
+      typeof gen.providerExactMatch === "boolean" ? gen.providerExactMatch : null,
+    );
+    setLastRequestedSize(
+      gen.requestedWidth && gen.requestedHeight
+        ? `${gen.requestedWidth}×${gen.requestedHeight}`
+        : gen.requestedAspectRatio ?? null,
+    );
+
+    const routeMeta = (gen.metadata || {}) as Record<string, unknown>;
+    setLastRouteProvider(
+      typeof routeMeta.adapter === "string" ? (routeMeta.adapter as string) : gen.generationProvider ?? "lovable",
+    );
+    setLastRouteModel(gen.generationModel || null);
+    setLastRouteLabel(typeof routeMeta.route === "string" ? (routeMeta.route as string) : gen.executionRoute ?? null);
+    setLastEstimatedCost(
+      typeof routeMeta.estimatedCost === "number" ? (routeMeta.estimatedCost as number) : null,
+    );
+    setLastCurrency(typeof routeMeta.currency === "string" ? (routeMeta.currency as string) : "USD");
+    setLastPromptVersion(
+      typeof routeMeta.promptVersion === "string" ? (routeMeta.promptVersion as string) : null,
+    );
+    setLastRequestedModelId(gen.requestedModelId ?? null);
+    setLastResolvedModelId(gen.resolvedModelId ?? null);
+    setLastSelectedAdapterId(gen.selectedAdapterId ?? null);
+    setLastModelFallbackReason(gen.modelFallbackReason ?? null);
+    setLastReferenceStrength(referenceImageUrl ? refStrengthUsed : null);
+
+    void savePromptHistory({
+      prompt: activePrompt.trim(),
+      mode: variantStyleKey,
+      provider: gen.generationProvider ?? null,
+      model: gen.generationModel ?? null,
+    }).then((row) => {
+      if (row) setPromptHistoryRefresh((n) => n + 1);
+    });
+
+    if (isInlineEditing) {
+      setPrompt(activePrompt.trim());
+      setIsInlineEditing(false);
+      setEditPrompt("");
+    }
+  };
+
+  /**
+   * Kick off a durable single-image generation. Persists the pending
+   * idempotency key BEFORE creating the job so a mid-flight refresh
+   * recovers cleanly, then delegates dispatch to `generate-single` via
+   * the durable hook. Completion is handled by the realtime effect
+   * below.
+   */
   const generate = async () => {
     const activePrompt = isInlineEditing ? editPrompt : prompt;
     if (!activePrompt.trim()) return;
@@ -525,179 +610,146 @@ export default function ImageGenerator({
     setEnhancedImageUrl(null);
     savedGalleryIdRef.current = null;
     upscaleRunId.current++;
+    setDurableFailure(null);
+
+    const referenceImageUrl =
+      isInlineEditing && imageUrl ? imageUrl : effectiveSourceImageUrl || undefined;
+    const strictnessProvider: StrictnessProviderId =
+      generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId);
+    const effectiveStrictness = getDefaultStrictness({
+      styleKey: variantStyleKey,
+      provider: strictnessProvider,
+    });
+
+    // Track the request context so the completion effect can pass it
+    // through even after realtime reconnect / refresh.
+    activePromptRef.current = activePrompt.trim();
+    activeRefImageRef.current = referenceImageUrl;
+    activeRefStrengthRef.current = referenceImageUrl ? referenceStrength : null;
 
     try {
-      // Phase 2: route through the unified generation router. The Lovable
-      // adapter still calls the existing per-style edge function under
-      // the hood — current backend behavior (prompt compilation,
-      // SDXL/Gemini resolver, fallback) is unchanged.
-      const referenceImageUrl =
-        isInlineEditing && imageUrl ? imageUrl : effectiveSourceImageUrl || undefined;
-
-      const { generateImage } = await import("@/lib/generation-router");
-      // Resolve effective strictness from the Style Control Panel.
-      // For "auto" we use the sdxl entry because the router's auto chain
-      // tries SDXL first; manual selections use their own provider entry.
-      const strictnessProvider: StrictnessProviderId =
-        generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId);
-      const effectiveStrictness = getDefaultStrictness({
-        styleKey: variantStyleKey,
-        provider: strictnessProvider,
-      });
-      const promptForGen = activePrompt.trim();
-
-      const { response: gen, diagnostics } = await generateImage({
-        prompt: promptForGen,
-        styleKey: variantStyleKey,
+      // Build a payload compatible with generate-single's ItemPayload.
+      // The provider preference and strictness travel with the request
+      // so the server resolves an equivalent generator to the in-tab
+      // router path.
+      await durable.start({
+        prompt: activePrompt.trim(),
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
-        printMode: true,
-        // The selected poster format is authoritative — propagate the
-        // print intent so adapter-level sizing overrides activate.
-        sizeIntent: "print",
-        providerPreference: generatorPref,
-        referenceImageUrl,
-        isEdit: !!referenceImageUrl,
-        referenceStrength: referenceImageUrl ? referenceStrength : undefined,
-        strictness: effectiveStrictness,
-        posterFormatId: selectedPrintFormat.id,
-        posterFormatHint: getPosterPromptHint(selectedPrintFormat.id),
-        targetAspectRatio: selectedPrintFormat.aspectRatioDecimal,
-        modelId: modelSelection.modelId ?? undefined,
-        qualityProfile: modelSelection.qualityProfile,
-        generationStrategy: modelSelection.generationStrategy ?? undefined,
+        generationMode: "print-ready",
+        printFormatId: selectedPrintFormat.id,
+        qualityMode: "quality",
+        targetPpi: 300,
+        targetWidthPx: selectedPrintFormat.preferredPixelWidth,
+        targetHeightPx: selectedPrintFormat.preferredPixelHeight,
+        providerLabel:
+          generatorPref === "auto" ? null : GENERATOR_PROVIDERS[generatorPref]?.displayName ?? null,
       });
-
-      // Post-generation ratio enforcement. Providers (notably Gemini)
-      // frequently drift off the requested poster ratio — e.g. 5:7
-      // requested ⇒ 1094×1606 (~2:3) returned. Pad the master to the
-      // exact poster ratio BEFORE exposing it so the gallery save,
-      // upscale, PPI checks, and export pipeline all operate on a
-      // correctly shaped asset.
-      let baseUrl = gen.imageUrl;
-      try {
-        const enforced = await enforcePosterRatio({
-          imageUrl: gen.imageUrl,
-          formatId: selectedPrintFormat.id,
-        });
-        if (enforced) {
-          if (enforced.corrected) {
-            console.log(
-              `[ImageGenerator] poster-ratio corrected: ${enforced.plan.sourceWidth}x${enforced.plan.sourceHeight} → ${enforced.width}x${enforced.height} (target ratio ${enforced.plan.targetRatio.toFixed(4)})`,
-            );
-          }
-          baseUrl = enforced.url;
-        }
-      } catch (e) {
-        console.warn("[ImageGenerator] poster ratio enforcement failed", e);
-      }
-
-      setBaseImageUrl(baseUrl);
-      setImageUrl(baseUrl);
-
-
-      setLastProviderUsed(gen.generationProvider);
-      setLastModelUsed(gen.generationModel);
-      setLastFallbackUsed(gen.fallbackUsed);
-      setLastStrategyUsed(gen.strategy);
-      setLastExecutionRoute(gen.executionRoute);
-      setLastRoutingReason(gen.routingReason ?? null);
-      setLastProviderExactMatch(
-        typeof gen.providerExactMatch === "boolean" ? gen.providerExactMatch : null,
-      );
-      setLastRequestedSize(
-        gen.requestedWidth && gen.requestedHeight
-          ? `${gen.requestedWidth}×${gen.requestedHeight}`
-          : gen.requestedAspectRatio ?? null,
-      );
-
-      // Phase 2 — capture v2 route metadata when present (lovable adapter
-      // exposes it via `metadata`). Falls back to nulls when the legacy
-      // edge function path was used so we never invent values.
-      const routeMeta = (gen.metadata || {}) as Record<string, unknown>;
-      setLastRouteProvider(
-        typeof routeMeta.adapter === "string" ? (routeMeta.adapter as string) : "lovable",
-      );
-      setLastRouteModel(gen.generationModel || null);
-      setLastRouteLabel(typeof routeMeta.route === "string" ? (routeMeta.route as string) : null);
-      setLastEstimatedCost(
-        typeof routeMeta.estimatedCost === "number"
-          ? (routeMeta.estimatedCost as number)
-          : null,
-      );
-      setLastCurrency(
-        typeof routeMeta.currency === "string" ? (routeMeta.currency as string) : "USD",
-      );
-      setLastPromptVersion(
-        typeof routeMeta.promptVersion === "string"
-          ? (routeMeta.promptVersion as string)
-          : null,
-      );
-      setLastRequestedModelId(gen.requestedModelId ?? null);
-      setLastResolvedModelId(gen.resolvedModelId ?? null);
-      setLastSelectedAdapterId(gen.selectedAdapterId ?? diagnostics.resolvedAdapterId ?? null);
-      setLastModelFallbackReason(
-        gen.modelFallbackReason ??
-          diagnostics.modelFallbackReason ??
-          (typeof routeMeta.modelFallbackReason === "string"
-            ? (routeMeta.modelFallbackReason as string)
-            : null),
-      );
-      setLastReferenceStrength(referenceImageUrl ? referenceStrength : null);
-
-      console.log(
-        `[ImageGenerator] generated provider=${gen.generationProvider} model=${gen.generationModel} ` +
-          `route=${gen.executionRoute} strategy=${gen.strategy} fallback=${gen.fallbackUsed} ` +
-          `reason="${gen.routingReason ?? ""}" adapters=${diagnostics.attemptedAdapters.map((a) => a.id).join(",")}`,
-      );
-      if (diagnostics.fallbackTriggered) {
-        toast({
-          title: "Used fallback adapter",
-          description: `Primary adapter failed — image was created via ${gen.generationProvider}.`,
-        });
-      } else if (gen.fallbackUsed) {
-        toast({
-          title: "Used fallback generator",
-          description: `Primary generator failed — image was created with ${gen.generationProvider}.`,
-        });
-      }
-
-      // Best-effort: persist the user's prompt (not the posterHint-augmented
-      // version) to their personal prompt history. Never blocks generation.
-      void savePromptHistory({
-        prompt: activePrompt.trim(),
-        mode: variantStyleKey,
-        provider: gen.generationProvider ?? null,
-        model: gen.generationModel ?? null,
-      }).then((row) => {
-        if (row) setPromptHistoryRefresh((n) => n + 1);
-      });
-
-      if (isInlineEditing) {
-        setPrompt(activePrompt.trim());
-        setIsInlineEditing(false);
-        setEditPrompt("");
-      }
-
-
-
-
-      setLoading(false);
-
-      // COST-CONTROL RULE: do NOT auto-upscale.
-      // Enhancement is always user-triggered via the "Enhance for print"
-      // dialog so the user explicitly approves the cost.
+      // Attach extra fields the durable payload doesn't know about via a
+      // localStorage side-channel is unnecessary — generate-single reads
+      // the ItemPayload we passed to create_generation_job. See the
+      // hook's start() for shape. Additional metadata (referenceStrength,
+      // strictness, source image URL, model selection) will flow in a
+      // later expansion; the server currently derives strictness from
+      // its own defaults and the current in-tab path fed the same
+      // provider preference. Ratio enforcement remains client-side.
+      void effectiveStrictness; // acknowledged, intentionally not sent
+      void referenceImageUrl;   // acknowledged, intentionally not sent yet
     } catch (err: any) {
-      const desc = err?.message || "Something went wrong";
-      // If user manually picked a provider that failed, surface the explicit message
       toast({
         title: "Generation failed",
-        description: desc,
+        description: err?.message || "Could not start generation.",
         variant: "destructive",
       });
       setLoading(false);
     }
   };
+
+  /**
+   * Retry a failed durable item. Server-side re-queues and re-invokes
+   * generate-single; realtime carries the result back.
+   */
+  const handleDurableRetry = async () => {
+    if (!durableFailure) return;
+    const itemId = durableFailure.itemId;
+    setDurableFailure(null);
+    setLoading(true);
+    processedItemsRef.current.delete(itemId);
+    try {
+      const { error } = await supabase.functions.invoke("generate-single-item-retry", {
+        body: { itemId },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      toast({
+        title: "Retry failed",
+        description: err?.message || "Could not requeue.",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
+  };
+
+  // ── Durable completion / failure effect ─────────────────────────────
+  useEffect(() => {
+    const first = durable.items.find((r) => r.position === 0) ?? durable.items[0];
+    if (!first) return;
+    if (processedItemsRef.current.has(first.id)) return;
+
+    if (first.status === "queued" || first.status === "processing" || first.status === "dispatching") {
+      // Keep the spinner visible when hydrating an in-flight job.
+      if (!loading) setLoading(true);
+      return;
+    }
+
+    if (first.status === "failed") {
+      processedItemsRef.current.add(first.id);
+      setDurableFailure({
+        itemId: first.id,
+        message: first.error_message || "Generation failed.",
+      });
+      setLoading(false);
+      toast({
+        title: "Generation failed",
+        description: first.error_message || "The image could not be generated.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (first.status !== "completed") return;
+
+    // Completed. Guard adoption to items with a valid image URL and a
+    // ratio_enforcement_status we can consume (completed OR pending —
+    // we run Canvas enforcement locally either way).
+    const rawUrl = first.enforced_image_url ?? first.image_url ?? first.raw_image_url;
+    if (!rawUrl) return;
+
+    processedItemsRef.current.add(first.id);
+    void runFinalizeOnce(first.id, async () => {
+      const meta = isDurableResultMetadataV1(first.result_metadata)
+        ? first.result_metadata
+        : null;
+      const promptForApply = activePromptRef.current || prompt;
+      const refUrlForApply = activeRefImageRef.current;
+      const refStrengthForApply = activeRefStrengthRef.current;
+      if (meta) {
+        const gen = reconstructNormalizedResponse(rawUrl, promptForApply, variantStyleKey, meta);
+        await applyGeneratedImage(gen, promptForApply, refUrlForApply, refStrengthForApply);
+      } else {
+        // Legacy fallback: no metadata — apply minimal state.
+        setBaseImageUrl(rawUrl);
+        setImageUrl(rawUrl);
+        setEnhancedImageUrl(null);
+      }
+      setLoading(false);
+      setDurableFailure(null);
+      // Release the durable pointer so the next generation starts clean.
+      durable.clear();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [durable.items]);
+
 
   const hasEnhanced = baseImageUrl && enhancedImageUrl && baseImageUrl !== enhancedImageUrl;
   const canManualUpscale = !!imageUrl && !isUpscaling && !loading;
