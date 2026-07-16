@@ -44,6 +44,12 @@ import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription, getPosterPromptHint } from "@/lib/print-formats";
 import { enforcePosterRatio } from "@/lib/poster-ratio-enforce";
+import { useDurableGeneration } from "@/hooks/useDurableGeneration";
+import { runFinalizeOnce } from "@/lib/finalize-ratio-lock";
+import {
+  isDurableResultMetadataV1,
+  reconstructNormalizedResponse,
+} from "@/lib/durable-result-metadata";
 
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { EXPORT_FORMAT_META, getStoredExportFormat } from "@/lib/export-formats";
