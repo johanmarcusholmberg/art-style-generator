@@ -17,6 +17,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { runWithResolver, ProviderError, type GenerateArgs, type GeneratorPreference } from "../_shared/generators.ts";
 import { persistGenerationResult, serviceClient } from "../_shared/persist-generation-result.ts";
+import {
+  buildDurableResultMetadata,
+  executionRouteForProvider,
+} from "../_shared/durable-result-metadata.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
