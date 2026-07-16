@@ -1645,19 +1645,8 @@ export default function ImageGenerator({
               onPrintExport={handlePrintExport}
               onStartInlineEdit={handleStartInlineEdit}
               onRemoveImage={handleRemoveImage}
-              posterOpen={posterOpen}
-              onPosterOpenChange={setPosterOpen}
-              posterTemplateId={posterTemplateId}
-              posterTextMode={posterTextMode}
-              posterSafeAreaEnabled={posterSafeAreaEnabled}
-              composerTitle={composerTitle}
-              composerSubtitle={composerSubtitle}
-              composerDescription={composerDescription}
-              composerIngredientsRaw={composerIngredientsRaw}
-              lastPosterSnapshot={lastPosterSnapshot}
-              onRegenerate={generate}
-              isRegenerating={loading}
             />
+
           </div>
         )}
 
