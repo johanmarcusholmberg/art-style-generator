@@ -120,13 +120,30 @@ serve(async (req) => {
 
     const executionRoute = executionRouteForProvider(outcome.providerId);
 
-    // Durable upload BEFORE marking complete. Persist full parity fields
-    // so the gallery row matches what the client-owned save path would write.
+    // Resolve the owning profile so we can attribute prompt-history correctly.
+    // Best-effort — a lookup failure downgrades to skipping history only.
+    let profileId: string | null = null;
+    try {
+      const { data: job } = await supabase
+        .from("generation_jobs")
+        .select("profile_id")
+        .eq("id", claim.job_id)
+        .maybeSingle();
+      profileId = (job as { profile_id?: string } | null)?.profile_id ?? null;
+    } catch (_) { /* history skipped */ }
+
+    // Durable, idempotent persist. Owns:
+    //   - generated_images row (unique on generation_job_item_id)
+    //   - asset_cost_events (unique on (generation_job_item_id, event_type))
+    //   - prompt_history (unique on generation_job_item_id, dedupe on prompt)
     const persisted = await persistGenerationResult(supabase, {
       imageUrl: outcome.imageUrl,
       prompt: payload.prompt,
       mode: payload.mode ?? payload.styleKey,
       aspectRatio: payload.aspectRatio ?? "5:7",
+      generationJobItemId: itemId,
+      generationJobId: claim.job_id,
+      profileId,
       printSize: payload.printSize ?? null,
       qualityMode: payload.qualityMode,
       targetPpi: payload.targetPpi,
@@ -145,10 +162,15 @@ serve(async (req) => {
       provider: outcome.providerId,
       model: outcome.modelId,
       route: executionRoute,
-      estimatedCost: null, // populated in B1.2 via cost-event ownership
+      estimatedCost: null,
       currency: "USD",
       promptVersion: null,
       sourceImageUrl: payload.sourceImageUrl ?? null,
+      costEventMetadata: {
+        attempted: outcome.attempted ?? null,
+        provider_adjusted: outcome.providerAdjusted ?? false,
+        provider_exact_match: outcome.providerExactMatch ?? false,
+      },
     });
 
     // Determine ratio enforcement status: if provider was adjusted vs
