@@ -28,16 +28,22 @@ const MAX_ITEMS_PER_RUN = 20;
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const expected = Deno.env.get("RECOVERY_JOB_SECRET");
-  const provided = req.headers.get("x-recovery-secret");
-  if (!expected || !provided || provided !== expected) {
-    return json(401, { error: "Unauthorized" });
-  }
-
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+
+  // Read the shared secret from Vault via a SECURITY DEFINER RPC.
+  // No env var, no anon/service key embedded in cron SQL — cron simply
+  // reads the same Vault entry and passes it via x-recovery-secret.
+  const { data: expected, error: secretErr } = await supabase.rpc("get_recovery_job_secret");
+  if (secretErr || !expected) {
+    console.error("[recover-stale-jobs] failed to load vault secret", secretErr);
+    return json(500, { error: "Recovery secret unavailable" });
+  }
+  const provided = req.headers.get("x-recovery-secret");
+  if (!provided || provided !== expected) return json(401, { error: "Unauthorized" });
+
 
   try {
     // 1) Expire retry-exhausted items to terminal state.
