@@ -118,7 +118,10 @@ serve(async (req) => {
     const providerPref: GeneratorPreference = payload.providerPreference ?? "auto";
     const outcome = await runWithResolver(providerPref, generateArgs);
 
-    // Durable upload BEFORE marking complete.
+    const executionRoute = executionRouteForProvider(outcome.providerId);
+
+    // Durable upload BEFORE marking complete. Persist full parity fields
+    // so the gallery row matches what the client-owned save path would write.
     const persisted = await persistGenerationResult(supabase, {
       imageUrl: outcome.imageUrl,
       prompt: payload.prompt,
@@ -130,14 +133,60 @@ serve(async (req) => {
       targetWidthPx: payload.targetWidthPx,
       targetHeightPx: payload.targetHeightPx,
       providerLabel: payload.providerLabel ?? claim.provider_label ?? null,
+      actualWidthPx: outcome.width ?? null,
+      actualHeightPx: outcome.height ?? null,
+      generationProvider: outcome.providerId,
+      generationModel: outcome.modelId,
+      providerStrategy: outcome.strategy,
+      fallbackUsed: outcome.fallbackUsed,
+      executionRoute,
+      printFormatId: payload.printFormatId ?? null,
+      generationMode: payload.generationMode ?? null,
+      provider: outcome.providerId,
+      model: outcome.modelId,
+      route: executionRoute,
+      estimatedCost: null, // populated in B1.2 via cost-event ownership
+      currency: "USD",
+      promptVersion: null,
+      sourceImageUrl: payload.sourceImageUrl ?? null,
     });
 
     // Determine ratio enforcement status: if provider was adjusted vs
     // requested poster format, mark 'pending' so the client can finalize.
+    // (Client-side Canvas enforcement is preserved by design for parity.)
     const ratioStatus =
       outcome.providerAdjusted && payload.printFormatId ? "pending" : "not_required";
 
     if (heartbeat) clearInterval(heartbeat);
+
+    const durableMetadata = buildDurableResultMetadata({
+      generationProvider: outcome.providerId,
+      generationModel: outcome.modelId,
+      executionRoute,
+      providerStrategy: outcome.strategy,
+      fallbackUsed: outcome.fallbackUsed,
+      attempted: outcome.attempted,
+      actualWidthPx: outcome.width ?? null,
+      actualHeightPx: outcome.height ?? null,
+      requestedWidth: outcome.requestedWidth ?? null,
+      requestedHeight: outcome.requestedHeight ?? null,
+      requestedAspectRatio: outcome.requestedAspectRatio ?? null,
+      providerExactMatch: outcome.providerExactMatch,
+      providerAdjusted: outcome.providerAdjusted,
+      printFormatId: payload.printFormatId ?? null,
+      printSize: payload.printSize ?? null,
+      qualityMode: payload.qualityMode ?? null,
+      targetPpi: payload.targetPpi ?? null,
+      targetWidthPx: payload.targetWidthPx ?? null,
+      targetHeightPx: payload.targetHeightPx ?? null,
+      aspectRatio: payload.aspectRatio ?? null,
+      sizeIntent: payload.sizeIntent ?? null,
+      sourceImageUrl: payload.sourceImageUrl ?? null,
+      storagePath: persisted.storagePath,
+      galleryImageId: persisted.galleryImageId,
+      bytes: persisted.bytes,
+      attemptCount: claim.attempt_count,
+    });
 
     const { data: completed, error: compErr } = await supabase.rpc("complete_generation_item", {
       p_item_id: itemId,
@@ -147,20 +196,7 @@ serve(async (req) => {
       p_ratio_status: ratioStatus,
       p_storage_path: persisted.storagePath,
       p_gallery_image_id: persisted.galleryImageId,
-      p_result_metadata: {
-        provider: outcome.providerId,
-        model: outcome.modelId,
-        fallbackUsed: outcome.fallbackUsed,
-        strategy: outcome.strategy,
-        attempted: outcome.attempted,
-        width: outcome.width,
-        height: outcome.height,
-        requestedAspectRatio: outcome.requestedAspectRatio,
-        providerExactMatch: outcome.providerExactMatch,
-        providerAdjusted: outcome.providerAdjusted,
-        bytes: persisted.bytes,
-        attemptCount: claim.attempt_count,
-      },
+      p_result_metadata: durableMetadata,
     });
     if (compErr) throw new Error(`complete rpc: ${compErr.message}`);
     if (!completed) {
