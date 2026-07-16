@@ -141,38 +141,38 @@ export async function cancelJob(jobId: string) {
     .eq("status", "queued");
 }
 
+/**
+ * Retry every failed item in a job through the DURABLE server path.
+ *
+ * The old implementation directly mutated `generation_jobs` and
+ * `generation_job_items` from the browser to reset failed rows to
+ * `queued`, then re-invoked `batch-generate` to sweep the whole job.
+ * That bypassed lease/attempt bookkeeping and could race the aggregate
+ * trigger. It is intentionally removed here: retry now goes through
+ * `generate-single-item-retry`, which validates ownership, resets the
+ * single item under the RPC contract, and dispatches `generate-single`.
+ *
+ * We fan out one edge-function call per failed item so the aggregate
+ * trigger drives the job status forward as each retry lands.
+ */
 export async function retryFailedItems(jobId: string) {
-  // Only reset failed items back to queued — completed items are untouched
-  const { error: resetError } = await supabase
+  const { data: failedItems, error: selErr } = await supabase
     .from("generation_job_items")
-    .update({ status: "queued", error_message: null, updated_at: new Date().toISOString() })
+    .select("id")
     .eq("job_id", jobId)
     .eq("status", "failed");
-  if (resetError) throw resetError;
+  if (selErr) throw selErr;
+  if (!failedItems || failedItems.length === 0) return;
 
-  // Re-count from items to get accurate failed_images count
-  const { data: allItems } = await supabase
-    .from("generation_job_items")
-    .select("status")
-    .eq("job_id", jobId);
-
-  const failed = allItems?.filter((it) => it.status === "failed").length || 0;
-
-  // Set job back to queued for re-processing
-  const { error: jobError } = await supabase
-    .from("generation_jobs")
-    .update({
-      status: "queued",
-      failed_images: failed,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", jobId);
-  if (jobError) throw jobError;
-
-  // Re-invoke the edge function
-  supabase.functions
-    .invoke("batch-generate", { body: { jobId } })
-    .catch((err) => console.error("Failed to invoke batch-generate:", err));
+  await Promise.all(
+    failedItems.map((it) =>
+      supabase.functions
+        .invoke("generate-single-item-retry", { body: { itemId: it.id } })
+        .catch((err) =>
+          console.error(`[retryFailedItems] item ${it.id} retry dispatch failed:`, err),
+        ),
+    ),
+  );
 }
 
 export async function deleteJob(jobId: string) {
