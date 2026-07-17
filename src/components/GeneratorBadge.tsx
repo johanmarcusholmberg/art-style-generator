@@ -88,11 +88,11 @@ export default function GeneratorBadge({
       <PopoverContent align="start" className="w-72 p-3 space-y-3">
         <div>
           <p className="font-display text-xs font-bold text-foreground mb-1">
-            Image Generator
+            Image model
           </p>
           <p className="font-display text-[11px] text-muted-foreground leading-snug">
-            Choose which engine creates the base image. Upscaling is configured
-            separately below.
+            Single source of truth for which engine actually generates the
+            image. Upscaling is configured separately below.
           </p>
         </div>
 
