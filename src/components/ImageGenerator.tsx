@@ -642,19 +642,13 @@ export default function ImageGenerator({
         targetPpi: 300,
         targetWidthPx: selectedPrintFormat.preferredPixelWidth,
         targetHeightPx: selectedPrintFormat.preferredPixelHeight,
+        providerPreference: generatorPref,
         providerLabel:
           generatorPref === "auto" ? null : GENERATOR_PROVIDERS[generatorPref]?.displayName ?? null,
+        sourceImageUrl: referenceImageUrl ?? null,
+        referenceStrength: referenceImageUrl ? referenceStrength : null,
       });
-      // Attach extra fields the durable payload doesn't know about via a
-      // localStorage side-channel is unnecessary — generate-single reads
-      // the ItemPayload we passed to create_generation_job. See the
-      // hook's start() for shape. Additional metadata (referenceStrength,
-      // strictness, source image URL, model selection) will flow in a
-      // later expansion; the server currently derives strictness from
-      // its own defaults and the current in-tab path fed the same
-      // provider preference. Ratio enforcement remains client-side.
-      void effectiveStrictness; // acknowledged, intentionally not sent
-      void referenceImageUrl;   // acknowledged, intentionally not sent yet
+      void effectiveStrictness; // acknowledged, server derives its own default
     } catch (err: any) {
       toast({
         title: "Generation failed",

@@ -55,6 +55,11 @@ export interface StartArgs {
   targetWidthPx?: number | null;
   targetHeightPx?: number | null;
   providerLabel?: string | null;
+  /** User-selected generator preference — server routes to this provider. */
+  providerPreference?: "auto" | "sdxl" | "gemini" | "openai";
+  /** Optional reference image for image-to-image generation. */
+  sourceImageUrl?: string | null;
+  referenceStrength?: string | null;
 }
 
 export interface UseDurableGenerationResult {
@@ -208,6 +213,9 @@ export function useDurableGeneration(
             prompt: args.prompt,
             styleKey,
             providerLabel: args.providerLabel ?? null,
+            providerPreference: args.providerPreference ?? "auto",
+            sourceImageUrl: args.sourceImageUrl ?? null,
+            referenceStrength: args.referenceStrength ?? null,
             aspectRatio: args.aspectRatio,
             backgroundStyle: args.backgroundStyle,
             generationMode: args.generationMode,
