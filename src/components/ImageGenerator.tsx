@@ -62,7 +62,7 @@ import {
   type UpscaleMode,
 } from "@/lib/upscale-modes";
 import GeneratorBadge from "@/components/GeneratorBadge";
-import ModelSelector, { type ModelSelectorValue } from "@/components/generation/ModelSelector";
+import { type ModelSelectorValue } from "@/components/generation/ModelSelector";
 // UpscaleBadge removed from generator — replaced by EnhanceForPrintDialog
 // (kept in Gallery for the lightbox).
 import {
