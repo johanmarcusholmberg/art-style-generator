@@ -1383,7 +1383,7 @@ export default function ImageGenerator({
                 lastUsedProvider={lastProviderUsed}
                 lastFallbackUsed={lastFallbackUsed}
               />
-              <ModelSelector value={modelSelection} onChange={setModelSelection} />
+              {/* Model/quality/strategy popover removed — GeneratorBadge above is the single source of truth for which engine runs. */}
               <span
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
                 title="Configure per-style defaults at /style-control-panel"
