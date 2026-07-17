@@ -1321,11 +1321,11 @@ export default function ImageGenerator({
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
                     title={
                       lastProviderExactMatch === false
-                        ? "Provider used an approximate ratio — export pipeline will crop to exact poster size."
-                        : "Provider matched the poster aspect ratio exactly."
+                        ? `The generator returned ${lastRequestedSize}, which does not exactly match your selected poster aspect ratio. The image is auto-corrected (padded or center-cropped) to the exact print ratio before saving and export — no manual step needed.`
+                        : `The generator produced ${lastRequestedSize} at the exact aspect ratio of your selected poster format. No ratio correction was applied.`
                     }
                   >
-                    {lastRequestedSize}
+                    Last render: {lastRequestedSize}
                     <span
                       className={
                         lastProviderExactMatch === false
@@ -1335,8 +1335,8 @@ export default function ImageGenerator({
                     >
                       ·{" "}
                       {lastProviderExactMatch === false
-                        ? "Approximate (corrected on export)"
-                        : "Exact print ratio"}
+                        ? "auto-corrected to poster ratio"
+                        : "matches poster ratio"}
                     </span>
                   </span>
                 )}
