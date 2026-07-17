@@ -40,7 +40,7 @@ export default function GeneratorBadge({
   const resolved = resolveGenerator(value);
   const primaryLabel = resolved.primary.shortLabel;
   const compactLabel =
-    value === "auto" ? `Auto · ${primaryLabel}` : primaryLabel;
+    value === "auto" ? `Model: Auto · ${primaryLabel}` : `Model: ${primaryLabel}`;
 
   // Fetch quick health when the popover opens (not on mount — keeps it light).
   useEffect(() => {
