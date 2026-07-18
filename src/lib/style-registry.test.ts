@@ -40,7 +40,9 @@ describe("style-registry (Stage 1 canonical registry)", () => {
   });
 
   it("existing canonical routes and styleKeys are preserved", () => {
-    expect(styleKeyForRoute("/")).toBe("japanese");
+    // NOTE: the ukiyo-e page uses mode value "japanese" for legacy DB
+    // compatibility, while its styleKey is "ukiyoe".
+    expect(styleKeyForRoute("/")).toBe("ukiyoe");
     expect(styleKeyForRoute("/popart")).toBe("popart");
     expect(styleKeyForRoute("/lineart")).toBe("lineart");
     expect(styleKeyForRoute("/whimsical-japanese")).toBe("whimsical_japanese");

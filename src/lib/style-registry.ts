@@ -103,6 +103,11 @@ export function routeForStyleKey(styleKey: string): string | undefined {
  * import from `_resolve-edge-fn.ts` directly.
  */
 export function getEdgeFnForMode(mode: string): string {
+  // Prefer the registry (built from StyleConfig) so mode values like
+  // "freestyle" or "lineart-minimal" resolve to the correct edge fn
+  // without relying on the styleKey-based fallback dispatcher.
+  const entry = STYLE_MODES.find((m) => m.mode === mode);
+  if (entry) return entry.edgeFn;
   return resolveEdgeFnForStyle(mode);
 }
 
