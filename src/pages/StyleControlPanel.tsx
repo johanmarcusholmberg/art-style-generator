@@ -37,43 +37,14 @@ import {
   type StrictnessDefaultsMap,
 } from "@/lib/style-strictness";
 import { GENERATOR_PROVIDERS } from "@/lib/generators";
+import { getControlPanelStyleOptions } from "@/lib/style-registry";
 import { cn } from "@/lib/utils";
 
 const PROVIDERS: ProviderId[] = ["sdxl", "gemini", "openai"];
 
-// Mirror of DEBUG_STYLE_KEYS in ProviderDebug.tsx — same set of art styles
-// already understood by the prompt compiler / style-meta system.
-const STYLE_KEYS: Array<{ id: string; label: string }> = [
-  { id: "japanese", label: "🏯 Ukiyo-e" },
-  { id: "freestyle", label: "🎨 Ukiyo-e Freestyle" },
-  { id: "popart", label: "🎯 Pop Art" },
-  { id: "popart-freestyle", label: "🎨 Pop Art Freestyle" },
-  { id: "lineart", label: "✒️ Line Art" },
-  { id: "lineart-freestyle", label: "🎨 Line Art Freestyle" },
-  { id: "lineart-minimal", label: "〰️ Minimal Lines" },
-  { id: "minimalism", label: "◻ Minimalism" },
-  { id: "minimalism-freestyle", label: "🎨 Minimalism Freestyle" },
-  { id: "graffiti", label: "🎨 Graffiti" },
-  { id: "graffiti-freestyle", label: "🎨 Graffiti Freestyle" },
-  { id: "botanical", label: "🌿 Botanical" },
-  { id: "botanical-freestyle", label: "🎨 Botanical Freestyle" },
-  { id: "urbannoir", label: "🖤 Urban Noir" },
-  { id: "urbannoir-freestyle", label: "🎨 Urban Noir Freestyle" },
-  { id: "screenprint", label: "🖨️ Screen Print" },
-  { id: "screenprint-freestyle", label: "🎨 Screen Print Freestyle" },
-  { id: "risograph", label: "📠 Risograph" },
-  { id: "risograph-freestyle", label: "🎨 Risograph Freestyle" },
-  { id: "retrocomic", label: "💥 Retro Comic" },
-  { id: "retrocomic-freestyle", label: "🎨 Retro Comic Freestyle" },
-  { id: "pulpmagazine", label: "📕 Pulp Magazine" },
-  { id: "pulpmagazine-freestyle", label: "🎨 Pulp Magazine Freestyle" },
-  { id: "tattooflash", label: "🔥 Tattoo Flash" },
-  { id: "tattooflash-freestyle", label: "🎨 Tattoo Flash Freestyle" },
-  { id: "brutalistposter", label: "⬛ Brutalist Poster" },
-  { id: "brutalistposter-freestyle", label: "🎨 Brutalist Freestyle" },
-  { id: "xeroxzine", label: "📋 Xerox Zine" },
-  { id: "xeroxzine-freestyle", label: "🎨 Xerox Zine Freestyle" },
-];
+// Derived from the canonical style registry so every visible style +
+// variant is covered automatically — no manual list to keep in sync.
+const STYLE_KEYS: Array<{ id: string; label: string }> = getControlPanelStyleOptions();
 
 const AUTO = "__auto__" as const;
 
