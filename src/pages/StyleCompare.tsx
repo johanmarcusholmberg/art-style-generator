@@ -1,15 +1,24 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import StyleNav from "@/components/StyleNav";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, RefreshCw, Download, Sparkles } from "lucide-react";
+import { Loader2, Save, RefreshCw, Download, Sparkles, AlertTriangle } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { saveToGallery } from "@/lib/gallery";
-import { ALL_STYLES } from "@/lib/batch-jobs";
+import { getCompareStyleOptions } from "@/lib/style-registry";
+import { generateImage } from "@/lib/generation-router";
+import {
+  PRINT_FORMATS,
+  getPosterPromptHint,
+  type PrintFormat,
+} from "@/lib/print-formats";
+import { downloadWithBleed } from "@/lib/raw-download";
+import type { NormalizedGenerationResponse } from "@/lib/generation-types";
+import type { GeneratorPreference } from "@/lib/generators";
+import { getDefaultStrictness } from "@/lib/style-strictness";
 
 interface CompareResult {
   styleValue: string;
@@ -17,55 +26,30 @@ interface CompareResult {
   imageUrl: string | null;
   loading: boolean;
   error: string | null;
+  response?: NormalizedGenerationResponse;
 }
 
-const STYLE_TO_EDGE_FN: Record<string, string> = {
-  japanese: "generate-image",
-  freestyle: "generate-image-freestyle",
-  popart: "generate-image-popart",
-  "popart-freestyle": "generate-image-popart-freestyle",
-  lineart: "generate-image-lineart",
-  "lineart-freestyle": "generate-image-lineart-freestyle",
-  "lineart-minimal": "generate-image-lineart-minimal",
-  minimalism: "generate-image-minimalism",
-  "minimalism-freestyle": "generate-image-minimalism-freestyle",
-  graffiti: "generate-image-graffiti",
-  "graffiti-freestyle": "generate-image-graffiti-freestyle",
-  botanical: "generate-image-botanical",
-  "botanical-freestyle": "generate-image-botanical-freestyle",
-  urbannoir: "generate-image-urbannoir",
-  "urbannoir-freestyle": "generate-image-urbannoir-freestyle",
-  screenprint: "generate-image-screenprint",
-  "screenprint-freestyle": "generate-image-screenprint-freestyle",
-  risograph: "generate-image-risograph",
-  "risograph-freestyle": "generate-image-risograph-freestyle",
-  retrocomic: "generate-image-retrocomic",
-  "retrocomic-freestyle": "generate-image-retrocomic-freestyle",
-  pulpmagazine: "generate-image-pulpmagazine",
-  "pulpmagazine-freestyle": "generate-image-pulpmagazine-freestyle",
-  tattooflash: "generate-image-tattooflash",
-  "tattooflash-freestyle": "generate-image-tattooflash-freestyle",
-  brutalistposter: "generate-image-brutalistposter",
-  "brutalistposter-freestyle": "generate-image-brutalistposter-freestyle",
-  xeroxzine: "generate-image-xeroxzine",
-  "xeroxzine-freestyle": "generate-image-xeroxzine-freestyle",
-};
+const COMPARE_STYLES = getCompareStyleOptions();
 
 type StyleCount = "4" | "8" | "all";
 
 const PRESETS: Record<StyleCount, string[]> = {
   "4": ["japanese", "popart", "lineart", "urbannoir"],
   "8": ["japanese", "popart", "lineart", "minimalism", "botanical", "urbannoir", "retrocomic", "tattooflash"],
-  all: ALL_STYLES.map((s) => s.value),
+  all: COMPARE_STYLES.map((s) => s.value),
 };
 
-import { downloadWithBleed } from "@/lib/raw-download";
+// Warn the user when a run would fan out to many generations at once.
+const COST_WARN_THRESHOLD = 8;
+
 const downloadImage = (url: string, filename: string) =>
   downloadWithBleed(url, { filename });
 
 export default function StyleCompare() {
   const [prompt, setPrompt] = useState("");
   const [styleCount, setStyleCount] = useState<StyleCount>("4");
+  const [printFormat, setPrintFormat] = useState<PrintFormat>(PRINT_FORMATS[0]);
+  const [providerPref, setProviderPref] = useState<GeneratorPreference>("auto");
   const [results, setResults] = useState<CompareResult[]>([]);
   const [generating, setGenerating] = useState(false);
   const [savingAll, setSavingAll] = useState(false);
@@ -73,26 +57,40 @@ export default function StyleCompare() {
 
   const activeStyles = PRESETS[styleCount];
 
+  const showCostWarning = useMemo(
+    () => activeStyles.length >= COST_WARN_THRESHOLD,
+    [activeStyles.length],
+  );
+
   const generateOne = useCallback(
-    async (styleValue: string, promptText: string): Promise<string | null> => {
-      const edgeFn = STYLE_TO_EDGE_FN[styleValue];
-      if (!edgeFn) return null;
+    async (
+      styleValue: string,
+      promptText: string,
+    ): Promise<{ url: string | null; response?: NormalizedGenerationResponse; error?: string }> => {
       try {
-        const { data, error } = await supabase.functions.invoke(edgeFn, {
-          body: {
-            prompt: promptText,
-            aspectRatio: "1:1",
-            backgroundStyle: "white",
-            speedMode: "quality",
-          },
+        const strictness = getDefaultStrictness({
+          styleKey: styleValue,
+          provider: providerPref === "auto" ? "sdxl" : providerPref,
         });
-        if (error) throw error;
-        return data?.imageUrl || data?.image || null;
-      } catch {
-        return null;
+        const { response } = await generateImage({
+          prompt: promptText,
+          styleKey: styleValue,
+          aspectRatio: printFormat.aspectRatio,
+          providerPreference: providerPref,
+          printMode: true,
+          strictness,
+          posterFormatId: printFormat.id,
+          posterFormatHint: getPosterPromptHint(printFormat.id),
+          targetAspectRatio: printFormat.aspectRatioDecimal,
+          backgroundStyle: "white",
+        });
+        return { url: response.imageUrl, response };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { url: null, error: message };
       }
     },
-    [],
+    [printFormat, providerPref],
   );
 
   const handleGenerate = useCallback(async () => {
@@ -103,19 +101,27 @@ export default function StyleCompare() {
     setGenerating(true);
     const initial: CompareResult[] = activeStyles.map((sv) => ({
       styleValue: sv,
-      styleLabel: ALL_STYLES.find((s) => s.value === sv)?.label || sv,
+      styleLabel: COMPARE_STYLES.find((s) => s.value === sv)?.label || sv,
       imageUrl: null,
       loading: true,
       error: null,
     }));
     setResults(initial);
 
-    // Generate all in parallel
+    // Generate all in parallel; per-style failures don't block siblings.
     const promises = activeStyles.map(async (sv, idx) => {
-      const url = await generateOne(sv, prompt);
+      const { url, response, error } = await generateOne(sv, prompt);
       setResults((prev) =>
         prev.map((r, i) =>
-          i === idx ? { ...r, imageUrl: url, loading: false, error: url ? null : "Generation failed" } : r,
+          i === idx
+            ? {
+                ...r,
+                imageUrl: url,
+                response,
+                loading: false,
+                error: url ? null : error ?? "Generation failed",
+              }
+            : r,
         ),
       );
     });
@@ -129,10 +135,18 @@ export default function StyleCompare() {
       setResults((prev) => prev.map((r, i) => (i === idx ? { ...r, loading: true, error: null } : r)));
       const sv = results[idx]?.styleValue;
       if (!sv) return;
-      const url = await generateOne(sv, prompt);
+      const { url, response, error } = await generateOne(sv, prompt);
       setResults((prev) =>
         prev.map((r, i) =>
-          i === idx ? { ...r, imageUrl: url, loading: false, error: url ? null : "Generation failed" } : r,
+          i === idx
+            ? {
+                ...r,
+                imageUrl: url,
+                response,
+                loading: false,
+                error: url ? null : error ?? "Generation failed",
+              }
+            : r,
         ),
       );
     },
@@ -146,21 +160,33 @@ export default function StyleCompare() {
     let saved = 0;
     for (const r of toSave) {
       try {
+        const res = r.response;
         await saveToGallery({
           imageUrl: r.imageUrl!,
           prompt,
           mode: r.styleValue,
-          aspectRatio: "1:1",
-          printSize: "none",
+          aspectRatio: printFormat.aspectRatio,
+          printSize: `${printFormat.widthCm}x${printFormat.heightCm}cm`,
+          generationProvider: res?.generationProvider,
+          generationModel: res?.generationModel,
+          providerStrategy: res?.strategy,
+          fallbackUsed: res?.fallbackUsed,
+          executionRoute: res?.executionRoute,
+          requestedModelId: res?.requestedModelId ?? null,
+          resolvedModelId: res?.resolvedModelId ?? null,
+          selectedAdapterId: res?.selectedAdapterId ?? null,
+          qualityProfile: res?.qualityProfile ?? null,
+          generationStrategy: res?.generationStrategy ?? null,
+          modelFallbackReason: res?.modelFallbackReason ?? null,
         });
         saved++;
       } catch {
-        /* skip failures */
+        /* skip failures — individual saves shouldn't stop the batch */
       }
     }
     setSavingAll(false);
     toast({ title: "Saved to gallery", description: `${saved} of ${toSave.length} images saved.` });
-  }, [results, prompt, toast]);
+  }, [results, prompt, printFormat, toast]);
 
   const cols =
     activeStyles.length <= 4 ? "grid-cols-2" : activeStyles.length <= 8 ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-4 lg:grid-cols-5";
@@ -172,7 +198,10 @@ export default function StyleCompare() {
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">Style Compare</h1>
-          <p className="text-sm text-muted-foreground">See one subject across multiple art styles side by side.</p>
+          <p className="text-sm text-muted-foreground">
+            See one subject across multiple art styles side by side. Uses the same generation router,
+            poster format, and provider selection as the main generator.
+          </p>
         </div>
 
         {/* Prompt + controls */}
@@ -196,20 +225,56 @@ export default function StyleCompare() {
               <ToggleGroupItem value="all" className="text-xs px-3">All styles</ToggleGroupItem>
             </ToggleGroup>
 
+            <ToggleGroup
+              type="single"
+              value={printFormat.id}
+              onValueChange={(v) => {
+                const next = PRINT_FORMATS.find((f) => f.id === v);
+                if (next) setPrintFormat(next);
+              }}
+              className="border border-border rounded-lg p-0.5"
+            >
+              {PRINT_FORMATS.map((f) => (
+                <ToggleGroupItem key={f.id} value={f.id} className="text-xs px-3">
+                  {f.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+
+            <ToggleGroup
+              type="single"
+              value={providerPref}
+              onValueChange={(v) => v && setProviderPref(v as GeneratorPreference)}
+              className="border border-border rounded-lg p-0.5"
+            >
+              <ToggleGroupItem value="auto" className="text-xs px-3">Auto</ToggleGroupItem>
+              <ToggleGroupItem value="sdxl" className="text-xs px-3">SDXL</ToggleGroupItem>
+              <ToggleGroupItem value="gemini" className="text-xs px-3">Gemini</ToggleGroupItem>
+              <ToggleGroupItem value="openai" className="text-xs px-3">OpenAI</ToggleGroupItem>
+            </ToggleGroup>
+
             <Button onClick={handleGenerate} disabled={generating || !prompt.trim()} className="gap-2">
               {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               {generating ? "Generating…" : "Compare"}
             </Button>
 
             {results.some((r) => r.imageUrl) && (
-              <>
-                <Button variant="outline" size="sm" onClick={handleSaveAll} disabled={savingAll} className="gap-1.5">
-                  {savingAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  Save all to gallery
-                </Button>
-              </>
+              <Button variant="outline" size="sm" onClick={handleSaveAll} disabled={savingAll} className="gap-1.5">
+                {savingAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                Save all to gallery
+              </Button>
             )}
           </div>
+
+          {showCostWarning && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 p-3 text-xs">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                About to run {activeStyles.length} generations in parallel — this will consume
+                significantly more provider credits than a normal single-style generation.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Results grid */}
@@ -217,7 +282,10 @@ export default function StyleCompare() {
           <div className={`grid ${cols} gap-3`}>
             {results.map((r, idx) => (
               <Card key={r.styleValue} className="overflow-hidden">
-                <div className="relative aspect-square bg-muted">
+                <div
+                  className="relative bg-muted"
+                  style={{ aspectRatio: `${printFormat.widthCm} / ${printFormat.heightCm}` }}
+                >
                   {r.loading ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -226,8 +294,11 @@ export default function StyleCompare() {
                   ) : r.imageUrl ? (
                     <img src={r.imageUrl} alt={`${r.styleLabel} — ${prompt}`} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 text-center">
                       <span className="text-xs text-destructive">Failed</span>
+                      {r.error && (
+                        <span className="text-[10px] text-muted-foreground line-clamp-2">{r.error}</span>
+                      )}
                     </div>
                   )}
                 </div>
