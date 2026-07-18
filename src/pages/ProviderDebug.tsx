@@ -19,6 +19,7 @@ import {
   type DriftRisk,
 } from "@/lib/style-strictness";
 import { cn } from "@/lib/utils";
+import { getControlPanelStyleOptions } from "@/lib/style-registry";
 
 interface ValidationIssue { level: "error" | "warning"; message: string }
 interface ValidationReport { ok: boolean; issues: ValidationIssue[] }
@@ -45,25 +46,9 @@ interface PromptDebugResult {
 }
 
 const DEBUG_STYLE_KEYS = [
-  "popart",
-  "popart-freestyle",
-  "minimalism",
-  "minimalism-freestyle",
-  "lineart",
-  "lineart-minimal",
-  "screenprint",
-  "risograph",
-  "brutalistposter",
-  "retrocomic",
-  "pulpmagazine",
-  "tattooflash",
-  "japanese",
-  "freestyle",
-  "graffiti",
-  "botanical",
-  "urbannoir",
-  "xeroxzine",
-];
+// Derived from the canonical style registry so newly-added styles show
+// up here automatically.
+const DEBUG_STYLE_KEYS: string[] = getControlPanelStyleOptions().map((s) => s.id);
 
 interface HealthRow {
   providerId: ResolvedProviderId;
