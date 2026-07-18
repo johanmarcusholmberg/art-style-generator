@@ -139,30 +139,27 @@ export interface EditRequest {
   originalStoragePath: string;
 }
 
-const MODE_TO_EDGE_FN: Record<string, string> = {
-  japanese: "generate-image",
-  freestyle: "generate-image-freestyle",
-  popart: "generate-image-popart",
-  "popart-freestyle": "generate-image-popart-freestyle",
-  lineart: "generate-image-lineart",
-  "lineart-freestyle": "generate-image-lineart-freestyle",
-  "lineart-minimal": "generate-image-lineart-minimal",
-  minimalism: "generate-image-minimalism",
-  "minimalism-freestyle": "generate-image-minimalism-freestyle",
-  graffiti: "generate-image-graffiti",
-  "graffiti-freestyle": "generate-image-graffiti-freestyle",
-  botanical: "generate-image-botanical",
-  "botanical-freestyle": "generate-image-botanical-freestyle",
-};
+// Style → edge-function lookup is derived from the canonical style
+// registry so background regeneration automatically covers every
+// registered generation mode (no manual list to keep in sync).
+import {
+  getEdgeFnForMode,
+  getStyleModeByValue,
+  getGalleryOnboardingStyles,
+} from "@/lib/style-registry";
 
-const STYLE_CARDS = [
-  { emoji: "🏯", label: "Ukiyo-e", desc: "Traditional Japanese woodblock prints", to: "/" },
-  { emoji: "🎯", label: "Pop Art", desc: "Bold Ben-Day dots & vivid comic colour", to: "/popart" },
-  { emoji: "✒️", label: "Line Art", desc: "Fine pen & ink with delicate detail", to: "/lineart" },
-  { emoji: "◻", label: "Minimalism", desc: "Clean shapes & generous negative space", to: "/minimalism" },
-  { emoji: "🎨", label: "Graffiti", desc: "Urban spray-paint energy & drips", to: "/graffiti" },
-  { emoji: "🌿", label: "Botanical", desc: "Scientific watercolour plant studies", to: "/botanical" },
-];
+function edgeFnForMode(mode: string | null | undefined): string | null {
+  if (!mode) return null;
+  if (!getStyleModeByValue(mode)) return null;
+  return getEdgeFnForMode(mode);
+}
+
+const STYLE_CARDS = getGalleryOnboardingStyles(6).map((s) => ({
+  emoji: s.emoji,
+  label: s.label,
+  desc: s.desc,
+  to: s.to,
+}));
 
 const downloadImage = (url: string, filename: string) =>
   downloadWithBleed(url, { filename });
