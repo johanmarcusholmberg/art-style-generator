@@ -45,7 +45,6 @@ interface PromptDebugResult {
   openai: ProviderPromptBlock;
 }
 
-const DEBUG_STYLE_KEYS = [
 // Derived from the canonical style registry so newly-added styles show
 // up here automatically.
 const DEBUG_STYLE_KEYS: string[] = getControlPanelStyleOptions().map((s) => s.id);
