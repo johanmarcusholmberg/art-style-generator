@@ -182,41 +182,13 @@ export async function deleteJob(jobId: string) {
   if (error) throw error;
 }
 
-/** All available styles for style grid */
-export const ALL_STYLES = [
-  { value: "japanese", label: "🏯 Ukiyo-e" },
-  { value: "freestyle", label: "🏯 Ukiyo-e Freestyle" },
-  { value: "popart", label: "🎯 Pop Art" },
-  { value: "popart-freestyle", label: "🎯 Pop Art Freestyle" },
-  { value: "lineart", label: "✒️ Line Art" },
-  { value: "lineart-freestyle", label: "✒️ Line Art Freestyle" },
-  { value: "lineart-minimal", label: "〰️ Minimal Lines" },
-  { value: "minimalism", label: "◻ Minimalism" },
-  { value: "minimalism-freestyle", label: "◻ Minimalism Freestyle" },
-  { value: "graffiti", label: "🎨 Graffiti" },
-  { value: "graffiti-freestyle", label: "🎨 Graffiti Freestyle" },
-  { value: "botanical", label: "🌿 Botanical" },
-  { value: "botanical-freestyle", label: "🌿 Botanical Freestyle" },
-  { value: "urbannoir", label: "🖤 Urban Noir" },
-  { value: "urbannoir-freestyle", label: "🖤 Urban Noir Freestyle" },
-  { value: "screenprint", label: "🖨️ Screen Print" },
-  { value: "screenprint-freestyle", label: "🖨️ Screen Print Freestyle" },
-  { value: "risograph", label: "📠 Risograph" },
-  { value: "risograph-freestyle", label: "📠 Risograph Freestyle" },
-  { value: "retrocomic", label: "💥 Retro Comic" },
-  { value: "retrocomic-freestyle", label: "💥 Retro Comic Freestyle" },
-  { value: "pulpmagazine", label: "📕 Pulp Magazine" },
-  { value: "pulpmagazine-freestyle", label: "📕 Pulp Magazine Freestyle" },
-  { value: "tattooflash", label: "🔥 Tattoo Flash" },
-  { value: "tattooflash-freestyle", label: "🔥 Tattoo Flash Freestyle" },
-  { value: "brutalistposter", label: "⬛ Brutalist Poster" },
-  { value: "brutalistposter-freestyle", label: "⬛ Brutalist Poster Freestyle" },
-  { value: "xeroxzine", label: "📋 Xerox Zine" },
-  { value: "xeroxzine-freestyle", label: "📋 Xerox Zine Freestyle" },
-  { value: "artnouveau", label: "🌸 Art Nouveau" },
-  { value: "artnouveau-freestyle", label: "🌸 Art Nouveau Freestyle" },
-  { value: "midcenturymodern", label: "🌞 Mid-Century Modern" },
-  { value: "midcenturymodern-freestyle", label: "🌞 Mid-Century Modern Freestyle" },
-  { value: "loosewatercolor", label: "💧 Loose Watercolor" },
-  { value: "loosewatercolor-freestyle", label: "💧 Loose Watercolor Freestyle" },
-] as const;
+/**
+ * All available styles for the style grid. Derived from the canonical
+ * `style-registry` so newly-added styles (Whimsical Japanese, Modernist
+ * Cocktail, Mediterranean Heritage, Scandinavian, Vintage, …) show up
+ * automatically without a manual list to keep in sync.
+ */
+export { getBatchStyleOptions } from "@/lib/style-registry";
+import { getBatchStyleOptions } from "@/lib/style-registry";
+export const ALL_STYLES: ReadonlyArray<{ value: string; label: string }> =
+  getBatchStyleOptions();
