@@ -612,7 +612,7 @@ function LightboxContent({
         </div>
 
         {/* Background change */}
-        {MODE_TO_EDGE_FN[img.mode] && !bgResult && (
+        {edgeFnForMode(img.mode) && !bgResult && (
           <div className="pt-3 border-t border-border">
             <p className="font-display text-xs text-muted-foreground mb-2">Change background color</p>
             <div className="flex flex-wrap gap-2">
@@ -1064,7 +1064,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   };
 
   const handleChangeBackground = async (img: GalleryImage, bgStyle: "white" | "cream") => {
-    const edgeFn = MODE_TO_EDGE_FN[img.mode];
+    const edgeFn = edgeFnForMode(img.mode);
     if (!edgeFn) { toast.error("Background change not supported for this style"); return; }
     setBgChanging(bgStyle);
     setBgResult(null);
