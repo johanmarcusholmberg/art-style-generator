@@ -306,19 +306,61 @@ export type Database = {
       }
       collections: {
         Row: {
+          anchor_image_id: string | null
+          anchor_model: string | null
+          anchor_poster_format_id: string | null
+          anchor_provider: string | null
+          anchor_style_key: string | null
+          art_direction: Json | null
+          art_direction_version: number | null
+          consistency_strength: string | null
           created_at: string
           id: string
+          matching_collection_job_id: string | null
           name: string
+          provider_substitution_reason: string | null
+          reference_strength: string | null
+          resolved_model: string | null
+          resolved_provider: string | null
+          updated_at: string
         }
         Insert: {
+          anchor_image_id?: string | null
+          anchor_model?: string | null
+          anchor_poster_format_id?: string | null
+          anchor_provider?: string | null
+          anchor_style_key?: string | null
+          art_direction?: Json | null
+          art_direction_version?: number | null
+          consistency_strength?: string | null
           created_at?: string
           id?: string
+          matching_collection_job_id?: string | null
           name: string
+          provider_substitution_reason?: string | null
+          reference_strength?: string | null
+          resolved_model?: string | null
+          resolved_provider?: string | null
+          updated_at?: string
         }
         Update: {
+          anchor_image_id?: string | null
+          anchor_model?: string | null
+          anchor_poster_format_id?: string | null
+          anchor_provider?: string | null
+          anchor_style_key?: string | null
+          art_direction?: Json | null
+          art_direction_version?: number | null
+          consistency_strength?: string | null
           created_at?: string
           id?: string
+          matching_collection_job_id?: string | null
           name?: string
+          provider_substitution_reason?: string | null
+          reference_strength?: string | null
+          resolved_model?: string | null
+          resolved_provider?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -437,6 +479,10 @@ export type Database = {
           master_image_url: string | null
           master_storage_path: string | null
           master_width: number | null
+          matching_collection_id: string | null
+          matching_is_anchor: boolean
+          matching_review_state: string | null
+          matching_subject: string | null
           mode: string
           model: string | null
           model_fallback_reason: string | null
@@ -515,6 +561,10 @@ export type Database = {
           master_image_url?: string | null
           master_storage_path?: string | null
           master_width?: number | null
+          matching_collection_id?: string | null
+          matching_is_anchor?: boolean
+          matching_review_state?: string | null
+          matching_subject?: string | null
           mode?: string
           model?: string | null
           model_fallback_reason?: string | null
@@ -593,6 +643,10 @@ export type Database = {
           master_image_url?: string | null
           master_storage_path?: string | null
           master_width?: number | null
+          matching_collection_id?: string | null
+          matching_is_anchor?: boolean
+          matching_review_state?: string | null
+          matching_subject?: string | null
           mode?: string
           model?: string | null
           model_fallback_reason?: string | null
@@ -663,6 +717,7 @@ export type Database = {
           status: string
           storage_path: string | null
           style: string | null
+          subject: string | null
           updated_at: string
         }
         Insert: {
@@ -690,6 +745,7 @@ export type Database = {
           status?: string
           storage_path?: string | null
           style?: string | null
+          subject?: string | null
           updated_at?: string
         }
         Update: {
@@ -717,6 +773,7 @@ export type Database = {
           status?: string
           storage_path?: string | null
           style?: string | null
+          subject?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -738,12 +795,20 @@ export type Database = {
       }
       generation_jobs: {
         Row: {
+          anchor_aspect_ratio: string | null
+          anchor_height_px: number | null
+          anchor_image_id: string | null
+          anchor_image_url: string | null
+          anchor_width_px: number | null
+          art_direction: Json | null
+          art_direction_version: number | null
           aspect_ratio: string
           auto_upscale: boolean
           auto_upscale_mode: string
           background_style: string
           batch_size: number
           completed_images: number
+          consistency_strength: string | null
           context_key: string | null
           created_at: string
           failed_images: number
@@ -752,6 +817,7 @@ export type Database = {
           id: string
           idempotency_key: string
           job_type: string
+          matching_collection_id: string | null
           matrix_variables: Json | null
           mode: string
           print_size: string | null
@@ -772,12 +838,20 @@ export type Database = {
           white_frame: boolean
         }
         Insert: {
+          anchor_aspect_ratio?: string | null
+          anchor_height_px?: number | null
+          anchor_image_id?: string | null
+          anchor_image_url?: string | null
+          anchor_width_px?: number | null
+          art_direction?: Json | null
+          art_direction_version?: number | null
           aspect_ratio?: string
           auto_upscale?: boolean
           auto_upscale_mode?: string
           background_style?: string
           batch_size?: number
           completed_images?: number
+          consistency_strength?: string | null
           context_key?: string | null
           created_at?: string
           failed_images?: number
@@ -786,6 +860,7 @@ export type Database = {
           id?: string
           idempotency_key: string
           job_type?: string
+          matching_collection_id?: string | null
           matrix_variables?: Json | null
           mode?: string
           print_size?: string | null
@@ -806,12 +881,20 @@ export type Database = {
           white_frame?: boolean
         }
         Update: {
+          anchor_aspect_ratio?: string | null
+          anchor_height_px?: number | null
+          anchor_image_id?: string | null
+          anchor_image_url?: string | null
+          anchor_width_px?: number | null
+          art_direction?: Json | null
+          art_direction_version?: number | null
           aspect_ratio?: string
           auto_upscale?: boolean
           auto_upscale_mode?: string
           background_style?: string
           batch_size?: number
           completed_images?: number
+          consistency_strength?: string | null
           context_key?: string | null
           created_at?: string
           failed_images?: number
@@ -820,6 +903,7 @@ export type Database = {
           id?: string
           idempotency_key?: string
           job_type?: string
+          matching_collection_id?: string | null
           matrix_variables?: Json | null
           mode?: string
           print_size?: string | null
