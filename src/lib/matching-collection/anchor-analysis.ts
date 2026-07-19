@@ -59,7 +59,7 @@ export function sanitizeArtDirection(raw: unknown): CollectionArtDirection | nul
 
   for (const k of STRING_FIELDS) {
     const v = r[k];
-    if (typeof v === "string") (out as Record<string, unknown>)[k] = v.slice(0, 240);
+    if (typeof v === "string") (out as unknown as Record<string, unknown>)[k] = v.slice(0, 240);
   }
 
   // Require at least a palette OR one non-empty descriptor to be useful.
