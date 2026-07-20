@@ -240,6 +240,7 @@ interface LightboxContentProps {
   onVersionsChanged?: () => void;
   onPrintExportFromBest: (img: GalleryImage) => void;
   versionRefreshKey?: number;
+  onCreateMatchingCollection: (img: GalleryImage) => void;
 }
 
 
