@@ -67,6 +67,12 @@ export interface PersistArgs {
   upscaleFactor?: number | null;
   // Cost + diagnostic metadata pass-through
   costEventMetadata?: Record<string, unknown>;
+  // Matching-collection metadata — always populated for matching_collection
+  // items so `/collection/:id` can list pending members immediately.
+  matchingCollectionId?: string | null;
+  matchingSubject?: string | null;
+  matchingReviewState?: "pending" | "accepted" | "rejected" | null;
+  matchingIsAnchor?: boolean | null;
 }
 
 export interface PersistResult {
@@ -182,6 +188,10 @@ export async function persistGenerationResult(
         source_file_name: args.sourceFileName ?? null,
         generation_job_id: args.generationJobId ?? null,
         generation_job_item_id: itemId,
+        matching_collection_id: args.matchingCollectionId ?? null,
+        matching_subject: args.matchingSubject ?? null,
+        matching_review_state: args.matchingReviewState ?? null,
+        matching_is_anchor: args.matchingIsAnchor ?? false,
       })
       .select("id")
       .single();

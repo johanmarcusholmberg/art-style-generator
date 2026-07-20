@@ -51,6 +51,30 @@ interface ItemPayload {
   requestedWidth?: number;
   requestedHeight?: number;
   sizeIntent?: "preview" | "standard" | "print";
+  // Matching-collection additions. When kind === "matching_collection",
+  // anchorImageUrl is the ONE canonical reference — mapped into
+  // GenerateArgs.sourceImageUrl at execution. Collection members NEVER
+  // read another member's output as a reference.
+  kind?: string;
+  anchorImageUrl?: string | null;
+  anchorImageId?: string | null;
+  matchingCollectionId?: string | null;
+  subject?: string | null;
+  rawSubject?: string | null;
+  artDirection?: unknown;
+  artDirectionVersion?: number | null;
+  consistencyStrength?: string | null;
+}
+
+/**
+ * Normalize the reference image URL for the provider. For matching-collection
+ * items the canonical reference is `anchorImageUrl`; every other flow already
+ * uses `sourceImageUrl`. We always prefer the anchor when both are present so
+ * a collection member cannot silently regress to a chained reference.
+ */
+function resolveReferenceImageUrl(p: ItemPayload): string | null {
+  if (p.kind === "matching_collection") return p.anchorImageUrl ?? null;
+  return p.sourceImageUrl ?? p.anchorImageUrl ?? null;
 }
 
 serve(async (req) => {
@@ -99,13 +123,14 @@ serve(async (req) => {
     }, HEARTBEAT_MS) as unknown as number;
 
     // Run provider.
+    const referenceUrl = resolveReferenceImageUrl(payload);
     const generateArgs: GenerateArgs = {
       userPrompt: payload.prompt,
       styleKey: payload.styleKey,
       aspectRatio: payload.aspectRatio,
       backgroundStyle: payload.backgroundStyle,
-      isEdit: !!payload.sourceImageUrl,
-      sourceImageUrl: payload.sourceImageUrl ?? undefined,
+      isEdit: !!referenceUrl,
+      sourceImageUrl: referenceUrl ?? undefined,
       printMode: payload.generationMode === "print-ready",
       posterFormatHint: payload.posterFormatHint,
       posterFormatId: payload.printFormatId ?? undefined,
@@ -165,7 +190,11 @@ serve(async (req) => {
       estimatedCost: null,
       currency: "USD",
       promptVersion: null,
-      sourceImageUrl: payload.sourceImageUrl ?? null,
+      sourceImageUrl: referenceUrl ?? null,
+      matchingCollectionId: payload.matchingCollectionId ?? null,
+      matchingSubject: payload.kind === "matching_collection" ? (payload.subject ?? payload.rawSubject ?? null) : null,
+      matchingReviewState: payload.kind === "matching_collection" ? "pending" : null,
+      matchingIsAnchor: false,
       costEventMetadata: {
         attempted: outcome.attempted ?? null,
         provider_adjusted: outcome.providerAdjusted ?? false,
