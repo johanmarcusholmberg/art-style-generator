@@ -273,9 +273,26 @@ export default function CollectionPage() {
                           Regenerate
                         </Button>
                         {url && (
-                          <a href={url} target="_blank" rel="noreferrer" className="text-xs underline text-muted-foreground self-center">
-                            View
-                          </a>
+                          <>
+                            <a href={url} target="_blank" rel="noreferrer" className="text-xs underline text-muted-foreground self-center">
+                              View
+                            </a>
+                            <a
+                              href={url}
+                              download={`collection-${m.id}.png`}
+                              className="text-xs underline text-muted-foreground self-center"
+                              title="Download (export)"
+                            >
+                              Export
+                            </a>
+                            <Link
+                              to="/"
+                              className="text-xs underline text-primary self-center"
+                              title="Open in gallery to Enhance for print"
+                            >
+                              Enhance in gallery
+                            </Link>
+                          </>
                         )}
                       </div>
                     </div>
