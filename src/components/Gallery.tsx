@@ -680,6 +680,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<GalleryImage | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GalleryImage | null>(null);
+  const [matchingAnchor, setMatchingAnchor] = useState<GalleryImage | null>(null);
   const [deleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 9;
