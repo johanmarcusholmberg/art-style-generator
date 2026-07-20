@@ -50,6 +50,8 @@ import { classifyPrintReadiness } from "@/lib/image-metadata";
 import { enforcePosterRatio } from "@/lib/poster-ratio-enforce";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import FormatDerivativesDialog from "@/components/FormatDerivativesDialog";
+import MatchingCollectionDialog from "@/components/matching-collection/MatchingCollectionDialog";
+import type { AnchorInheritedSettings } from "@/lib/matching-collection/types";
 
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { useUpscale } from "@/hooks/use-upscale";
