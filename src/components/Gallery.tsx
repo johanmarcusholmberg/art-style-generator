@@ -1479,6 +1479,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     onVersionsChanged: () => { void refreshUpscaleCounts(images.map((i) => i.id)); bumpVersionRefresh(); },
     onPrintExportFromBest: handlePrintExportFromBest,
     versionRefreshKey: versionRefreshTick,
+    onCreateMatchingCollection: (img: GalleryImage) => setMatchingAnchor(img),
   } : null;
 
 
