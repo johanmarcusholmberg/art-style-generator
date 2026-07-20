@@ -1836,6 +1836,26 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {matchingAnchor && (
+        <MatchingCollectionDialog
+          open={!!matchingAnchor}
+          onOpenChange={(o) => { if (!o) setMatchingAnchor(null); }}
+          anchorImageUrl={matchingAnchor.masterUrl}
+          anchorImageId={matchingAnchor.id}
+          anchor={{
+            styleKey: matchingAnchor.mode ?? "freestyle",
+            posterFormatId: matchingAnchor.print_format_id ?? null,
+            aspectRatio: matchingAnchor.aspect_ratio ?? "5:7",
+            backgroundStyle: (matchingAnchor as { background_style?: string }).background_style ?? "white",
+            provider: matchingAnchor.generation_provider ?? null,
+            model: matchingAnchor.generation_model ?? null,
+            referenceStrength: null,
+            anchorWidthPx: matchingAnchor.actual_width_px ?? null,
+            anchorHeightPx: matchingAnchor.actual_height_px ?? null,
+          } satisfies AnchorInheritedSettings}
+        />
+      )}
     </>
   );
 }
