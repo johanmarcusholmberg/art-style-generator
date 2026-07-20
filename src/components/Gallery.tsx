@@ -50,6 +50,8 @@ import { classifyPrintReadiness } from "@/lib/image-metadata";
 import { enforcePosterRatio } from "@/lib/poster-ratio-enforce";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import FormatDerivativesDialog from "@/components/FormatDerivativesDialog";
+import MatchingCollectionDialog from "@/components/matching-collection/MatchingCollectionDialog";
+import type { AnchorInheritedSettings } from "@/lib/matching-collection/types";
 
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { useUpscale } from "@/hooks/use-upscale";
@@ -238,6 +240,7 @@ interface LightboxContentProps {
   onVersionsChanged?: () => void;
   onPrintExportFromBest: (img: GalleryImage) => void;
   versionRefreshKey?: number;
+  onCreateMatchingCollection: (img: GalleryImage) => void;
 }
 
 
@@ -254,6 +257,7 @@ function LightboxContent({
   onVersionsChanged,
   onPrintExportFromBest,
   versionRefreshKey,
+  onCreateMatchingCollection,
 }: LightboxContentProps) {
   const [selectedAsset, setSelectedAsset] = useState<ImageAsset | null>(null);
   const [useBestForExport, setUseBestForExport] = useState(false);
@@ -596,6 +600,15 @@ function LightboxContent({
           <Button variant="outline" size="sm" onClick={onCopyUrl} className="font-display text-xs">
             <Share2 className="mr-2 h-4 w-4" /> Copy URL
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onCreateMatchingCollection(img)}
+            className="font-display text-xs border-primary/40 text-primary hover:bg-primary/10"
+            title="Generate a coordinated poster set from this image"
+          >
+            <Layers className="mr-2 h-4 w-4" /> Matching collection
+          </Button>
           {showEdit && onEdit && (
             <Button variant="outline" size="sm" onClick={onEdit} className="font-display text-xs">
               <Pencil className="mr-2 h-4 w-4" /> Edit
@@ -667,6 +680,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<GalleryImage | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<GalleryImage | null>(null);
+  const [matchingAnchor, setMatchingAnchor] = useState<GalleryImage | null>(null);
   const [deleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 9;
@@ -1465,6 +1479,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     onVersionsChanged: () => { void refreshUpscaleCounts(images.map((i) => i.id)); bumpVersionRefresh(); },
     onPrintExportFromBest: handlePrintExportFromBest,
     versionRefreshKey: versionRefreshTick,
+    onCreateMatchingCollection: (img: GalleryImage) => setMatchingAnchor(img),
   } : null;
 
 
@@ -1821,6 +1836,26 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {matchingAnchor && (
+        <MatchingCollectionDialog
+          open={!!matchingAnchor}
+          onOpenChange={(o) => { if (!o) setMatchingAnchor(null); }}
+          anchorImageUrl={matchingAnchor.masterUrl}
+          anchorImageId={matchingAnchor.id}
+          anchor={{
+            styleKey: matchingAnchor.mode ?? "freestyle",
+            posterFormatId: matchingAnchor.print_format_id ?? null,
+            aspectRatio: matchingAnchor.aspect_ratio ?? "5:7",
+            backgroundStyle: (matchingAnchor as { background_style?: string }).background_style ?? "white",
+            provider: matchingAnchor.generation_provider ?? null,
+            model: matchingAnchor.generation_model ?? null,
+            referenceStrength: null,
+            anchorWidthPx: matchingAnchor.actual_width_px ?? null,
+            anchorHeightPx: matchingAnchor.actual_height_px ?? null,
+          } satisfies AnchorInheritedSettings}
+        />
+      )}
     </>
   );
 }
