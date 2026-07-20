@@ -46,6 +46,7 @@ import MidCenturyModern from "./pages/MidCenturyModern";
 import LooseWatercolor from "./pages/LooseWatercolor";
 import BackendInfo from "./pages/BackendInfo";
 import QuickAccess from "./pages/QuickAccess";
+import CollectionPage from "./pages/CollectionPage";
 
 const queryClient = new QueryClient();
 
@@ -116,6 +117,7 @@ const App = () => (
               <Route path="/artnouveau" element={protect(<ArtNouveau />)} />
               <Route path="/midcenturymodern" element={protect(<MidCenturyModern />)} />
               <Route path="/loosewatercolor" element={protect(<LooseWatercolor />)} />
+              <Route path="/collection/:id" element={protect(<CollectionPage />)} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

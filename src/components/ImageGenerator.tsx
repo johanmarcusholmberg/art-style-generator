@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
+import MatchingCollectionDialog from "@/components/matching-collection/MatchingCollectionDialog";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
 import { describeExportSource } from "@/lib/asset-selection";
 import {
@@ -153,6 +154,7 @@ export default function ImageGenerator({
   const [lastReferenceStrength, setLastReferenceStrength] = useState<ReferenceStrength | null>(null);
   // Store the enhanced URL separately from the displayed imageUrl
   const [enhancedImageUrl, setEnhancedImageUrl] = useState<string | null>(null);
+  const [matchingOpen, setMatchingOpen] = useState(false);
   const [isInlineEditing, setIsInlineEditing] = useState(false);
   const [editPrompt, setEditPrompt] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1799,6 +1801,18 @@ export default function ImageGenerator({
               onRemoveImage={handleRemoveImage}
             />
 
+            {imageUrl && savedToGallery && (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => setMatchingOpen(true)}
+                  className="text-xs underline text-muted-foreground hover:text-foreground"
+                >
+                  Create matching collection from this image →
+                </button>
+              </div>
+            )}
+
           </div>
         )}
 
@@ -1806,6 +1820,26 @@ export default function ImageGenerator({
           <p className="font-display text-muted-foreground text-sm">Your artwork will appear here</p>
         )}
       </div>
+
+      {imageUrl && (
+        <MatchingCollectionDialog
+          open={matchingOpen}
+          onOpenChange={setMatchingOpen}
+          anchorImageUrl={enhancedImageUrl || imageUrl}
+          anchorImageId={null}
+          anchor={{
+            styleKey: variantStyleKey,
+            posterFormatId: selectedPrintFormat.id,
+            aspectRatio: effectiveAspectRatio,
+            backgroundStyle,
+            provider: lastProviderUsed ?? null,
+            model: lastModelUsed ?? null,
+            referenceStrength: null,
+            anchorWidthPx: null,
+            anchorHeightPx: null,
+          }}
+        />
+      )}
     </div>
   );
 }
