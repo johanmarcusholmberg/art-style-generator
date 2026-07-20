@@ -600,6 +600,15 @@ function LightboxContent({
           <Button variant="outline" size="sm" onClick={onCopyUrl} className="font-display text-xs">
             <Share2 className="mr-2 h-4 w-4" /> Copy URL
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onCreateMatchingCollection(img)}
+            className="font-display text-xs border-primary/40 text-primary hover:bg-primary/10"
+            title="Generate a coordinated poster set from this image"
+          >
+            <Layers className="mr-2 h-4 w-4" /> Matching collection
+          </Button>
           {showEdit && onEdit && (
             <Button variant="outline" size="sm" onClick={onEdit} className="font-display text-xs">
               <Pencil className="mr-2 h-4 w-4" /> Edit
