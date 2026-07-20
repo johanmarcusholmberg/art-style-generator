@@ -257,6 +257,7 @@ function LightboxContent({
   onVersionsChanged,
   onPrintExportFromBest,
   versionRefreshKey,
+  onCreateMatchingCollection,
 }: LightboxContentProps) {
   const [selectedAsset, setSelectedAsset] = useState<ImageAsset | null>(null);
   const [useBestForExport, setUseBestForExport] = useState(false);
