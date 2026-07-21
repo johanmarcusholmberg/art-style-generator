@@ -21,6 +21,8 @@ import {
   buildDurableResultMetadata,
   executionRouteForProvider,
 } from "../_shared/durable-result-metadata.ts";
+import { normalizeLegacyGenerationRequest, type GenerationRequestV2 } from "../_shared/generation-contract-v2.ts";
+import { reasonToRejectDurable } from "../_shared/executable-providers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,13 +70,13 @@ interface ItemPayload {
 
 /**
  * Normalize the reference image URL for the provider. For matching-collection
- * items the canonical reference is `anchorImageUrl`; every other flow already
+ * items the canonical reference is the anchor URL; every other flow already
  * uses `sourceImageUrl`. We always prefer the anchor when both are present so
  * a collection member cannot silently regress to a chained reference.
  */
-function resolveReferenceImageUrl(p: ItemPayload): string | null {
-  if (p.kind === "matching_collection") return p.anchorImageUrl ?? null;
-  return p.sourceImageUrl ?? p.anchorImageUrl ?? null;
+function resolveReferenceImageUrl(req: GenerationRequestV2): string | null {
+  if (req.kind === "matching_collection") return req.matching?.anchorImageUrl ?? null;
+  return req.sourceImageUrl ?? req.matching?.anchorImageUrl ?? null;
 }
 
 serve(async (req) => {
