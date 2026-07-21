@@ -111,7 +111,19 @@ serve(async (req) => {
       provider_label: string | null;
     };
     leaseToken = claim.lease_token;
-    const payload = claim.request_payload ?? ({} as ItemPayload);
+    // Normalize whatever the row was created with into the V2 contract.
+    // Older rows (pre-Turn 1) still flow through cleanly; new rows carry
+    // `version: 2` and skip the coercion.
+    const req: GenerationRequestV2 = normalizeLegacyGenerationRequest(claim.request_payload ?? {});
+
+    // Enforce provider executability at the last mile. The client is
+    // expected to have gated this via `checkDurableExecutability`; a
+    // failure here means either a bug in the client or a job created
+    // before the gate landed. Fail terminally with a clear message.
+    const rejectReason = reasonToRejectDurable(req.providerPreference);
+    if (rejectReason) {
+      throw new ProviderError("unsupported", rejectReason);
+    }
 
     // Heartbeat while provider runs.
     heartbeat = setInterval(async () => {
@@ -125,24 +137,25 @@ serve(async (req) => {
     }, HEARTBEAT_MS) as unknown as number;
 
     // Run provider.
-    const referenceUrl = resolveReferenceImageUrl(payload);
+    const referenceUrl = resolveReferenceImageUrl(req);
     const generateArgs: GenerateArgs = {
-      userPrompt: payload.prompt,
-      styleKey: payload.styleKey,
-      aspectRatio: payload.aspectRatio,
-      backgroundStyle: payload.backgroundStyle,
+      userPrompt: req.prompt,
+      styleKey: req.styleKey,
+      aspectRatio: req.aspectRatio,
+      backgroundStyle: req.backgroundStyle,
       isEdit: !!referenceUrl,
       sourceImageUrl: referenceUrl ?? undefined,
-      printMode: payload.generationMode === "print-ready",
-      posterFormatHint: payload.posterFormatHint,
-      posterFormatId: payload.printFormatId ?? undefined,
-      referenceStrength: payload.referenceStrength as GenerateArgs["referenceStrength"],
-      requestedWidth: payload.requestedWidth,
-      requestedHeight: payload.requestedHeight,
-      sizeIntent: payload.sizeIntent,
+      printMode: req.generationMode === "print-ready",
+      posterFormatHint: req.posterFormatHint ?? undefined,
+      posterFormatId: req.printFormatId ?? undefined,
+      referenceStrength: req.referenceStrength as GenerateArgs["referenceStrength"],
+      requestedWidth: req.requestedWidth ?? undefined,
+      requestedHeight: req.requestedHeight ?? undefined,
+      sizeIntent: req.sizeIntent,
+      strictness: (req.strictness as GenerateArgs["strictness"]) ?? undefined,
     };
 
-    const providerPref: GeneratorPreference = payload.providerPreference ?? "auto";
+    const providerPref: GeneratorPreference = req.providerPreference;
     const outcome = await runWithResolver(providerPref, generateArgs);
 
     const executionRoute = executionRouteForProvider(outcome.providerId);
