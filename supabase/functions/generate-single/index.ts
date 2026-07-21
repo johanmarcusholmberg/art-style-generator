@@ -21,6 +21,8 @@ import {
   buildDurableResultMetadata,
   executionRouteForProvider,
 } from "../_shared/durable-result-metadata.ts";
+import { normalizeLegacyGenerationRequest, type GenerationRequestV2 } from "../_shared/generation-contract-v2.ts";
+import { reasonToRejectDurable } from "../_shared/executable-providers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,51 +32,21 @@ const corsHeaders = {
 const LEASE_SECONDS = 180;
 const HEARTBEAT_MS = 45_000;
 
-interface ItemPayload {
-  styleKey: string;
-  prompt: string;
-  aspectRatio?: string;
-  backgroundStyle?: string;
-  sourceImageUrl?: string | null;
-  referenceStrength?: string;
-  generationMode?: string;
-  printFormatId?: string | null;
-  posterFormatHint?: string;
-  providerPreference?: GeneratorPreference;
-  mode?: string;
-  printSize?: string | null;
-  qualityMode?: string;
-  targetPpi?: number | null;
-  targetWidthPx?: number | null;
-  targetHeightPx?: number | null;
-  providerLabel?: string | null;
-  requestedWidth?: number;
-  requestedHeight?: number;
-  sizeIntent?: "preview" | "standard" | "print";
-  // Matching-collection additions. When kind === "matching_collection",
-  // anchorImageUrl is the ONE canonical reference — mapped into
-  // GenerateArgs.sourceImageUrl at execution. Collection members NEVER
-  // read another member's output as a reference.
-  kind?: string;
-  anchorImageUrl?: string | null;
-  anchorImageId?: string | null;
-  matchingCollectionId?: string | null;
-  subject?: string | null;
-  rawSubject?: string | null;
-  artDirection?: unknown;
-  artDirectionVersion?: number | null;
-  consistencyStrength?: string | null;
-}
+// Legacy request payloads are normalized into `GenerationRequestV2` on
+// claim (see `normalizeLegacyGenerationRequest`). No ad-hoc payload
+// shape is needed here anymore.
+
+
 
 /**
  * Normalize the reference image URL for the provider. For matching-collection
- * items the canonical reference is `anchorImageUrl`; every other flow already
+ * items the canonical reference is the anchor URL; every other flow already
  * uses `sourceImageUrl`. We always prefer the anchor when both are present so
  * a collection member cannot silently regress to a chained reference.
  */
-function resolveReferenceImageUrl(p: ItemPayload): string | null {
-  if (p.kind === "matching_collection") return p.anchorImageUrl ?? null;
-  return p.sourceImageUrl ?? p.anchorImageUrl ?? null;
+function resolveReferenceImageUrl(req: GenerationRequestV2): string | null {
+  if (req.kind === "matching_collection") return req.matching?.anchorImageUrl ?? null;
+  return req.sourceImageUrl ?? req.matching?.anchorImageUrl ?? null;
 }
 
 serve(async (req) => {
@@ -109,7 +81,19 @@ serve(async (req) => {
       provider_label: string | null;
     };
     leaseToken = claim.lease_token;
-    const payload = claim.request_payload ?? ({} as ItemPayload);
+    // Normalize whatever the row was created with into the V2 contract.
+    // Older rows (pre-Turn 1) still flow through cleanly; new rows carry
+    // `version: 2` and skip the coercion.
+    const req: GenerationRequestV2 = normalizeLegacyGenerationRequest(claim.request_payload ?? {});
+
+    // Enforce provider executability at the last mile. The client is
+    // expected to have gated this via `checkDurableExecutability`; a
+    // failure here means either a bug in the client or a job created
+    // before the gate landed. Fail terminally with a clear message.
+    const rejectReason = reasonToRejectDurable(req.providerPreference);
+    if (rejectReason) {
+      throw new ProviderError("unsupported", rejectReason);
+    }
 
     // Heartbeat while provider runs.
     heartbeat = setInterval(async () => {
@@ -123,24 +107,25 @@ serve(async (req) => {
     }, HEARTBEAT_MS) as unknown as number;
 
     // Run provider.
-    const referenceUrl = resolveReferenceImageUrl(payload);
+    const referenceUrl = resolveReferenceImageUrl(req);
     const generateArgs: GenerateArgs = {
-      userPrompt: payload.prompt,
-      styleKey: payload.styleKey,
-      aspectRatio: payload.aspectRatio,
-      backgroundStyle: payload.backgroundStyle,
+      userPrompt: req.prompt,
+      styleKey: req.styleKey,
+      aspectRatio: req.aspectRatio,
+      backgroundStyle: req.backgroundStyle,
       isEdit: !!referenceUrl,
       sourceImageUrl: referenceUrl ?? undefined,
-      printMode: payload.generationMode === "print-ready",
-      posterFormatHint: payload.posterFormatHint,
-      posterFormatId: payload.printFormatId ?? undefined,
-      referenceStrength: payload.referenceStrength as GenerateArgs["referenceStrength"],
-      requestedWidth: payload.requestedWidth,
-      requestedHeight: payload.requestedHeight,
-      sizeIntent: payload.sizeIntent,
+      printMode: req.generationMode === "print-ready",
+      posterFormatHint: req.posterFormatHint ?? undefined,
+      posterFormatId: req.printFormatId ?? undefined,
+      referenceStrength: req.referenceStrength as GenerateArgs["referenceStrength"],
+      requestedWidth: req.requestedWidth ?? undefined,
+      requestedHeight: req.requestedHeight ?? undefined,
+      sizeIntent: req.sizeIntent,
+      strictness: (req.strictness as GenerateArgs["strictness"]) ?? undefined,
     };
 
-    const providerPref: GeneratorPreference = payload.providerPreference ?? "auto";
+    const providerPref: GeneratorPreference = req.providerPreference;
     const outcome = await runWithResolver(providerPref, generateArgs);
 
     const executionRoute = executionRouteForProvider(outcome.providerId);
@@ -163,18 +148,18 @@ serve(async (req) => {
     //   - prompt_history (unique on generation_job_item_id, dedupe on prompt)
     const persisted = await persistGenerationResult(supabase, {
       imageUrl: outcome.imageUrl,
-      prompt: payload.prompt,
-      mode: payload.mode ?? payload.styleKey,
-      aspectRatio: payload.aspectRatio ?? "5:7",
+      prompt: req.prompt,
+      mode: req.mode,
+      aspectRatio: req.aspectRatio,
       generationJobItemId: itemId,
       generationJobId: claim.job_id,
       profileId,
-      printSize: payload.printSize ?? null,
-      qualityMode: payload.qualityMode,
-      targetPpi: payload.targetPpi,
-      targetWidthPx: payload.targetWidthPx,
-      targetHeightPx: payload.targetHeightPx,
-      providerLabel: payload.providerLabel ?? claim.provider_label ?? null,
+      printSize: req.printSize,
+      qualityMode: req.qualityMode,
+      targetPpi: req.targetPpi,
+      targetWidthPx: req.targetWidthPx,
+      targetHeightPx: req.targetHeightPx,
+      providerLabel: req.providerLabel ?? claim.provider_label ?? null,
       actualWidthPx: outcome.width ?? null,
       actualHeightPx: outcome.height ?? null,
       generationProvider: outcome.providerId,
@@ -182,8 +167,8 @@ serve(async (req) => {
       providerStrategy: outcome.strategy,
       fallbackUsed: outcome.fallbackUsed,
       executionRoute,
-      printFormatId: payload.printFormatId ?? null,
-      generationMode: payload.generationMode ?? null,
+      printFormatId: req.printFormatId,
+      generationMode: req.generationMode,
       provider: outcome.providerId,
       model: outcome.modelId,
       route: executionRoute,
@@ -191,9 +176,11 @@ serve(async (req) => {
       currency: "USD",
       promptVersion: null,
       sourceImageUrl: referenceUrl ?? null,
-      matchingCollectionId: payload.matchingCollectionId ?? null,
-      matchingSubject: payload.kind === "matching_collection" ? (payload.subject ?? payload.rawSubject ?? null) : null,
-      matchingReviewState: payload.kind === "matching_collection" ? "pending" : null,
+      matchingCollectionId: req.matching?.collectionId ?? null,
+      matchingSubject: req.kind === "matching_collection"
+        ? (req.matching?.subject ?? req.matching?.rawSubject ?? null)
+        : null,
+      matchingReviewState: req.kind === "matching_collection" ? "pending" : null,
       matchingIsAnchor: false,
       costEventMetadata: {
         attempted: outcome.attempted ?? null,
@@ -206,7 +193,7 @@ serve(async (req) => {
     // requested poster format, mark 'pending' so the client can finalize.
     // (Client-side Canvas enforcement is preserved by design for parity.)
     const ratioStatus =
-      outcome.providerAdjusted && payload.printFormatId ? "pending" : "not_required";
+      outcome.providerAdjusted && req.printFormatId ? "pending" : "not_required";
 
     if (heartbeat) clearInterval(heartbeat);
 
@@ -224,15 +211,19 @@ serve(async (req) => {
       requestedAspectRatio: outcome.requestedAspectRatio ?? null,
       providerExactMatch: outcome.providerExactMatch,
       providerAdjusted: outcome.providerAdjusted,
-      printFormatId: payload.printFormatId ?? null,
-      printSize: payload.printSize ?? null,
-      qualityMode: payload.qualityMode ?? null,
-      targetPpi: payload.targetPpi ?? null,
-      targetWidthPx: payload.targetWidthPx ?? null,
-      targetHeightPx: payload.targetHeightPx ?? null,
-      aspectRatio: payload.aspectRatio ?? null,
-      sizeIntent: payload.sizeIntent ?? null,
-      sourceImageUrl: payload.sourceImageUrl ?? null,
+      printFormatId: req.printFormatId,
+      printSize: req.printSize,
+      qualityMode: req.qualityMode,
+      targetPpi: req.targetPpi,
+      targetWidthPx: req.targetWidthPx,
+      targetHeightPx: req.targetHeightPx,
+      aspectRatio: req.aspectRatio,
+      sizeIntent: req.sizeIntent,
+      requestedModelId: req.requestedModelId,
+      resolvedModelId: outcome.modelId,
+      qualityProfile: req.qualityProfile,
+      generationStrategy: req.generationStrategy,
+      sourceImageUrl: referenceUrl ?? null,
       storagePath: persisted.storagePath,
       galleryImageId: persisted.galleryImageId,
       bytes: persisted.bytes,
