@@ -178,18 +178,18 @@ serve(async (req) => {
     //   - prompt_history (unique on generation_job_item_id, dedupe on prompt)
     const persisted = await persistGenerationResult(supabase, {
       imageUrl: outcome.imageUrl,
-      prompt: payload.prompt,
-      mode: payload.mode ?? payload.styleKey,
-      aspectRatio: payload.aspectRatio ?? "5:7",
+      prompt: req.prompt,
+      mode: req.mode,
+      aspectRatio: req.aspectRatio,
       generationJobItemId: itemId,
       generationJobId: claim.job_id,
       profileId,
-      printSize: payload.printSize ?? null,
-      qualityMode: payload.qualityMode,
-      targetPpi: payload.targetPpi,
-      targetWidthPx: payload.targetWidthPx,
-      targetHeightPx: payload.targetHeightPx,
-      providerLabel: payload.providerLabel ?? claim.provider_label ?? null,
+      printSize: req.printSize,
+      qualityMode: req.qualityMode,
+      targetPpi: req.targetPpi,
+      targetWidthPx: req.targetWidthPx,
+      targetHeightPx: req.targetHeightPx,
+      providerLabel: req.providerLabel ?? claim.provider_label ?? null,
       actualWidthPx: outcome.width ?? null,
       actualHeightPx: outcome.height ?? null,
       generationProvider: outcome.providerId,
@@ -197,8 +197,8 @@ serve(async (req) => {
       providerStrategy: outcome.strategy,
       fallbackUsed: outcome.fallbackUsed,
       executionRoute,
-      printFormatId: payload.printFormatId ?? null,
-      generationMode: payload.generationMode ?? null,
+      printFormatId: req.printFormatId,
+      generationMode: req.generationMode,
       provider: outcome.providerId,
       model: outcome.modelId,
       route: executionRoute,
@@ -206,9 +206,11 @@ serve(async (req) => {
       currency: "USD",
       promptVersion: null,
       sourceImageUrl: referenceUrl ?? null,
-      matchingCollectionId: payload.matchingCollectionId ?? null,
-      matchingSubject: payload.kind === "matching_collection" ? (payload.subject ?? payload.rawSubject ?? null) : null,
-      matchingReviewState: payload.kind === "matching_collection" ? "pending" : null,
+      matchingCollectionId: req.matching?.collectionId ?? null,
+      matchingSubject: req.kind === "matching_collection"
+        ? (req.matching?.subject ?? req.matching?.rawSubject ?? null)
+        : null,
+      matchingReviewState: req.kind === "matching_collection" ? "pending" : null,
       matchingIsAnchor: false,
       costEventMetadata: {
         attempted: outcome.attempted ?? null,
@@ -221,7 +223,7 @@ serve(async (req) => {
     // requested poster format, mark 'pending' so the client can finalize.
     // (Client-side Canvas enforcement is preserved by design for parity.)
     const ratioStatus =
-      outcome.providerAdjusted && payload.printFormatId ? "pending" : "not_required";
+      outcome.providerAdjusted && req.printFormatId ? "pending" : "not_required";
 
     if (heartbeat) clearInterval(heartbeat);
 
@@ -239,15 +241,19 @@ serve(async (req) => {
       requestedAspectRatio: outcome.requestedAspectRatio ?? null,
       providerExactMatch: outcome.providerExactMatch,
       providerAdjusted: outcome.providerAdjusted,
-      printFormatId: payload.printFormatId ?? null,
-      printSize: payload.printSize ?? null,
-      qualityMode: payload.qualityMode ?? null,
-      targetPpi: payload.targetPpi ?? null,
-      targetWidthPx: payload.targetWidthPx ?? null,
-      targetHeightPx: payload.targetHeightPx ?? null,
-      aspectRatio: payload.aspectRatio ?? null,
-      sizeIntent: payload.sizeIntent ?? null,
-      sourceImageUrl: payload.sourceImageUrl ?? null,
+      printFormatId: req.printFormatId,
+      printSize: req.printSize,
+      qualityMode: req.qualityMode,
+      targetPpi: req.targetPpi,
+      targetWidthPx: req.targetWidthPx,
+      targetHeightPx: req.targetHeightPx,
+      aspectRatio: req.aspectRatio,
+      sizeIntent: req.sizeIntent,
+      requestedModelId: req.requestedModelId,
+      resolvedModelId: outcome.modelId,
+      qualityProfile: req.qualityProfile,
+      generationStrategy: req.generationStrategy,
+      sourceImageUrl: referenceUrl ?? null,
       storagePath: persisted.storagePath,
       galleryImageId: persisted.galleryImageId,
       bytes: persisted.bytes,
