@@ -37,6 +37,7 @@ import {
   type DurableItemRow,
   type JobStatus,
 } from "@/lib/durable-generation-core";
+import { checkDurableExecutability } from "@/lib/generation-executable-providers";
 
 export interface UseDurableGenerationOptions {
   styleKey: string;
@@ -200,6 +201,13 @@ export function useDurableGeneration(
     async (args: StartArgs) => {
       setIsStarting(true);
       try {
+        // 0. Gate manual provider selection against the durable worker's
+        //    executable set. OpenAI runs only in the browser today —
+        //    accepting the job then failing server-side would leave a
+        //    dead item in the user's list. Fail loudly at the boundary.
+        const gate = checkDurableExecutability(args.providerPreference ?? "auto");
+        if (!gate.ok) throw new Error(gate.reason ?? "Provider not available for background generation");
+
         // 1. Reserve an idempotency key BEFORE any network call so a
         //    crash between here and the RPC still recovers cleanly.
         const existingPending = readLS(pendingIdemKey(styleKey));
