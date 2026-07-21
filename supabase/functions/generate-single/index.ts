@@ -32,41 +32,11 @@ const corsHeaders = {
 const LEASE_SECONDS = 180;
 const HEARTBEAT_MS = 45_000;
 
-interface ItemPayload {
-  styleKey: string;
-  prompt: string;
-  aspectRatio?: string;
-  backgroundStyle?: string;
-  sourceImageUrl?: string | null;
-  referenceStrength?: string;
-  generationMode?: string;
-  printFormatId?: string | null;
-  posterFormatHint?: string;
-  providerPreference?: GeneratorPreference;
-  mode?: string;
-  printSize?: string | null;
-  qualityMode?: string;
-  targetPpi?: number | null;
-  targetWidthPx?: number | null;
-  targetHeightPx?: number | null;
-  providerLabel?: string | null;
-  requestedWidth?: number;
-  requestedHeight?: number;
-  sizeIntent?: "preview" | "standard" | "print";
-  // Matching-collection additions. When kind === "matching_collection",
-  // anchorImageUrl is the ONE canonical reference — mapped into
-  // GenerateArgs.sourceImageUrl at execution. Collection members NEVER
-  // read another member's output as a reference.
-  kind?: string;
-  anchorImageUrl?: string | null;
-  anchorImageId?: string | null;
-  matchingCollectionId?: string | null;
-  subject?: string | null;
-  rawSubject?: string | null;
-  artDirection?: unknown;
-  artDirectionVersion?: number | null;
-  consistencyStrength?: string | null;
-}
+// Legacy request payloads are normalized into `GenerationRequestV2` on
+// claim (see `normalizeLegacyGenerationRequest`). No ad-hoc payload
+// shape is needed here anymore.
+
+
 
 /**
  * Normalize the reference image URL for the provider. For matching-collection
