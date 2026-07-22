@@ -306,63 +306,108 @@ export type Database = {
       }
       collections: {
         Row: {
+          anchor_aspect_ratio: string | null
+          anchor_background_style: string | null
+          anchor_height_px: number | null
           anchor_image_id: string | null
+          anchor_image_url: string | null
           anchor_model: string | null
           anchor_poster_format_id: string | null
           anchor_provider: string | null
+          anchor_storage_path: string | null
           anchor_style_key: string | null
+          anchor_width_px: number | null
           art_direction: Json | null
           art_direction_version: number | null
           consistency_strength: string | null
           created_at: string
+          fingerprint: string | null
           id: string
           matching_collection_job_id: string | null
           name: string
+          profile_id: string | null
+          provider_preference: string | null
           provider_substitution_reason: string | null
           reference_strength: string | null
           resolved_model: string | null
           resolved_provider: string | null
+          status: string
           updated_at: string
         }
         Insert: {
+          anchor_aspect_ratio?: string | null
+          anchor_background_style?: string | null
+          anchor_height_px?: number | null
           anchor_image_id?: string | null
+          anchor_image_url?: string | null
           anchor_model?: string | null
           anchor_poster_format_id?: string | null
           anchor_provider?: string | null
+          anchor_storage_path?: string | null
           anchor_style_key?: string | null
+          anchor_width_px?: number | null
           art_direction?: Json | null
           art_direction_version?: number | null
           consistency_strength?: string | null
           created_at?: string
+          fingerprint?: string | null
           id?: string
           matching_collection_job_id?: string | null
           name: string
+          profile_id?: string | null
+          provider_preference?: string | null
           provider_substitution_reason?: string | null
           reference_strength?: string | null
           resolved_model?: string | null
           resolved_provider?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
+          anchor_aspect_ratio?: string | null
+          anchor_background_style?: string | null
+          anchor_height_px?: number | null
           anchor_image_id?: string | null
+          anchor_image_url?: string | null
           anchor_model?: string | null
           anchor_poster_format_id?: string | null
           anchor_provider?: string | null
+          anchor_storage_path?: string | null
           anchor_style_key?: string | null
+          anchor_width_px?: number | null
           art_direction?: Json | null
           art_direction_version?: number | null
           consistency_strength?: string | null
           created_at?: string
+          fingerprint?: string | null
           id?: string
           matching_collection_job_id?: string | null
           name?: string
+          profile_id?: string | null
+          provider_preference?: string | null
           provider_substitution_reason?: string | null
           reference_strength?: string | null
           resolved_model?: string | null
           resolved_provider?: string | null
+          status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "collections_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collections_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       generated_image_assets: {
         Row: {
@@ -710,6 +755,7 @@ export type Database = {
           provider_label: string | null
           ratio_enforcement_status: string
           raw_image_url: string | null
+          regenerated_from_item_id: string | null
           request_payload: Json
           result_metadata: Json | null
           seed: number | null
@@ -738,6 +784,7 @@ export type Database = {
           provider_label?: string | null
           ratio_enforcement_status?: string
           raw_image_url?: string | null
+          regenerated_from_item_id?: string | null
           request_payload?: Json
           result_metadata?: Json | null
           seed?: number | null
@@ -766,6 +813,7 @@ export type Database = {
           provider_label?: string | null
           ratio_enforcement_status?: string
           raw_image_url?: string | null
+          regenerated_from_item_id?: string | null
           request_payload?: Json
           result_metadata?: Json | null
           seed?: number | null
@@ -789,6 +837,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "generation_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_job_items_regenerated_from_item_id_fkey"
+            columns: ["regenerated_from_item_id"]
+            isOneToOne: false
+            referencedRelation: "generation_job_items"
             referencedColumns: ["id"]
           },
         ]
@@ -1291,6 +1346,40 @@ export type Database = {
         Returns: {
           item_ids: string[]
           job_id: string
+        }[]
+      }
+      create_matching_collection_atomic: {
+        Args: {
+          p_anchor_aspect_ratio: string
+          p_anchor_background_style: string
+          p_anchor_height_px: number
+          p_anchor_image_id: string
+          p_anchor_image_url: string
+          p_anchor_model: string
+          p_anchor_poster_format_id: string
+          p_anchor_provider: string
+          p_anchor_storage_path: string
+          p_anchor_style_key: string
+          p_anchor_width_px: number
+          p_art_direction: Json
+          p_art_direction_version: number
+          p_consistency_strength: string
+          p_fingerprint: string
+          p_items: Json
+          p_job_idempotency_key: string
+          p_job_prompt: string
+          p_name: string
+          p_provider_preference: string
+          p_provider_substitution_reason: string
+          p_reference_strength: string
+          p_resolved_model: string
+          p_resolved_provider: string
+        }
+        Returns: {
+          collection_id: string
+          item_ids: string[]
+          job_id: string
+          reused: boolean
         }[]
       }
       current_profile_id: { Args: never; Returns: string }
