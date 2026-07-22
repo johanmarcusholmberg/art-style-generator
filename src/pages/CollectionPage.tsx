@@ -31,13 +31,14 @@ import {
   MAX_COLLECTION_SUBJECTS,
 } from "@/lib/matching-collection/create-job";
 import { resolveCollectionProvider } from "@/lib/matching-collection/provider-capability";
+import { readFrozenCollectionSettings } from "@/lib/matching-collection/frozen-settings";
+import { computeCollectionFingerprint } from "@/lib/matching-collection/collection-fingerprint";
 import type {
   AnchorInheritedSettings,
   CollectionArtDirection,
-  ConsistencyStrength,
 } from "@/lib/matching-collection/types";
 
-interface CollectionRow {
+type CollectionRow = Record<string, unknown> & {
   id: string;
   name: string | null;
   anchor_image_id: string | null;
@@ -50,7 +51,7 @@ interface CollectionRow {
   consistency_strength: string | null;
   art_direction: unknown;
   reference_strength: string | null;
-}
+};
 
 interface MemberRow {
   id: string;
