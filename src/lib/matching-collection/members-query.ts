@@ -43,6 +43,13 @@ export interface CollectionMemberView {
 
   createdAt: string;
   attemptCount: number;
+
+  /** Post-finalization corrected-master identity — populated when the
+   *  finalizer has committed a durable master for this item. */
+  correctedMasterStoragePath: string | null;
+  correctedMasterWidth: number | null;
+  correctedMasterHeight: number | null;
+  finalizationOperation: string | null;
 }
 
 /** Minimal shapes for pure joining — exported for tests. */
@@ -61,6 +68,8 @@ export interface RawItemRow {
   image_url: string | null;
   attempt_count: number | null;
   created_at: string;
+  finalization_operation?: string | null;
+  finalization_metadata?: Record<string, unknown> | null;
 }
 export interface RawImageRow {
   id: string;
