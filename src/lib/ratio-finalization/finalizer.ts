@@ -383,7 +383,12 @@ export async function finalizePendingRatioItem(
 
     const { publicUrl } = await uploadBlob(client, RATIO_FINALIZED_BUCKET, finalPath, rendered.blob);
 
-    const metadata = buildCompletionMetadata(claim, plan, rendered.width, rendered.height);
+    const metadata = buildCompletionMetadata(claim, plan, {
+      sourceWidth: decoded.width,
+      sourceHeight: decoded.height,
+      outputWidth: rendered.width,
+      outputHeight: rendered.height,
+    });
     await completeWithVerification(
       {
         itemId, claimToken,
@@ -394,7 +399,7 @@ export async function finalizePendingRatioItem(
         operation: plan.operation,
         metadata,
       },
-      { complete: completeFn, client, readItemState },
+      { complete: completeFn, client, readItemState, expectedAlgorithmVersion: plan.algorithmVersion },
     );
 
     return {
