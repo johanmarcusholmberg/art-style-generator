@@ -44,9 +44,9 @@ const HEARTBEAT_MS = 45_000;
  * uses `sourceImageUrl`. We always prefer the anchor when both are present so
  * a collection member cannot silently regress to a chained reference.
  */
-function resolveReferenceImageUrl(req: GenerationRequestV2): string | null {
-  if (req.kind === "matching_collection") return req.matching?.anchorImageUrl ?? null;
-  return req.sourceImageUrl ?? req.matching?.anchorImageUrl ?? null;
+function resolveReferenceImageUrl(v2: GenerationRequestV2): string | null {
+  if (v2.kind === "matching_collection") return v2.matching?.anchorImageUrl ?? null;
+  return v2.sourceImageUrl ?? v2.matching?.anchorImageUrl ?? null;
 }
 
 serve(async (req) => {
