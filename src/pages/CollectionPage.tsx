@@ -36,7 +36,8 @@ import {
 } from "@/lib/matching-collection/members-query";
 import { regenerateCollectionMember } from "@/lib/matching-collection/regenerate";
 import { startQueuedItem, canStartCandidate } from "@/lib/matching-collection/start-item";
-import { assessRatioReadiness } from "@/lib/matching-collection/ratio-readiness";
+import { assessFormatReadiness } from "@/lib/matching-collection/ratio-readiness";
+import { useRatioFinalizationQueue } from "@/hooks/useRatioFinalizationQueue";
 import { createReloadCoordinator } from "@/lib/reload-coordinator";
 import {
   createMatchingCollectionJob,
