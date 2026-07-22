@@ -80,6 +80,10 @@ export default function CollectionPage() {
   const [adding, setAdding] = useState(false);
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
 
+  const finalizationQueue = useRatioFinalizationQueue({
+    onOutcome: () => coordinatorRef.current?.request(),
+  });
+
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
