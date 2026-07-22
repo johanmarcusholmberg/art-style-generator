@@ -103,6 +103,10 @@ export function joinMembers(
     .map<CollectionMemberView>((it) => {
       const img = imgByItem.get(it.id) ?? null;
       const payloadSubject = subjectFromPayload(it.request_payload);
+      const meta = (it.finalization_metadata ?? null) as Record<string, unknown> | null;
+      const outW = meta && typeof meta.outputWidth === "number" ? (meta.outputWidth as number) : null;
+      const outH = meta && typeof meta.outputHeight === "number" ? (meta.outputHeight as number) : null;
+      const isFinalizationCompleted = it.ratio_enforcement_status === "completed";
       return {
         itemId: it.id,
         jobId: it.job_id,
@@ -119,6 +123,10 @@ export function joinMembers(
         ratioFinalizationStatus: it.ratio_enforcement_status,
         createdAt: it.created_at,
         attemptCount: it.attempt_count ?? 0,
+        correctedMasterStoragePath: isFinalizationCompleted ? (it.storage_path ?? null) : null,
+        correctedMasterWidth: isFinalizationCompleted ? outW : null,
+        correctedMasterHeight: isFinalizationCompleted ? outH : null,
+        finalizationOperation: (it.finalization_operation ?? null) as string | null,
       };
     });
 }
