@@ -214,6 +214,8 @@ describe("finalizePendingRatioItem — complete verification", () => {
       storagePath: "ratio-finalized/gal-1/print_50x70/v1/itm-1.png",
       operation: "pad",
       width: 1148, height: 1606,
+      algorithmVersion: "v1",
+      metadata: { algorithmVersion: "v1", outputWidth: 1148, outputHeight: 1606 },
     }));
     const uploadBlob = goodUpload();
     const fail = vi.fn();

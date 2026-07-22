@@ -43,6 +43,13 @@ export interface CollectionMemberView {
 
   createdAt: string;
   attemptCount: number;
+
+  /** Post-finalization corrected-master identity — populated when the
+   *  finalizer has committed a durable master for this item. */
+  correctedMasterStoragePath: string | null;
+  correctedMasterWidth: number | null;
+  correctedMasterHeight: number | null;
+  finalizationOperation: string | null;
 }
 
 /** Minimal shapes for pure joining — exported for tests. */
@@ -61,6 +68,8 @@ export interface RawItemRow {
   image_url: string | null;
   attempt_count: number | null;
   created_at: string;
+  finalization_operation?: string | null;
+  finalization_metadata?: Record<string, unknown> | null;
 }
 export interface RawImageRow {
   id: string;
@@ -94,6 +103,10 @@ export function joinMembers(
     .map<CollectionMemberView>((it) => {
       const img = imgByItem.get(it.id) ?? null;
       const payloadSubject = subjectFromPayload(it.request_payload);
+      const meta = (it.finalization_metadata ?? null) as Record<string, unknown> | null;
+      const outW = meta && typeof meta.outputWidth === "number" ? (meta.outputWidth as number) : null;
+      const outH = meta && typeof meta.outputHeight === "number" ? (meta.outputHeight as number) : null;
+      const isFinalizationCompleted = it.ratio_enforcement_status === "completed";
       return {
         itemId: it.id,
         jobId: it.job_id,
@@ -110,6 +123,10 @@ export function joinMembers(
         ratioFinalizationStatus: it.ratio_enforcement_status,
         createdAt: it.created_at,
         attemptCount: it.attempt_count ?? 0,
+        correctedMasterStoragePath: isFinalizationCompleted ? (it.storage_path ?? null) : null,
+        correctedMasterWidth: isFinalizationCompleted ? outW : null,
+        correctedMasterHeight: isFinalizationCompleted ? outH : null,
+        finalizationOperation: (it.finalization_operation ?? null) as string | null,
       };
     });
 }
@@ -134,7 +151,7 @@ export async function fetchCollectionMembers(
       supabase
         .from("generation_job_items")
         .select(
-          "id, job_id, position, status, prompt_variant, request_payload, error_message, regenerated_from_item_id, ratio_enforcement_status, gallery_image_id, storage_path, image_url, attempt_count, created_at",
+          "id, job_id, position, status, prompt_variant, request_payload, error_message, regenerated_from_item_id, ratio_enforcement_status, gallery_image_id, storage_path, image_url, attempt_count, created_at, finalization_operation, finalization_metadata",
         )
         .in("job_id", jobIds),
       supabase

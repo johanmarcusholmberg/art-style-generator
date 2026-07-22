@@ -36,7 +36,8 @@ import {
 } from "@/lib/matching-collection/members-query";
 import { regenerateCollectionMember } from "@/lib/matching-collection/regenerate";
 import { startQueuedItem, canStartCandidate } from "@/lib/matching-collection/start-item";
-import { assessRatioReadiness } from "@/lib/matching-collection/ratio-readiness";
+import { assessFormatReadiness } from "@/lib/matching-collection/ratio-readiness";
+import { useRatioFinalizationQueue } from "@/hooks/useRatioFinalizationQueue";
 import { createReloadCoordinator } from "@/lib/reload-coordinator";
 import {
   createMatchingCollectionJob,
@@ -143,6 +144,22 @@ export default function CollectionPage() {
       coordinatorRef.current = null;
     };
   }, []);
+
+  const finalizationQueue = useRatioFinalizationQueue({
+    onOutcome: () => coordinatorRef.current?.request(),
+  });
+
+  // Auto-enqueue any completed items whose ratio finalization is pending.
+  // Failed items are only re-enqueued explicitly via the "Retry format"
+  // button so the user stays in control of retries.
+  useEffect(() => {
+    for (const m of members) {
+      if (m.itemStatus !== "completed") continue;
+      if (m.ratioFinalizationStatus === "pending") {
+        finalizationQueue.enqueue(m.itemId);
+      }
+    }
+  }, [members, finalizationQueue]);
 
   useEffect(() => {
     // Load once id resolves.
@@ -420,17 +437,26 @@ export default function CollectionPage() {
                 const isCompleted = m.itemStatus === "completed";
                 const isRejected = m.reviewState === "rejected";
                 const primary = reviewPrimaryAction(m.reviewState);
-                const ratio = assessRatioReadiness(m.ratioFinalizationStatus);
+                const ratio = assessFormatReadiness(m.ratioFinalizationStatus, {
+                  correctedMasterStoragePath: m.correctedMasterStoragePath,
+                  correctedMasterWidth: m.correctedMasterWidth,
+                  correctedMasterHeight: m.correctedMasterHeight,
+                });
                 const showRatioBadge =
                   isCompleted &&
                   (ratio.reason === "pending" ||
                     ratio.reason === "processing" ||
                     ratio.reason === "failed" ||
-                    ratio.reason === "completed");
+                    ratio.reason === "completed" ||
+                    ratio.reason === "completed-missing-master");
                 const badgeVariant =
                   m.reviewState === "accepted" ? "default"
                   : isFailed || isRejected ? "destructive"
                   : "outline";
+                const finalizing = finalizationQueue.activeItemId === m.itemId
+                  || finalizationQueue.queuedItemIds.includes(m.itemId);
+                const canRetryFormat =
+                  isCompleted && m.ratioFinalizationStatus === "failed" && !finalizing;
                 return (
                   <div key={m.itemId} className="rounded-md border border-border overflow-hidden bg-card">
                     {url && isCompleted ? (
@@ -457,12 +483,12 @@ export default function CollectionPage() {
                             variant={ratio.tone === "danger" ? "destructive" : "outline"}
                             className="text-[10px]"
                             title={
-                              ratio.isPrintReady
+                              ratio.isFormatReady
                                 ? "Ratio validated for selected poster format."
-                                : "Print readiness withheld until poster-format finalization completes."
+                                : "Poster-format validation not yet complete. Print readiness withheld."
                             }
                           >
-                            {ratio.label}
+                            {finalizing ? "Finalizing poster format…" : ratio.label}
                           </Badge>
                         )}
                       </div>
@@ -501,6 +527,24 @@ export default function CollectionPage() {
                             >
                               {busyItemId === m.itemId ? "…" : "Regenerate"}
                             </Button>
+                            {canRetryFormat && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  finalizationQueue.retry(m.itemId).catch((e) => {
+                                    toast({
+                                      title: "Retry format failed",
+                                      description: e instanceof Error ? e.message : String(e),
+                                      variant: "destructive",
+                                    });
+                                  });
+                                }}
+                                title="Re-run poster-format finalization for this image"
+                              >
+                                Retry format
+                              </Button>
+                            )}
                           </>
                         )}
                         {isQueued && (

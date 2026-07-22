@@ -106,6 +106,8 @@ export interface FinalizerDeps {
     operation: string | null;
     width: number | null;
     height: number | null;
+    algorithmVersion: string | null;
+    metadata: Record<string, unknown> | null;
   } | null>;
 }
 
@@ -120,7 +122,6 @@ async function defaultDownloadSource(
       .from(RATIO_FINALIZED_BUCKET)
       .download(claim.sourceStoragePath);
     if (!error && data) return data;
-    // Fall through to URL if the storage download failed but a URL exists.
     if (!claim.sourceImageUrl) throw error ?? new Error("storage_download_failed");
   }
   if (!claim.sourceImageUrl) throw new Error("no_source_url_fallback");
@@ -130,16 +131,13 @@ async function defaultDownloadSource(
 }
 
 async function defaultDecodeImage(blob: Blob): Promise<DecodedImage> {
-  // Prefer createImageBitmap (fast, closable). Fall back to HTMLImageElement.
   if (typeof createImageBitmap === "function") {
     const bitmap = await createImageBitmap(blob);
     return {
       source: bitmap,
       width: bitmap.width,
       height: bitmap.height,
-      release: () => {
-        try { bitmap.close(); } catch { /* noop */ }
-      },
+      release: () => { try { bitmap.close(); } catch { /* noop */ } },
     };
   }
   const url = URL.createObjectURL(blob);
@@ -153,10 +151,7 @@ async function defaultDecodeImage(blob: Blob): Promise<DecodedImage> {
     source: img,
     width: img.naturalWidth,
     height: img.naturalHeight,
-    release: () => {
-      URL.revokeObjectURL(url);
-      img.src = "";
-    },
+    release: () => { URL.revokeObjectURL(url); img.src = ""; },
   };
 }
 
@@ -181,34 +176,49 @@ async function defaultReadItemState(
 ) {
   const { data, error } = await client
     .from("generation_job_items")
-    .select("ratio_enforcement_status, storage_path, finalization_operation")
+    .select("ratio_enforcement_status, storage_path, finalization_operation, finalization_metadata")
     .eq("id", itemId)
     .maybeSingle();
   if (error || !data) return null;
+  const meta = (data.finalization_metadata as Record<string, unknown> | null) ?? null;
+  const metaWidth = meta && typeof meta.outputWidth === "number" ? (meta.outputWidth as number) : null;
+  const metaHeight = meta && typeof meta.outputHeight === "number" ? (meta.outputHeight as number) : null;
+  const metaAlgo = meta && typeof meta.algorithmVersion === "string" ? (meta.algorithmVersion as string) : null;
   return {
     status: (data.ratio_enforcement_status as string | null) ?? null,
     storagePath: (data.storage_path as string | null) ?? null,
     operation: (data.finalization_operation as string | null) ?? null,
-    width: null,
-    height: null,
+    width: metaWidth,
+    height: metaHeight,
+    algorithmVersion: metaAlgo,
+    metadata: meta,
   };
 }
 
 // ── Metadata builder ───────────────────────────────────────────────────
 
+export interface CompletionMetadataInput {
+  /** Decoded source pixels — MUST come from the decoded ImageBitmap,
+   *  never from stored DB values, crop rects, or padding. */
+  sourceWidth: number;
+  sourceHeight: number;
+  /** Final rendered output pixels (post-crop or post-pad). */
+  outputWidth: number;
+  outputHeight: number;
+}
+
 export function buildCompletionMetadata(
   claim: ClaimedRatioFinalizationItem,
   plan: RatioFinalizationPlan,
-  outputWidth: number,
-  outputHeight: number,
+  dims: CompletionMetadataInput,
 ) {
   return {
     algorithmVersion: plan.algorithmVersion,
     targetAspectRatio: plan.targetAspectRatio,
-    sourceWidth: plan.sourceRect.width + (plan.padding?.left ?? 0) + (plan.padding?.right ?? 0),
-    sourceHeight: plan.sourceRect.height + (plan.padding?.top ?? 0) + (plan.padding?.bottom ?? 0),
-    outputWidth,
-    outputHeight,
+    sourceWidth: dims.sourceWidth,
+    sourceHeight: dims.sourceHeight,
+    outputWidth: dims.outputWidth,
+    outputHeight: dims.outputHeight,
     operation: plan.operation,
     sourceRect: plan.sourceRect,
     padding: plan.padding,
@@ -218,12 +228,25 @@ export function buildCompletionMetadata(
 
 // ── Completion with transport-uncertainty handling ─────────────────────
 
+/**
+ * A readback counts as success ONLY when every authoritative field
+ * matches the attempted completion:
+ *   - ratio_enforcement_status (completed | not_required)
+ *   - storage_path
+ *   - finalization_operation
+ *   - metadata.outputWidth / outputHeight
+ *   - metadata.algorithmVersion
+ *
+ * A path-only match is not sufficient — that would tolerate a stale
+ * completion from a previous algorithm version writing to the same path.
+ */
 async function completeWithVerification(
   input: CompleteRatioFinalizationInput,
   deps: {
     complete: typeof completeRatioFinalization;
     client: SupabaseClient<Database>;
-    readItemState: (client: SupabaseClient<Database>, itemId: string) => ReturnType<typeof defaultReadItemState>;
+    readItemState: NonNullable<FinalizerDeps["readItemState"]>;
+    expectedAlgorithmVersion: string;
   },
 ): Promise<void> {
   const attempt = async () => deps.complete(input, { client: deps.client });
@@ -231,12 +254,9 @@ async function completeWithVerification(
     await attempt();
     return;
   } catch (err) {
-    // Authoritative RPC errors (mapped codes) must NOT be retried — they
-    // reflect a decided database state, not transport uncertainty.
     if (err instanceof RatioFinalizationApiError && err.code !== "unknown_rpc_error") {
       throw err;
     }
-    // Transport uncertainty: retry once idempotently.
     try {
       await attempt();
       return;
@@ -244,12 +264,18 @@ async function completeWithVerification(
       if (err2 instanceof RatioFinalizationApiError && err2.code !== "unknown_rpc_error") {
         throw err2;
       }
-      // Still uncertain — verify actual state.
       const state = await deps.readItemState(deps.client, input.itemId);
-      if (state && state.status === "completed"
-          && state.storagePath === input.finalStoragePath
-          && (state.operation === input.operation || state.operation == null)) {
-        return; // DB actually committed the first attempt.
+      const expectedStatus = input.operation === "none" ? "not_required" : "completed";
+      if (
+        state
+        && state.status === expectedStatus
+        && state.storagePath === input.finalStoragePath
+        && state.operation === input.operation
+        && state.width === input.finalWidth
+        && state.height === input.finalHeight
+        && state.algorithmVersion === deps.expectedAlgorithmVersion
+      ) {
+        return; // Prior attempt committed exactly the intended state.
       }
       throw err2;
     }
@@ -312,7 +338,12 @@ export async function finalizePendingRatioItem(
       const publicUrl = client.storage
         .from(RATIO_FINALIZED_BUCKET)
         .getPublicUrl(claim.sourceStoragePath).data.publicUrl;
-      const metadata = buildCompletionMetadata(claim, plan, decoded.width, decoded.height);
+      const metadata = buildCompletionMetadata(claim, plan, {
+        sourceWidth: decoded.width,
+        sourceHeight: decoded.height,
+        outputWidth: decoded.width,
+        outputHeight: decoded.height,
+      });
       await completeWithVerification(
         {
           itemId, claimToken,
@@ -323,7 +354,7 @@ export async function finalizePendingRatioItem(
           operation: "none",
           metadata,
         },
-        { complete: completeFn, client, readItemState },
+        { complete: completeFn, client, readItemState, expectedAlgorithmVersion: plan.algorithmVersion },
       );
       return {
         status: "not_required",
@@ -352,7 +383,12 @@ export async function finalizePendingRatioItem(
 
     const { publicUrl } = await uploadBlob(client, RATIO_FINALIZED_BUCKET, finalPath, rendered.blob);
 
-    const metadata = buildCompletionMetadata(claim, plan, rendered.width, rendered.height);
+    const metadata = buildCompletionMetadata(claim, plan, {
+      sourceWidth: decoded.width,
+      sourceHeight: decoded.height,
+      outputWidth: rendered.width,
+      outputHeight: rendered.height,
+    });
     await completeWithVerification(
       {
         itemId, claimToken,
@@ -363,7 +399,7 @@ export async function finalizePendingRatioItem(
         operation: plan.operation,
         metadata,
       },
-      { complete: completeFn, client, readItemState },
+      { complete: completeFn, client, readItemState, expectedAlgorithmVersion: plan.algorithmVersion },
     );
 
     return {
