@@ -145,6 +145,22 @@ export default function CollectionPage() {
     };
   }, []);
 
+  const finalizationQueue = useRatioFinalizationQueue({
+    onOutcome: () => coordinatorRef.current?.request(),
+  });
+
+  // Auto-enqueue any completed items whose ratio finalization is pending.
+  // Failed items are only re-enqueued explicitly via the "Retry format"
+  // button so the user stays in control of retries.
+  useEffect(() => {
+    for (const m of members) {
+      if (m.itemStatus !== "completed") continue;
+      if (m.ratioFinalizationStatus === "pending") {
+        finalizationQueue.enqueue(m.itemId);
+      }
+    }
+  }, [members, finalizationQueue]);
+
   useEffect(() => {
     // Load once id resolves.
     if (id) coordinatorRef.current?.request();
