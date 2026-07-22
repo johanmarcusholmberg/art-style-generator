@@ -425,17 +425,26 @@ export default function CollectionPage() {
                 const isCompleted = m.itemStatus === "completed";
                 const isRejected = m.reviewState === "rejected";
                 const primary = reviewPrimaryAction(m.reviewState);
-                const ratio = assessRatioReadiness(m.ratioFinalizationStatus);
+                const ratio = assessFormatReadiness(m.ratioFinalizationStatus, {
+                  correctedMasterStoragePath: m.correctedMasterStoragePath,
+                  correctedMasterWidth: m.correctedMasterWidth,
+                  correctedMasterHeight: m.correctedMasterHeight,
+                });
                 const showRatioBadge =
                   isCompleted &&
                   (ratio.reason === "pending" ||
                     ratio.reason === "processing" ||
                     ratio.reason === "failed" ||
-                    ratio.reason === "completed");
+                    ratio.reason === "completed" ||
+                    ratio.reason === "completed-missing-master");
                 const badgeVariant =
                   m.reviewState === "accepted" ? "default"
                   : isFailed || isRejected ? "destructive"
                   : "outline";
+                const finalizing = finalizationQueue.activeItemId === m.itemId
+                  || finalizationQueue.queuedItemIds.includes(m.itemId);
+                const canRetryFormat =
+                  isCompleted && m.ratioFinalizationStatus === "failed" && !finalizing;
                 return (
                   <div key={m.itemId} className="rounded-md border border-border overflow-hidden bg-card">
                     {url && isCompleted ? (
@@ -462,12 +471,12 @@ export default function CollectionPage() {
                             variant={ratio.tone === "danger" ? "destructive" : "outline"}
                             className="text-[10px]"
                             title={
-                              ratio.isPrintReady
+                              ratio.isFormatReady
                                 ? "Ratio validated for selected poster format."
-                                : "Print readiness withheld until poster-format finalization completes."
+                                : "Poster-format validation not yet complete. Print readiness withheld."
                             }
                           >
-                            {ratio.label}
+                            {finalizing ? "Finalizing poster format…" : ratio.label}
                           </Badge>
                         )}
                       </div>
