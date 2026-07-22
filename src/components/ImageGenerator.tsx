@@ -11,6 +11,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import MatchingCollectionDialog from "@/components/matching-collection/MatchingCollectionDialog";
+import { resolveMatchingCollectionAnchor } from "@/lib/matching-collection/anchor-resolver";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
 import { describeExportSource } from "@/lib/asset-selection";
 import {
