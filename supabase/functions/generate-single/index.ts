@@ -125,7 +125,8 @@ serve(async (httpReq) => {
       strictness: (req.strictness as GenerateArgs["strictness"]) ?? undefined,
     };
 
-    const providerPref: GeneratorPreference = req.providerPreference;
+    // After `reasonToRejectDurable`, `openai` is impossible here — cast is safe.
+    const providerPref = req.providerPreference as GeneratorPreference;
     const outcome = await runWithResolver(providerPref, generateArgs);
 
     const executionRoute = executionRouteForProvider(outcome.providerId);
