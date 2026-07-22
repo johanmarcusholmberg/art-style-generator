@@ -45,7 +45,10 @@ serve(async (req) => {
     if (item.status !== "failed") return json(409, { error: `Item is ${item.status}, cannot retry` });
 
     // Reset failed → queued, clear lease, keep attempt_count so exhaustion still applies.
-    await service
+    // Guard against races: only the row that is STILL 'failed' is affected. We
+    // ask for the count back so we can refuse to dispatch when nothing was
+    // updated (e.g. a concurrent state change moved it to 'processing').
+    const { error: updErr, count } = await service
       .from("generation_job_items")
       .update({
         status: "queued",
@@ -53,11 +56,16 @@ serve(async (req) => {
         lease_token: null,
         lease_expires_at: null,
         updated_at: new Date().toISOString(),
-      })
+      }, { count: "exact" })
       .eq("id", itemId)
       .eq("status", "failed");
 
-    // Fire generate-single.
+    if (updErr) return json(500, { error: `Requeue failed: ${updErr.message}` });
+    if (!count || count === 0) {
+      return json(409, { error: "Item is no longer failed; not dispatched." });
+    }
+
+    // Fire generate-single (fire-and-forget — realtime updates the UI).
     service.functions.invoke("generate-single", { body: { itemId } }).catch(() => {});
 
     return json(200, { status: "requeued", itemId });
