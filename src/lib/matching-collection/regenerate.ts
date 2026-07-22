@@ -2,32 +2,26 @@
  * regenerate — thin client wrapper around the atomic
  * `create_matching_collection_regeneration` RPC.
  *
- * Guarantees delegated to the RPC:
- *   - Source item must exist and be `completed`.
- *   - Caller must own the collection.
- *   - New item gets a fresh position (max+1 within the job) so it never
- *     collides with the original candidate.
- *   - `regenerated_from_item_id` lineage is set; the unique partial
- *     index prevents concurrent duplicate regen queued items.
- *   - Original candidate is untouched — Keep/Reject remains independent
- *     per candidate.
- *
- * After the RPC returns, we invoke `generate-single` for the new item so
- * the durable worker picks it up immediately.
+ * Turn 2c.1: dispatch outcome is returned to the caller so the UI can
+ * distinguish "queued AND started" from "queued but not yet started".
+ * A queued candidate created by the RPC is NEVER rolled back on
+ * dispatch failure — the user can retry via the Start action.
  */
 import { supabase } from "@/integrations/supabase/client";
 
 export interface RegenerateResult {
   newItemId: string;
   jobId: string;
+  /** True when `generate-single` was invoked successfully. */
+  dispatchStarted: boolean;
+  /** Concise message when dispatch failed; null on success. */
+  dispatchError: string | null;
 }
 
 export async function regenerateCollectionMember(
   sourceItemId: string,
 ): Promise<RegenerateResult> {
   const { data, error } = await supabase.rpc(
-    // Types are refreshed after migration approval; cast keeps this compiling
-    // in the interim without loosening the RPC signature at runtime.
     "create_matching_collection_regeneration" as never,
     { p_source_item_id: sourceItemId } as never,
   );
@@ -38,10 +32,23 @@ export async function regenerateCollectionMember(
     ? (data[0] as { new_item_id: string; job_id: string })
     : (data as { new_item_id: string; job_id: string });
 
-  // Fire the durable worker — realtime updates the UI. Do not await.
-  supabase.functions
-    .invoke("generate-single", { body: { itemId: row.new_item_id } })
-    .catch((e) => console.error("[regenerateCollectionMember] dispatch failed:", e));
+  let dispatchStarted = false;
+  let dispatchError: string | null = null;
+  try {
+    const res = await supabase.functions.invoke("generate-single", {
+      body: { itemId: row.new_item_id },
+    });
+    if (res.error) throw new Error(res.error.message);
+    dispatchStarted = true;
+  } catch (e) {
+    dispatchError = e instanceof Error ? e.message : String(e);
+    console.error("[regenerateCollectionMember] dispatch failed:", e);
+  }
 
-  return { newItemId: row.new_item_id, jobId: row.job_id };
+  return {
+    newItemId: row.new_item_id,
+    jobId: row.job_id,
+    dispatchStarted,
+    dispatchError,
+  };
 }
