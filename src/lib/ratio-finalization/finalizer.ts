@@ -338,7 +338,12 @@ export async function finalizePendingRatioItem(
       const publicUrl = client.storage
         .from(RATIO_FINALIZED_BUCKET)
         .getPublicUrl(claim.sourceStoragePath).data.publicUrl;
-      const metadata = buildCompletionMetadata(claim, plan, decoded.width, decoded.height);
+      const metadata = buildCompletionMetadata(claim, plan, {
+        sourceWidth: decoded.width,
+        sourceHeight: decoded.height,
+        outputWidth: decoded.width,
+        outputHeight: decoded.height,
+      });
       await completeWithVerification(
         {
           itemId, claimToken,
@@ -349,7 +354,7 @@ export async function finalizePendingRatioItem(
           operation: "none",
           metadata,
         },
-        { complete: completeFn, client, readItemState },
+        { complete: completeFn, client, readItemState, expectedAlgorithmVersion: plan.algorithmVersion },
       );
       return {
         status: "not_required",
