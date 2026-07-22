@@ -18,6 +18,7 @@ export type RatioFinalizationErrorCode =
   | "idempotent_replay_conflict"
   | "invalid_operation"
   | "invalid_dimensions"
+  | "invalid_policy"
   | "not_authenticated"
   | "no_usable_source"
   | "unknown_rpc_error";
@@ -36,7 +37,7 @@ export class RatioFinalizationApiError extends Error {
 const KNOWN_CODES: RatioFinalizationErrorCode[] = [
   "not_claimable", "forbidden_or_missing", "invalid_claim",
   "idempotent_replay_conflict", "invalid_operation", "invalid_dimensions",
-  "not_authenticated",
+  "invalid_policy", "not_authenticated",
 ];
 
 function classifyRpcError(err: { message?: string | null } | null | undefined): RatioFinalizationApiError {
