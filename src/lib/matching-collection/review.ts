@@ -19,18 +19,22 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type ReviewState = "pending" | "accepted" | "rejected";
 
+/** Build the update patch for a review-state transition. Pure — tested. */
+export function reviewStatePatch(next: ReviewState): Record<string, unknown> {
+  return {
+    matching_review_state: next,
+    // Restore = pending: unarchive so it becomes visible in the default view.
+    ...(next === "rejected" ? { is_archived: true } : { is_archived: false }),
+  };
+}
+
 export async function setMemberReviewState(
   generatedImageId: string,
   next: ReviewState,
 ): Promise<void> {
-  const patch = {
-    matching_review_state: next,
-    ...(next === "rejected" ? { is_archived: true } : {}),
-    ...(next === "accepted" ? { is_archived: false } : {}),
-  } as never;
   const { error } = await supabase
     .from("generated_images")
-    .update(patch)
+    .update(reviewStatePatch(next) as never)
     .eq("id", generatedImageId);
   if (error) throw new Error(error.message);
 }
