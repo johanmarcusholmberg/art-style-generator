@@ -44,13 +44,13 @@ const HEARTBEAT_MS = 45_000;
  * uses `sourceImageUrl`. We always prefer the anchor when both are present so
  * a collection member cannot silently regress to a chained reference.
  */
-function resolveReferenceImageUrl(req: GenerationRequestV2): string | null {
-  if (req.kind === "matching_collection") return req.matching?.anchorImageUrl ?? null;
-  return req.sourceImageUrl ?? req.matching?.anchorImageUrl ?? null;
+function resolveReferenceImageUrl(v2: GenerationRequestV2): string | null {
+  if (v2.kind === "matching_collection") return v2.matching?.anchorImageUrl ?? null;
+  return v2.sourceImageUrl ?? v2.matching?.anchorImageUrl ?? null;
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+serve(async (httpReq) => {
+  if (httpReq.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   let itemId: string | null = null;
   let leaseToken: string | null = null;
@@ -58,7 +58,7 @@ serve(async (req) => {
   let heartbeat: number | undefined;
 
   try {
-    const body = await req.json().catch(() => null);
+    const body = await httpReq.json().catch(() => null);
     itemId = body?.itemId ?? null;
     if (!itemId) return json(400, { error: "Missing itemId" });
 
@@ -75,7 +75,7 @@ serve(async (req) => {
     const claim = claimRows[0] as {
       id: string;
       lease_token: string;
-      request_payload: ItemPayload;
+      request_payload: Record<string, unknown> | null;
       job_id: string;
       attempt_count: number;
       provider_label: string | null;
@@ -125,7 +125,8 @@ serve(async (req) => {
       strictness: (req.strictness as GenerateArgs["strictness"]) ?? undefined,
     };
 
-    const providerPref: GeneratorPreference = req.providerPreference;
+    // After `reasonToRejectDurable`, `openai` is impossible here — cast is safe.
+    const providerPref = req.providerPreference as GeneratorPreference;
     const outcome = await runWithResolver(providerPref, generateArgs);
 
     const executionRoute = executionRouteForProvider(outcome.providerId);
