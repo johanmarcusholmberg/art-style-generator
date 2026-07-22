@@ -1382,6 +1382,13 @@ export type Database = {
           reused: boolean
         }[]
       }
+      create_matching_collection_regeneration: {
+        Args: { p_source_item_id: string }
+        Returns: {
+          job_id: string
+          new_item_id: string
+        }[]
+      }
       current_profile_id: { Args: never; Returns: string }
       expire_exhausted_items: { Args: never; Returns: number }
       fail_generation_item: {
