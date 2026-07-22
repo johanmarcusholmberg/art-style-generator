@@ -106,6 +106,8 @@ export interface FinalizerDeps {
     operation: string | null;
     width: number | null;
     height: number | null;
+    algorithmVersion: string | null;
+    metadata: Record<string, unknown> | null;
   } | null>;
 }
 
@@ -120,7 +122,6 @@ async function defaultDownloadSource(
       .from(RATIO_FINALIZED_BUCKET)
       .download(claim.sourceStoragePath);
     if (!error && data) return data;
-    // Fall through to URL if the storage download failed but a URL exists.
     if (!claim.sourceImageUrl) throw error ?? new Error("storage_download_failed");
   }
   if (!claim.sourceImageUrl) throw new Error("no_source_url_fallback");
@@ -130,16 +131,13 @@ async function defaultDownloadSource(
 }
 
 async function defaultDecodeImage(blob: Blob): Promise<DecodedImage> {
-  // Prefer createImageBitmap (fast, closable). Fall back to HTMLImageElement.
   if (typeof createImageBitmap === "function") {
     const bitmap = await createImageBitmap(blob);
     return {
       source: bitmap,
       width: bitmap.width,
       height: bitmap.height,
-      release: () => {
-        try { bitmap.close(); } catch { /* noop */ }
-      },
+      release: () => { try { bitmap.close(); } catch { /* noop */ } },
     };
   }
   const url = URL.createObjectURL(blob);
@@ -153,10 +151,7 @@ async function defaultDecodeImage(blob: Blob): Promise<DecodedImage> {
     source: img,
     width: img.naturalWidth,
     height: img.naturalHeight,
-    release: () => {
-      URL.revokeObjectURL(url);
-      img.src = "";
-    },
+    release: () => { URL.revokeObjectURL(url); img.src = ""; },
   };
 }
 
@@ -181,16 +176,22 @@ async function defaultReadItemState(
 ) {
   const { data, error } = await client
     .from("generation_job_items")
-    .select("ratio_enforcement_status, storage_path, finalization_operation")
+    .select("ratio_enforcement_status, storage_path, finalization_operation, finalization_metadata")
     .eq("id", itemId)
     .maybeSingle();
   if (error || !data) return null;
+  const meta = (data.finalization_metadata as Record<string, unknown> | null) ?? null;
+  const metaWidth = meta && typeof meta.outputWidth === "number" ? (meta.outputWidth as number) : null;
+  const metaHeight = meta && typeof meta.outputHeight === "number" ? (meta.outputHeight as number) : null;
+  const metaAlgo = meta && typeof meta.algorithmVersion === "string" ? (meta.algorithmVersion as string) : null;
   return {
     status: (data.ratio_enforcement_status as string | null) ?? null,
     storagePath: (data.storage_path as string | null) ?? null,
     operation: (data.finalization_operation as string | null) ?? null,
-    width: null,
-    height: null,
+    width: metaWidth,
+    height: metaHeight,
+    algorithmVersion: metaAlgo,
+    metadata: meta,
   };
 }
 
