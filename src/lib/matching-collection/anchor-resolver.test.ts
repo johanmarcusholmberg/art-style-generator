@@ -94,4 +94,50 @@ describe("resolveMatchingCollectionAnchor", () => {
     expect(r.source).toBe("durable-master");
     expect(r.anchorWidthPx).toBe(500);
   });
+
+  // ── Turn 2c.2 additions ─────────────────────────────────────────
+
+  it("corrected-master persisted wins when its URL is selected", () => {
+    const r = resolveMatchingCollectionAnchor({
+      ...empty,
+      // Base identity refers to the RAW provider pixels — must not leak.
+      baseUrl: "raw", baseStoragePath: "path/raw", baseWidth: 1094, baseHeight: 1606,
+      durableMasterUrl: "raw", durableMasterStoragePath: "path/raw",
+      durableMasterWidth: 1094, durableMasterHeight: 1606,
+      correctedMasterUrl: "corrected", correctedMasterStoragePath: "path/corrected-v1",
+      correctedMasterWidth: 1094, correctedMasterHeight: 1532,
+      selectedUrl: "corrected",
+    })!;
+    expect(r.source).toBe("corrected-master-persisted");
+    expect(r.anchorStoragePath).toBe("path/corrected-v1");
+    expect(r.anchorWidthPx).toBe(1094);
+    expect(r.anchorHeightPx).toBe(1532);
+  });
+
+  it("locally-finalized canvas URL never inherits raw storage identity", () => {
+    const r = resolveMatchingCollectionAnchor({
+      ...empty,
+      baseUrl: "raw", baseStoragePath: "path/raw", baseWidth: 1094, baseHeight: 1606,
+      durableMasterUrl: "raw", durableMasterStoragePath: "path/raw",
+      durableMasterWidth: 1094, durableMasterHeight: 1606,
+      locallyFinalizedCanvasUrl: "blob:local-canvas",
+      locallyFinalizedCanvasWidth: 1094, locallyFinalizedCanvasHeight: 1532,
+      selectedUrl: "blob:local-canvas",
+    })!;
+    expect(r.source).toBe("local-finalized-unpersisted");
+    expect(r.anchorStoragePath).toBeNull();
+    expect(r.anchorWidthPx).toBe(1094);
+    expect(r.anchorHeightPx).toBe(1532);
+  });
+
+  it("corrected-master URL selected without persisted path → provider fallback keeps dims", () => {
+    const r = resolveMatchingCollectionAnchor({
+      ...empty,
+      correctedMasterUrl: "cm", correctedMasterWidth: 800, correctedMasterHeight: 1120,
+      selectedUrl: "cm",
+    })!;
+    expect(r.source).toBe("provider");
+    expect(r.anchorStoragePath).toBeNull();
+    expect(r.anchorWidthPx).toBe(800);
+  });
 });
