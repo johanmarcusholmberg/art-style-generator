@@ -743,6 +743,8 @@ export type Database = {
           created_at: string
           enforced_image_url: string | null
           error_message: string | null
+          finalization_metadata: Json | null
+          finalization_operation: string | null
           gallery_image_id: string | null
           heartbeat_at: string | null
           id: string
@@ -754,6 +756,12 @@ export type Database = {
           prompt_variant: string
           provider_label: string | null
           ratio_enforcement_status: string
+          ratio_finalization_attempts: number
+          ratio_finalization_claim_token: string | null
+          ratio_finalization_completed_at: string | null
+          ratio_finalization_error: string | null
+          ratio_finalization_lease_expires_at: string | null
+          ratio_finalization_started_at: string | null
           raw_image_url: string | null
           regenerated_from_item_id: string | null
           request_payload: Json
@@ -772,6 +780,8 @@ export type Database = {
           created_at?: string
           enforced_image_url?: string | null
           error_message?: string | null
+          finalization_metadata?: Json | null
+          finalization_operation?: string | null
           gallery_image_id?: string | null
           heartbeat_at?: string | null
           id?: string
@@ -783,6 +793,12 @@ export type Database = {
           prompt_variant: string
           provider_label?: string | null
           ratio_enforcement_status?: string
+          ratio_finalization_attempts?: number
+          ratio_finalization_claim_token?: string | null
+          ratio_finalization_completed_at?: string | null
+          ratio_finalization_error?: string | null
+          ratio_finalization_lease_expires_at?: string | null
+          ratio_finalization_started_at?: string | null
           raw_image_url?: string | null
           regenerated_from_item_id?: string | null
           request_payload?: Json
@@ -801,6 +817,8 @@ export type Database = {
           created_at?: string
           enforced_image_url?: string | null
           error_message?: string | null
+          finalization_metadata?: Json | null
+          finalization_operation?: string | null
           gallery_image_id?: string | null
           heartbeat_at?: string | null
           id?: string
@@ -812,6 +830,12 @@ export type Database = {
           prompt_variant?: string
           provider_label?: string | null
           ratio_enforcement_status?: string
+          ratio_finalization_attempts?: number
+          ratio_finalization_claim_token?: string | null
+          ratio_finalization_completed_at?: string | null
+          ratio_finalization_error?: string | null
+          ratio_finalization_lease_expires_at?: string | null
+          ratio_finalization_started_at?: string | null
           raw_image_url?: string | null
           regenerated_from_item_id?: string | null
           request_payload?: Json
@@ -1317,6 +1341,22 @@ export type Database = {
           request_payload: Json
         }[]
       }
+      claim_generation_ratio_finalization: {
+        Args: { p_item_id: string; p_lease_seconds?: number }
+        Returns: {
+          attempts: number
+          claim_token: string
+          correction_policy: string
+          gallery_image_id: string
+          item_id: string
+          poster_format_id: string
+          source_height: number
+          source_image_url: string
+          source_storage_path: string
+          source_width: number
+          target_aspect_ratio: string
+        }[]
+      }
       cleanup_old_deleted_images: { Args: never; Returns: undefined }
       complete_generation_item: {
         Args: {
@@ -1328,6 +1368,19 @@ export type Database = {
           p_raw_image_url: string
           p_result_metadata: Json
           p_storage_path: string
+        }
+        Returns: boolean
+      }
+      complete_generation_ratio_finalization: {
+        Args: {
+          p_claim_token: string
+          p_final_height: number
+          p_final_image_url: string
+          p_final_storage_path: string
+          p_final_width: number
+          p_item_id: string
+          p_metadata: Json
+          p_operation: string
         }
         Returns: boolean
       }
@@ -1400,6 +1453,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      fail_generation_ratio_finalization: {
+        Args: { p_claim_token: string; p_error: string; p_item_id: string }
+        Returns: boolean
+      }
       finalize_ratio_enforcement: {
         Args: {
           p_enforced_image_url: string
@@ -1433,6 +1490,10 @@ export type Database = {
       }
       is_current_user_active: { Args: never; Returns: boolean }
       is_current_user_admin: { Args: never; Returns: boolean }
+      retry_generation_ratio_finalization: {
+        Args: { p_item_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user"
