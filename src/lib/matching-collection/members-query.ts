@@ -151,7 +151,7 @@ export async function fetchCollectionMembers(
       supabase
         .from("generation_job_items")
         .select(
-          "id, job_id, position, status, prompt_variant, request_payload, error_message, regenerated_from_item_id, ratio_enforcement_status, gallery_image_id, storage_path, image_url, attempt_count, created_at",
+          "id, job_id, position, status, prompt_variant, request_payload, error_message, regenerated_from_item_id, ratio_enforcement_status, gallery_image_id, storage_path, image_url, attempt_count, created_at, finalization_operation, finalization_metadata",
         )
         .in("job_id", jobIds),
       supabase
