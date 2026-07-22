@@ -1836,7 +1836,7 @@ export default function ImageGenerator({
           open={matchingOpen}
           onOpenChange={setMatchingOpen}
           anchorImageUrl={enhancedImageUrl || imageUrl}
-          anchorImageId={null}
+          anchorImageId={savedGalleryIdRef.current}
           anchor={{
             styleKey: variantStyleKey,
             posterFormatId: selectedPrintFormat.id,
@@ -1845,8 +1845,8 @@ export default function ImageGenerator({
             provider: lastProviderUsed ?? null,
             model: lastModelUsed ?? null,
             referenceStrength: null,
-            anchorWidthPx: null,
-            anchorHeightPx: null,
+            anchorWidthPx: baseProbedDims?.width ?? enhancedProbedDims?.width ?? null,
+            anchorHeightPx: baseProbedDims?.height ?? enhancedProbedDims?.height ?? null,
           }}
         />
       )}
