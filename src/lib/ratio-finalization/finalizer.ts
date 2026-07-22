@@ -197,19 +197,28 @@ async function defaultReadItemState(
 
 // ── Metadata builder ───────────────────────────────────────────────────
 
+export interface CompletionMetadataInput {
+  /** Decoded source pixels — MUST come from the decoded ImageBitmap,
+   *  never from stored DB values, crop rects, or padding. */
+  sourceWidth: number;
+  sourceHeight: number;
+  /** Final rendered output pixels (post-crop or post-pad). */
+  outputWidth: number;
+  outputHeight: number;
+}
+
 export function buildCompletionMetadata(
   claim: ClaimedRatioFinalizationItem,
   plan: RatioFinalizationPlan,
-  outputWidth: number,
-  outputHeight: number,
+  dims: CompletionMetadataInput,
 ) {
   return {
     algorithmVersion: plan.algorithmVersion,
     targetAspectRatio: plan.targetAspectRatio,
-    sourceWidth: plan.sourceRect.width + (plan.padding?.left ?? 0) + (plan.padding?.right ?? 0),
-    sourceHeight: plan.sourceRect.height + (plan.padding?.top ?? 0) + (plan.padding?.bottom ?? 0),
-    outputWidth,
-    outputHeight,
+    sourceWidth: dims.sourceWidth,
+    sourceHeight: dims.sourceHeight,
+    outputWidth: dims.outputWidth,
+    outputHeight: dims.outputHeight,
     operation: plan.operation,
     sourceRect: plan.sourceRect,
     padding: plan.padding,
@@ -219,12 +228,25 @@ export function buildCompletionMetadata(
 
 // ── Completion with transport-uncertainty handling ─────────────────────
 
+/**
+ * A readback counts as success ONLY when every authoritative field
+ * matches the attempted completion:
+ *   - ratio_enforcement_status (completed | not_required)
+ *   - storage_path
+ *   - finalization_operation
+ *   - metadata.outputWidth / outputHeight
+ *   - metadata.algorithmVersion
+ *
+ * A path-only match is not sufficient — that would tolerate a stale
+ * completion from a previous algorithm version writing to the same path.
+ */
 async function completeWithVerification(
   input: CompleteRatioFinalizationInput,
   deps: {
     complete: typeof completeRatioFinalization;
     client: SupabaseClient<Database>;
-    readItemState: (client: SupabaseClient<Database>, itemId: string) => ReturnType<typeof defaultReadItemState>;
+    readItemState: NonNullable<FinalizerDeps["readItemState"]>;
+    expectedAlgorithmVersion: string;
   },
 ): Promise<void> {
   const attempt = async () => deps.complete(input, { client: deps.client });
@@ -232,12 +254,9 @@ async function completeWithVerification(
     await attempt();
     return;
   } catch (err) {
-    // Authoritative RPC errors (mapped codes) must NOT be retried — they
-    // reflect a decided database state, not transport uncertainty.
     if (err instanceof RatioFinalizationApiError && err.code !== "unknown_rpc_error") {
       throw err;
     }
-    // Transport uncertainty: retry once idempotently.
     try {
       await attempt();
       return;
@@ -245,12 +264,18 @@ async function completeWithVerification(
       if (err2 instanceof RatioFinalizationApiError && err2.code !== "unknown_rpc_error") {
         throw err2;
       }
-      // Still uncertain — verify actual state.
       const state = await deps.readItemState(deps.client, input.itemId);
-      if (state && state.status === "completed"
-          && state.storagePath === input.finalStoragePath
-          && (state.operation === input.operation || state.operation == null)) {
-        return; // DB actually committed the first attempt.
+      const expectedStatus = input.operation === "none" ? "not_required" : "completed";
+      if (
+        state
+        && state.status === expectedStatus
+        && state.storagePath === input.finalStoragePath
+        && state.operation === input.operation
+        && state.width === input.finalWidth
+        && state.height === input.finalHeight
+        && state.algorithmVersion === deps.expectedAlgorithmVersion
+      ) {
+        return; // Prior attempt committed exactly the intended state.
       }
       throw err2;
     }
