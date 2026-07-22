@@ -743,7 +743,7 @@ export default function ImageGenerator({
       // storage_path, cost event, and provenance). Adopting its id here
       // prevents a second save from `handleSaveToGallery`, and lets the
       // Matching-Collection dialog use the true anchor identity.
-      const persistedId = meta?.galleryImageId ?? first.gallery_image_id ?? null;
+      const persistedId = meta?.galleryImageId ?? null;
       if (persistedId) {
         savedGalleryIdRef.current = persistedId;
         setSavedToGallery(true);
