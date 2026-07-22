@@ -738,6 +738,16 @@ export default function ImageGenerator({
         setImageUrl(rawUrl);
         setEnhancedImageUrl(null);
       }
+      // ── Adopt the durable worker's persisted gallery row.
+      // The worker already inserted the generated_images row (with real
+      // storage_path, cost event, and provenance). Adopting its id here
+      // prevents a second save from `handleSaveToGallery`, and lets the
+      // Matching-Collection dialog use the true anchor identity.
+      const persistedId = meta?.galleryImageId ?? null;
+      if (persistedId) {
+        savedGalleryIdRef.current = persistedId;
+        setSavedToGallery(true);
+      }
       setLoading(false);
       setDurableFailure(null);
       // Release the durable pointer so the next generation starts clean.
@@ -1826,7 +1836,7 @@ export default function ImageGenerator({
           open={matchingOpen}
           onOpenChange={setMatchingOpen}
           anchorImageUrl={enhancedImageUrl || imageUrl}
-          anchorImageId={null}
+          anchorImageId={savedGalleryIdRef.current}
           anchor={{
             styleKey: variantStyleKey,
             posterFormatId: selectedPrintFormat.id,
@@ -1835,8 +1845,8 @@ export default function ImageGenerator({
             provider: lastProviderUsed ?? null,
             model: lastModelUsed ?? null,
             referenceStrength: null,
-            anchorWidthPx: null,
-            anchorHeightPx: null,
+            anchorWidthPx: baseProbedDims?.width ?? enhancedProbedDims?.width ?? null,
+            anchorHeightPx: baseProbedDims?.height ?? enhancedProbedDims?.height ?? null,
           }}
         />
       )}

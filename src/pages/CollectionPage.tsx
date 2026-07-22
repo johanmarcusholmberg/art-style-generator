@@ -1,20 +1,19 @@
 /**
  * Collection resume page — /collection/:id
  *
- * Responsibilities:
- *   - Show the anchor + saved art direction (never re-analyzes).
- *   - Live grid of members with per-item status: queued, generating,
- *     completed, failed.
- *   - Per-item actions: Keep (accepted), Reject (archived, still stored),
- *     Regenerate (re-dispatches only that item), View, Open in gallery.
- *   - Accepted-only default view; a toggle reveals pending + rejected
- *     for review.
- *   - Add more subjects using the SAME anchor and settings (no
- *     re-analysis).
- *
- * Resume behaviour: this page is the durable surface. Every successful
- * image is already persisted with matching_collection_id + review_state
- * so refresh/navigate/close-tab is safe.
+ * Turn 2b:
+ *   - Uses the unified `fetchCollectionMembers` view so queued /
+ *     processing / failed / completed candidates all appear immediately.
+ *   - Subscribes to BOTH `generation_job_items` (state machine) and
+ *     `generated_images` (persisted output) for the collection's job.
+ *   - Regenerate calls the atomic
+ *     `create_matching_collection_regeneration` RPC, which enqueues a
+ *     NEW candidate under the same job. The original is untouched so
+ *     both variants remain reviewable side-by-side.
+ *   - Retry for failed items goes through the authenticated
+ *     `generate-single-item-retry` edge function.
+ *   - Keep/Reject operate on `generated_images` rows and are hidden
+ *     until the item is completed and persisted.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -24,7 +23,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { listCollectionMembers, setMemberReviewState } from "@/lib/matching-collection/review";
+import { setMemberReviewState } from "@/lib/matching-collection/review";
+import {
+  fetchCollectionMembers,
+  fetchCollectionJobIds,
+  memberDisplayStatus,
+  type CollectionMemberView,
+} from "@/lib/matching-collection/members-query";
+import { regenerateCollectionMember } from "@/lib/matching-collection/regenerate";
 import {
   createMatchingCollectionJob,
   parseSubjects,
@@ -33,68 +39,52 @@ import {
 import { resolveCollectionProvider } from "@/lib/matching-collection/provider-capability";
 import { readFrozenCollectionSettings } from "@/lib/matching-collection/frozen-settings";
 import { computeCollectionFingerprint } from "@/lib/matching-collection/collection-fingerprint";
-import type {
-  AnchorInheritedSettings,
-  CollectionArtDirection,
-} from "@/lib/matching-collection/types";
+import type { AnchorInheritedSettings } from "@/lib/matching-collection/types";
 
 type CollectionRow = Record<string, unknown> & {
   id: string;
   name: string | null;
   anchor_image_id: string | null;
   anchor_style_key: string | null;
-  anchor_poster_format_id: string | null;
   anchor_provider: string | null;
   anchor_model: string | null;
   resolved_provider: string | null;
   resolved_model: string | null;
   consistency_strength: string | null;
-  art_direction: unknown;
-  reference_strength: string | null;
 };
-
-interface MemberRow {
-  id: string;
-  storage_path: string | null;
-  matching_subject: string | null;
-  matching_review_state: string | null;
-  matching_is_anchor: boolean;
-  is_archived: boolean | null;
-  generation_job_item_id: string | null;
-}
 
 function publicUrl(path: string | null): string | null {
   if (!path) return null;
   return supabase.storage.from("generated-images").getPublicUrl(path).data.publicUrl;
 }
 
+type ViewFilter = "all" | "accepted" | "pending" | "rejected" | "failed";
+
 export default function CollectionPage() {
   const { id } = useParams<{ id: string }>();
   const [collection, setCollection] = useState<CollectionRow | null>(null);
   const [anchorUrl, setAnchorUrl] = useState<string | null>(null);
-  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [members, setMembers] = useState<CollectionMemberView[]>([]);
+  const [jobIds, setJobIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAll, setShowAll] = useState(true);
+  const [filter, setFilter] = useState<ViewFilter>("all");
   const [extraSubjects, setExtraSubjects] = useState("");
   const [adding, setAdding] = useState(false);
+  const [busyItemId, setBusyItemId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     try {
-      const [{ data: col }, list] = await Promise.all([
-        supabase
-          .from("collections")
-          .select("*")
-          .eq("id", id)
-          .maybeSingle(),
-        listCollectionMembers(id),
+      const [{ data: col }, list, jobs] = await Promise.all([
+        supabase.from("collections").select("*").eq("id", id).maybeSingle(),
+        fetchCollectionMembers(id),
+        fetchCollectionJobIds(id),
       ]);
       setCollection((col as CollectionRow | null) ?? null);
-      setMembers(list as MemberRow[]);
+      setMembers(list);
+      setJobIds(jobs);
 
-      // Resolve anchor image url: prefer explicit anchor_image_id row,
-      // then persisted frozen anchor_storage_path/anchor_image_url.
       const c = col as CollectionRow | null;
       let url: string | null = null;
       if (c?.anchor_image_id) {
@@ -121,51 +111,107 @@ export default function CollectionPage() {
     void load();
   }, [load]);
 
-  // Live refresh while any job for this collection is still running.
+  // Live refresh from BOTH tables. `generated_images` filter is fine on
+  // matching_collection_id, but `generation_job_items` has no direct
+  // collection column so we listen on job_id updates for this
+  // collection's jobs. Refetch on any event — the join is cheap and the
+  // page state must reflect the item state machine within a second.
   useEffect(() => {
     if (!id) return;
-    const ch = supabase
-      .channel(`collection-${id}`)
-      .on(
+    const ch = supabase.channel(`collection-${id}`);
+    ch.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "generated_images", filter: `matching_collection_id=eq.${id}` },
+      () => void load(),
+    );
+    for (const jobId of jobIds) {
+      ch.on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "generated_images", filter: `matching_collection_id=eq.${id}` },
+        { event: "*", schema: "public", table: "generation_job_items", filter: `job_id=eq.${jobId}` },
         () => void load(),
-      )
-      .subscribe();
+      );
+    }
+    ch.subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [id, load]);
+  }, [id, load, jobIds]);
 
-  const visibleMembers = useMemo(
-    () => (showAll ? members : members.filter((m) => m.matching_review_state === "accepted")),
-    [members, showAll],
-  );
+  const visibleMembers = useMemo(() => {
+    switch (filter) {
+      case "accepted":
+        return members.filter((m) => m.reviewState === "accepted");
+      case "pending":
+        return members.filter(
+          (m) => m.itemStatus === "completed" && (m.reviewState ?? "pending") === "pending",
+        );
+      case "rejected":
+        return members.filter((m) => m.reviewState === "rejected");
+      case "failed":
+        return members.filter((m) => m.itemStatus === "failed");
+      case "all":
+      default:
+        return members;
+    }
+  }, [members, filter]);
 
-  async function handleKeep(row: MemberRow) {
+  const counts = useMemo(() => {
+    let queued = 0, running = 0, done = 0, failed = 0, accepted = 0;
+    for (const m of members) {
+      if (m.itemStatus === "queued") queued++;
+      else if (m.itemStatus === "processing" || m.itemStatus === "dispatching") running++;
+      else if (m.itemStatus === "failed") failed++;
+      else if (m.itemStatus === "completed") done++;
+      if (m.reviewState === "accepted") accepted++;
+    }
+    return { queued, running, done, failed, accepted, total: members.length };
+  }, [members]);
+
+  async function handleKeep(m: CollectionMemberView) {
+    if (!m.generatedImageId) return;
     try {
-      await setMemberReviewState(row.id, "accepted");
-      setMembers((cur) => cur.map((m) => (m.id === row.id ? { ...m, matching_review_state: "accepted", is_archived: false } : m)));
+      await setMemberReviewState(m.generatedImageId, "accepted");
+      await load();
     } catch (e) {
       toast({ title: "Keep failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     }
   }
-  async function handleReject(row: MemberRow) {
+  async function handleReject(m: CollectionMemberView) {
+    if (!m.generatedImageId) return;
     try {
-      await setMemberReviewState(row.id, "rejected");
-      setMembers((cur) => cur.map((m) => (m.id === row.id ? { ...m, matching_review_state: "rejected", is_archived: true } : m)));
+      await setMemberReviewState(m.generatedImageId, "rejected");
+      await load();
     } catch (e) {
       toast({ title: "Reject failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     }
   }
-  async function handleRegenerate(row: MemberRow) {
-    // Re-dispatch just that item; the durable worker is idempotent + lease-based.
-    if (!row.generation_job_item_id) return;
+  async function handleRegenerate(m: CollectionMemberView) {
+    if (m.itemStatus !== "completed") return;
+    setBusyItemId(m.itemId);
     try {
-      await supabase.functions.invoke("generate-single", { body: { itemId: row.generation_job_item_id } });
-      toast({ title: "Regeneration requested" });
+      const r = await regenerateCollectionMember(m.itemId);
+      toast({ title: "Regeneration queued", description: `New candidate queued (item ${r.newItemId.slice(0, 8)}…).` });
+      void load();
     } catch (e) {
       toast({ title: "Regenerate failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setBusyItemId(null);
+    }
+  }
+  async function handleRetry(m: CollectionMemberView) {
+    if (m.itemStatus !== "failed") return;
+    setBusyItemId(m.itemId);
+    try {
+      const { error } = await supabase.functions.invoke("generate-single-item-retry", {
+        body: { itemId: m.itemId },
+      });
+      if (error) throw new Error(error.message);
+      toast({ title: "Retry requested" });
+      void load();
+    } catch (e) {
+      toast({ title: "Retry failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setBusyItemId(null);
     }
   }
 
@@ -175,14 +221,10 @@ export default function CollectionPage() {
     if (parsed.subjects.length === 0) return;
     setAdding(true);
     try {
-      // Read the FROZEN settings — no hard-coded defaults except those
-      // that `readFrozenCollectionSettings` explicitly reports.
       const { settings: frozen, usedFallbacks } = readFrozenCollectionSettings(collection);
       if (usedFallbacks.length > 0) {
         console.info("[CollectionPage] add-more using legacy fallbacks:", usedFallbacks);
       }
-      // Provider: trust the persisted resolved provider/model when present;
-      // otherwise resolve from the frozen anchor settings.
       const anchorLike: AnchorInheritedSettings = {
         styleKey: frozen.styleKey || "freestyle",
         posterFormatId: frozen.posterFormatId,
@@ -243,7 +285,7 @@ export default function CollectionPage() {
     }
   }
 
-  if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading collection…</div>;
+  if (loading && !collection) return <div className="p-6 text-sm text-muted-foreground">Loading collection…</div>;
   if (!collection) return <div className="p-6 text-sm text-muted-foreground">Collection not found.</div>;
 
   return (
@@ -260,10 +302,27 @@ export default function CollectionPage() {
                 {collection.resolved_model ?? collection.anchor_model ?? "—"}
               </span>
             </div>
+            <div className="text-xs text-muted-foreground flex flex-wrap gap-3 mt-2">
+              <span>Total: {counts.total}</span>
+              {counts.queued > 0 && <span>Queued: {counts.queued}</span>}
+              {counts.running > 0 && <span>Generating: {counts.running}</span>}
+              <span>Completed: {counts.done}</span>
+              {counts.failed > 0 && <span className="text-destructive">Failed: {counts.failed}</span>}
+              <span>Accepted: {counts.accepted}</span>
+            </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setShowAll((s) => !s)}>
-            {showAll ? "Accepted only" : "Show all"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {(["all", "pending", "accepted", "rejected", "failed"] as const).map((f) => (
+              <Button
+                key={f}
+                variant={filter === f ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter(f)}
+              >
+                {f[0].toUpperCase() + f.slice(1)}
+              </Button>
+            ))}
+          </div>
         </header>
 
         <section className="grid gap-4 md:grid-cols-[220px_1fr]">
@@ -280,50 +339,93 @@ export default function CollectionPage() {
             <div className="text-xs uppercase tracking-wide text-muted-foreground">Members</div>
             {visibleMembers.length === 0 && (
               <div className="text-sm text-muted-foreground">
-                {members.length === 0 ? "Queued — images will appear as they finish." : "No accepted members yet."}
+                {members.length === 0 ? "Queued — images will appear as they finish." : "No members match this filter."}
               </div>
             )}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {visibleMembers.map((m) => {
-                const url = publicUrl(m.storage_path);
-                const state = m.matching_review_state ?? "pending";
+                const url = publicUrl(m.storagePath) ?? m.imageUrl;
+                const label = memberDisplayStatus(m);
+                const isRunning = m.itemStatus === "queued" || m.itemStatus === "dispatching" || m.itemStatus === "processing";
+                const isFailed = m.itemStatus === "failed";
+                const isCompleted = m.itemStatus === "completed";
+                const badgeVariant =
+                  m.reviewState === "accepted" ? "default"
+                  : isFailed || m.reviewState === "rejected" ? "destructive"
+                  : "outline";
                 return (
-                  <div key={m.id} className="rounded-md border border-border overflow-hidden bg-card">
-                    {url ? (
-                      <img src={url} alt={m.matching_subject ?? ""} className="w-full aspect-[5/7] object-cover" loading="lazy" />
+                  <div key={m.itemId} className="rounded-md border border-border overflow-hidden bg-card">
+                    {url && isCompleted ? (
+                      <img src={url} alt={m.subject} className="w-full aspect-[5/7] object-cover" loading="lazy" />
                     ) : (
-                      <div className="w-full aspect-[5/7] bg-muted animate-pulse" />
+                      <div className="w-full aspect-[5/7] bg-muted flex items-center justify-center text-[11px] text-muted-foreground">
+                        {isRunning ? <span className="animate-pulse">Generating…</span> : label}
+                      </div>
                     )}
                     <div className="p-2 space-y-2">
-                      <div className="text-[11px] text-foreground line-clamp-2">{m.matching_subject}</div>
+                      <div className="text-[11px] text-foreground line-clamp-2">{m.subject}</div>
+                      {m.regeneratedFromItemId && (
+                        <div className="text-[10px] text-muted-foreground">
+                          Regenerated candidate
+                        </div>
+                      )}
                       <div className="flex items-center gap-1">
-                        <Badge
-                          variant={state === "accepted" ? "default" : state === "rejected" ? "destructive" : "outline"}
-                          className="text-[10px]"
-                        >
-                          {state}
-                        </Badge>
+                        <Badge variant={badgeVariant} className="text-[10px]">{label}</Badge>
+                        {m.attemptCount > 1 && (
+                          <Badge variant="outline" className="text-[10px]">tries: {m.attemptCount}</Badge>
+                        )}
                       </div>
+                      {isFailed && m.errorMessage && (
+                        <div className="text-[10px] text-destructive line-clamp-3">{m.errorMessage}</div>
+                      )}
                       <div className="flex flex-wrap gap-1">
-                        <Button size="sm" variant="outline" onClick={() => handleKeep(m)} disabled={state === "accepted"}>
-                          Keep
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleReject(m)} disabled={state === "rejected"}>
-                          Reject
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleRegenerate(m)}>
-                          Regenerate
-                        </Button>
-                        {url && (
+                        {isCompleted && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleKeep(m)}
+                              disabled={!m.generatedImageId || m.reviewState === "accepted"}
+                            >
+                              Keep
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleReject(m)}
+                              disabled={!m.generatedImageId || m.reviewState === "rejected"}
+                            >
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRegenerate(m)}
+                              disabled={busyItemId === m.itemId}
+                            >
+                              {busyItemId === m.itemId ? "…" : "Regenerate"}
+                            </Button>
+                          </>
+                        )}
+                        {isFailed && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRetry(m)}
+                            disabled={busyItemId === m.itemId}
+                          >
+                            {busyItemId === m.itemId ? "…" : "Retry"}
+                          </Button>
+                        )}
+                        {url && isCompleted && (
                           <>
                             <a href={url} target="_blank" rel="noreferrer" className="text-xs underline text-muted-foreground self-center">
                               View
                             </a>
                             <a
                               href={url}
-                              download={`collection-${m.id}.png`}
+                              download={`collection-${m.itemId}.png`}
                               className="text-xs underline text-muted-foreground self-center"
-                              title="Download (export)"
                             >
                               Export
                             </a>
@@ -362,9 +464,7 @@ export default function CollectionPage() {
         </section>
 
         <div className="text-xs text-muted-foreground">
-          <Link to="/" className="underline">
-            ← Back to generator
-          </Link>
+          <Link to="/" className="underline">← Back to generator</Link>
         </div>
       </div>
     </div>
