@@ -45,6 +45,8 @@ export interface MatchingCollectionDialogProps {
   onOpenChange: (open: boolean) => void;
   anchorImageUrl: string;
   anchorImageId: string | null;
+  /** Stable storage path of the anchor (preferred over URL for identity). */
+  anchorStoragePath?: string | null;
   anchor: AnchorInheritedSettings;
   /** Pre-computed art direction (e.g. from `/collection/:id` resume). */
   initialArtDirection?: CollectionArtDirection | null;
@@ -57,7 +59,7 @@ const CONSISTENCY_OPTIONS: { value: ConsistencyStrength; label: string; hint: st
 ];
 
 export function MatchingCollectionDialog(props: MatchingCollectionDialogProps) {
-  const { open, onOpenChange, anchorImageUrl, anchorImageId, anchor, initialArtDirection } = props;
+  const { open, onOpenChange, anchorImageUrl, anchorImageId, anchorStoragePath, anchor, initialArtDirection } = props;
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
@@ -99,7 +101,7 @@ export function MatchingCollectionDialog(props: MatchingCollectionDialogProps) {
       const frozen = freezeCollectionSettings({
         anchorImageId,
         anchorImageUrl,
-        anchorStoragePath: null,
+        anchorStoragePath: anchorStoragePath ?? null,
         anchorWidthPx: anchor.anchorWidthPx,
         anchorHeightPx: anchor.anchorHeightPx,
         styleKey: anchor.styleKey,
