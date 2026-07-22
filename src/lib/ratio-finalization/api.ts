@@ -77,8 +77,23 @@ function validateClaimRow(row: ClaimRow | null | undefined): ClaimedRatioFinaliz
   if (!sourceStoragePath && !sourceImageUrl) {
     throw new RatioFinalizationApiError("no_usable_source", "claim has no source path or url");
   }
-  const rawPolicy = (row.correction_policy ?? "pad").toLowerCase();
-  const correctionPolicy: "pad" | "crop" = rawPolicy === "crop" ? "crop" : "pad";
+  // Strict policy validation — never silently coerce an unknown value.
+  // The RPC contract must return "crop" or "pad"; anything else is a
+  // contract violation the finalizer must surface, not paper over.
+  const rawPolicy = row.correction_policy;
+  let correctionPolicy: "pad" | "crop";
+  if (rawPolicy === "crop" || rawPolicy === "pad") {
+    correctionPolicy = rawPolicy;
+  } else if (rawPolicy == null) {
+    // The database default for the RPC contract is "pad"; keep this
+    // narrow allowance for genuinely-null RPC values.
+    correctionPolicy = "pad";
+  } else {
+    throw new RatioFinalizationApiError(
+      "invalid_policy",
+      `unrecognized correction_policy: ${String(rawPolicy)}`,
+    );
+  }
   return {
     itemId: row.item_id,
     claimToken: row.claim_token,
