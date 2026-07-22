@@ -527,6 +527,24 @@ export default function CollectionPage() {
                             >
                               {busyItemId === m.itemId ? "…" : "Regenerate"}
                             </Button>
+                            {canRetryFormat && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  finalizationQueue.retry(m.itemId).catch((e) => {
+                                    toast({
+                                      title: "Retry format failed",
+                                      description: e instanceof Error ? e.message : String(e),
+                                      variant: "destructive",
+                                    });
+                                  });
+                                }}
+                                title="Re-run poster-format finalization for this image"
+                              >
+                                Retry format
+                              </Button>
+                            )}
                           </>
                         )}
                         {isQueued && (
