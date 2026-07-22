@@ -1,29 +1,33 @@
 /**
  * Collection resume page — /collection/:id
  *
- * Turn 2b:
- *   - Uses the unified `fetchCollectionMembers` view so queued /
- *     processing / failed / completed candidates all appear immediately.
- *   - Subscribes to BOTH `generation_job_items` (state machine) and
- *     `generated_images` (persisted output) for the collection's job.
- *   - Regenerate calls the atomic
- *     `create_matching_collection_regeneration` RPC, which enqueues a
- *     NEW candidate under the same job. The original is untouched so
- *     both variants remain reviewable side-by-side.
- *   - Retry for failed items goes through the authenticated
- *     `generate-single-item-retry` edge function.
- *   - Keep/Reject operate on `generated_images` rows and are hidden
- *     until the item is completed and persisted.
+ * Turn 2c.1:
+ *   - Uses `createReloadCoordinator` to debounce realtime bursts from
+ *     `generation_job_items` + `generated_images` into a single load
+ *     while preventing overlapping fetches.
+ *   - Subscription dependencies use a stable sorted job-id signature so
+ *     the channel is not recreated on identity-only array changes.
+ *   - Regenerate reports dispatch outcome; if dispatch fails, the
+ *     queued candidate persists and the user can hit Start.
+ *   - Genuinely queued items expose a Start action; failed items still
+ *     use `generate-single-item-retry`.
+ *   - Rejected candidates expose Restore (→ pending), never Reject.
+ *   - Card shows a small ratio-finalization label (Preparing/Finalizing/
+ *     Failed/Ready) and never claims print readiness while ratio state
+ *     is pending, processing, failed, or unknown.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { setMemberReviewState } from "@/lib/matching-collection/review";
+import {
+  reviewPrimaryAction,
+  setMemberReviewState,
+} from "@/lib/matching-collection/review";
 import {
   fetchCollectionMembers,
   fetchCollectionJobIds,
@@ -31,6 +35,9 @@ import {
   type CollectionMemberView,
 } from "@/lib/matching-collection/members-query";
 import { regenerateCollectionMember } from "@/lib/matching-collection/regenerate";
+import { startQueuedItem, canStartCandidate } from "@/lib/matching-collection/start-item";
+import { assessRatioReadiness } from "@/lib/matching-collection/ratio-readiness";
+import { createReloadCoordinator } from "@/lib/reload-coordinator";
 import {
   createMatchingCollectionJob,
   parseSubjects,
@@ -83,7 +90,15 @@ export default function CollectionPage() {
       ]);
       setCollection((col as CollectionRow | null) ?? null);
       setMembers(list);
-      setJobIds(jobs);
+      setJobIds((prev) => {
+        const next = jobs.slice().sort();
+        // Preserve reference identity when the sorted signature matches so
+        // the subscription effect below does not resubscribe unnecessarily.
+        if (prev.length === next.length && prev.every((v, i) => v === next[i])) {
+          return prev;
+        }
+        return next;
+      });
 
       const c = col as CollectionRow | null;
       let url: string | null = null;
@@ -107,35 +122,56 @@ export default function CollectionPage() {
     }
   }, [id]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const loadRef = useRef(load);
+  useEffect(() => { loadRef.current = load; }, [load]);
 
-  // Live refresh from BOTH tables. `generated_images` filter is fine on
-  // matching_collection_id, but `generation_job_items` has no direct
-  // collection column so we listen on job_id updates for this
-  // collection's jobs. Refetch on any event — the join is cheap and the
-  // page state must reflect the item state machine within a second.
+  // Debounced reload coordinator — bursts of realtime events on either
+  // table collapse into a single load, with exactly one trailing load
+  // when new events arrive during an in-flight fetch.
+  const coordinatorRef = useRef<ReturnType<typeof createReloadCoordinator> | null>(null);
+  useEffect(() => {
+    const c = createReloadCoordinator({
+      load: () => loadRef.current(),
+      delayMs: 120,
+    });
+    coordinatorRef.current = c;
+    // Kick off the first load through the coordinator so it participates
+    // in overlap protection with any early realtime events.
+    c.request();
+    return () => {
+      c.dispose();
+      coordinatorRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Load once id resolves.
+    if (id) coordinatorRef.current?.request();
+  }, [id]);
+
+  // Live refresh from BOTH tables. Sorted-signature dependency prevents
+  // channel churn when the same jobs come back in a different order.
+  const jobIdsSig = useMemo(() => jobIds.join(","), [jobIds]);
   useEffect(() => {
     if (!id) return;
     const ch = supabase.channel(`collection-${id}`);
     ch.on(
       "postgres_changes",
       { event: "*", schema: "public", table: "generated_images", filter: `matching_collection_id=eq.${id}` },
-      () => void load(),
+      () => coordinatorRef.current?.request(),
     );
-    for (const jobId of jobIds) {
+    for (const jobId of jobIdsSig ? jobIdsSig.split(",") : []) {
       ch.on(
         "postgres_changes",
         { event: "*", schema: "public", table: "generation_job_items", filter: `job_id=eq.${jobId}` },
-        () => void load(),
+        () => coordinatorRef.current?.request(),
       );
     }
     ch.subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [id, load, jobIds]);
+  }, [id, jobIdsSig]);
 
   const visibleMembers = useMemo(() => {
     switch (filter) {
@@ -167,20 +203,25 @@ export default function CollectionPage() {
     return { queued, running, done, failed, accepted, total: members.length };
   }, [members]);
 
-  async function handleKeep(m: CollectionMemberView) {
+  async function handlePrimaryReview(m: CollectionMemberView) {
     if (!m.generatedImageId) return;
+    const action = reviewPrimaryAction(m.reviewState);
     try {
-      await setMemberReviewState(m.generatedImageId, "accepted");
-      await load();
+      await setMemberReviewState(m.generatedImageId, action.target);
+      coordinatorRef.current?.request();
     } catch (e) {
-      toast({ title: "Keep failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+      toast({
+        title: `${action.label} failed`,
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
     }
   }
   async function handleReject(m: CollectionMemberView) {
     if (!m.generatedImageId) return;
     try {
       await setMemberReviewState(m.generatedImageId, "rejected");
-      await load();
+      coordinatorRef.current?.request();
     } catch (e) {
       toast({ title: "Reject failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     }
@@ -190,10 +231,37 @@ export default function CollectionPage() {
     setBusyItemId(m.itemId);
     try {
       const r = await regenerateCollectionMember(m.itemId);
-      toast({ title: "Regeneration queued", description: `New candidate queued (item ${r.newItemId.slice(0, 8)}…).` });
-      void load();
+      if (r.dispatchStarted) {
+        toast({ title: "Regeneration queued", description: `New candidate queued (item ${r.newItemId.slice(0, 8)}…).` });
+      } else {
+        toast({
+          title: "Candidate created, but generation did not start. Use Start.",
+          description: r.dispatchError ?? undefined,
+          variant: "destructive",
+        });
+      }
+      coordinatorRef.current?.request();
     } catch (e) {
       toast({ title: "Regenerate failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setBusyItemId(null);
+    }
+  }
+  async function handleStart(m: CollectionMemberView) {
+    if (!canStartCandidate({ itemId: m.itemId, itemStatus: m.itemStatus })) return;
+    setBusyItemId(m.itemId);
+    try {
+      await startQueuedItem(
+        { itemId: m.itemId, itemStatus: m.itemStatus },
+        async (itemId) => {
+          const r = await supabase.functions.invoke("generate-single", { body: { itemId } });
+          return { error: r.error ? { message: r.error.message } : null };
+        },
+      );
+      toast({ title: "Generation started" });
+      coordinatorRef.current?.request();
+    } catch (e) {
+      toast({ title: "Start failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     } finally {
       setBusyItemId(null);
     }
@@ -207,7 +275,7 @@ export default function CollectionPage() {
       });
       if (error) throw new Error(error.message);
       toast({ title: "Retry requested" });
-      void load();
+      coordinatorRef.current?.request();
     } catch (e) {
       toast({ title: "Retry failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     } finally {
@@ -277,7 +345,7 @@ export default function CollectionPage() {
         title: result.reused ? "Already queued" : "Queued",
         description: `${parsed.subjects.length} more image(s) queued.`,
       });
-      void load();
+      coordinatorRef.current?.request();
     } catch (e) {
       toast({ title: "Add failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
     } finally {
@@ -346,12 +414,22 @@ export default function CollectionPage() {
               {visibleMembers.map((m) => {
                 const url = publicUrl(m.storagePath) ?? m.imageUrl;
                 const label = memberDisplayStatus(m);
-                const isRunning = m.itemStatus === "queued" || m.itemStatus === "dispatching" || m.itemStatus === "processing";
+                const isQueued = m.itemStatus === "queued";
+                const isRunning = isQueued || m.itemStatus === "dispatching" || m.itemStatus === "processing";
                 const isFailed = m.itemStatus === "failed";
                 const isCompleted = m.itemStatus === "completed";
+                const isRejected = m.reviewState === "rejected";
+                const primary = reviewPrimaryAction(m.reviewState);
+                const ratio = assessRatioReadiness(m.ratioFinalizationStatus);
+                const showRatioBadge =
+                  isCompleted &&
+                  (ratio.reason === "pending" ||
+                    ratio.reason === "processing" ||
+                    ratio.reason === "failed" ||
+                    ratio.reason === "completed");
                 const badgeVariant =
                   m.reviewState === "accepted" ? "default"
-                  : isFailed || m.reviewState === "rejected" ? "destructive"
+                  : isFailed || isRejected ? "destructive"
                   : "outline";
                 return (
                   <div key={m.itemId} className="rounded-md border border-border overflow-hidden bg-card">
@@ -369,10 +447,23 @@ export default function CollectionPage() {
                           Regenerated candidate
                         </div>
                       )}
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 flex-wrap">
                         <Badge variant={badgeVariant} className="text-[10px]">{label}</Badge>
                         {m.attemptCount > 1 && (
                           <Badge variant="outline" className="text-[10px]">tries: {m.attemptCount}</Badge>
+                        )}
+                        {showRatioBadge && (
+                          <Badge
+                            variant={ratio.tone === "danger" ? "destructive" : "outline"}
+                            className="text-[10px]"
+                            title={
+                              ratio.isPrintReady
+                                ? "Ratio validated for selected poster format."
+                                : "Print readiness withheld until poster-format finalization completes."
+                            }
+                          >
+                            {ratio.label}
+                          </Badge>
                         )}
                       </div>
                       {isFailed && m.errorMessage && (
@@ -384,19 +475,24 @@ export default function CollectionPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleKeep(m)}
-                              disabled={!m.generatedImageId || m.reviewState === "accepted"}
+                              onClick={() => handlePrimaryReview(m)}
+                              disabled={
+                                !m.generatedImageId ||
+                                (primary.label === "Keep" && m.reviewState === "accepted")
+                              }
                             >
-                              Keep
+                              {primary.label}
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleReject(m)}
-                              disabled={!m.generatedImageId || m.reviewState === "rejected"}
-                            >
-                              Reject
-                            </Button>
+                            {!isRejected && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleReject(m)}
+                                disabled={!m.generatedImageId}
+                              >
+                                Reject
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="ghost"
@@ -406,6 +502,17 @@ export default function CollectionPage() {
                               {busyItemId === m.itemId ? "…" : "Regenerate"}
                             </Button>
                           </>
+                        )}
+                        {isQueued && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleStart(m)}
+                            disabled={busyItemId === m.itemId}
+                            title="Dispatch this queued candidate to the worker now"
+                          >
+                            {busyItemId === m.itemId ? "…" : "Start"}
+                          </Button>
                         )}
                         {isFailed && (
                           <Button
