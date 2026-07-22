@@ -11,6 +11,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import MatchingCollectionDialog from "@/components/matching-collection/MatchingCollectionDialog";
+import { resolveMatchingCollectionAnchor } from "@/lib/matching-collection/anchor-resolver";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
 import { describeExportSource } from "@/lib/asset-selection";
 import {
@@ -211,6 +212,13 @@ export default function ImageGenerator({
   type ProbedDims = { width: number; height: number; url: string } | null;
   const [baseProbedDims, setBaseProbedDims] = useState<ProbedDims>(null);
   const [enhancedProbedDims, setEnhancedProbedDims] = useState<ProbedDims>(null);
+  // Durable master identity captured from the persisted worker result.
+  // Cleared at the start of every new generation so a new image never
+  // inherits the previous image's anchor identity.
+  const [durableMasterUrl, setDurableMasterUrl] = useState<string | null>(null);
+  const [durableMasterStoragePath, setDurableMasterStoragePath] = useState<string | null>(null);
+  const [durableMasterWidth, setDurableMasterWidth] = useState<number | null>(null);
+  const [durableMasterHeight, setDurableMasterHeight] = useState<number | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Variant fan-out — generate 4 in parallel and let the user pick.
   const [variantMode, setVariantMode] = useState(false);
@@ -611,6 +619,12 @@ export default function ImageGenerator({
     resetUpscale();
     setEnhancedImageUrl(null);
     savedGalleryIdRef.current = null;
+    // Clear previous anchor identity so the new generation cannot
+    // inherit the prior image's gallery id, storage path, or dims.
+    setDurableMasterUrl(null);
+    setDurableMasterStoragePath(null);
+    setDurableMasterWidth(null);
+    setDurableMasterHeight(null);
     upscaleRunId.current++;
     setDurableFailure(null);
 
@@ -748,6 +762,15 @@ export default function ImageGenerator({
         savedGalleryIdRef.current = persistedId;
         setSavedToGallery(true);
       }
+      // Capture durable master identity so Matching Collection can
+      // hand off the persisted storage path + real actual dimensions.
+      if (meta?.storagePath) setDurableMasterStoragePath(meta.storagePath);
+      if (meta?.actualWidthPx) setDurableMasterWidth(meta.actualWidthPx);
+      if (meta?.actualHeightPx) setDurableMasterHeight(meta.actualHeightPx);
+      // The visible base URL is the ratio-enforced Canvas asset; the
+      // durable master URL is the raw persisted output. We record the
+      // raw URL only so the resolver can match a direct-select scenario.
+      setDurableMasterUrl(rawUrl);
       setLoading(false);
       setDurableFailure(null);
       // Release the durable pointer so the next generation starts clean.
@@ -1831,25 +1854,44 @@ export default function ImageGenerator({
         )}
       </div>
 
-      {imageUrl && (
-        <MatchingCollectionDialog
-          open={matchingOpen}
-          onOpenChange={setMatchingOpen}
-          anchorImageUrl={enhancedImageUrl || imageUrl}
-          anchorImageId={savedGalleryIdRef.current}
-          anchor={{
-            styleKey: variantStyleKey,
-            posterFormatId: selectedPrintFormat.id,
-            aspectRatio: effectiveAspectRatio,
-            backgroundStyle,
-            provider: lastProviderUsed ?? null,
-            model: lastModelUsed ?? null,
-            referenceStrength: null,
-            anchorWidthPx: baseProbedDims?.width ?? enhancedProbedDims?.width ?? null,
-            anchorHeightPx: baseProbedDims?.height ?? enhancedProbedDims?.height ?? null,
-          }}
-        />
-      )}
+      {imageUrl && (() => {
+        const selectedUrl = enhancedImageUrl || imageUrl;
+        const resolved = resolveMatchingCollectionAnchor({
+          baseUrl: baseImageUrl || imageUrl,
+          baseStoragePath: originalStoragePath ?? null,
+          baseWidth: baseProbedDims?.width ?? null,
+          baseHeight: baseProbedDims?.height ?? null,
+          enhancedUrl: enhancedImageUrl,
+          enhancedStoragePath: null,
+          enhancedWidth: enhancedProbedDims?.width ?? null,
+          enhancedHeight: enhancedProbedDims?.height ?? null,
+          durableMasterUrl,
+          durableMasterStoragePath,
+          durableMasterWidth,
+          durableMasterHeight,
+          selectedUrl,
+        });
+        return (
+          <MatchingCollectionDialog
+            open={matchingOpen}
+            onOpenChange={setMatchingOpen}
+            anchorImageUrl={resolved?.anchorImageUrl ?? selectedUrl}
+            anchorImageId={savedGalleryIdRef.current}
+            anchorStoragePath={resolved?.anchorStoragePath ?? null}
+            anchor={{
+              styleKey: variantStyleKey,
+              posterFormatId: selectedPrintFormat.id,
+              aspectRatio: effectiveAspectRatio,
+              backgroundStyle,
+              provider: lastProviderUsed ?? null,
+              model: lastModelUsed ?? null,
+              referenceStrength: null,
+              anchorWidthPx: resolved?.anchorWidthPx ?? null,
+              anchorHeightPx: resolved?.anchorHeightPx ?? null,
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

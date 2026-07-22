@@ -1,18 +1,16 @@
 /**
- * review — Keep / Reject workflow for matching-collection members.
+ * review — Keep / Reject / Restore workflow for matching-collection
+ * members.
  *
- * "Keep" flips matching_review_state → 'accepted'. That's the only
- * change; the underlying generated_images row keeps its storage, cost
- * event, prompt history, and provenance intact so accepted members
- * behave exactly like any other gallery image.
+ * Semantics:
+ *   - Keep     : pending → accepted (also unarchive).
+ *   - Reject   : any    → rejected + is_archived=true (soft-hide).
+ *   - Restore  : rejected → pending + is_archived=false. The user can
+ *                Keep again after restoring; this is deliberately NOT
+ *                an implicit re-accept so intent stays explicit.
  *
- * "Reject" flips matching_review_state → 'rejected' AND soft-archives
- * the image (is_archived=true, admin_status via existing trigger). The
- * durable asset is preserved — nothing is deleted — so it stays out of
- * the finished collection view while remaining recoverable from the
- * admin trash.
- *
- * Only the selected member is ever touched; siblings are unaffected.
+ * Only the selected generated-image row is touched; siblings and
+ * regenerated candidates are independent.
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -23,9 +21,22 @@ export type ReviewState = "pending" | "accepted" | "rejected";
 export function reviewStatePatch(next: ReviewState): Record<string, unknown> {
   return {
     matching_review_state: next,
-    // Restore = pending: unarchive so it becomes visible in the default view.
+    // "rejected" archives; every other transition unarchives.
     ...(next === "rejected" ? { is_archived: true } : { is_archived: false }),
   };
+}
+
+/**
+ * Label + target state for the primary action on a member's card given
+ * its current review state. Rejected members surface "Restore" (which
+ * returns to pending), everyone else surfaces "Keep".
+ */
+export function reviewPrimaryAction(
+  state: ReviewState | null | undefined,
+): { label: "Keep" | "Restore"; target: ReviewState } {
+  return state === "rejected"
+    ? { label: "Restore", target: "pending" }
+    : { label: "Keep", target: "accepted" };
 }
 
 export async function setMemberReviewState(
