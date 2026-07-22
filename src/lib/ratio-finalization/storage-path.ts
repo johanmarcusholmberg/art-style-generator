@@ -26,7 +26,10 @@ export interface BuildRatioFinalizedStoragePathInput {
 
 function sanitizeSegment(input: string): string {
   const lower = input.toLowerCase();
-  const cleaned = lower.replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  const cleaned = lower
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/\.{2,}/g, "-") // collapse ".." so path traversal can't survive
+    .replace(/^[-.]+|[-.]+$/g, "");
   return cleaned || "unknown";
 }
 
