@@ -1713,7 +1713,7 @@ export function createStyleHandler(styleKey: string) {
           posterFormatId:
             typeof posterFormatId === "string" ? posterFormatId : undefined,
           referenceStrength:
-            typeof referenceStrength === "string" ? referenceStrength : undefined,
+            typeof referenceStrength === "string" ? (referenceStrength as any) : undefined,
         });
 
         return new Response(
