@@ -145,6 +145,13 @@ describe("resolveCollectionProvider", () => {
   });
 });
 
+const FROZEN_LIKE = {
+  styleKey: BASE_ANCHOR.styleKey,
+  posterFormatId: BASE_ANCHOR.posterFormatId,
+  aspectRatio: BASE_ANCHOR.aspectRatio,
+  backgroundStyle: BASE_ANCHOR.backgroundStyle,
+};
+
 describe("buildCollectionItems", () => {
   it("uses the SAME anchorImageUrl on every item (fan-out, never chained)", () => {
     const items = buildCollectionItems({
@@ -152,7 +159,7 @@ describe("buildCollectionItems", () => {
       anchorImageUrl: ANCHOR_URL,
       anchorImageId: null,
       matchingCollectionId: "col-1",
-      anchor: BASE_ANCHOR,
+      frozen: FROZEN_LIKE,
       artDirection: SAMPLE_AD,
       consistencyStrength: "balanced",
       provider: BASE_PROVIDER,
@@ -167,7 +174,7 @@ describe("buildCollectionItems", () => {
       anchorImageUrl: ANCHOR_URL,
       anchorImageId: null,
       matchingCollectionId: "col-1",
-      anchor: BASE_ANCHOR,
+      frozen: FROZEN_LIKE,
       artDirection: SAMPLE_AD,
       consistencyStrength: "balanced",
       provider: BASE_PROVIDER,
@@ -191,7 +198,7 @@ describe("buildCollectionItems", () => {
       anchorImageUrl: ANCHOR_URL,
       anchorImageId: null,
       matchingCollectionId: "col-1",
-      anchor: BASE_ANCHOR,
+      frozen: FROZEN_LIKE,
       artDirection: SAMPLE_AD,
       consistencyStrength: "strict",
       provider: BASE_PROVIDER,

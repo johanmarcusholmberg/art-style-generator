@@ -31,6 +31,9 @@ import {
 } from "@/lib/matching-collection/create-job";
 import { analyzeAnchorImage } from "@/lib/matching-collection/anchor-analysis";
 import { resolveCollectionProvider } from "@/lib/matching-collection/provider-capability";
+import { freezeCollectionSettings } from "@/lib/matching-collection/frozen-settings";
+import { computeCollectionFingerprint } from "@/lib/matching-collection/collection-fingerprint";
+import { consistencyToReferenceStrength } from "@/lib/matching-collection/consistency-strength";
 import type {
   AnchorInheritedSettings,
   CollectionArtDirection,
@@ -93,32 +96,59 @@ export function MatchingCollectionDialog(props: MatchingCollectionDialogProps) {
     if (!canConfirm) return;
     setSubmitting(true);
     try {
-      // 1. Insert the collection row so we have a stable id to persist to.
-      const { data: collectionRow, error: colErr } = await supabase
-        .from("collections")
-        .insert({ name: name.trim() } as never)
-        .select("id")
-        .single();
-      if (colErr || !collectionRow) throw new Error(colErr?.message ?? "collection insert failed");
-      const collectionId = (collectionRow as { id: string }).id;
-
-      // 2. Kick off durable job (fan-out from the same anchor).
-      await createMatchingCollectionJob({
-        collectionId,
-        collectionName: name.trim(),
-        anchorImageUrl,
+      const frozen = freezeCollectionSettings({
         anchorImageId,
-        anchor,
+        anchorImageUrl,
+        anchorStoragePath: null,
+        anchorWidthPx: anchor.anchorWidthPx,
+        anchorHeightPx: anchor.anchorHeightPx,
+        styleKey: anchor.styleKey,
+        posterFormatId: anchor.posterFormatId,
+        aspectRatio: anchor.aspectRatio,
+        backgroundStyle: anchor.backgroundStyle,
+        anchorProvider: anchor.provider,
+        anchorModel: anchor.model,
+        resolvedProvider: resolvedProvider.provider,
+        resolvedModel: resolvedProvider.model,
+        providerPreference: resolvedProvider.providerPreference,
+        referenceStrength:
+          anchor.referenceStrength ?? consistencyToReferenceStrength(consistency),
         artDirection,
         consistencyStrength: consistency,
-        provider: resolvedProvider,
-        subjects: parsed.subjects,
-        idempotencyKey: `mc-${collectionId}-${Date.now()}`,
       });
 
-      toast({ title: "Collection started", description: `${parsed.subjects.length} image(s) queued.` });
+      const fingerprint = await computeCollectionFingerprint({
+        scope: "create",
+        subjects: parsed.subjects,
+        anchor: {
+          imageId: frozen.anchorImageId,
+          imageUrl: frozen.anchorImageUrl,
+          widthPx: frozen.anchorWidthPx,
+          heightPx: frozen.anchorHeightPx,
+        },
+        artDirectionVersion: frozen.artDirectionVersion,
+        consistencyStrength: frozen.consistencyStrength,
+        posterFormatId: frozen.posterFormatId,
+        aspectRatio: frozen.aspectRatio,
+        backgroundStyle: frozen.backgroundStyle,
+        resolvedProvider: frozen.resolvedProvider ?? resolvedProvider.provider,
+        resolvedModel: frozen.resolvedModel ?? resolvedProvider.model,
+      });
+
+      const result = await createMatchingCollectionJob({
+        collectionName: name.trim(),
+        frozen,
+        provider: resolvedProvider,
+        subjects: parsed.subjects,
+        fingerprint,
+      });
+
+      toast({
+        title: result.reused ? "Existing collection reused" : "Collection started",
+        description: `${parsed.subjects.length} image(s) queued.`,
+      });
       onOpenChange(false);
-      navigate(`/collection/${collectionId}`);
+      navigate(`/collection/${result.collectionId}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       toast({ title: "Could not start collection", description: msg, variant: "destructive" });

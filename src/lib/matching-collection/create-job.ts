@@ -1,26 +1,27 @@
 /**
- * create-job — turns an approved matching-collection setup into a durable
- * `generation_jobs` row (job_type='matching_collection') with one
- * `generation_job_items` row per subject.
+ * create-job — Matching Collection creation via the atomic
+ * `create_matching_collection_atomic` RPC.
  *
- * Behavior guarantees (Stage 2 spec):
- *   1. Every item's payload carries the SAME anchorImageUrl. Fan-out,
- *      never chained — no item ever references another item's output.
- *   2. anchorImageUrl is the ONE canonical reference property; the worker
- *      is responsible for mapping it to referenceImageUrl at execution.
- *   3. Style / print / poster-format instructions are NOT emitted here.
- *      Only the subject + collection-consistency block. The existing
- *      prompt-compiler pipeline continues to add the canonical style
- *      rules exactly once at execution time.
- *   4. Results persist immediately with `matching_review_state='pending'`
- *      so a refresh cannot lose them.
+ * Guarantees:
+ *   1. Server owns collection creation/reuse, frozen metadata, job
+ *      creation, item creation, collection↔job linkage, and the
+ *      authoritative `matchingCollectionId` injection into every item
+ *      payload. The client never trusts its own placeholder id.
+ *   2. Idempotency is deterministic — driven entirely by the caller's
+ *      fingerprint (see `computeCollectionFingerprint`). Reusing the
+ *      same fingerprint returns `reused=true` and skips dispatch for
+ *      items already past `queued`.
+ *   3. OpenAI is rejected up-front for durable jobs (worker cannot
+ *      execute it yet). No RPC call is made in that case.
+ *   4. Fan-out only: every item carries the SAME anchor URL. No item
+ *      references another item's output.
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { checkDurableExecutability } from "@/lib/generation-executable-providers";
 import {
   ART_DIRECTION_VERSION,
   DEFAULT_CONSISTENCY_STRENGTH,
-  type AnchorInheritedSettings,
   type CollectionArtDirection,
   type ConsistencyStrength,
   type MatchingCollectionItemPayload,
@@ -28,6 +29,7 @@ import {
 } from "./types";
 import { composeCollectionPrompt } from "./prompt-composer";
 import { consistencyToReferenceStrength } from "./consistency-strength";
+import type { FrozenCollectionSettings } from "./frozen-settings";
 
 export const MAX_COLLECTION_SUBJECTS = 20;
 
@@ -37,13 +39,6 @@ export interface ParsedSubjects {
   truncated: boolean;
 }
 
-/**
- * Split a raw multiline subjects textarea into a clean list.
- *   - blank / whitespace-only lines are ignored
- *   - trims each subject
- *   - deduplicates while preserving order
- *   - caps at MAX_COLLECTION_SUBJECTS
- */
 export function parseSubjects(raw: string): ParsedSubjects {
   const lines = raw.split(/\r?\n/);
   let ignored = 0;
@@ -72,17 +67,23 @@ export interface BuildItemsInput {
   subjects: string[];
   anchorImageUrl: string;
   anchorImageId: string | null;
+  /**
+   * Placeholder only — the RPC strips this and injects the authoritative
+   * collection id. Callers routed through the atomic RPC pass `""`.
+   */
   matchingCollectionId: string;
-  anchor: AnchorInheritedSettings;
+  frozen: Pick<
+    FrozenCollectionSettings,
+    | "styleKey"
+    | "posterFormatId"
+    | "aspectRatio"
+    | "backgroundStyle"
+  >;
   artDirection: CollectionArtDirection | null;
   consistencyStrength: ConsistencyStrength;
   provider: ResolvedCollectionProvider;
 }
 
-/**
- * Pure helper: builds the per-item payloads that will be persisted into
- * `generation_job_items.request_payload`. Exposed for tests.
- */
 export function buildCollectionItems(
   input: BuildItemsInput,
 ): MatchingCollectionItemPayload[] {
@@ -105,13 +106,13 @@ export function buildCollectionItems(
       artDirectionVersion: ART_DIRECTION_VERSION,
       consistencyStrength: input.consistencyStrength,
       referenceStrength,
-      styleKey: input.anchor.styleKey,
+      styleKey: input.frozen.styleKey,
       providerPreference: input.provider.providerPreference,
-      aspectRatio: input.anchor.aspectRatio,
-      backgroundStyle: input.anchor.backgroundStyle,
+      aspectRatio: input.frozen.aspectRatio,
+      backgroundStyle: input.frozen.backgroundStyle,
       generationMode: "standard",
-      printFormatId: input.anchor.posterFormatId,
-      mode: input.anchor.styleKey,
+      printFormatId: input.frozen.posterFormatId,
+      mode: input.frozen.styleKey,
       providerLabel: input.provider.substituted
         ? `${input.provider.provider} (substituted)`
         : input.provider.provider,
@@ -120,107 +121,159 @@ export function buildCollectionItems(
   });
 }
 
+/** Derives the deterministic job idempotency key from a fingerprint. */
+export function fingerprintToJobIdempotencyKey(fingerprint: string): string {
+  // Fingerprints are 32–64 hex chars; prefix keeps it recognizable and
+  // stays well under any known idempotency-key length limit.
+  return `mc-v2-${fingerprint}`;
+}
+
 export interface CreateMatchingCollectionInput {
-  collectionId: string;
   collectionName: string;
-  anchorImageUrl: string;
-  anchorImageId: string | null;
-  anchor: AnchorInheritedSettings;
-  artDirection: CollectionArtDirection | null;
-  consistencyStrength?: ConsistencyStrength;
+  frozen: FrozenCollectionSettings;
   provider: ResolvedCollectionProvider;
   subjects: string[];
-  idempotencyKey: string;
+  /** Deterministic fingerprint from `computeCollectionFingerprint`. */
+  fingerprint: string;
+  /** Optional override — defaults to `fingerprintToJobIdempotencyKey`. */
+  jobIdempotencyKey?: string;
+  /** Optional descriptive prompt persisted on the job row. */
+  jobPrompt?: string;
 }
 
 export interface CreateMatchingCollectionResult {
+  collectionId: string;
   jobId: string;
   itemIds: string[];
+  reused: boolean;
+  dispatchedItemIds: string[];
+  dispatchFailures: Array<{ itemId: string; message: string }>;
 }
 
-/**
- * Wire the matching-collection payloads into the existing durable
- * `create_generation_job` RPC. Job type is `matching_collection` so the
- * aggregate trigger and recovery paths already handle mixed outcomes and
- * single-item failures.
- */
+/** Injected dependency handle used by tests to observe the boundary. */
+export interface CreateMatchingCollectionDeps {
+  rpc?: typeof supabase.rpc;
+  invoke?: typeof supabase.functions.invoke;
+  fetchItemStatuses?: (itemIds: string[]) => Promise<Array<{ id: string; status: string }>>;
+}
+
+async function defaultFetchItemStatuses(itemIds: string[]) {
+  if (itemIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("generation_job_items")
+    .select("id,status")
+    .in("id", itemIds);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Array<{ id: string; status: string }>;
+}
+
 export async function createMatchingCollectionJob(
   input: CreateMatchingCollectionInput,
+  deps: CreateMatchingCollectionDeps = {},
 ): Promise<CreateMatchingCollectionResult> {
-  const consistency = input.consistencyStrength ?? DEFAULT_CONSISTENCY_STRENGTH;
+  // 1. Durable executability gate — reject BEFORE any RPC side-effect.
+  const gate = checkDurableExecutability(input.provider.providerPreference);
+  if (!gate.ok) {
+    throw new Error(gate.reason ?? "Selected provider cannot run as a durable job.");
+  }
+
+  // 2. Build items with an EMPTY collection id — the RPC injects the
+  //    authoritative id server-side and strips any caller value.
   const items = buildCollectionItems({
     subjects: input.subjects,
-    anchorImageUrl: input.anchorImageUrl,
-    anchorImageId: input.anchorImageId,
-    matchingCollectionId: input.collectionId,
-    anchor: input.anchor,
-    artDirection: input.artDirection,
-    consistencyStrength: consistency,
+    anchorImageUrl: input.frozen.anchorImageUrl ?? "",
+    anchorImageId: input.frozen.anchorImageId,
+    matchingCollectionId: "",
+    frozen: {
+      styleKey: input.frozen.styleKey,
+      posterFormatId: input.frozen.posterFormatId,
+      aspectRatio: input.frozen.aspectRatio,
+      backgroundStyle: input.frozen.backgroundStyle,
+    },
+    artDirection: input.frozen.artDirection,
+    consistencyStrength: input.frozen.consistencyStrength,
     provider: input.provider,
   });
 
-  // Persist collection-level metadata BEFORE dispatch so a refresh in the
-  // middle of job creation still finds the anchor + art direction.
-  await supabase
-    .from("collections")
-    .update({
-      anchor_image_id: input.anchorImageId,
-      art_direction: input.artDirection as unknown as never,
-      art_direction_version: ART_DIRECTION_VERSION,
-      consistency_strength: consistency,
-      anchor_style_key: input.anchor.styleKey,
-      anchor_poster_format_id: input.anchor.posterFormatId,
-      anchor_provider: input.anchor.provider,
-      anchor_model: input.anchor.model,
-      resolved_provider: input.provider.provider,
-      resolved_model: input.provider.model,
-      provider_substitution_reason: input.provider.reason,
-      reference_strength: consistencyToReferenceStrength(consistency),
-    } as never)
-    .eq("id", input.collectionId);
+  const rpc = deps.rpc ?? supabase.rpc.bind(supabase);
+  const invoke = deps.invoke ?? supabase.functions.invoke.bind(supabase.functions);
+  const fetchStatuses = deps.fetchItemStatuses ?? defaultFetchItemStatuses;
 
-  const { data, error } = await supabase.rpc("create_generation_job", {
-    p_idempotency_key: input.idempotencyKey,
-    p_job_type: "matching_collection",
-    p_style_key: input.anchor.styleKey,
-    p_generation_mode: "standard",
-    p_context_key: input.collectionId,
-    p_prompt: `Matching collection: ${input.collectionName}`,
-    p_aspect_ratio: input.anchor.aspectRatio,
-    p_background_style: input.anchor.backgroundStyle,
+  const jobIdempotencyKey =
+    input.jobIdempotencyKey ?? fingerprintToJobIdempotencyKey(input.fingerprint);
+
+  // 3. Single atomic call that owns collection + job + items + linkage.
+  const { data, error } = await rpc("create_matching_collection_atomic", {
+    p_fingerprint: input.fingerprint,
+    p_name: input.collectionName,
+    p_anchor_image_id: input.frozen.anchorImageId as unknown as string,
+    p_anchor_image_url: input.frozen.anchorImageUrl as unknown as string,
+    p_anchor_storage_path: input.frozen.anchorStoragePath as unknown as string,
+    p_anchor_width_px: input.frozen.anchorWidthPx as unknown as number,
+    p_anchor_height_px: input.frozen.anchorHeightPx as unknown as number,
+    p_anchor_aspect_ratio: input.frozen.aspectRatio,
+    p_anchor_style_key: input.frozen.styleKey,
+    p_anchor_poster_format_id: input.frozen.posterFormatId as unknown as string,
+    p_anchor_background_style: input.frozen.backgroundStyle,
+    p_anchor_provider: input.frozen.anchorProvider as unknown as string,
+    p_anchor_model: input.frozen.anchorModel as unknown as string,
+    p_resolved_provider: input.provider.provider,
+    p_resolved_model: input.provider.model,
+    p_provider_preference: input.provider.providerPreference,
+    p_provider_substitution_reason: (input.provider.reason ?? null) as unknown as string,
+    p_art_direction: input.frozen.artDirection as unknown as never,
+    p_art_direction_version: input.frozen.artDirectionVersion,
+    p_consistency_strength: input.frozen.consistencyStrength,
+    p_reference_strength: (input.frozen.referenceStrength ??
+      consistencyToReferenceStrength(input.frozen.consistencyStrength)) as unknown as string,
+    p_job_idempotency_key: jobIdempotencyKey,
+    p_job_prompt: input.jobPrompt ?? `Matching collection: ${input.collectionName}`,
     p_items: items as unknown as never,
   });
-  if (error || !data) throw new Error(error?.message ?? "Failed to create matching-collection job");
 
-  const created = Array.isArray(data)
-    ? (data[0] as { job_id: string; item_ids: string[] })
-    : (data as { job_id: string; item_ids: string[] });
+  if (error || !data) {
+    throw new Error(error?.message ?? "Failed to create matching-collection job");
+  }
+  const row = Array.isArray(data)
+    ? (data[0] as { collection_id: string; job_id: string; item_ids: string[]; reused: boolean })
+    : (data as { collection_id: string; job_id: string; item_ids: string[]; reused: boolean });
 
-  // Best-effort — annotate the job row with the anchor + art direction so
-  // resume/rerun can read them without walking every item payload.
-  await supabase
-    .from("generation_jobs")
-    .update({
-      anchor_image_id: input.anchorImageId,
-      anchor_image_url: input.anchorImageUrl,
-      anchor_width_px: input.anchor.anchorWidthPx,
-      anchor_height_px: input.anchor.anchorHeightPx,
-      anchor_aspect_ratio: input.anchor.aspectRatio,
-      art_direction: input.artDirection as unknown as never,
-      art_direction_version: ART_DIRECTION_VERSION,
-      consistency_strength: consistency,
-      matching_collection_id: input.collectionId,
-    } as never)
-    .eq("id", created.job_id);
-
-  // Fire durable worker per item (fan-out from same anchor, never chained).
-  for (const itemId of created.item_ids) {
-    void supabase.functions
-      .invoke("generate-single", { body: { itemId } })
-      .catch((err) =>
-        console.error("[createMatchingCollectionJob] dispatch failed:", err),
+  // 4. Dispatch policy.
+  //    - reused=false → every returned item is fresh; dispatch each exactly once.
+  //    - reused=true  → inspect statuses, dispatch only those still queued.
+  let toDispatch: string[] = row.item_ids ?? [];
+  if (row.reused) {
+    try {
+      const statuses = await fetchStatuses(toDispatch);
+      const dispatchable = new Set(
+        statuses.filter((s) => s.status === "queued").map((s) => s.id),
       );
+      toDispatch = toDispatch.filter((id) => dispatchable.has(id));
+    } catch (err) {
+      console.warn("[createMatchingCollectionJob] status probe failed:", err);
+      toDispatch = [];
+    }
   }
 
-  return { jobId: created.job_id, itemIds: created.item_ids };
+  const dispatchFailures: Array<{ itemId: string; message: string }> = [];
+  const dispatchedItemIds: string[] = [];
+  for (const itemId of toDispatch) {
+    try {
+      await invoke("generate-single", { body: { itemId } });
+      dispatchedItemIds.push(itemId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[createMatchingCollectionJob] dispatch failed:", itemId, err);
+      dispatchFailures.push({ itemId, message });
+    }
+  }
+
+  return {
+    collectionId: row.collection_id,
+    jobId: row.job_id,
+    itemIds: row.item_ids ?? [],
+    reused: !!row.reused,
+    dispatchedItemIds,
+    dispatchFailures,
+  };
 }

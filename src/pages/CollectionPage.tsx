@@ -31,13 +31,14 @@ import {
   MAX_COLLECTION_SUBJECTS,
 } from "@/lib/matching-collection/create-job";
 import { resolveCollectionProvider } from "@/lib/matching-collection/provider-capability";
+import { readFrozenCollectionSettings } from "@/lib/matching-collection/frozen-settings";
+import { computeCollectionFingerprint } from "@/lib/matching-collection/collection-fingerprint";
 import type {
   AnchorInheritedSettings,
   CollectionArtDirection,
-  ConsistencyStrength,
 } from "@/lib/matching-collection/types";
 
-interface CollectionRow {
+type CollectionRow = Record<string, unknown> & {
   id: string;
   name: string | null;
   anchor_image_id: string | null;
@@ -50,7 +51,7 @@ interface CollectionRow {
   consistency_strength: string | null;
   art_direction: unknown;
   reference_strength: string | null;
-}
+};
 
 interface MemberRow {
   id: string;
@@ -84,9 +85,7 @@ export default function CollectionPage() {
       const [{ data: col }, list] = await Promise.all([
         supabase
           .from("collections")
-          .select(
-            "id,name,anchor_image_id,anchor_style_key,anchor_poster_format_id,anchor_provider,anchor_model,resolved_provider,resolved_model,consistency_strength,art_direction,reference_strength",
-          )
+          .select("*")
           .eq("id", id)
           .maybeSingle(),
         listCollectionMembers(id),
@@ -94,16 +93,25 @@ export default function CollectionPage() {
       setCollection((col as CollectionRow | null) ?? null);
       setMembers(list as MemberRow[]);
 
-      // Resolve anchor image url: prefer explicit anchor_image_id row.
+      // Resolve anchor image url: prefer explicit anchor_image_id row,
+      // then persisted frozen anchor_storage_path/anchor_image_url.
       const c = col as CollectionRow | null;
+      let url: string | null = null;
       if (c?.anchor_image_id) {
         const { data: a } = await supabase
           .from("generated_images")
           .select("storage_path")
           .eq("id", c.anchor_image_id)
           .maybeSingle();
-        setAnchorUrl(publicUrl((a as { storage_path: string | null } | null)?.storage_path ?? null));
+        url = publicUrl((a as { storage_path: string | null } | null)?.storage_path ?? null);
       }
+      if (!url && typeof c?.anchor_storage_path === "string") {
+        url = publicUrl(c.anchor_storage_path as string);
+      }
+      if (!url && typeof c?.anchor_image_url === "string") {
+        url = c.anchor_image_url as string;
+      }
+      setAnchorUrl(url);
     } finally {
       setLoading(false);
     }
@@ -162,37 +170,71 @@ export default function CollectionPage() {
   }
 
   async function handleAddMore() {
-    if (!id || !collection || !anchorUrl) return;
+    if (!id || !collection) return;
     const parsed = parseSubjects(extraSubjects);
     if (parsed.subjects.length === 0) return;
     setAdding(true);
     try {
-      const anchor: AnchorInheritedSettings = {
-        styleKey: collection.anchor_style_key ?? "freestyle",
-        posterFormatId: collection.anchor_poster_format_id,
-        aspectRatio: "5:7",
-        backgroundStyle: "white",
-        provider: collection.anchor_provider,
-        model: collection.anchor_model,
-        referenceStrength: null,
-        anchorWidthPx: null,
-        anchorHeightPx: null,
+      // Read the FROZEN settings — no hard-coded defaults except those
+      // that `readFrozenCollectionSettings` explicitly reports.
+      const { settings: frozen, usedFallbacks } = readFrozenCollectionSettings(collection);
+      if (usedFallbacks.length > 0) {
+        console.info("[CollectionPage] add-more using legacy fallbacks:", usedFallbacks);
+      }
+      // Provider: trust the persisted resolved provider/model when present;
+      // otherwise resolve from the frozen anchor settings.
+      const anchorLike: AnchorInheritedSettings = {
+        styleKey: frozen.styleKey || "freestyle",
+        posterFormatId: frozen.posterFormatId,
+        aspectRatio: frozen.aspectRatio,
+        backgroundStyle: frozen.backgroundStyle,
+        provider: frozen.anchorProvider,
+        model: frozen.anchorModel,
+        referenceStrength: frozen.referenceStrength,
+        anchorWidthPx: frozen.anchorWidthPx,
+        anchorHeightPx: frozen.anchorHeightPx,
       };
-      const provider = resolveCollectionProvider(anchor);
-      await createMatchingCollectionJob({
-        collectionId: id,
+      const provider = frozen.resolvedProvider && frozen.resolvedModel
+        ? {
+            providerPreference: frozen.providerPreference,
+            provider: frozen.resolvedProvider,
+            model: frozen.resolvedModel,
+            substituted: false,
+            reason: null,
+            estimatedCostPerImageUsd: null,
+          }
+        : resolveCollectionProvider(anchorLike);
+
+      const fingerprint = await computeCollectionFingerprint({
+        scope: id,
+        subjects: parsed.subjects,
+        anchor: {
+          imageId: frozen.anchorImageId,
+          imageUrl: frozen.anchorImageUrl,
+          widthPx: frozen.anchorWidthPx,
+          heightPx: frozen.anchorHeightPx,
+        },
+        artDirectionVersion: frozen.artDirectionVersion,
+        consistencyStrength: frozen.consistencyStrength,
+        posterFormatId: frozen.posterFormatId,
+        aspectRatio: frozen.aspectRatio,
+        backgroundStyle: frozen.backgroundStyle,
+        resolvedProvider: provider.provider,
+        resolvedModel: provider.model,
+      });
+
+      const result = await createMatchingCollectionJob({
         collectionName: collection.name ?? "Untitled",
-        anchorImageUrl: anchorUrl,
-        anchorImageId: collection.anchor_image_id,
-        anchor,
-        artDirection: collection.art_direction as CollectionArtDirection | null,
-        consistencyStrength: (collection.consistency_strength as ConsistencyStrength | null) ?? "balanced",
+        frozen,
         provider,
         subjects: parsed.subjects,
-        idempotencyKey: `mc-${id}-add-${Date.now()}`,
+        fingerprint,
       });
       setExtraSubjects("");
-      toast({ title: "Queued", description: `${parsed.subjects.length} more image(s) queued.` });
+      toast({
+        title: result.reused ? "Already queued" : "Queued",
+        description: `${parsed.subjects.length} more image(s) queued.`,
+      });
       void load();
     } catch (e) {
       toast({ title: "Add failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
