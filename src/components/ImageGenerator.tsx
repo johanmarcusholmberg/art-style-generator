@@ -1854,25 +1854,44 @@ export default function ImageGenerator({
         )}
       </div>
 
-      {imageUrl && (
-        <MatchingCollectionDialog
-          open={matchingOpen}
-          onOpenChange={setMatchingOpen}
-          anchorImageUrl={enhancedImageUrl || imageUrl}
-          anchorImageId={savedGalleryIdRef.current}
-          anchor={{
-            styleKey: variantStyleKey,
-            posterFormatId: selectedPrintFormat.id,
-            aspectRatio: effectiveAspectRatio,
-            backgroundStyle,
-            provider: lastProviderUsed ?? null,
-            model: lastModelUsed ?? null,
-            referenceStrength: null,
-            anchorWidthPx: baseProbedDims?.width ?? enhancedProbedDims?.width ?? null,
-            anchorHeightPx: baseProbedDims?.height ?? enhancedProbedDims?.height ?? null,
-          }}
-        />
-      )}
+      {imageUrl && (() => {
+        const selectedUrl = enhancedImageUrl || imageUrl;
+        const resolved = resolveMatchingCollectionAnchor({
+          baseUrl: baseImageUrl || imageUrl,
+          baseStoragePath: originalStoragePath ?? null,
+          baseWidth: baseProbedDims?.width ?? null,
+          baseHeight: baseProbedDims?.height ?? null,
+          enhancedUrl: enhancedImageUrl,
+          enhancedStoragePath: null,
+          enhancedWidth: enhancedProbedDims?.width ?? null,
+          enhancedHeight: enhancedProbedDims?.height ?? null,
+          durableMasterUrl,
+          durableMasterStoragePath,
+          durableMasterWidth,
+          durableMasterHeight,
+          selectedUrl,
+        });
+        return (
+          <MatchingCollectionDialog
+            open={matchingOpen}
+            onOpenChange={setMatchingOpen}
+            anchorImageUrl={resolved?.anchorImageUrl ?? selectedUrl}
+            anchorImageId={savedGalleryIdRef.current}
+            anchorStoragePath={resolved?.anchorStoragePath ?? null}
+            anchor={{
+              styleKey: variantStyleKey,
+              posterFormatId: selectedPrintFormat.id,
+              aspectRatio: effectiveAspectRatio,
+              backgroundStyle,
+              provider: lastProviderUsed ?? null,
+              model: lastModelUsed ?? null,
+              referenceStrength: null,
+              anchorWidthPx: resolved?.anchorWidthPx ?? null,
+              anchorHeightPx: resolved?.anchorHeightPx ?? null,
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }
