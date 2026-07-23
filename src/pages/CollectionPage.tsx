@@ -38,6 +38,7 @@ import { regenerateCollectionMember } from "@/lib/matching-collection/regenerate
 import { startQueuedItem, canStartCandidate } from "@/lib/matching-collection/start-item";
 import { assessFormatReadiness } from "@/lib/matching-collection/ratio-readiness";
 import { useRatioFinalizationQueue } from "@/hooks/useRatioFinalizationQueue";
+import { shouldEnqueueRatioFinalization } from "@/lib/ratio-finalization/presentation";
 import { createReloadCoordinator } from "@/lib/reload-coordinator";
 import {
   createMatchingCollectionJob,
@@ -149,13 +150,18 @@ export default function CollectionPage() {
     onOutcome: () => coordinatorRef.current?.request(),
   });
 
-  // Auto-enqueue any completed items whose ratio finalization is pending.
-  // Failed items are only re-enqueued explicitly via the "Retry format"
-  // button so the user stays in control of retries.
+  // Auto-enqueue any completed items whose ratio finalization is
+  // pending, or whose "processing" lease has expired (recoverable).
+  // Failed items are only re-enqueued explicitly via "Retry format".
   useEffect(() => {
+    const now = Date.now();
     for (const m of members) {
-      if (m.itemStatus !== "completed") continue;
-      if (m.ratioFinalizationStatus === "pending") {
+      if (shouldEnqueueRatioFinalization({
+        itemStatus: m.itemStatus,
+        ratioStatus: m.ratioFinalizationStatus,
+        leaseExpiresAt: (m as unknown as { ratioLeaseExpiresAt?: string | null }).ratioLeaseExpiresAt ?? null,
+        now,
+      })) {
         finalizationQueue.enqueue(m.itemId);
       }
     }
