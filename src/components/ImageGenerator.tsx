@@ -48,6 +48,9 @@ import { PRINT_FORMATS, type PrintFormat, formatExportDescription, getPosterProm
 import { enforcePosterRatio } from "@/lib/poster-ratio-enforce";
 import { useDurableGeneration } from "@/hooks/useDurableGeneration";
 import { runFinalizeOnce } from "@/lib/finalize-ratio-lock";
+import { useRatioFinalizationQueue } from "@/hooks/useRatioFinalizationQueue";
+import { shouldEnqueueRatioFinalization } from "@/lib/ratio-finalization/presentation";
+import { loadDurableCanonicalAsset } from "@/lib/ratio-finalization/repository";
 import {
   isDurableResultMetadataV1,
   reconstructNormalizedResponse,
