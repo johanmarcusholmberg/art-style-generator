@@ -37,9 +37,9 @@ export interface DurableItemRow {
   enforced_image_url: string | null;
   raw_image_url: string | null;
   ratio_enforcement_status: string | null;
-  ratio_finalization_lease_expires_at: string | null;
-  ratio_finalization_error: string | null;
-  finalization_operation: string | null;
+  ratio_finalization_lease_expires_at?: string | null;
+  ratio_finalization_error?: string | null;
+  finalization_operation?: string | null;
   storage_path: string | null;
   completed_at: string | null;
   updated_at: string;
