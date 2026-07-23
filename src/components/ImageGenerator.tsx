@@ -794,39 +794,71 @@ export default function ImageGenerator({
       const refStrengthForApply = activeRefStrengthRef.current;
       if (meta) {
         const gen = reconstructNormalizedResponse(rawUrl, promptForApply, variantStyleKey, meta);
-        await applyGeneratedImage(gen, promptForApply, refUrlForApply, refStrengthForApply);
+        // Durable path: server owns ratio finalization. Skip client
+        // Canvas enforcement — the queue will render + upload the
+        // corrected master and the onOutcome handler swaps it in.
+        await applyGeneratedImage(gen, promptForApply, refUrlForApply, refStrengthForApply, {
+          skipRatioEnforcement: true,
+        });
       } else {
-        // Legacy fallback: no metadata — apply minimal state.
         setBaseImageUrl(rawUrl);
         setImageUrl(rawUrl);
         setEnhancedImageUrl(null);
       }
-      // ── Adopt the durable worker's persisted gallery row.
-      // The worker already inserted the generated_images row (with real
-      // storage_path, cost event, and provenance). Adopting its id here
-      // prevents a second save from `handleSaveToGallery`, and lets the
-      // Matching-Collection dialog use the true anchor identity.
       const persistedId = meta?.galleryImageId ?? null;
       if (persistedId) {
         savedGalleryIdRef.current = persistedId;
         setSavedToGallery(true);
       }
-      // Capture durable master identity so Matching Collection can
-      // hand off the persisted storage path + real actual dimensions.
       if (meta?.storagePath) setDurableMasterStoragePath(meta.storagePath);
       if (meta?.actualWidthPx) setDurableMasterWidth(meta.actualWidthPx);
       if (meta?.actualHeightPx) setDurableMasterHeight(meta.actualHeightPx);
-      // The visible base URL is the ratio-enforced Canvas asset; the
-      // durable master URL is the raw persisted output. We record the
-      // raw URL only so the resolver can match a direct-select scenario.
       setDurableMasterUrl(rawUrl);
       setLoading(false);
       setDurableFailure(null);
-      // Release the durable pointer so the next generation starts clean.
-      durable.clear();
+
+      // Decide finalization handling. Keep the durable pointer alive
+      // while finalization is outstanding so a refresh re-hydrates and
+      // re-enqueues; release only when ratio is already settled.
+      const shouldEnqueue = shouldEnqueueRatioFinalization({
+        itemStatus: first.status,
+        ratioStatus: first.ratio_enforcement_status,
+        leaseExpiresAt: first.ratio_finalization_lease_expires_at ?? null,
+        now: Date.now(),
+      });
+      if (shouldEnqueue) {
+        finalizationQueue.enqueue(first.id);
+        // durable.clear() deferred — happens in the queue outcome path.
+      } else {
+        if (first.ratio_enforcement_status === "failed") {
+          setDurableFormatFailure({
+            itemId: first.id,
+            message: first.ratio_finalization_error || "Poster-format finalization failed.",
+          });
+        }
+        durable.clear();
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [durable.items]);
+
+  // Release the durable pointer once a queued finalization settles for
+  // an item we adopted. Ties the two side effects together so refresh
+  // during a still-pending finalization can recover, but a completed
+  // one cleans up local storage.
+  useEffect(() => {
+    if (!durable.jobId) return;
+    const first = durable.items.find((r) => r.position === 0) ?? durable.items[0];
+    if (!first) return;
+    const outcome = finalizationQueue.outcomes.get(first.id);
+    if (!outcome) return;
+    if (outcome.status === "success" || outcome.status === "skipped") {
+      durable.clear();
+      finalizationQueue.clearOutcome(first.id);
+    }
+    // Failed outcome intentionally keeps durable pointer so a manual
+    // Retry-format can find the item on refresh.
+  }, [finalizationQueue.outcomes, durable.items, durable.jobId, durable, finalizationQueue]);
 
 
   const hasEnhanced = baseImageUrl && enhancedImageUrl && baseImageUrl !== enhancedImageUrl;
