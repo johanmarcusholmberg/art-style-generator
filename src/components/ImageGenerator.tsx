@@ -48,6 +48,9 @@ import { PRINT_FORMATS, type PrintFormat, formatExportDescription, getPosterProm
 import { enforcePosterRatio } from "@/lib/poster-ratio-enforce";
 import { useDurableGeneration } from "@/hooks/useDurableGeneration";
 import { runFinalizeOnce } from "@/lib/finalize-ratio-lock";
+import { useRatioFinalizationQueue } from "@/hooks/useRatioFinalizationQueue";
+import { shouldEnqueueRatioFinalization } from "@/lib/ratio-finalization/presentation";
+import { loadDurableCanonicalAsset } from "@/lib/ratio-finalization/repository";
 import {
   isDurableResultMetadataV1,
   reconstructNormalizedResponse,
@@ -266,6 +269,49 @@ export default function ImageGenerator({
   const [durableFailure, setDurableFailure] = useState<{ itemId: string; message: string } | null>(
     null,
   );
+  const [durableFormatFailure, setDurableFormatFailure] = useState<
+    { itemId: string; message: string } | null
+  >(null);
+
+  // Ratio-finalization queue drives poster-format correction for the
+  // durable path. On outcome we reload canonical DB truth and adopt the
+  // corrected master into the visible preview.
+  const finalizationQueue = useRatioFinalizationQueue({
+    onOutcome: (result) => {
+      if (result.status === "failed") {
+        setDurableFormatFailure({
+          itemId: result.itemId,
+          message: result.error || "Poster-format finalization failed.",
+        });
+        return;
+      }
+      setDurableFormatFailure(null);
+      void (async () => {
+        try {
+          const canonical = await loadDurableCanonicalAsset(result.itemId);
+          if (!canonical) return;
+          const path = canonical.masterStoragePath ?? canonical.storagePath;
+          const url =
+            (path
+              ? supabase.storage.from("generated-images").getPublicUrl(path).data.publicUrl
+              : null) ||
+            canonical.enforcedImageUrl ||
+            canonical.imageUrl ||
+            canonical.rawImageUrl;
+          if (url) {
+            setBaseImageUrl(url);
+            setImageUrl(url);
+            setEnhancedImageUrl(null);
+          }
+          if (path) setDurableMasterStoragePath(path);
+          if (canonical.masterWidth) setDurableMasterWidth(canonical.masterWidth);
+          if (canonical.masterHeight) setDurableMasterHeight(canonical.masterHeight);
+        } catch (err) {
+          console.warn("[ImageGenerator] canonical reload after finalize failed:", err);
+        }
+      })();
+    },
+  });
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
   // Poster format is the single source of truth for aspect ratio across
@@ -537,16 +583,19 @@ export default function ImageGenerator({
     activePrompt: string,
     referenceImageUrl: string | undefined,
     refStrengthUsed: ReferenceStrength | null,
+    opts: { skipRatioEnforcement?: boolean } = {},
   ) => {
     let baseUrl = gen.imageUrl;
-    try {
-      const enforced = await enforcePosterRatio({
-        imageUrl: gen.imageUrl,
-        formatId: selectedPrintFormat.id,
-      });
-      if (enforced?.url) baseUrl = enforced.url;
-    } catch (e) {
-      console.warn("[ImageGenerator] poster ratio enforcement failed", e);
+    if (!opts.skipRatioEnforcement) {
+      try {
+        const enforced = await enforcePosterRatio({
+          imageUrl: gen.imageUrl,
+          formatId: selectedPrintFormat.id,
+        });
+        if (enforced?.url) baseUrl = enforced.url;
+      } catch (e) {
+        console.warn("[ImageGenerator] poster ratio enforcement failed", e);
+      }
     }
 
     setBaseImageUrl(baseUrl);
@@ -745,39 +794,71 @@ export default function ImageGenerator({
       const refStrengthForApply = activeRefStrengthRef.current;
       if (meta) {
         const gen = reconstructNormalizedResponse(rawUrl, promptForApply, variantStyleKey, meta);
-        await applyGeneratedImage(gen, promptForApply, refUrlForApply, refStrengthForApply);
+        // Durable path: server owns ratio finalization. Skip client
+        // Canvas enforcement — the queue will render + upload the
+        // corrected master and the onOutcome handler swaps it in.
+        await applyGeneratedImage(gen, promptForApply, refUrlForApply, refStrengthForApply, {
+          skipRatioEnforcement: true,
+        });
       } else {
-        // Legacy fallback: no metadata — apply minimal state.
         setBaseImageUrl(rawUrl);
         setImageUrl(rawUrl);
         setEnhancedImageUrl(null);
       }
-      // ── Adopt the durable worker's persisted gallery row.
-      // The worker already inserted the generated_images row (with real
-      // storage_path, cost event, and provenance). Adopting its id here
-      // prevents a second save from `handleSaveToGallery`, and lets the
-      // Matching-Collection dialog use the true anchor identity.
       const persistedId = meta?.galleryImageId ?? null;
       if (persistedId) {
         savedGalleryIdRef.current = persistedId;
         setSavedToGallery(true);
       }
-      // Capture durable master identity so Matching Collection can
-      // hand off the persisted storage path + real actual dimensions.
       if (meta?.storagePath) setDurableMasterStoragePath(meta.storagePath);
       if (meta?.actualWidthPx) setDurableMasterWidth(meta.actualWidthPx);
       if (meta?.actualHeightPx) setDurableMasterHeight(meta.actualHeightPx);
-      // The visible base URL is the ratio-enforced Canvas asset; the
-      // durable master URL is the raw persisted output. We record the
-      // raw URL only so the resolver can match a direct-select scenario.
       setDurableMasterUrl(rawUrl);
       setLoading(false);
       setDurableFailure(null);
-      // Release the durable pointer so the next generation starts clean.
-      durable.clear();
+
+      // Decide finalization handling. Keep the durable pointer alive
+      // while finalization is outstanding so a refresh re-hydrates and
+      // re-enqueues; release only when ratio is already settled.
+      const shouldEnqueue = shouldEnqueueRatioFinalization({
+        itemStatus: first.status,
+        ratioStatus: first.ratio_enforcement_status,
+        leaseExpiresAt: first.ratio_finalization_lease_expires_at ?? null,
+        now: Date.now(),
+      });
+      if (shouldEnqueue) {
+        finalizationQueue.enqueue(first.id);
+        // durable.clear() deferred — happens in the queue outcome path.
+      } else {
+        if (first.ratio_enforcement_status === "failed") {
+          setDurableFormatFailure({
+            itemId: first.id,
+            message: first.ratio_finalization_error || "Poster-format finalization failed.",
+          });
+        }
+        durable.clear();
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [durable.items]);
+
+  // Release the durable pointer once a queued finalization settles for
+  // an item we adopted. Ties the two side effects together so refresh
+  // during a still-pending finalization can recover, but a completed
+  // one cleans up local storage.
+  useEffect(() => {
+    if (!durable.jobId) return;
+    const first = durable.items.find((r) => r.position === 0) ?? durable.items[0];
+    if (!first) return;
+    const outcome = finalizationQueue.outcomes.get(first.id);
+    if (!outcome) return;
+    if (outcome.status === "completed" || outcome.status === "not_required" || outcome.status === "skipped") {
+      durable.clear();
+      finalizationQueue.clearOutcome(first.id);
+    }
+    // Failed outcome intentionally keeps durable pointer so a manual
+    // Retry-format can find the item on refresh.
+  }, [finalizationQueue.outcomes, durable.items, durable.jobId, durable, finalizationQueue]);
 
 
   const hasEnhanced = baseImageUrl && enhancedImageUrl && baseImageUrl !== enhancedImageUrl;
@@ -1645,6 +1726,40 @@ export default function ImageGenerator({
               className="font-display text-xs h-7 flex-shrink-0"
             >
               Retry
+            </Button>
+          </div>
+        )}
+
+        {durableFormatFailure && !loading && (
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-sm border border-orange-500/40 bg-orange-500/10 px-3 py-2">
+            <div className="flex items-start gap-2 min-w-0">
+              <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="font-display text-xs font-bold text-orange-600">
+                  Poster-format finalization failed
+                </p>
+                <p className="font-display text-[11px] text-muted-foreground truncate">
+                  {durableFormatFailure.message}
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const id = durableFormatFailure.itemId;
+                setDurableFormatFailure(null);
+                finalizationQueue.retry(id).catch((e) => {
+                  toast({
+                    title: "Retry format failed",
+                    description: e instanceof Error ? e.message : String(e),
+                    variant: "destructive",
+                  });
+                });
+              }}
+              className="font-display text-xs h-7 flex-shrink-0"
+            >
+              Retry format
             </Button>
           </div>
         )}
