@@ -852,7 +852,7 @@ export default function ImageGenerator({
     if (!first) return;
     const outcome = finalizationQueue.outcomes.get(first.id);
     if (!outcome) return;
-    if (outcome.status === "success" || outcome.status === "skipped") {
+    if (outcome.status === "completed" || outcome.status === "not_required" || outcome.status === "skipped") {
       durable.clear();
       finalizationQueue.clearOutcome(first.id);
     }
