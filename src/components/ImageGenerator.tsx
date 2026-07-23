@@ -583,16 +583,19 @@ export default function ImageGenerator({
     activePrompt: string,
     referenceImageUrl: string | undefined,
     refStrengthUsed: ReferenceStrength | null,
+    opts: { skipRatioEnforcement?: boolean } = {},
   ) => {
     let baseUrl = gen.imageUrl;
-    try {
-      const enforced = await enforcePosterRatio({
-        imageUrl: gen.imageUrl,
-        formatId: selectedPrintFormat.id,
-      });
-      if (enforced?.url) baseUrl = enforced.url;
-    } catch (e) {
-      console.warn("[ImageGenerator] poster ratio enforcement failed", e);
+    if (!opts.skipRatioEnforcement) {
+      try {
+        const enforced = await enforcePosterRatio({
+          imageUrl: gen.imageUrl,
+          formatId: selectedPrintFormat.id,
+        });
+        if (enforced?.url) baseUrl = enforced.url;
+      } catch (e) {
+        console.warn("[ImageGenerator] poster ratio enforcement failed", e);
+      }
     }
 
     setBaseImageUrl(baseUrl);
