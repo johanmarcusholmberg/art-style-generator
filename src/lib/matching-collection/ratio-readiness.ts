@@ -6,16 +6,17 @@
  * physical print sizes or PPI — full print readiness composes this with
  * `getPrintReadinessStatus` from `@/lib/print-readiness`.
  *
- * Rules:
- *   - "completed"    → ready when a corrected master path + dims exist.
- *   - "not_required" → ready ONLY when the persisted source ratio is
- *                      verified via `opts.ratioMatchesFormat`.
- *   - "pending" / "processing" / "failed" / unknown → not ready.
- *
- * The legacy `assessRatioReadiness` is kept as a back-compat alias that
- * exposes the same shape plus an `isPrintReady` field for old call sites.
- * New code should use `assessFormatReadiness` and compose print readiness
- * separately.
+ * Strict rules (turn 2c.2):
+ *   - "completed"    → requires an explicit non-null corrected-master
+ *                      storage path AND positive corrected-master width
+ *                      AND positive corrected-master height. Missing
+ *                      (`undefined`) counts as "not verified" — the
+ *                      caller must supply the fields to claim readiness.
+ *   - "not_required" → requires an explicit persisted source storage
+ *                      path AND positive source dimensions AND a
+ *                      verified `ratioMatchesFormat === true`. Missing
+ *                      any of these means "not verified".
+ *   - pending/processing/failed/unknown → not ready.
  */
 export type RatioFinalizationStatus =
   | "pending"
@@ -37,16 +38,25 @@ export interface FormatReadiness {
     | "not_required-match"
     | "not_required-mismatch"
     | "completed-missing-master"
+    | "not_required-missing-source"
     | "unknown";
 }
 
 export interface AssessFormatReadinessOpts {
-  /** For `not_required`, caller supplies whether persisted source matches. */
+  /** For `not_required`: caller supplies whether persisted source matches. */
   ratioMatchesFormat?: boolean;
-  /** For `completed`, caller supplies whether the corrected master is persisted. */
+  /** For `not_required`: caller supplies persisted source path + dims. */
+  sourceStoragePath?: string | null;
+  sourceWidth?: number | null;
+  sourceHeight?: number | null;
+  /** For `completed`: caller supplies the corrected-master identity. */
   correctedMasterStoragePath?: string | null;
   correctedMasterWidth?: number | null;
   correctedMasterHeight?: number | null;
+}
+
+function isPositive(n: number | null | undefined): n is number {
+  return typeof n === "number" && Number.isFinite(n) && n > 0;
 }
 
 export function assessFormatReadiness(
@@ -55,34 +65,18 @@ export function assessFormatReadiness(
 ): FormatReadiness {
   switch (status) {
     case "pending":
-      return {
-        isFormatReady: false,
-        label: "Preparing poster format",
-        tone: "info",
-        reason: "pending",
-      };
+      return { isFormatReady: false, label: "Preparing poster format", tone: "info", reason: "pending" };
     case "processing":
-      return {
-        isFormatReady: false,
-        label: "Finalizing poster format",
-        tone: "info",
-        reason: "processing",
-      };
+      return { isFormatReady: false, label: "Finalizing poster format", tone: "info", reason: "processing" };
     case "failed":
-      return {
-        isFormatReady: false,
-        label: "Poster-format finalization failed",
-        tone: "danger",
-        reason: "failed",
-      };
+      return { isFormatReady: false, label: "Poster-format finalization failed", tone: "danger", reason: "failed" };
     case "completed": {
-      // Require corrected-master identity when the caller supplies it.
-      // When the caller has no signal (`undefined`), trust the DB status.
-      const missing =
-        opts.correctedMasterStoragePath === null
-        || (opts.correctedMasterWidth !== undefined && (opts.correctedMasterWidth ?? 0) <= 0)
-        || (opts.correctedMasterHeight !== undefined && (opts.correctedMasterHeight ?? 0) <= 0);
-      if (missing) {
+      // Strict: caller MUST supply explicit corrected-master identity.
+      // `undefined` is treated as "not verified", not as implicit proof.
+      const path = opts.correctedMasterStoragePath;
+      const w = opts.correctedMasterWidth;
+      const h = opts.correctedMasterHeight;
+      if (typeof path !== "string" || path.length === 0 || !isPositive(w) || !isPositive(h)) {
         return {
           isFormatReady: false,
           label: "Not fully validated",
@@ -90,21 +84,24 @@ export function assessFormatReadiness(
           reason: "completed-missing-master",
         };
       }
-      return {
-        isFormatReady: true,
-        label: "Format ready",
-        tone: "success",
-        reason: "completed",
-      };
+      return { isFormatReady: true, label: "Format ready", tone: "success", reason: "completed" };
     }
-    case "not_required":
-      if (opts.ratioMatchesFormat) {
+    case "not_required": {
+      const path = opts.sourceStoragePath;
+      const w = opts.sourceWidth;
+      const h = opts.sourceHeight;
+      const havePersistedSource =
+        typeof path === "string" && path.length > 0 && isPositive(w) && isPositive(h);
+      if (!havePersistedSource) {
         return {
-          isFormatReady: true,
-          label: "Format ready",
-          tone: "success",
-          reason: "not_required-match",
+          isFormatReady: false,
+          label: "Not fully validated",
+          tone: "warning",
+          reason: "not_required-missing-source",
         };
+      }
+      if (opts.ratioMatchesFormat === true) {
+        return { isFormatReady: true, label: "Format ready", tone: "success", reason: "not_required-match" };
       }
       return {
         isFormatReady: false,
@@ -112,37 +109,8 @@ export function assessFormatReadiness(
         tone: "warning",
         reason: "not_required-mismatch",
       };
+    }
     default:
-      return {
-        isFormatReady: false,
-        label: "Not fully validated",
-        tone: "muted",
-        reason: "unknown",
-      };
+      return { isFormatReady: false, label: "Not fully validated", tone: "muted", reason: "unknown" };
   }
-}
-
-/**
- * @deprecated Prefer {@link assessFormatReadiness}. This alias returns
- * the same tone/label and exposes `isPrintReady` for legacy callers that
- * (misleadingly) treated ratio completion as print-readiness.
- */
-export interface RatioReadiness {
-  isPrintReady: boolean;
-  label: string;
-  tone: FormatReadiness["tone"];
-  reason: FormatReadiness["reason"];
-}
-
-export function assessRatioReadiness(
-  status: string | null | undefined,
-  opts: AssessFormatReadinessOpts = {},
-): RatioReadiness {
-  const r = assessFormatReadiness(status, opts);
-  return {
-    isPrintReady: r.isFormatReady,
-    label: r.label,
-    tone: r.tone,
-    reason: r.reason,
-  };
 }
