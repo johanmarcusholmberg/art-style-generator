@@ -269,6 +269,49 @@ export default function ImageGenerator({
   const [durableFailure, setDurableFailure] = useState<{ itemId: string; message: string } | null>(
     null,
   );
+  const [durableFormatFailure, setDurableFormatFailure] = useState<
+    { itemId: string; message: string } | null
+  >(null);
+
+  // Ratio-finalization queue drives poster-format correction for the
+  // durable path. On outcome we reload canonical DB truth and adopt the
+  // corrected master into the visible preview.
+  const finalizationQueue = useRatioFinalizationQueue({
+    onOutcome: (result) => {
+      if (result.status === "failed") {
+        setDurableFormatFailure({
+          itemId: result.itemId,
+          message: result.error || "Poster-format finalization failed.",
+        });
+        return;
+      }
+      setDurableFormatFailure(null);
+      void (async () => {
+        try {
+          const canonical = await loadDurableCanonicalAsset(result.itemId);
+          if (!canonical) return;
+          const path = canonical.masterStoragePath ?? canonical.storagePath;
+          const url =
+            (path
+              ? supabase.storage.from("generated-images").getPublicUrl(path).data.publicUrl
+              : null) ||
+            canonical.enforcedImageUrl ||
+            canonical.imageUrl ||
+            canonical.rawImageUrl;
+          if (url) {
+            setBaseImageUrl(url);
+            setImageUrl(url);
+            setEnhancedImageUrl(null);
+          }
+          if (path) setDurableMasterStoragePath(path);
+          if (canonical.masterWidth) setDurableMasterWidth(canonical.masterWidth);
+          if (canonical.masterHeight) setDurableMasterHeight(canonical.masterHeight);
+        } catch (err) {
+          console.warn("[ImageGenerator] canonical reload after finalize failed:", err);
+        }
+      })();
+    },
+  });
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
   // Poster format is the single source of truth for aspect ratio across
