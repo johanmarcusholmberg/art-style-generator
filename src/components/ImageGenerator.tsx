@@ -316,9 +316,9 @@ export default function ImageGenerator({
             setImageUrl(url);
             setEnhancedImageUrl(null);
           }
-          if (path) setDurableMasterStoragePath(path);
-          if (canonical.masterWidth) setDurableMasterWidth(canonical.masterWidth);
-          if (canonical.masterHeight) setDurableMasterHeight(canonical.masterHeight);
+          if (path) setDurableBaseStoragePath(path);
+          if (canonical.masterWidth) setDurableBaseWidth(canonical.masterWidth);
+          if (canonical.masterHeight) setDurableBaseHeight(canonical.masterHeight);
         } catch (err) {
           console.warn("[ImageGenerator] canonical reload after finalize failed:", err);
         }
@@ -683,10 +683,10 @@ export default function ImageGenerator({
     savedGalleryIdRef.current = null;
     // Clear previous anchor identity so the new generation cannot
     // inherit the prior image's gallery id, storage path, or dims.
-    setDurableMasterUrl(null);
-    setDurableMasterStoragePath(null);
-    setDurableMasterWidth(null);
-    setDurableMasterHeight(null);
+    setDurableBaseUrl(null);
+    setDurableBaseStoragePath(null);
+    setDurableBaseWidth(null);
+    setDurableBaseHeight(null);
     upscaleRunId.current++;
     setDurableFailure(null);
 
@@ -823,10 +823,10 @@ export default function ImageGenerator({
         savedGalleryIdRef.current = persistedId;
         setSavedToGallery(true);
       }
-      if (meta?.storagePath) setDurableMasterStoragePath(meta.storagePath);
-      if (meta?.actualWidthPx) setDurableMasterWidth(meta.actualWidthPx);
-      if (meta?.actualHeightPx) setDurableMasterHeight(meta.actualHeightPx);
-      setDurableMasterUrl(rawUrl);
+      if (meta?.storagePath) setDurableBaseStoragePath(meta.storagePath);
+      if (meta?.actualWidthPx) setDurableBaseWidth(meta.actualWidthPx);
+      if (meta?.actualHeightPx) setDurableBaseHeight(meta.actualHeightPx);
+      setDurableBaseUrl(rawUrl);
       setLoading(false);
       setDurableFailure(null);
 
@@ -1993,10 +1993,10 @@ export default function ImageGenerator({
           enhancedStoragePath: null,
           enhancedWidth: enhancedProbedDims?.width ?? null,
           enhancedHeight: enhancedProbedDims?.height ?? null,
-          durableMasterUrl,
-          durableMasterStoragePath,
-          durableMasterWidth,
-          durableMasterHeight,
+          durableBaseUrl,
+          durableBaseStoragePath,
+          durableBaseWidth,
+          durableBaseHeight,
           selectedUrl,
         });
         return (
