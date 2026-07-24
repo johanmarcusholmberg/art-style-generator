@@ -1879,6 +1879,34 @@ export default function ImageGenerator({
           </div>
         )}
 
+        {canonicalAdoptionError && !loading && (
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-2">
+            <div className="flex items-start gap-2 min-w-0">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="font-display text-xs font-bold text-amber-600">
+                  Result not fully adopted
+                </p>
+                <p className="font-display text-[11px] text-muted-foreground truncate">
+                  {canonicalAdoptionError.message}
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const id = canonicalAdoptionError.itemId;
+                setCanonicalAdoptionError(null);
+                void runCanonicalAdoptionRef.current(id);
+              }}
+              className="font-display text-xs h-7 flex-shrink-0"
+            >
+              Reload result
+            </Button>
+          </div>
+        )}
+
 
 
 
