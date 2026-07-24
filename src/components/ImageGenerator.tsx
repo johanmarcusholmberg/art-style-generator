@@ -1998,6 +1998,16 @@ export default function ImageGenerator({
               />
             )}
 
+            <PosterFormatStatus
+              phase={durablePresentation.phase}
+              width={durablePresentation.width}
+              height={durablePresentation.height}
+              printFormatId={
+                generationMode === "print-ready" ? selectedPrintFormat.id : null
+              }
+              adopting={adoptingCanonical}
+            />
+
             {/* Status badges + export source notice */}
             {(() => {
               const fakeImg = {
