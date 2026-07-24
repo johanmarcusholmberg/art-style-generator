@@ -287,8 +287,9 @@ export default function ImageGenerator({
   >(null);
 
   // Ratio-finalization queue drives poster-format correction for the
-  // durable path. On outcome we reload canonical DB truth and adopt the
-  // corrected master into the visible preview.
+  // durable path. `onOutcome` triggers a transactional canonical DB
+  // adoption. The durable pointer is cleared ONLY after adoption
+  // succeeds so a refresh mid-adoption re-hydrates and recovers.
   const finalizationQueue = useRatioFinalizationQueue({
     onOutcome: (result) => {
       if (result.status === "failed") {
@@ -298,31 +299,14 @@ export default function ImageGenerator({
         });
         return;
       }
+      // completed | not_required | skipped — reload DB truth first.
+      // Skipped may indicate another surface owns the claim, so we
+      // still reload and adopt if the DB has terminal truth.
       setDurableFormatFailure(null);
-      void (async () => {
-        try {
-          const canonical = await loadDurableCanonicalAsset(result.itemId);
-          if (!canonical) return;
-          const path = canonical.masterStoragePath ?? canonical.storagePath;
-          const url =
-            (path
-              ? supabase.storage.from("generated-images").getPublicUrl(path).data.publicUrl
-              : null) ||
-            canonical.enforcedImageUrl ||
-            canonical.imageUrl ||
-            canonical.rawImageUrl;
-          if (url) {
-            setBaseImageUrl(url);
-            setImageUrl(url);
-            setEnhancedImageUrl(null);
-          }
-          if (path) setDurableBaseStoragePath(path);
-          if (canonical.masterWidth) setDurableBaseWidth(canonical.masterWidth);
-          if (canonical.masterHeight) setDurableBaseHeight(canonical.masterHeight);
-        } catch (err) {
-          console.warn("[ImageGenerator] canonical reload after finalize failed:", err);
-        }
-      })();
+      void runCanonicalAdoptionRef.current(result.itemId, {
+        ratioMatchesFormatHint:
+          result.status === "not_required" ? true : undefined,
+      });
     },
   });
 
