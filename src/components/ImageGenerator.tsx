@@ -317,6 +317,61 @@ export default function ImageGenerator({
     },
   });
 
+  /**
+   * Canonical adoption transaction. Loads DB truth for a durable item,
+   * writes the corrected-master (or verified `not_required` source)
+   * identity into local state, and ONLY THEN clears the durable
+   * pointer + queue outcome. If the canonical row is transiently
+   * incomplete we surface a "Reload result" recovery affordance
+   * without regenerating.
+   */
+  const runCanonicalAdoption = useCallback(
+    async (itemId: string, o?: { ratioMatchesFormatHint?: boolean }) => {
+      setAdoptingCanonical(true);
+      setCanonicalAdoptionError(null);
+      try {
+        const r = await adoptWithBoundedRetry(itemId, {
+          resolvePublicUrl: (p) =>
+            supabase.storage.from("generated-images").getPublicUrl(p).data.publicUrl,
+          ratioMatchesFormat: o?.ratioMatchesFormatHint,
+        });
+        if (r.status !== "adopted") {
+          setCanonicalAdoptionError({ itemId, message: r.message });
+          return;
+        }
+        const a = r.asset;
+        setBaseImageUrl(a.imageUrl);
+        setImageUrl(a.imageUrl);
+        setEnhancedImageUrl(null);
+        if (a.isCorrectedMaster) {
+          setCorrectedMasterUrl(a.imageUrl);
+          setCorrectedMasterStoragePath(a.storagePath);
+          setCorrectedMasterWidth(a.width);
+          setCorrectedMasterHeight(a.height);
+        } else {
+          setDurableBaseStoragePath(a.storagePath);
+          setDurableBaseWidth(a.width);
+          setDurableBaseHeight(a.height);
+        }
+        if (a.galleryImageId) {
+          savedGalleryIdRef.current = a.galleryImageId;
+          setSavedToGallery(true);
+        }
+        durable.clear();
+        finalizationQueue.clearOutcome(itemId);
+      } finally {
+        setAdoptingCanonical(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  useEffect(() => {
+    runCanonicalAdoptionRef.current = runCanonicalAdoption;
+  }, [runCanonicalAdoption]);
+
+
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
   // Poster format is the single source of truth for aspect ratio across
   // generation, preview, composer, and export. Standard mode used to drive
