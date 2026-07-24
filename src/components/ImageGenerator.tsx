@@ -285,6 +285,13 @@ export default function ImageGenerator({
   const [durableFormatFailure, setDurableFormatFailure] = useState<
     { itemId: string; message: string } | null
   >(null);
+  // Late-bound: the canonical adoption runner is set below once the
+  // durable hook and finalization queue exist. Callers reach it through
+  // this ref so the queue's `onOutcome` (created before the runner) can
+  // still invoke it after each render binds the current closure.
+  const runCanonicalAdoptionRef = useRef<
+    (itemId: string, o?: { ratioMatchesFormatHint?: boolean }) => Promise<void>
+  >(async () => {});
 
   // Ratio-finalization queue drives poster-format correction for the
   // durable path. `onOutcome` triggers a transactional canonical DB
