@@ -215,13 +215,26 @@ export default function ImageGenerator({
   type ProbedDims = { width: number; height: number; url: string } | null;
   const [baseProbedDims, setBaseProbedDims] = useState<ProbedDims>(null);
   const [enhancedProbedDims, setEnhancedProbedDims] = useState<ProbedDims>(null);
-  // Durable master identity captured from the persisted worker result.
-  // Cleared at the start of every new generation so a new image never
-  // inherits the previous image's anchor identity.
-  const [durableMasterUrl, setDurableMasterUrl] = useState<string | null>(null);
-  const [durableMasterStoragePath, setDurableMasterStoragePath] = useState<string | null>(null);
-  const [durableMasterWidth, setDurableMasterWidth] = useState<number | null>(null);
-  const [durableMasterHeight, setDurableMasterHeight] = useState<number | null>(null);
+  // Durable BASE identity — the raw worker output the persistence step
+  // wrote before poster-format finalization runs. NOT a corrected
+  // master; the ratio finalizer produces the corrected master and
+  // records its own identity below.
+  const [durableBaseUrl, setDurableBaseUrl] = useState<string | null>(null);
+  const [durableBaseStoragePath, setDurableBaseStoragePath] = useState<string | null>(null);
+  const [durableBaseWidth, setDurableBaseWidth] = useState<number | null>(null);
+  const [durableBaseHeight, setDurableBaseHeight] = useState<number | null>(null);
+  // Corrected-master identity, adopted only from canonical DB truth
+  // after the ratio finalizer settles. Never populated from a queue
+  // outcome alone.
+  const [correctedMasterUrl, setCorrectedMasterUrl] = useState<string | null>(null);
+  const [correctedMasterStoragePath, setCorrectedMasterStoragePath] = useState<string | null>(null);
+  const [correctedMasterWidth, setCorrectedMasterWidth] = useState<number | null>(null);
+  const [correctedMasterHeight, setCorrectedMasterHeight] = useState<number | null>(null);
+  // Canonical adoption bookkeeping.
+  const [adoptingCanonical, setAdoptingCanonical] = useState(false);
+  const [canonicalAdoptionError, setCanonicalAdoptionError] = useState<
+    { itemId: string; message: string } | null
+  >(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Variant fan-out — generate 4 in parallel and let the user pick.
   const [variantMode, setVariantMode] = useState(false);
