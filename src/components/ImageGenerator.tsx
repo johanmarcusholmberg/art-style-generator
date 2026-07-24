@@ -385,6 +385,62 @@ export default function ImageGenerator({
   const effectiveAspectRatio = selectedPrintFormat.aspectRatio;
   const upscaleConfig = UPSCALE_MODES[upscaleMode];
 
+  // ── Single memoized durable presentation model ───────────────────────
+  // One shared derivation drives the poster-format label, retry
+  // affordances, print-readiness eligibility, and Matching Collection
+  // gating. Prefer this over ad-hoc booleans scattered through the JSX.
+  const durablePresentation: DurableResultPresentation = useMemo(() => {
+    const first =
+      durable.items.find((r) => r.position === 0) ?? durable.items[0] ?? null;
+    if (!first) {
+      // Not in a durable flow — allow the standard path (e.g. hydrated
+      // gallery image, in-tab compare pick) to be treated as ready
+      // when the visible image is stable.
+      if (!imageUrl) {
+        return deriveDurableResultPresentation(null);
+      }
+      return {
+        phase: "format_ready_corrected",
+        imageUrl,
+        storagePath: correctedMasterStoragePath ?? durableBaseStoragePath ?? null,
+        width: correctedMasterWidth ?? durableBaseWidth ?? null,
+        height: correctedMasterHeight ?? durableBaseHeight ?? null,
+        errorMessage: null,
+        canRetryFormat: false,
+        canRetryGeneration: false,
+        showFinalizingSpinner: false,
+        hasReadyImage: true,
+      };
+    }
+    return deriveDurableResultPresentation({
+      status: first.status,
+      ratioStatus: first.ratio_enforcement_status,
+      errorMessage: first.error_message ?? first.ratio_finalization_error ?? null,
+      imageUrl: first.image_url,
+      enforcedImageUrl: first.enforced_image_url,
+      rawImageUrl: first.raw_image_url,
+      storagePath: first.storage_path,
+      correctedMasterStoragePath,
+      correctedMasterWidth,
+      correctedMasterHeight,
+      ratioMatchesFormat:
+        first.ratio_enforcement_status === "not_required"
+          ? !!durableBaseStoragePath
+          : undefined,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    durable.items,
+    imageUrl,
+    correctedMasterStoragePath,
+    correctedMasterWidth,
+    correctedMasterHeight,
+    durableBaseStoragePath,
+    durableBaseWidth,
+    durableBaseHeight,
+  ]);
+
+
   // Style + provider-aware recipe recommendation. Recomputes whenever the
   // style, provider, or print intent changes.
   const recommendedRecipe = useMemo(
