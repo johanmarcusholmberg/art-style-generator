@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
 import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle, Info } from "lucide-react";
 import {
@@ -13,6 +13,7 @@ import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import MatchingCollectionDialog from "@/components/matching-collection/MatchingCollectionDialog";
 import { resolveMatchingCollectionAnchor } from "@/lib/matching-collection/anchor-resolver";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
+import { PosterFormatStatus } from "@/components/PosterFormatStatus";
 import { describeExportSource } from "@/lib/asset-selection";
 import {
   AlertDialog,
@@ -51,6 +52,11 @@ import { runFinalizeOnce } from "@/lib/finalize-ratio-lock";
 import { useRatioFinalizationQueue } from "@/hooks/useRatioFinalizationQueue";
 import { shouldEnqueueRatioFinalization } from "@/lib/ratio-finalization/presentation";
 import { loadDurableCanonicalAsset } from "@/lib/ratio-finalization/repository";
+import { adoptWithBoundedRetry } from "@/lib/ratio-finalization/adoption";
+import {
+  deriveDurableResultPresentation,
+  type DurableResultPresentation,
+} from "@/lib/ratio-finalization/presentation";
 import {
   isDurableResultMetadataV1,
   reconstructNormalizedResponse,
@@ -215,13 +221,26 @@ export default function ImageGenerator({
   type ProbedDims = { width: number; height: number; url: string } | null;
   const [baseProbedDims, setBaseProbedDims] = useState<ProbedDims>(null);
   const [enhancedProbedDims, setEnhancedProbedDims] = useState<ProbedDims>(null);
-  // Durable master identity captured from the persisted worker result.
-  // Cleared at the start of every new generation so a new image never
-  // inherits the previous image's anchor identity.
-  const [durableMasterUrl, setDurableMasterUrl] = useState<string | null>(null);
-  const [durableMasterStoragePath, setDurableMasterStoragePath] = useState<string | null>(null);
-  const [durableMasterWidth, setDurableMasterWidth] = useState<number | null>(null);
-  const [durableMasterHeight, setDurableMasterHeight] = useState<number | null>(null);
+  // Durable BASE identity — the raw worker output the persistence step
+  // wrote before poster-format finalization runs. NOT a corrected
+  // master; the ratio finalizer produces the corrected master and
+  // records its own identity below.
+  const [durableBaseUrl, setDurableBaseUrl] = useState<string | null>(null);
+  const [durableBaseStoragePath, setDurableBaseStoragePath] = useState<string | null>(null);
+  const [durableBaseWidth, setDurableBaseWidth] = useState<number | null>(null);
+  const [durableBaseHeight, setDurableBaseHeight] = useState<number | null>(null);
+  // Corrected-master identity, adopted only from canonical DB truth
+  // after the ratio finalizer settles. Never populated from a queue
+  // outcome alone.
+  const [correctedMasterUrl, setCorrectedMasterUrl] = useState<string | null>(null);
+  const [correctedMasterStoragePath, setCorrectedMasterStoragePath] = useState<string | null>(null);
+  const [correctedMasterWidth, setCorrectedMasterWidth] = useState<number | null>(null);
+  const [correctedMasterHeight, setCorrectedMasterHeight] = useState<number | null>(null);
+  // Canonical adoption bookkeeping.
+  const [adoptingCanonical, setAdoptingCanonical] = useState(false);
+  const [canonicalAdoptionError, setCanonicalAdoptionError] = useState<
+    { itemId: string; message: string } | null
+  >(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Variant fan-out — generate 4 in parallel and let the user pick.
   const [variantMode, setVariantMode] = useState(false);
@@ -272,10 +291,18 @@ export default function ImageGenerator({
   const [durableFormatFailure, setDurableFormatFailure] = useState<
     { itemId: string; message: string } | null
   >(null);
+  // Late-bound: the canonical adoption runner is set below once the
+  // durable hook and finalization queue exist. Callers reach it through
+  // this ref so the queue's `onOutcome` (created before the runner) can
+  // still invoke it after each render binds the current closure.
+  const runCanonicalAdoptionRef = useRef<
+    (itemId: string, o?: { ratioMatchesFormatHint?: boolean }) => Promise<void>
+  >(async () => {});
 
   // Ratio-finalization queue drives poster-format correction for the
-  // durable path. On outcome we reload canonical DB truth and adopt the
-  // corrected master into the visible preview.
+  // durable path. `onOutcome` triggers a transactional canonical DB
+  // adoption. The durable pointer is cleared ONLY after adoption
+  // succeeds so a refresh mid-adoption re-hydrates and recovers.
   const finalizationQueue = useRatioFinalizationQueue({
     onOutcome: (result) => {
       if (result.status === "failed") {
@@ -285,33 +312,71 @@ export default function ImageGenerator({
         });
         return;
       }
+      // completed | not_required | skipped — reload DB truth first.
+      // Skipped may indicate another surface owns the claim, so we
+      // still reload and adopt if the DB has terminal truth.
       setDurableFormatFailure(null);
-      void (async () => {
-        try {
-          const canonical = await loadDurableCanonicalAsset(result.itemId);
-          if (!canonical) return;
-          const path = canonical.masterStoragePath ?? canonical.storagePath;
-          const url =
-            (path
-              ? supabase.storage.from("generated-images").getPublicUrl(path).data.publicUrl
-              : null) ||
-            canonical.enforcedImageUrl ||
-            canonical.imageUrl ||
-            canonical.rawImageUrl;
-          if (url) {
-            setBaseImageUrl(url);
-            setImageUrl(url);
-            setEnhancedImageUrl(null);
-          }
-          if (path) setDurableMasterStoragePath(path);
-          if (canonical.masterWidth) setDurableMasterWidth(canonical.masterWidth);
-          if (canonical.masterHeight) setDurableMasterHeight(canonical.masterHeight);
-        } catch (err) {
-          console.warn("[ImageGenerator] canonical reload after finalize failed:", err);
-        }
-      })();
+      void runCanonicalAdoptionRef.current(result.itemId, {
+        ratioMatchesFormatHint:
+          result.status === "not_required" ? true : undefined,
+      });
     },
   });
+
+  /**
+   * Canonical adoption transaction. Loads DB truth for a durable item,
+   * writes the corrected-master (or verified `not_required` source)
+   * identity into local state, and ONLY THEN clears the durable
+   * pointer + queue outcome. If the canonical row is transiently
+   * incomplete we surface a "Reload result" recovery affordance
+   * without regenerating.
+   */
+  const runCanonicalAdoption = useCallback(
+    async (itemId: string, o?: { ratioMatchesFormatHint?: boolean }) => {
+      setAdoptingCanonical(true);
+      setCanonicalAdoptionError(null);
+      try {
+        const r = await adoptWithBoundedRetry(itemId, {
+          resolvePublicUrl: (p) =>
+            supabase.storage.from("generated-images").getPublicUrl(p).data.publicUrl,
+          ratioMatchesFormat: o?.ratioMatchesFormatHint,
+        });
+        if (r.status !== "adopted") {
+          setCanonicalAdoptionError({ itemId, message: r.message });
+          return;
+        }
+        const a = r.asset;
+        setBaseImageUrl(a.imageUrl);
+        setImageUrl(a.imageUrl);
+        setEnhancedImageUrl(null);
+        if (a.isCorrectedMaster) {
+          setCorrectedMasterUrl(a.imageUrl);
+          setCorrectedMasterStoragePath(a.storagePath);
+          setCorrectedMasterWidth(a.width);
+          setCorrectedMasterHeight(a.height);
+        } else {
+          setDurableBaseStoragePath(a.storagePath);
+          setDurableBaseWidth(a.width);
+          setDurableBaseHeight(a.height);
+        }
+        if (a.galleryImageId) {
+          savedGalleryIdRef.current = a.galleryImageId;
+          setSavedToGallery(true);
+        }
+        durable.clear();
+        finalizationQueue.clearOutcome(itemId);
+      } finally {
+        setAdoptingCanonical(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  useEffect(() => {
+    runCanonicalAdoptionRef.current = runCanonicalAdoption;
+  }, [runCanonicalAdoption]);
+
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
   // Poster format is the single source of truth for aspect ratio across
@@ -320,6 +385,62 @@ export default function ImageGenerator({
   // format so the choice flows through every provider deterministically.
   const effectiveAspectRatio = selectedPrintFormat.aspectRatio;
   const upscaleConfig = UPSCALE_MODES[upscaleMode];
+
+  // ── Single memoized durable presentation model ───────────────────────
+  // One shared derivation drives the poster-format label, retry
+  // affordances, print-readiness eligibility, and Matching Collection
+  // gating. Prefer this over ad-hoc booleans scattered through the JSX.
+  const durablePresentation: DurableResultPresentation = useMemo(() => {
+    const first =
+      durable.items.find((r) => r.position === 0) ?? durable.items[0] ?? null;
+    if (!first) {
+      // Not in a durable flow — allow the standard path (e.g. hydrated
+      // gallery image, in-tab compare pick) to be treated as ready
+      // when the visible image is stable.
+      if (!imageUrl) {
+        return deriveDurableResultPresentation(null);
+      }
+      return {
+        phase: "format_ready_corrected",
+        imageUrl,
+        storagePath: correctedMasterStoragePath ?? durableBaseStoragePath ?? null,
+        width: correctedMasterWidth ?? durableBaseWidth ?? null,
+        height: correctedMasterHeight ?? durableBaseHeight ?? null,
+        errorMessage: null,
+        canRetryFormat: false,
+        canRetryGeneration: false,
+        showFinalizingSpinner: false,
+        hasReadyImage: true,
+      };
+    }
+    return deriveDurableResultPresentation({
+      status: first.status,
+      ratioStatus: first.ratio_enforcement_status,
+      errorMessage: first.error_message ?? first.ratio_finalization_error ?? null,
+      imageUrl: first.image_url,
+      enforcedImageUrl: first.enforced_image_url,
+      rawImageUrl: first.raw_image_url,
+      storagePath: first.storage_path,
+      correctedMasterStoragePath,
+      correctedMasterWidth,
+      correctedMasterHeight,
+      ratioMatchesFormat:
+        first.ratio_enforcement_status === "not_required"
+          ? !!durableBaseStoragePath
+          : undefined,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    durable.items,
+    imageUrl,
+    correctedMasterStoragePath,
+    correctedMasterWidth,
+    correctedMasterHeight,
+    durableBaseStoragePath,
+    durableBaseWidth,
+    durableBaseHeight,
+  ]);
+
 
   // Style + provider-aware recipe recommendation. Recomputes whenever the
   // style, provider, or print intent changes.
@@ -670,10 +791,17 @@ export default function ImageGenerator({
     savedGalleryIdRef.current = null;
     // Clear previous anchor identity so the new generation cannot
     // inherit the prior image's gallery id, storage path, or dims.
-    setDurableMasterUrl(null);
-    setDurableMasterStoragePath(null);
-    setDurableMasterWidth(null);
-    setDurableMasterHeight(null);
+    setDurableBaseUrl(null);
+    setDurableBaseStoragePath(null);
+    setDurableBaseWidth(null);
+    setDurableBaseHeight(null);
+    setCorrectedMasterUrl(null);
+    setCorrectedMasterStoragePath(null);
+    setCorrectedMasterWidth(null);
+    setCorrectedMasterHeight(null);
+    setAdoptingCanonical(false);
+    setCanonicalAdoptionError(null);
+    setDurableFormatFailure(null);
     upscaleRunId.current++;
     setDurableFailure(null);
 
@@ -810,55 +938,43 @@ export default function ImageGenerator({
         savedGalleryIdRef.current = persistedId;
         setSavedToGallery(true);
       }
-      if (meta?.storagePath) setDurableMasterStoragePath(meta.storagePath);
-      if (meta?.actualWidthPx) setDurableMasterWidth(meta.actualWidthPx);
-      if (meta?.actualHeightPx) setDurableMasterHeight(meta.actualHeightPx);
-      setDurableMasterUrl(rawUrl);
+      if (meta?.storagePath) setDurableBaseStoragePath(meta.storagePath);
+      if (meta?.actualWidthPx) setDurableBaseWidth(meta.actualWidthPx);
+      if (meta?.actualHeightPx) setDurableBaseHeight(meta.actualHeightPx);
+      setDurableBaseUrl(rawUrl);
       setLoading(false);
       setDurableFailure(null);
 
-      // Decide finalization handling. Keep the durable pointer alive
-      // while finalization is outstanding so a refresh re-hydrates and
-      // re-enqueues; release only when ratio is already settled.
+      // Decide finalization handling.
+      //  - pending / stale-processing → enqueue; canonical adoption
+      //    runs from the queue outcome path.
+      //  - completed / not_required → run canonical adoption
+      //    immediately (hydration path after refresh). Do NOT clear
+      //    the durable pointer until adoption succeeds.
+      //  - failed → surface Retry format; preserve durable pointer.
+      const rat = first.ratio_enforcement_status;
       const shouldEnqueue = shouldEnqueueRatioFinalization({
         itemStatus: first.status,
-        ratioStatus: first.ratio_enforcement_status,
+        ratioStatus: rat,
         leaseExpiresAt: first.ratio_finalization_lease_expires_at ?? null,
         now: Date.now(),
       });
       if (shouldEnqueue) {
         finalizationQueue.enqueue(first.id);
-        // durable.clear() deferred — happens in the queue outcome path.
-      } else {
-        if (first.ratio_enforcement_status === "failed") {
-          setDurableFormatFailure({
-            itemId: first.id,
-            message: first.ratio_finalization_error || "Poster-format finalization failed.",
-          });
-        }
-        durable.clear();
+      } else if (rat === "completed" || rat === "not_required") {
+        void runCanonicalAdoptionRef.current(first.id, {
+          ratioMatchesFormatHint: rat === "not_required" ? true : undefined,
+        });
+      } else if (rat === "failed") {
+        setDurableFormatFailure({
+          itemId: first.id,
+          message: first.ratio_finalization_error || "Poster-format finalization failed.",
+        });
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [durable.items]);
 
-  // Release the durable pointer once a queued finalization settles for
-  // an item we adopted. Ties the two side effects together so refresh
-  // during a still-pending finalization can recover, but a completed
-  // one cleans up local storage.
-  useEffect(() => {
-    if (!durable.jobId) return;
-    const first = durable.items.find((r) => r.position === 0) ?? durable.items[0];
-    if (!first) return;
-    const outcome = finalizationQueue.outcomes.get(first.id);
-    if (!outcome) return;
-    if (outcome.status === "completed" || outcome.status === "not_required" || outcome.status === "skipped") {
-      durable.clear();
-      finalizationQueue.clearOutcome(first.id);
-    }
-    // Failed outcome intentionally keeps durable pointer so a manual
-    // Retry-format can find the item on refresh.
-  }, [finalizationQueue.outcomes, durable.items, durable.jobId, durable, finalizationQueue]);
 
 
   const hasEnhanced = baseImageUrl && enhancedImageUrl && baseImageUrl !== enhancedImageUrl;
@@ -1764,6 +1880,34 @@ export default function ImageGenerator({
           </div>
         )}
 
+        {canonicalAdoptionError && !loading && (
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-2">
+            <div className="flex items-start gap-2 min-w-0">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="font-display text-xs font-bold text-amber-600">
+                  Result not fully adopted
+                </p>
+                <p className="font-display text-[11px] text-muted-foreground truncate">
+                  {canonicalAdoptionError.message}
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const id = canonicalAdoptionError.itemId;
+                setCanonicalAdoptionError(null);
+                void runCanonicalAdoptionRef.current(id);
+              }}
+              className="font-display text-xs h-7 flex-shrink-0"
+            >
+              Reload result
+            </Button>
+          </div>
+        )}
+
 
 
 
@@ -1853,6 +1997,16 @@ export default function ImageGenerator({
                 styleKey={styleConfig.styleKey}
               />
             )}
+
+            <PosterFormatStatus
+              phase={durablePresentation.phase}
+              width={durablePresentation.width}
+              height={durablePresentation.height}
+              printFormatId={
+                generationMode === "print-ready" ? selectedPrintFormat.id : null
+              }
+              adopting={adoptingCanonical}
+            />
 
             {/* Status badges + export source notice */}
             {(() => {
@@ -1949,17 +2103,53 @@ export default function ImageGenerator({
               onRemoveImage={handleRemoveImage}
             />
 
-            {imageUrl && savedToGallery && (
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={() => setMatchingOpen(true)}
-                  className="text-xs underline text-muted-foreground hover:text-foreground"
-                >
-                  Create matching collection from this image →
-                </button>
-              </div>
-            )}
+            {imageUrl && (() => {
+              // Canonical anchor gating: only allow Matching Collection
+              // when we have a persisted gallery id AND poster format is
+              // ready (corrected master persisted with positive dims, or
+              // verified not_required source).
+              const hasCanonicalAnchor =
+                !!savedGalleryIdRef.current &&
+                durablePresentation.hasReadyImage &&
+                !!durablePresentation.storagePath &&
+                !!durablePresentation.width &&
+                !!durablePresentation.height;
+              const isFormatBusy =
+                durablePresentation.phase === "format_processing" ||
+                adoptingCanonical;
+              const isFormatFailed =
+                durablePresentation.phase === "format_failed" ||
+                !!durableFormatFailure;
+              return (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    disabled={!hasCanonicalAnchor}
+                    onClick={() => hasCanonicalAnchor && setMatchingOpen(true)}
+                    className="text-xs underline text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+                    title={
+                      hasCanonicalAnchor
+                        ? "Create matching collection"
+                        : isFormatBusy
+                          ? "Available after poster formatting"
+                          : isFormatFailed
+                            ? "Retry poster formatting before creating a matching collection"
+                            : "Save the image and finalize poster format first"
+                    }
+                  >
+                    Create matching collection from this image →
+                  </button>
+                  {!hasCanonicalAnchor && (isFormatBusy || isFormatFailed) && (
+                    <p className="font-display text-[10px] text-muted-foreground mt-1">
+                      {isFormatBusy
+                        ? "Matching Collection available after poster formatting"
+                        : "Retry poster formatting before creating a matching collection"}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
 
           </div>
         )}
@@ -1980,10 +2170,14 @@ export default function ImageGenerator({
           enhancedStoragePath: null,
           enhancedWidth: enhancedProbedDims?.width ?? null,
           enhancedHeight: enhancedProbedDims?.height ?? null,
-          durableMasterUrl,
-          durableMasterStoragePath,
-          durableMasterWidth,
-          durableMasterHeight,
+          durableMasterUrl: durableBaseUrl,
+          durableMasterStoragePath: durableBaseStoragePath,
+          durableMasterWidth: durableBaseWidth,
+          durableMasterHeight: durableBaseHeight,
+          correctedMasterUrl,
+          correctedMasterStoragePath,
+          correctedMasterWidth,
+          correctedMasterHeight,
           selectedUrl,
         });
         return (
