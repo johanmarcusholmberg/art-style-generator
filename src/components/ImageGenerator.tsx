@@ -687,6 +687,13 @@ export default function ImageGenerator({
     setDurableBaseStoragePath(null);
     setDurableBaseWidth(null);
     setDurableBaseHeight(null);
+    setCorrectedMasterUrl(null);
+    setCorrectedMasterStoragePath(null);
+    setCorrectedMasterWidth(null);
+    setCorrectedMasterHeight(null);
+    setAdoptingCanonical(false);
+    setCanonicalAdoptionError(null);
+    setDurableFormatFailure(null);
     upscaleRunId.current++;
     setDurableFailure(null);
 
