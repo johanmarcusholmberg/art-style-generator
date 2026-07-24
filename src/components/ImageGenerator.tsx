@@ -1993,10 +1993,14 @@ export default function ImageGenerator({
           enhancedStoragePath: null,
           enhancedWidth: enhancedProbedDims?.width ?? null,
           enhancedHeight: enhancedProbedDims?.height ?? null,
-          durableBaseUrl,
-          durableBaseStoragePath,
-          durableBaseWidth,
-          durableBaseHeight,
+          durableMasterUrl: durableBaseUrl,
+          durableMasterStoragePath: durableBaseStoragePath,
+          durableMasterWidth: durableBaseWidth,
+          durableMasterHeight: durableBaseHeight,
+          correctedMasterUrl,
+          correctedMasterStoragePath,
+          correctedMasterWidth,
+          correctedMasterHeight,
           selectedUrl,
         });
         return (
