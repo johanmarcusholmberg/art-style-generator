@@ -51,6 +51,11 @@ import { runFinalizeOnce } from "@/lib/finalize-ratio-lock";
 import { useRatioFinalizationQueue } from "@/hooks/useRatioFinalizationQueue";
 import { shouldEnqueueRatioFinalization } from "@/lib/ratio-finalization/presentation";
 import { loadDurableCanonicalAsset } from "@/lib/ratio-finalization/repository";
+import { adoptWithBoundedRetry } from "@/lib/ratio-finalization/adoption";
+import {
+  deriveDurableResultPresentation,
+  type DurableResultPresentation,
+} from "@/lib/ratio-finalization/presentation";
 import {
   isDurableResultMetadataV1,
   reconstructNormalizedResponse,
