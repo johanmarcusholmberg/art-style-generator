@@ -2064,17 +2064,53 @@ export default function ImageGenerator({
               onRemoveImage={handleRemoveImage}
             />
 
-            {imageUrl && savedToGallery && (
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={() => setMatchingOpen(true)}
-                  className="text-xs underline text-muted-foreground hover:text-foreground"
-                >
-                  Create matching collection from this image →
-                </button>
-              </div>
-            )}
+            {imageUrl && (() => {
+              // Canonical anchor gating: only allow Matching Collection
+              // when we have a persisted gallery id AND poster format is
+              // ready (corrected master persisted with positive dims, or
+              // verified not_required source).
+              const hasCanonicalAnchor =
+                !!savedGalleryIdRef.current &&
+                durablePresentation.hasReadyImage &&
+                !!durablePresentation.storagePath &&
+                !!durablePresentation.width &&
+                !!durablePresentation.height;
+              const isFormatBusy =
+                durablePresentation.phase === "format_processing" ||
+                adoptingCanonical;
+              const isFormatFailed =
+                durablePresentation.phase === "format_failed" ||
+                !!durableFormatFailure;
+              return (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    disabled={!hasCanonicalAnchor}
+                    onClick={() => hasCanonicalAnchor && setMatchingOpen(true)}
+                    className="text-xs underline text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+                    title={
+                      hasCanonicalAnchor
+                        ? "Create matching collection"
+                        : isFormatBusy
+                          ? "Available after poster formatting"
+                          : isFormatFailed
+                            ? "Retry poster formatting before creating a matching collection"
+                            : "Save the image and finalize poster format first"
+                    }
+                  >
+                    Create matching collection from this image →
+                  </button>
+                  {!hasCanonicalAnchor && (isFormatBusy || isFormatFailed) && (
+                    <p className="font-display text-[10px] text-muted-foreground mt-1">
+                      {isFormatBusy
+                        ? "Matching Collection available after poster formatting"
+                        : "Retry poster formatting before creating a matching collection"}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
 
           </div>
         )}
