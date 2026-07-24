@@ -888,48 +888,36 @@ export default function ImageGenerator({
       setLoading(false);
       setDurableFailure(null);
 
-      // Decide finalization handling. Keep the durable pointer alive
-      // while finalization is outstanding so a refresh re-hydrates and
-      // re-enqueues; release only when ratio is already settled.
+      // Decide finalization handling.
+      //  - pending / stale-processing → enqueue; canonical adoption
+      //    runs from the queue outcome path.
+      //  - completed / not_required → run canonical adoption
+      //    immediately (hydration path after refresh). Do NOT clear
+      //    the durable pointer until adoption succeeds.
+      //  - failed → surface Retry format; preserve durable pointer.
+      const rat = first.ratio_enforcement_status;
       const shouldEnqueue = shouldEnqueueRatioFinalization({
         itemStatus: first.status,
-        ratioStatus: first.ratio_enforcement_status,
+        ratioStatus: rat,
         leaseExpiresAt: first.ratio_finalization_lease_expires_at ?? null,
         now: Date.now(),
       });
       if (shouldEnqueue) {
         finalizationQueue.enqueue(first.id);
-        // durable.clear() deferred — happens in the queue outcome path.
-      } else {
-        if (first.ratio_enforcement_status === "failed") {
-          setDurableFormatFailure({
-            itemId: first.id,
-            message: first.ratio_finalization_error || "Poster-format finalization failed.",
-          });
-        }
-        durable.clear();
+      } else if (rat === "completed" || rat === "not_required") {
+        void runCanonicalAdoptionRef.current(first.id, {
+          ratioMatchesFormatHint: rat === "not_required" ? true : undefined,
+        });
+      } else if (rat === "failed") {
+        setDurableFormatFailure({
+          itemId: first.id,
+          message: first.ratio_finalization_error || "Poster-format finalization failed.",
+        });
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [durable.items]);
 
-  // Release the durable pointer once a queued finalization settles for
-  // an item we adopted. Ties the two side effects together so refresh
-  // during a still-pending finalization can recover, but a completed
-  // one cleans up local storage.
-  useEffect(() => {
-    if (!durable.jobId) return;
-    const first = durable.items.find((r) => r.position === 0) ?? durable.items[0];
-    if (!first) return;
-    const outcome = finalizationQueue.outcomes.get(first.id);
-    if (!outcome) return;
-    if (outcome.status === "completed" || outcome.status === "not_required" || outcome.status === "skipped") {
-      durable.clear();
-      finalizationQueue.clearOutcome(first.id);
-    }
-    // Failed outcome intentionally keeps durable pointer so a manual
-    // Retry-format can find the item on refresh.
-  }, [finalizationQueue.outcomes, durable.items, durable.jobId, durable, finalizationQueue]);
 
 
   const hasEnhanced = baseImageUrl && enhancedImageUrl && baseImageUrl !== enhancedImageUrl;
