@@ -841,6 +841,11 @@ export default function ImageGenerator({
     setDurableFormatFailure(null);
     upscaleRunId.current++;
     setDurableFailure(null);
+    // Bump generation lifecycle: any in-flight async outcome for the
+    // previous generation will now be discarded when it completes.
+    generationLifecycleIdRef.current += 1;
+    activeDurableItemIdRef.current = null;
+    processedItemsRef.current = new Set();
 
     const referenceImageUrl =
       isInlineEditing && imageUrl ? imageUrl : effectiveSourceImageUrl || undefined;
