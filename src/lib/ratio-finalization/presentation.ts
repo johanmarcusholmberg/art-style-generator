@@ -17,6 +17,7 @@ export type DurableResultPhase =
   | "format_failed"
   | "format_ready_corrected"
   | "format_ready_not_required"
+  | "format_ready_local_preview"
   | "format_unverified";
 
 export interface DurableItemSnapshot {
