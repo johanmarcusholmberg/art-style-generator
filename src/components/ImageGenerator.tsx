@@ -285,6 +285,17 @@ export default function ImageGenerator({
   const activePromptRef = useRef<string>("");
   const activeRefImageRef = useRef<string | undefined>(undefined);
   const activeRefStrengthRef = useRef<ReferenceStrength | null>(null);
+  // Lifecycle isolation. Every `generate()` (and durable retry) bumps
+  // `generationLifecycleIdRef`; every async outcome (queue callback,
+  // canonical adoption) captures the id at start and discards its
+  // writes if the id changed while it was in-flight. This prevents an
+  // in-flight outcome for generation A from mutating state or clearing
+  // the durable pointer for a newly-started generation B.
+  const generationLifecycleIdRef = useRef(0);
+  // The single durable item id we consider "active" for this
+  // generation cycle. Set when a completed item enters the effect;
+  // queue outcomes / adoptions for any other id are discarded.
+  const activeDurableItemIdRef = useRef<string | null>(null);
   const [durableFailure, setDurableFailure] = useState<{ itemId: string; message: string } | null>(
     null,
   );
