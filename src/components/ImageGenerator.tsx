@@ -316,6 +316,9 @@ export default function ImageGenerator({
   // succeeds so a refresh mid-adoption re-hydrates and recovers.
   const finalizationQueue = useRatioFinalizationQueue({
     onOutcome: (result) => {
+      // Lifecycle isolation: ignore outcomes for any item that is no
+      // longer the active durable item for the current generation.
+      if (result.itemId !== activeDurableItemIdRef.current) return;
       if (result.status === "failed") {
         setDurableFormatFailure({
           itemId: result.itemId,
@@ -341,9 +344,17 @@ export default function ImageGenerator({
    * pointer + queue outcome. If the canonical row is transiently
    * incomplete we surface a "Reload result" recovery affordance
    * without regenerating.
+   *
+   * Lifecycle-guarded: we snapshot the current lifecycle id and
+   * active item id at entry; if either changes while adoption is
+   * in-flight (a new generation started), we drop all writes so the
+   * new generation's state is not corrupted by A's late DB truth.
    */
   const runCanonicalAdoption = useCallback(
     async (itemId: string, o?: { ratioMatchesFormatHint?: boolean }) => {
+      const lifecycleAtStart = generationLifecycleIdRef.current;
+      const activeAtStart = activeDurableItemIdRef.current;
+      if (itemId !== activeAtStart) return;
       setAdoptingCanonical(true);
       setCanonicalAdoptionError(null);
       try {
@@ -352,6 +363,13 @@ export default function ImageGenerator({
             supabase.storage.from("generated-images").getPublicUrl(p).data.publicUrl,
           ratioMatchesFormat: o?.ratioMatchesFormatHint,
         });
+        // Discard if lifecycle changed OR active item id moved on.
+        if (
+          generationLifecycleIdRef.current !== lifecycleAtStart ||
+          activeDurableItemIdRef.current !== itemId
+        ) {
+          return;
+        }
         if (r.status !== "adopted") {
           setCanonicalAdoptionError({ itemId, message: r.message });
           return;
@@ -377,7 +395,13 @@ export default function ImageGenerator({
         durable.clear();
         finalizationQueue.clearOutcome(itemId);
       } finally {
-        setAdoptingCanonical(false);
+        // Only clear the adopting flag if this callback still owns it.
+        if (
+          generationLifecycleIdRef.current === lifecycleAtStart &&
+          activeDurableItemIdRef.current === itemId
+        ) {
+          setAdoptingCanonical(false);
+        }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
