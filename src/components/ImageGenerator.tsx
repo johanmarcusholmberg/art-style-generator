@@ -394,14 +394,16 @@ export default function ImageGenerator({
     const first =
       durable.items.find((r) => r.position === 0) ?? durable.items[0] ?? null;
     if (!first) {
-      // Not in a durable flow — allow the standard path (e.g. hydrated
-      // gallery image, in-tab compare pick) to be treated as ready
-      // when the visible image is stable.
+      // Not in a durable flow. If a local image is visible (hydrated
+      // gallery pick, in-tab compare, etc.) we surface it as a
+      // truthful "preview only" phase — it is NOT a persisted
+      // corrected master and must not enable persisted-anchor
+      // affordances (Matching Collection, print assessment).
       if (!imageUrl) {
         return deriveDurableResultPresentation(null);
       }
       return {
-        phase: "format_ready_corrected",
+        phase: "format_ready_local_preview",
         imageUrl,
         storagePath: correctedMasterStoragePath ?? durableBaseStoragePath ?? null,
         width: correctedMasterWidth ?? durableBaseWidth ?? null,
@@ -410,7 +412,7 @@ export default function ImageGenerator({
         canRetryFormat: false,
         canRetryGeneration: false,
         showFinalizingSpinner: false,
-        hasReadyImage: true,
+        hasReadyImage: false,
       };
     }
     return deriveDurableResultPresentation({
