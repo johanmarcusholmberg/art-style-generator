@@ -285,6 +285,17 @@ export default function ImageGenerator({
   const activePromptRef = useRef<string>("");
   const activeRefImageRef = useRef<string | undefined>(undefined);
   const activeRefStrengthRef = useRef<ReferenceStrength | null>(null);
+  // Lifecycle isolation. Every `generate()` (and durable retry) bumps
+  // `generationLifecycleIdRef`; every async outcome (queue callback,
+  // canonical adoption) captures the id at start and discards its
+  // writes if the id changed while it was in-flight. This prevents an
+  // in-flight outcome for generation A from mutating state or clearing
+  // the durable pointer for a newly-started generation B.
+  const generationLifecycleIdRef = useRef(0);
+  // The single durable item id we consider "active" for this
+  // generation cycle. Set when a completed item enters the effect;
+  // queue outcomes / adoptions for any other id are discarded.
+  const activeDurableItemIdRef = useRef<string | null>(null);
   const [durableFailure, setDurableFailure] = useState<{ itemId: string; message: string } | null>(
     null,
   );
@@ -305,6 +316,9 @@ export default function ImageGenerator({
   // succeeds so a refresh mid-adoption re-hydrates and recovers.
   const finalizationQueue = useRatioFinalizationQueue({
     onOutcome: (result) => {
+      // Lifecycle isolation: ignore outcomes for any item that is no
+      // longer the active durable item for the current generation.
+      if (result.itemId !== activeDurableItemIdRef.current) return;
       if (result.status === "failed") {
         setDurableFormatFailure({
           itemId: result.itemId,
@@ -330,9 +344,17 @@ export default function ImageGenerator({
    * pointer + queue outcome. If the canonical row is transiently
    * incomplete we surface a "Reload result" recovery affordance
    * without regenerating.
+   *
+   * Lifecycle-guarded: we snapshot the current lifecycle id and
+   * active item id at entry; if either changes while adoption is
+   * in-flight (a new generation started), we drop all writes so the
+   * new generation's state is not corrupted by A's late DB truth.
    */
   const runCanonicalAdoption = useCallback(
     async (itemId: string, o?: { ratioMatchesFormatHint?: boolean }) => {
+      const lifecycleAtStart = generationLifecycleIdRef.current;
+      const activeAtStart = activeDurableItemIdRef.current;
+      if (itemId !== activeAtStart) return;
       setAdoptingCanonical(true);
       setCanonicalAdoptionError(null);
       try {
@@ -341,6 +363,13 @@ export default function ImageGenerator({
             supabase.storage.from("generated-images").getPublicUrl(p).data.publicUrl,
           ratioMatchesFormat: o?.ratioMatchesFormatHint,
         });
+        // Discard if lifecycle changed OR active item id moved on.
+        if (
+          generationLifecycleIdRef.current !== lifecycleAtStart ||
+          activeDurableItemIdRef.current !== itemId
+        ) {
+          return;
+        }
         if (r.status !== "adopted") {
           setCanonicalAdoptionError({ itemId, message: r.message });
           return;
@@ -366,7 +395,13 @@ export default function ImageGenerator({
         durable.clear();
         finalizationQueue.clearOutcome(itemId);
       } finally {
-        setAdoptingCanonical(false);
+        // Only clear the adopting flag if this callback still owns it.
+        if (
+          generationLifecycleIdRef.current === lifecycleAtStart &&
+          activeDurableItemIdRef.current === itemId
+        ) {
+          setAdoptingCanonical(false);
+        }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -394,14 +429,16 @@ export default function ImageGenerator({
     const first =
       durable.items.find((r) => r.position === 0) ?? durable.items[0] ?? null;
     if (!first) {
-      // Not in a durable flow — allow the standard path (e.g. hydrated
-      // gallery image, in-tab compare pick) to be treated as ready
-      // when the visible image is stable.
+      // Not in a durable flow. If a local image is visible (hydrated
+      // gallery pick, in-tab compare, etc.) we surface it as a
+      // truthful "preview only" phase — it is NOT a persisted
+      // corrected master and must not enable persisted-anchor
+      // affordances (Matching Collection, print assessment).
       if (!imageUrl) {
         return deriveDurableResultPresentation(null);
       }
       return {
-        phase: "format_ready_corrected",
+        phase: "format_ready_local_preview",
         imageUrl,
         storagePath: correctedMasterStoragePath ?? durableBaseStoragePath ?? null,
         width: correctedMasterWidth ?? durableBaseWidth ?? null,
@@ -410,7 +447,7 @@ export default function ImageGenerator({
         canRetryFormat: false,
         canRetryGeneration: false,
         showFinalizingSpinner: false,
-        hasReadyImage: true,
+        hasReadyImage: false,
       };
     }
     return deriveDurableResultPresentation({
@@ -804,6 +841,11 @@ export default function ImageGenerator({
     setDurableFormatFailure(null);
     upscaleRunId.current++;
     setDurableFailure(null);
+    // Bump generation lifecycle: any in-flight async outcome for the
+    // previous generation will now be discarded when it completes.
+    generationLifecycleIdRef.current += 1;
+    activeDurableItemIdRef.current = null;
+    processedItemsRef.current = new Set();
 
     const referenceImageUrl =
       isInlineEditing && imageUrl ? imageUrl : effectiveSourceImageUrl || undefined;
@@ -862,6 +904,10 @@ export default function ImageGenerator({
     setDurableFailure(null);
     setLoading(true);
     processedItemsRef.current.delete(itemId);
+    // Treat retry as a new lifecycle so any older outcome writes are
+    // discarded and the item can re-enter the "active" slot below.
+    generationLifecycleIdRef.current += 1;
+    activeDurableItemIdRef.current = null;
     try {
       const { error } = await supabase.functions.invoke("generate-single-item-retry", {
         body: { itemId },
@@ -913,6 +959,9 @@ export default function ImageGenerator({
     if (!rawUrl) return;
 
     processedItemsRef.current.add(first.id);
+    // Claim this item as the active durable result for the current
+    // lifecycle. All downstream outcomes must match this id.
+    activeDurableItemIdRef.current = first.id;
     void runFinalizeOnce(first.id, async () => {
       const meta = isDurableResultMetadataV1(first.result_metadata)
         ? first.result_metadata
