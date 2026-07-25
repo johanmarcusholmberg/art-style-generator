@@ -959,6 +959,9 @@ export default function ImageGenerator({
     if (!rawUrl) return;
 
     processedItemsRef.current.add(first.id);
+    // Claim this item as the active durable result for the current
+    // lifecycle. All downstream outcomes must match this id.
+    activeDurableItemIdRef.current = first.id;
     void runFinalizeOnce(first.id, async () => {
       const meta = isDurableResultMetadataV1(first.result_metadata)
         ? first.result_metadata
