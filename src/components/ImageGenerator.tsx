@@ -904,6 +904,10 @@ export default function ImageGenerator({
     setDurableFailure(null);
     setLoading(true);
     processedItemsRef.current.delete(itemId);
+    // Treat retry as a new lifecycle so any older outcome writes are
+    // discarded and the item can re-enter the "active" slot below.
+    generationLifecycleIdRef.current += 1;
+    activeDurableItemIdRef.current = null;
     try {
       const { error } = await supabase.functions.invoke("generate-single-item-retry", {
         body: { itemId },
