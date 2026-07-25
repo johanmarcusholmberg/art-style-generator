@@ -36,6 +36,7 @@ const FORMAT_LABEL: Record<DurableResultPhase, string> = {
   format_failed: "Failed",
   format_ready_corrected: "Ready",
   format_ready_not_required: "Ready",
+  format_ready_local_preview: "Preview only",
   format_unverified: "Not validated",
 };
 
@@ -47,6 +48,7 @@ const FORMAT_TONE: Record<DurableResultPhase, string> = {
   format_failed: "text-destructive",
   format_ready_corrected: "text-emerald-500",
   format_ready_not_required: "text-emerald-500",
+  format_ready_local_preview: "text-amber-500",
   format_unverified: "text-amber-500",
 };
 
