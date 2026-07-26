@@ -1490,6 +1490,15 @@ export type Database = {
       }
       is_current_user_active: { Args: never; Returns: boolean }
       is_current_user_admin: { Args: never; Returns: boolean }
+      report_current_generation_safety_state: {
+        Args: { p_limit?: number }
+        Returns: {
+          category: string
+          detail: Json
+          detected_at: string
+          entity_id: string
+        }[]
+      }
       retry_generation_ratio_finalization: {
         Args: { p_item_id: string }
         Returns: boolean
