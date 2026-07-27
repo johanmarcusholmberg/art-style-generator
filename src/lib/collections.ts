@@ -39,14 +39,26 @@ export async function createCollection(name: string): Promise<Collection> {
     );
   }
 
+  // Ownership is resolved server-side; never trust a client-supplied id.
+  const { data: profileId, error: profileError } = await supabase.rpc(
+    "current_profile_id",
+  );
+  if (profileError) throw profileError;
+  if (!profileId) {
+    throw new CollectionValidationError(
+      "You must be signed in to create a collection.",
+    );
+  }
+
   const { data, error } = await supabase
     .from("collections")
-    .insert({ name: trimmed })
+    .insert({ name: trimmed, profile_id: profileId })
     .select()
     .single();
   if (error) throw error;
   return data;
 }
+
 
 export async function deleteCollection(id: string): Promise<void> {
   const { error } = await supabase.from("collections").delete().eq("id", id);
