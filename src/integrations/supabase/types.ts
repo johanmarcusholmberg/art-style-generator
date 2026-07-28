@@ -325,7 +325,7 @@ export type Database = {
           id: string
           matching_collection_job_id: string | null
           name: string
-          profile_id: string | null
+          profile_id: string
           provider_preference: string | null
           provider_substitution_reason: string | null
           reference_strength: string | null
@@ -354,7 +354,7 @@ export type Database = {
           id?: string
           matching_collection_job_id?: string | null
           name: string
-          profile_id?: string | null
+          profile_id: string
           provider_preference?: string | null
           provider_substitution_reason?: string | null
           reference_strength?: string | null
@@ -383,7 +383,7 @@ export type Database = {
           id?: string
           matching_collection_job_id?: string | null
           name?: string
-          profile_id?: string | null
+          profile_id?: string
           provider_preference?: string | null
           provider_substitution_reason?: string | null
           reference_strength?: string | null
