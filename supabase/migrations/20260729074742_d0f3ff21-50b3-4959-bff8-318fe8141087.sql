@@ -1,0 +1,9 @@
+REVOKE ALL ON public.generation_jobs FROM anon;
+REVOKE ALL ON public.generation_job_items FROM anon;
+REVOKE ALL ON public.prompt_history FROM anon;
+REVOKE ALL ON public.profiles FROM anon;
+REVOKE ALL ON public.user_roles FROM anon;
+REVOKE ALL ON public.audit_log FROM anon;
+REVOKE ALL ON public.asset_cost_events FROM anon;
+REVOKE ALL ON public.asset_folders FROM anon;
+REVOKE ALL ON public.upscale_jobs FROM anon;
