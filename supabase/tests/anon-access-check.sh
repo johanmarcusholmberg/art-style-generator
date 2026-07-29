@@ -46,11 +46,38 @@ check "anon regeneration rpc" 401 "$(code -X POST \
   "${H[@]}" -H 'Content-Type: application/json' \
   -d '{"p_source_item_id":"00000000-0000-0000-0000-000000000000"}')"
 
-for b in generated-images print-exports; do
-  check "anon upload ${b}" 400 "$(code -X POST \
+# Storage denial: Supabase may surface the same RLS rejection as 400 or 403
+# depending on gateway version. Accept only those, and only when the body is
+# an authorization/RLS denial. Any 2xx write is a hard failure.
+check_storage_denied() { # bucket
+  local b="$1" out status body
+  out="$(curl -s -w '\n%{http_code}' -X POST \
     "${SUPABASE_URL}/storage/v1/object/${b}/anon-test.txt" \
     "${H[@]}" -H 'Content-Type: text/plain' --data 'x')"
+  status="$(printf '%s' "$out" | tail -n1)"
+  body="$(printf '%s' "$out" | sed '$d')"
+
+  case "$status" in
+    400|401|403) ;;
+    *)
+      echo "FAIL: anon upload ${b} expected denial (400/401/403), got HTTP ${status}"
+      FAILURES=$((FAILURES + 1))
+      return
+      ;;
+  esac
+
+  if printf '%s' "$body" | grep -Eqi 'row-level security|unauthorized|not authorized|Access denied|InvalidJWT|permission denied|violates row-level'; then
+    echo "PASS: anon upload ${b} denied (HTTP ${status})"
+  else
+    echo "FAIL: anon upload ${b} returned HTTP ${status} but body is not an authorization/RLS denial: ${body}"
+    FAILURES=$((FAILURES + 1))
+  fi
+}
+
+for b in generated-images print-exports; do
+  check_storage_denied "$b"
 done
+
 
 if [ "$FAILURES" -ne 0 ]; then
   echo "${FAILURES} anonymous-access check(s) FAILED"
