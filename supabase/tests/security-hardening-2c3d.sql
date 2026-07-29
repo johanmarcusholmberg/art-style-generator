@@ -93,12 +93,30 @@ BEGIN
 END $$;
 
 -- ---------------------------------------------------------------------
+-- Precondition: sections B and C need a connection that may assume the
+-- anon / authenticated roles. A restricted connection fails loudly here
+-- instead of silently "passing".
+-- Equivalent live coverage for the anonymous cases (REST + Storage over
+-- HTTP with the publishable key) lives in supabase/tests/anon-access-check.sh.
+-- ---------------------------------------------------------------------
+DO $$
+BEGIN
+  IF NOT (pg_has_role(current_user, 'anon', 'MEMBER')
+          AND pg_has_role(current_user, 'authenticated', 'MEMBER')) THEN
+    RAISE EXCEPTION
+      'FAIL: connection role % cannot assume anon/authenticated; run sections B and C on a privileged (postgres/service) connection',
+      current_user;
+  END IF;
+END $$;
+
+-- ---------------------------------------------------------------------
 -- B. Anonymous role checks — every statement must be denied
 -- ---------------------------------------------------------------------
 DO $$
 DECLARE v_ok boolean;
 BEGIN
   SET LOCAL ROLE anon;
+
 
   BEGIN PERFORM 1 FROM public.collections; RAISE EXCEPTION 'FAIL: anon can select collections';
   EXCEPTION WHEN insufficient_privilege THEN NULL; END;
