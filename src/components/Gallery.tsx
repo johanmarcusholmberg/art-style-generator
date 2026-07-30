@@ -26,6 +26,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import { fetchGalleryImages, deleteFromGallery, saveToGallery, replaceInGallery } from "@/lib/gallery";
+import { getImageDisplayUrl, getThumbnailUrl } from "@/lib/image-display-url";
 import { fetchCollections, fetchCollectionImageIds, addBulkToCollection, removeBulkFromCollection, type Collection } from "@/lib/collections";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";

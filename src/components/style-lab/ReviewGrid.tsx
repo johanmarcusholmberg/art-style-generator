@@ -46,6 +46,7 @@ import {
   type ReviewImage,
 } from "@/lib/style-lab";
 import { STYLE_LAB_STYLES } from "@/lib/style-lab-styles";
+import { getThumbnailUrl, getPreviewUrl } from "@/lib/image-display-url";
 
 const STYLE_KEYS: { value: string; label: string }[] = STYLE_LAB_STYLES.map(
   (s) => ({ value: s.styleKey, label: `${s.emoji} ${s.name}` }),

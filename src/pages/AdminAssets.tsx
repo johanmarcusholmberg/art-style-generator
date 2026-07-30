@@ -60,6 +60,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { deleteFromGallery } from "@/lib/gallery";
+import { getThumbnailUrl, getPreviewUrl } from "@/lib/image-display-url";
 import {
   getBaseAssetUrl,
   getEnhancedAssetUrl,

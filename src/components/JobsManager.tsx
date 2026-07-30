@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useBatchJobs, useJobItems, type JobRow } from "@/hooks/use-batch-jobs";
 import { cancelJob, retryFailedItems, deleteJob } from "@/lib/batch-jobs";
 import { supabase } from "@/integrations/supabase/client";
+import { getThumbnailUrl } from "@/lib/image-display-url";
 import { toast } from "sonner";
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
