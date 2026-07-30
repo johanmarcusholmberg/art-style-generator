@@ -1220,7 +1220,7 @@ function AssetCard({
           </div>
         ) : (
           <img
-            src={row.publicUrl!}
+            src={getThumbnailUrl(row)}
             alt={shortPrompt(row.prompt, 40)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
             loading="lazy"
@@ -1402,7 +1402,7 @@ function AssetDetail({
       <div className="space-y-3">
         <div className="aspect-square bg-muted rounded overflow-hidden">
           {masterUrl ? (
-            <img src={masterUrl} alt={row.prompt} className="w-full h-full object-contain" />
+            <img src={getPreviewUrl({ ...row, publicUrl: masterUrl, masterUrl })} alt={row.prompt} className="w-full h-full object-contain" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground">
               <ImageOff className="h-8 w-8" />

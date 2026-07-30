@@ -312,7 +312,7 @@ export default function ReviewGrid() {
             <div className="flex flex-col">
               <div className="bg-muted flex items-center justify-center max-h-[70vh] overflow-hidden">
                 <img
-                  src={preview.masterUrl}
+                  src={getPreviewUrl({ ...preview, masterUrl: preview.masterUrl })}
                   alt={preview.prompt}
                   className="max-w-full max-h-[70vh] object-contain"
                 />
@@ -386,7 +386,7 @@ function ReviewCard({ row, onOpen, onRate, onFav, onArchive, onReject, onAddToCo
         className="relative aspect-square bg-muted overflow-hidden group"
       >
         <img
-          src={row.publicUrl}
+          src={getThumbnailUrl(row)}
           alt={row.prompt}
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"

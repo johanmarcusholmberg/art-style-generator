@@ -220,11 +220,12 @@ const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
                 <div key={item.id} className="border border-border rounded-sm overflow-hidden bg-background group">
                   {item.status === "completed" && item.storage_path ? (
                     <img
-                      src={
-                        supabase.storage
+                      src={getThumbnailUrl({
+                        storage_path: item.storage_path,
+                        publicUrl: supabase.storage
                           .from("generated-images")
-                          .getPublicUrl(item.storage_path).data.publicUrl
-                      }
+                          .getPublicUrl(item.storage_path).data.publicUrl,
+                      })}
                       alt={item.prompt_variant}
                       className="w-full aspect-square object-cover"
                       loading="lazy"
