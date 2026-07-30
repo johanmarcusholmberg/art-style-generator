@@ -2030,7 +2030,9 @@ export default function ImageGenerator({
             )}
 
             <ImagePreviewMockups
-              imageUrl={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
+              imageUrl={displayPreviewUrl(
+                viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl,
+              )}
               alt={prompt}
               compareUrl={viewVersion === "compare" && hasEnhanced ? baseImageUrl! : undefined}
             />
