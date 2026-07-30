@@ -261,7 +261,17 @@ function LightboxContent({
 }: LightboxContentProps) {
   const [selectedAsset, setSelectedAsset] = useState<ImageAsset | null>(null);
   const [useBestForExport, setUseBestForExport] = useState(false);
-  const displayUrl = selectedAsset?.publicUrl || img.masterUrl;
+  // Display uses an optimized ~1600px web preview; download/print keep the
+  // full canonical master (see src/lib/image-display-url.ts).
+  const canonicalDisplayUrl = selectedAsset?.publicUrl || img.masterUrl;
+  const displayUrl = getImageDisplayUrl(
+    {
+      ...img,
+      publicUrl: canonicalDisplayUrl,
+      masterUrl: canonicalDisplayUrl,
+    },
+    "preview",
+  ).url;
   const downloadUrl = selectedAsset?.publicUrl || img.masterUrl;
   const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
 
