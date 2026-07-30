@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { displayUrlFromString } from "@/lib/image-display-url";
 import { toast } from "@/hooks/use-toast";
 import {
   MAX_COLLECTION_SUBJECTS,
@@ -172,7 +173,7 @@ export function MatchingCollectionDialog(props: MatchingCollectionDialogProps) {
         <div className="grid gap-4 md:grid-cols-[180px_1fr]">
           <div className="space-y-2">
             <img
-              src={anchorImageUrl}
+              src={displayUrlFromString(anchorImageUrl, "thumbnail").url}
               alt="Anchor"
               className="w-full rounded-md border border-border object-cover"
               loading="lazy"

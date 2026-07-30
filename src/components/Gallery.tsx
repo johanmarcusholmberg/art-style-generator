@@ -26,6 +26,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import { fetchGalleryImages, deleteFromGallery, saveToGallery, replaceInGallery } from "@/lib/gallery";
+import { getImageDisplayUrl, getThumbnailUrl } from "@/lib/image-display-url";
 import { fetchCollections, fetchCollectionImageIds, addBulkToCollection, removeBulkFromCollection, type Collection } from "@/lib/collections";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -261,7 +262,17 @@ function LightboxContent({
 }: LightboxContentProps) {
   const [selectedAsset, setSelectedAsset] = useState<ImageAsset | null>(null);
   const [useBestForExport, setUseBestForExport] = useState(false);
-  const displayUrl = selectedAsset?.publicUrl || img.masterUrl;
+  // Display uses an optimized ~1600px web preview; download/print keep the
+  // full canonical master (see src/lib/image-display-url.ts).
+  const canonicalDisplayUrl = selectedAsset?.publicUrl || img.masterUrl;
+  const displayUrl = getImageDisplayUrl(
+    {
+      ...img,
+      publicUrl: canonicalDisplayUrl,
+      masterUrl: canonicalDisplayUrl,
+    },
+    "preview",
+  ).url;
   const downloadUrl = selectedAsset?.publicUrl || img.masterUrl;
   const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
 
@@ -1670,12 +1681,12 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                 onClick={() => selectMode ? toggleSelect(img.id) : setSelected(img)}
                 className="relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
               >
-                <img src={img.publicUrl} alt={img.prompt} className="w-full h-full object-cover block"
+                <img src={getThumbnailUrl(img)} alt={img.prompt} className="w-full h-full object-cover block"
                   style={{ imageRendering: "auto" }} decoding="async" loading="lazy"
                   sizes="(min-width: 768px) 33vw, (min-width: 640px) 33vw, 50vw" />
                 {!selectMode && (
                   <div className="absolute inset-0 bg-card opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center p-2 z-20">
-                    <img src={img.publicUrl} alt={img.prompt} className="max-w-full max-h-[75%] object-contain rounded-sm" />
+                    <img src={getThumbnailUrl(img)} alt={img.prompt} className="max-w-full max-h-[75%] object-contain rounded-sm" />
                     <p className="mt-2 text-[10px] text-muted-foreground font-display line-clamp-2 text-center px-1">{img.prompt}</p>
                   </div>
                 )}

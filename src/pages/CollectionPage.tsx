@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { displayUrlFromString } from "@/lib/image-display-url";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -420,7 +421,7 @@ export default function CollectionPage() {
           <div className="space-y-2">
             <div className="text-xs uppercase tracking-wide text-muted-foreground">Anchor</div>
             {anchorUrl ? (
-              <img src={anchorUrl} alt="Anchor" className="w-full rounded-md border border-border" />
+              <img src={displayUrlFromString(anchorUrl, "preview").url} alt="Anchor" className="w-full rounded-md border border-border" />
             ) : (
               <div className="aspect-[5/7] w-full rounded-md border border-dashed border-border" />
             )}
@@ -466,7 +467,7 @@ export default function CollectionPage() {
                 return (
                   <div key={m.itemId} className="rounded-md border border-border overflow-hidden bg-card">
                     {url && isCompleted ? (
-                      <img src={url} alt={m.subject} className="w-full aspect-[5/7] object-cover" loading="lazy" />
+                      <img src={displayUrlFromString(url, "thumbnail").url} alt={m.subject} className="w-full aspect-[5/7] object-cover" loading="lazy" />
                     ) : (
                       <div className="w-full aspect-[5/7] bg-muted flex items-center justify-center text-[11px] text-muted-foreground">
                         {isRunning ? <span className="animate-pulse">Generating…</span> : label}

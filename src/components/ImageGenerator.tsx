@@ -102,6 +102,17 @@ import {
   referenceStrengthLabel,
   type ReferenceStrength,
 } from "@/lib/reference-strength";
+import { displayUrlFromString } from "@/lib/image-display-url";
+
+/**
+ * Presentation-only: request an optimized ~1600px web preview for persisted
+ * Supabase assets. Local/provider URLs pass through untouched. Print, export,
+ * download, upscale, and anchor identity keep using the canonical master.
+ */
+function displayPreviewUrl(url: string | null | undefined): string {
+  return displayUrlFromString(url, "preview").url || (url ?? "");
+}
+
 
 
 interface ImageGeneratorProps {
@@ -2030,7 +2041,9 @@ export default function ImageGenerator({
             )}
 
             <ImagePreviewMockups
-              imageUrl={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
+              imageUrl={displayPreviewUrl(
+                viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl,
+              )}
               alt={prompt}
               compareUrl={viewVersion === "compare" && hasEnhanced ? baseImageUrl! : undefined}
             />
