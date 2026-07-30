@@ -173,7 +173,7 @@ export function MatchingCollectionDialog(props: MatchingCollectionDialogProps) {
         <div className="grid gap-4 md:grid-cols-[180px_1fr]">
           <div className="space-y-2">
             <img
-              src={anchorImageUrl}
+              src={displayUrlFromString(anchorImageUrl, "thumbnail").url}
               alt="Anchor"
               className="w-full rounded-md border border-border object-cover"
               loading="lazy"
