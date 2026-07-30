@@ -148,9 +148,9 @@ export function selectCanonicalDisplaySource(
   }
 
   const persisted =
-    (img.storage_path || img.master_storage_path
+    img.storage_path || img.master_storage_path
       ? img.publicUrl ?? img.masterUrl ?? null
-      : null) ?? null;
+      : null;
   if (persisted && isTransformableStorageUrl(persisted)) {
     return { url: persisted, sourceKind: "persisted_source" };
   }
