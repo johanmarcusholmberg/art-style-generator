@@ -198,7 +198,11 @@ export async function preparePrintExport(
   const norm = normalizeRatio(
     srcW,
     srcH,
-    format.aspectRatio,
+    // Use the physical cm dimensions rather than the label-style
+    // `aspectRatio` string: ISO A-series formats carry "ISO-A", which
+    // `parseRatio` cannot parse and would silently treat as 1:1.
+    `${format.widthCm}:${format.heightCm}`,
+
     opts.ratioMethod ?? "pad",
   );
 

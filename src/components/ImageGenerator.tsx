@@ -2067,8 +2067,10 @@ export default function ImageGenerator({
               printFormatId={
                 generationMode === "print-ready" ? selectedPrintFormat.id : null
               }
+              canonicalSourceUrl={enhancedImageUrl || baseImageUrl || imageUrl || null}
               adopting={adoptingCanonical}
             />
+
 
             {/* Status badges + export source notice */}
             {(() => {
