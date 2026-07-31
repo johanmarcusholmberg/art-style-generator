@@ -35,6 +35,8 @@ export const PROVIDER_SIZE_MAP: {
   sdxl: {
     print_30x40: { width: 1024, height: 1344, exact: false },
     print_50x70: { width: 1344, height: 1888, exact: true },
+    print_70x50: { width: 1888, height: 1344, exact: true },
+    print_70x100: { width: 1344, height: 1920, exact: true },
     print_50x50: { width: 1024, height: 1024, exact: true },
     print_a2: { width: 1408, height: 1984, exact: false },
     print_a3: { width: 1408, height: 1984, exact: false },
@@ -43,6 +45,8 @@ export const PROVIDER_SIZE_MAP: {
   openai: {
     print_30x40: { size: "1024x1536", exact: false },
     print_50x70: { size: "1024x1536", exact: false },
+    print_70x50: { size: "1536x1024", exact: false },
+    print_70x100: { size: "1024x1536", exact: false },
     print_50x50: { size: "1024x1024", exact: true },
     print_a2: { size: "1024x1536", exact: false },
     print_a3: { size: "1024x1536", exact: false },
@@ -51,6 +55,8 @@ export const PROVIDER_SIZE_MAP: {
   gemini: {
     print_30x40: { aspectRatio: "3:4", exact: true },
     print_50x70: { aspectRatio: "3:4", exact: false },
+    print_70x50: { aspectRatio: "3:2", exact: false },
+    print_70x100: { aspectRatio: "3:4", exact: false },
     print_50x50: { aspectRatio: "1:1", exact: true },
     print_a2: { aspectRatio: "2:3", exact: false },
     print_a3: { aspectRatio: "2:3", exact: false },
