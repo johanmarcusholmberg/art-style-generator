@@ -24,6 +24,8 @@ export const ASSET_ERROR_CODES = [
   "ASSET_CROP_BOX_INVALID",
   "ASSET_ARCHIVED_CANONICAL",
   "ASSET_STORAGE_PATH_INVALID",
+  "ASSET_PROMOTION_REJECTED",
+
 ] as const;
 
 export type AssetErrorCode = (typeof ASSET_ERROR_CODES)[number];
