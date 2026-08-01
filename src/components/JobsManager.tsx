@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useBatchJobs, useJobItems, type JobRow } from "@/hooks/use-batch-jobs";
 import { cancelJob, retryFailedItems, deleteJob } from "@/lib/batch-jobs";
 import { supabase } from "@/integrations/supabase/client";
-import { getThumbnailUrl } from "@/lib/image-display-url";
+import { getThumbnailUrl, handleDisplayImageError } from "@/lib/image-display-url";
 import { toast } from "sonner";
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
@@ -227,6 +227,14 @@ const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
                           .getPublicUrl(item.storage_path).data.publicUrl,
                       })}
                       alt={item.prompt_variant}
+                      onError={(e) =>
+                        handleDisplayImageError(e.currentTarget, {
+                          storage_path: item.storage_path,
+                          publicUrl: supabase.storage
+                            .from("generated-images")
+                            .getPublicUrl(item.storage_path!).data.publicUrl,
+                        })
+                      }
                       className="w-full aspect-square object-cover"
                       loading="lazy"
                     />

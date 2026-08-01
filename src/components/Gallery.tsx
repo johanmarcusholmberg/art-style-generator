@@ -26,7 +26,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import { fetchGalleryImages, deleteFromGallery, saveToGallery, replaceInGallery } from "@/lib/gallery";
-import { getImageDisplayUrl, getThumbnailUrl } from "@/lib/image-display-url";
+import { getImageDisplayUrl, getThumbnailUrl, handleDisplayImageError } from "@/lib/image-display-url";
 import { fetchCollections, fetchCollectionImageIds, addBulkToCollection, removeBulkFromCollection, type Collection } from "@/lib/collections";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -1682,11 +1682,12 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                 className="relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
               >
                 <img src={getThumbnailUrl(img)} alt={img.prompt} className="w-full h-full object-cover block"
+                  onError={(e) => handleDisplayImageError(e.currentTarget, img)}
                   style={{ imageRendering: "auto" }} decoding="async" loading="lazy"
                   sizes="(min-width: 768px) 33vw, (min-width: 640px) 33vw, 50vw" />
                 {!selectMode && (
                   <div className="absolute inset-0 bg-card opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center p-2 z-20">
-                    <img src={getThumbnailUrl(img)} alt={img.prompt} className="max-w-full max-h-[75%] object-contain rounded-sm" />
+                    <img src={getThumbnailUrl(img)} alt={img.prompt} className="max-w-full max-h-[75%] object-contain rounded-sm" onError={(e) => handleDisplayImageError(e.currentTarget, img)} />
                     <p className="mt-2 text-[10px] text-muted-foreground font-display line-clamp-2 text-center px-1">{img.prompt}</p>
                   </div>
                 )}

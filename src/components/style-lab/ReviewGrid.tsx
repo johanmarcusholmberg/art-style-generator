@@ -46,7 +46,7 @@ import {
   type ReviewImage,
 } from "@/lib/style-lab";
 import { STYLE_LAB_STYLES } from "@/lib/style-lab-styles";
-import { getThumbnailUrl, getPreviewUrl } from "@/lib/image-display-url";
+import { getThumbnailUrl, getPreviewUrl, handleDisplayImageError } from "@/lib/image-display-url";
 
 const STYLE_KEYS: { value: string; label: string }[] = STYLE_LAB_STYLES.map(
   (s) => ({ value: s.styleKey, label: `${s.emoji} ${s.name}` }),
@@ -313,6 +313,7 @@ export default function ReviewGrid() {
               <div className="bg-muted flex items-center justify-center max-h-[70vh] overflow-hidden">
                 <img
                   src={getPreviewUrl({ ...preview, masterUrl: preview.masterUrl })}
+                  onError={(e) => handleDisplayImageError(e.currentTarget, { ...preview, masterUrl: preview.masterUrl })}
                   alt={preview.prompt}
                   className="max-w-full max-h-[70vh] object-contain"
                 />
@@ -387,6 +388,7 @@ function ReviewCard({ row, onOpen, onRate, onFav, onArchive, onReject, onAddToCo
       >
         <img
           src={getThumbnailUrl(row)}
+          onError={(e) => handleDisplayImageError(e.currentTarget, row)}
           alt={row.prompt}
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
