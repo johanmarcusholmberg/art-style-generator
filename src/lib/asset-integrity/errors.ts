@@ -61,6 +61,8 @@ const DEFAULT_MESSAGES: Record<AssetErrorCode, string> = {
   ASSET_CROP_BOX_INVALID: "The crop box does not fit inside the source image.",
   ASSET_ARCHIVED_CANONICAL: "An archived or deleted asset is still selected as canonical.",
   ASSET_STORAGE_PATH_INVALID: "The storage path is malformed or unsafe.",
+  ASSET_PROMOTION_REJECTED: "This asset is not eligible to become the canonical master.",
+
 };
 
 export function assetIssue(
