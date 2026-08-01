@@ -208,7 +208,7 @@ describe("handleDisplayImageError (canonical fallback, one-shot)", () => {
     handleDisplayImageError(el, { storage_path: "a.png", publicUrl: OBJECT });
     expect(el.src).toBe(OBJECT);
     // Second failure must not retry.
-    el.currentSrc = el.src;
+    (el as unknown as { currentSrc: string }).currentSrc = el.src;
     handleDisplayImageError(el, { storage_path: "a.png", publicUrl: OBJECT });
     expect(el.src).toBe(OBJECT);
   });
