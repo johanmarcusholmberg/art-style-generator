@@ -9,6 +9,7 @@
 import { assetIssue, type AssetIssue } from "./errors";
 import type { AssetGraph, AssetRecord } from "./model";
 import { canonicalCandidates } from "./resolver";
+import { assetOperationKey, type AssetOperationIdentity } from "./idempotency";
 import { validateLineage } from "./promotion";
 import {
   normalizeStorageObjectReference,
@@ -49,6 +50,13 @@ export interface PlanRepairsInput {
   confirmedUnreferencedObjects?: string[];
   /** Duplicate rows for the same operation, keyed by the surviving asset id. */
   duplicates?: { keepAssetId: string; duplicateAssetIds: string[] }[];
+  /**
+   * Verified operation identity per asset. Duplicate archiving is refused
+   * unless keeper and duplicate resolve to the SAME identity.
+   */
+  identityOf?: (a: AssetRecord) => AssetOperationIdentity | null;
+  /** Collection ids for which the root image is a Matching Collection anchor. */
+  anchorAssetIds?: string[];
 }
 
 function identityOf(a: AssetRecord): string | null {
@@ -135,16 +143,74 @@ export function planAssetRepairs(input: PlanRepairsInput): RepairPlan {
     skipped.push(...validateLineage(graph).ambiguous);
   }
 
-  // 4. Archive incomplete duplicates (non-destructive).
+  // 4. Archive incomplete duplicates (non-destructive) — heavily gated.
+  const anchorIds = new Set(input.anchorAssetIds ?? []);
+  const liveChildrenOf = (id: string) =>
+    graph.assets.filter((a) => a.parentAssetId === id && !a.deletedAt && !a.archivedAt);
+
   for (const dup of input.duplicates ?? []) {
+    const keeper = graph.assets.find((a) => a.id === dup.keepAssetId) ?? null;
+    if (!keeper) {
+      skipped.push(
+        assetIssue("ASSET_DUPLICATE_OPERATION", "warning", {
+          assetId: dup.keepAssetId,
+          message: "Duplicate repair refused: the keeper asset does not exist.",
+          suggestedAction: "Manual review.",
+        }),
+      );
+      continue;
+    }
+    const keeperIdentity = input.identityOf?.(keeper) ?? null;
+
     for (const id of dup.duplicateAssetIds) {
+      const duplicate = graph.assets.find((a) => a.id === id) ?? null;
+      const refuse = (message: string) =>
+        skipped.push(
+          assetIssue("ASSET_DUPLICATE_OPERATION", "warning", {
+            assetId: id,
+            relatedAssetIds: [dup.keepAssetId],
+            message,
+            suggestedAction: "Manual review — never auto-archive.",
+          }),
+        );
+
+      if (!duplicate) {
+        refuse("Duplicate repair refused: the duplicate asset does not exist.");
+        continue;
+      }
+      if (!input.identityOf || !keeperIdentity) {
+        refuse("Duplicate repair refused: no verified operation identity was supplied.");
+        continue;
+      }
+      const dupIdentity = input.identityOf(duplicate);
+      if (!dupIdentity || assetOperationKey(dupIdentity) !== assetOperationKey(keeperIdentity)) {
+        refuse("Duplicate repair refused: keeper and duplicate are different operations.");
+        continue;
+      }
+      if (duplicate.isCanonical) {
+        refuse("Duplicate repair refused: the asset is the canonical master.");
+        continue;
+      }
+      if (graph.rootImageId && duplicate.id === graph.rootImageId) {
+        refuse("Duplicate repair refused: the asset is the root image.");
+        continue;
+      }
+      if (liveChildrenOf(duplicate.id).length > 0) {
+        refuse("Duplicate repair refused: the asset has live dependants.");
+        continue;
+      }
+      if (anchorIds.has(duplicate.id)) {
+        refuse("Duplicate repair refused: the asset is a Matching Collection anchor.");
+        continue;
+      }
+
       proposals.push({
         action: "archive_incomplete_duplicate",
         assetId: id,
         before: "live duplicate row",
         after: "archived",
         destructive: false,
-        reason: `Duplicate of ${dup.keepAssetId} for the same operation identity.`,
+        reason: `Duplicate of ${dup.keepAssetId} for the same verified operation identity.`,
       });
     }
   }
@@ -191,6 +257,9 @@ export interface RepairExecutionOptions {
 export interface RepairExecutionResult {
   executed: RepairProposal[];
   refused: { proposal: RepairProposal; reason: string }[];
+  failed: { proposal: RepairProposal; error: string }[];
+  /** Proposals never attempted because an earlier one failed. */
+  notAttempted: RepairProposal[];
 }
 
 export async function executeAssetRepairs(
@@ -199,22 +268,45 @@ export async function executeAssetRepairs(
 ): Promise<RepairExecutionResult> {
   const executed: RepairProposal[] = [];
   const refused: { proposal: RepairProposal; reason: string }[] = [];
+  const failed: { proposal: RepairProposal; error: string }[] = [];
+  const notAttempted: RepairProposal[] = [];
 
-  if (!options.execute || !options.apply) {
-    return { executed, refused: plan.proposals.map((p) => ({ proposal: p, reason: "dry_run" })) };
+  if (!options.execute) {
+    return {
+      executed,
+      refused: plan.proposals.map((p) => ({ proposal: p, reason: "dry_run" })),
+      failed,
+      notAttempted: [...plan.proposals],
+    };
+  }
+  if (!options.apply) {
+    return {
+      executed,
+      refused: plan.proposals.map((p) => ({ proposal: p, reason: "no_apply_adapter" })),
+      failed,
+      notAttempted: [...plan.proposals],
+    };
   }
 
-  for (const p of plan.proposals) {
+  for (let i = 0; i < plan.proposals.length; i += 1) {
+    const p = plan.proposals[i];
     if (p.destructive && !options.allowDestructive) {
       refused.push({ proposal: p, reason: "destructive_not_allowed" });
       continue;
     }
-    await options.apply(p);
+    try {
+      await options.apply(p);
+    } catch (err) {
+      failed.push({ proposal: p, error: redactStorageReference(String(err)) });
+      // Never report subsequent proposals as executed after a failure.
+      notAttempted.push(...plan.proposals.slice(i + 1));
+      return { executed, refused, failed, notAttempted };
+    }
     executed.push(p);
     options.log?.(
       `[asset-repair] ${p.action} asset=${p.assetId ?? "-"} ` +
         `before=${redactStorageReference(p.before)} after=${redactStorageReference(p.after)}`,
     );
   }
-  return { executed, refused };
+  return { executed, refused, failed, notAttempted };
 }

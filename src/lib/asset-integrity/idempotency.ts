@@ -7,7 +7,7 @@
  * valid asset instead of uploading a duplicate.
  */
 import { assetIssue, type AssetIssue } from "./errors";
-import type { AssetRecord, CropBox } from "./model";
+import { hasValidDimensions, type AssetRecord, type CropBox } from "./model";
 
 export type AssetOperationType =
   | "generation"
@@ -80,13 +80,20 @@ export function decideIdempotentPersist(input: IdempotencyInput): IdempotencyDec
 
   if (matches.length === 0) return { action: "create", existingAssetId: null, issues };
 
-  const usable = matches.find(
-    (a) =>
-      a.storageObjectExists !== false &&
-      !!a.path &&
-      (a.width == null || a.width > 0) &&
-      (a.height == null || a.height > 0),
-  );
+  /**
+   * Reuse requires positive verified dimensions. Unknown (null) dimensions are
+   * only acceptable when another trusted field — a confirmed storage object —
+   * verifies the asset actually exists.
+   */
+  const usable = matches.find((a) => {
+    if (a.storageObjectExists === false) return false;
+    if (!a.path) return false;
+    if (a.archivedAt) return false;
+    const dimsKnown = typeof a.width === "number" && typeof a.height === "number";
+    if (dimsKnown) return hasValidDimensions(a);
+    if (a.width != null || a.height != null) return false;
+    return a.storageObjectExists === true;
+  });
 
   if (!usable) {
     issues.push(
@@ -143,6 +150,11 @@ export interface CompensationPlan {
   issues: AssetIssue[];
   /** True when the caller may safely retry the whole operation. */
   recoverable: boolean;
+  /**
+   * Always false: database writes and storage writes are never atomic with one
+   * another. Compensation is best-effort repair, never a transaction.
+   */
+  atomicityGuaranteed: false;
 }
 
 export interface CompensationInput {
@@ -180,7 +192,7 @@ export function planCompensation(input: CompensationInput): CompensationPlan {
           }),
         );
       }
-      return { stage: input.stage, steps, issues, recoverable: true };
+      return { stage: input.stage, steps, issues, recoverable: true, atomicityGuaranteed: false };
     }
     case "db_ok_object_missing": {
       steps.push({
@@ -199,7 +211,7 @@ export function planCompensation(input: CompensationInput): CompensationPlan {
           suggestedAction: "Use the admin repair path to relink or re-render.",
         }),
       );
-      return { stage: input.stage, steps, issues, recoverable: false };
+      return { stage: input.stage, steps, issues, recoverable: false, atomicityGuaranteed: false };
     }
     case "parent_ok_child_link_failed": {
       steps.push({
@@ -215,7 +227,7 @@ export function planCompensation(input: CompensationInput): CompensationPlan {
         reason: "Incomplete child is eligible for safe cleanup or repair.",
       });
       issues.push(assetIssue("ASSET_LINEAGE_INVALID", "warning", { assetId: input.assetId }));
-      return { stage: input.stage, steps, issues, recoverable: true };
+      return { stage: input.stage, steps, issues, recoverable: true, atomicityGuaranteed: false };
     }
     case "canonical_promotion_failed":
     default: {
@@ -225,7 +237,7 @@ export function planCompensation(input: CompensationInput): CompensationPlan {
         safe: true,
         reason: "Promotion did not complete; the old canonical master stays authoritative.",
       });
-      return { stage: "canonical_promotion_failed", steps, issues, recoverable: true };
+      return { stage: "canonical_promotion_failed", steps, issues, recoverable: true, atomicityGuaranteed: false };
     }
   }
 }

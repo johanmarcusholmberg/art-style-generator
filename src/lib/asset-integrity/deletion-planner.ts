@@ -10,6 +10,7 @@
 import { assetIssue, type AssetIssue } from "./errors";
 import { isUsableAsset, type AssetGraph, type AssetRecord } from "./model";
 import { canonicalCandidates } from "./resolver";
+import { detectCycles, evaluateCanonicalPromotion } from "./promotion";
 
 export type DeletionStepAction =
   | "archive_row"
@@ -83,8 +84,14 @@ export function planAssetDeletion(input: PlanAssetDeletionInput): AssetDeletionP
   const asset = graph.assets.find((a) => a.id === assetId) ?? null;
   const children = asset ? childrenOf(graph, assetId) : [];
   const descendants = asset ? descendantsOf(graph, assetId) : [];
-  const memberships = graph.collectionMemberships ?? [];
-  const anchors = graph.anchorReferences ?? [];
+  /**
+   * Collection memberships and Matching Collection anchors always reference
+   * the ROOT gallery image, never a child asset. Scoping them here keeps a
+   * child deletion from touching root-level references.
+   */
+  const isRoot = !!asset && !!graph.rootImageId && asset.id === graph.rootImageId;
+  const memberships = isRoot ? (graph.collectionMemberships ?? []) : [];
+  const anchors = isRoot ? (graph.anchorReferences ?? []) : [];
 
   const base: AssetDeletionPlan = {
     assetId,
@@ -110,6 +117,20 @@ export function planAssetDeletion(input: PlanAssetDeletionInput): AssetDeletionP
     return base;
   }
 
+  // A lineage cycle makes dependants unknowable — never destroy anything.
+  const cycleIds = detectCycles(graph.assets);
+  if (cycleIds.includes(asset.id) || (input.cascadeRoot && cycleIds.length > 0)) {
+    blockers.push(
+      assetIssue("ASSET_LINEAGE_CYCLE", "error", {
+        assetId,
+        relatedAssetIds: cycleIds.filter((id) => id !== assetId),
+        message: "Lineage contains a cycle; dependants cannot be determined safely.",
+        suggestedAction: "Repair the lineage before deleting anything.",
+      }),
+    );
+    return base;
+  }
+
   // How many live rows share this exact storage object?
   const identity = asset.path ? `${asset.bucket ?? "generated-images"}/${asset.path}` : null;
   const sharing = identity
@@ -124,6 +145,17 @@ export function planAssetDeletion(input: PlanAssetDeletionInput): AssetDeletionP
 
   /* ── Cascade root deletion ─────────────────────────────────────────── */
   if (input.cascadeRoot) {
+    if (!isRoot) {
+      blockers.push(
+        assetIssue("ASSET_DELETE_BLOCKED_DEPENDANTS", "error", {
+          assetId,
+          message: "Cascade refused: the selected asset is not the identified graph root.",
+          suggestedAction: "Cascade only from the root gallery image.",
+        }),
+      );
+      return base;
+    }
+
     if (!input.confirmed) {
       blockers.push(
         assetIssue("ASSET_DELETE_BLOCKED_DEPENDANTS", "error", {
@@ -183,23 +215,38 @@ export function planAssetDeletion(input: PlanAssetDeletionInput): AssetDeletionP
 
   /* ── Single-asset deletion ─────────────────────────────────────────── */
   if (base.isCanonical) {
-    const replacement = canonicalCandidates(graph).find((c) => c.id !== asset.id) ?? null;
-    base.replacementCanonicalAssetId = replacement?.id ?? null;
-    if (!replacement) {
+    // A replacement must independently pass the promotion gate — candidate
+    // ranking alone is not enough (lower resolution, derivatives, transient
+    // or missing objects must all be rejected here too).
+    let replacementId: string | null = null;
+    let lastBlockers: AssetIssue[] = [];
+    for (const c of canonicalCandidates(graph)) {
+      if (c.id === asset.id) continue;
+      const decision = evaluateCanonicalPromotion({ graph, candidateAssetId: c.id });
+      if (decision.allowed) {
+        replacementId = c.id;
+        break;
+      }
+      lastBlockers = decision.blockers;
+    }
+    base.replacementCanonicalAssetId = replacementId;
+    if (!replacementId) {
       blockers.push(
         assetIssue("ASSET_DELETE_BLOCKED_CANONICAL", "error", {
           assetId,
           suggestedAction: "Promote another valid canonical master, or cascade-delete the root image.",
         }),
+        ...lastBlockers,
       );
       return base;
     }
     steps.push({
       action: "promote_replacement_canonical",
-      assetId: replacement.id,
+      assetId: replacementId,
       reason: "A valid canonical master must exist before the current one is removed.",
     });
   }
+
 
   if (children.length > 0) {
     blockers.push(
