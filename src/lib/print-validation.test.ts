@@ -295,3 +295,38 @@ describe("21-23. derivative workflows", () => {
     expect(r.explanation).toMatch(/Aspect ratio does not match/);
   });
 });
+
+describe("malformed canonical print sources (Turn 3B regression)", () => {
+  const base = { canonicalWidth: 5906, canonicalHeight: 8268, printFormatId: "print_50x70" };
+
+  it("rejects a malformed source string", () => {
+    const r = validatePrintReadiness({ ...base, canonicalSourceUrl: "not a url" });
+    expect(r.canonicalSourceKind).toBe("unknown");
+    expect(r.severity).toBe("blocked");
+    expect(r.blockingErrors.join(" ")).toMatch(/malformed/i);
+  });
+
+  it("rejects a malformed source even when a kind is declared", () => {
+    const r = validatePrintReadiness({
+      ...base,
+      canonicalSourceUrl: "http://",
+      canonicalSourceKind: "canonical_master",
+    });
+    expect(r.canonicalSourceKind).toBe("unknown");
+    expect(r.severity).toBe("blocked");
+  });
+
+  it("still accepts legitimate canonical forms", () => {
+    const ok = [
+      "https://p.supabase.co/storage/v1/object/public/generated-images/a.png",
+      "https://p.supabase.co/storage/v1/object/public/generated-images/a.png?v=2",
+      "https://p.supabase.co/storage/v1/object/sign/generated-images/a.png?token=x",
+      "generated-images/whimsical_japanese-1782285116589.png",
+    ];
+    for (const u of ok) {
+      const r = validatePrintReadiness({ ...base, canonicalSourceUrl: u });
+      expect(r.canonicalSourceKind).not.toBe("unknown");
+      expect(r.blockingErrors).toEqual([]);
+    }
+  });
+});
