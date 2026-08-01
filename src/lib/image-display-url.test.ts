@@ -8,6 +8,8 @@ import {
   selectCanonicalDisplaySource,
   isTransformableStorageUrl,
   DISPLAY_PRESETS,
+  handleDisplayImageError,
+  canonicalFromTransformedUrl,
 } from "./image-display-url";
 
 const BASE = "https://proj.supabase.co/storage/v1/object/public/generated-images";
