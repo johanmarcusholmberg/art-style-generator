@@ -320,6 +320,22 @@ export function getDisplayFallbackUrl(
   return canonical;
 }
 
+/**
+ * One-shot <img onError> handler: swap a failed transformed display URL for
+ * the canonical URL exactly once. Never retries, never persists anything,
+ * and never touches generation or readiness state.
+ */
+export function handleDisplayImageError(
+  el: HTMLImageElement,
+  img: DisplayImageLike,
+): void {
+  if (el.dataset.canonicalFallback === "1") return;
+  el.dataset.canonicalFallback = "1";
+  const next = getDisplayFallbackUrl(img, el.currentSrc || el.src);
+  if (next) el.src = next;
+}
+
+
 /** Wrap a plain URL string into the display pipeline (no metadata available). */
 export function displayUrlFromString(
   url: string | null | undefined,
