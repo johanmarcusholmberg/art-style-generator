@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { displayUrlFromString } from "@/lib/image-display-url";
+import { displayUrlFromString, handleDisplayImageError } from "@/lib/image-display-url";
 import { toast } from "@/hooks/use-toast";
 import {
   MAX_COLLECTION_SUBJECTS,
@@ -174,6 +174,12 @@ export function MatchingCollectionDialog(props: MatchingCollectionDialogProps) {
           <div className="space-y-2">
             <img
               src={displayUrlFromString(anchorImageUrl, "thumbnail").url}
+              onError={(e) =>
+                handleDisplayImageError(e.currentTarget, {
+                  url: anchorImageUrl,
+                  publicUrl: anchorImageUrl,
+                })
+              }
               alt="Anchor"
               className="w-full rounded-md border border-border object-cover"
               loading="lazy"

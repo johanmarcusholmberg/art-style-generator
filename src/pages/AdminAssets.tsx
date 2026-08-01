@@ -60,7 +60,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { deleteFromGallery } from "@/lib/gallery";
-import { getThumbnailUrl, getPreviewUrl } from "@/lib/image-display-url";
+import { getThumbnailUrl, getPreviewUrl, handleDisplayImageError } from "@/lib/image-display-url";
 import {
   getBaseAssetUrl,
   getEnhancedAssetUrl,
@@ -1224,9 +1224,7 @@ function AssetCard({
             alt={shortPrompt(row.prompt, 40)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
             loading="lazy"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
+            onError={(e) => handleDisplayImageError(e.currentTarget, row)}
           />
         )}
         <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
@@ -1402,7 +1400,7 @@ function AssetDetail({
       <div className="space-y-3">
         <div className="aspect-square bg-muted rounded overflow-hidden">
           {masterUrl ? (
-            <img src={getPreviewUrl({ ...row, publicUrl: masterUrl, masterUrl })} alt={row.prompt} className="w-full h-full object-contain" />
+            <img src={getPreviewUrl({ ...row, publicUrl: masterUrl, masterUrl })} alt={row.prompt} className="w-full h-full object-contain" onError={(e) => handleDisplayImageError(e.currentTarget, { ...row, publicUrl: masterUrl, masterUrl })} />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground">
               <ImageOff className="h-8 w-8" />

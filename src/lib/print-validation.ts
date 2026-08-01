@@ -219,6 +219,28 @@ export function isLocalPreviewSource(url: string | null | undefined): boolean {
   return url.startsWith("blob:") || url.startsWith("data:");
 }
 
+/**
+ * True for a source string that is neither an absolute http(s) URL nor a
+ * plausible storage path. Such values can never resolve to a canonical
+ * master and must not be treated as printable.
+ */
+export function isMalformedPrintSource(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const v = url.trim();
+  if (!v) return true;
+  if (/^https?:\/\//i.test(v)) {
+    try {
+      // eslint-disable-next-line no-new
+      new URL(v);
+      return false;
+    } catch {
+      return true;
+    }
+  }
+  // Storage paths: no whitespace, at least one path-safe segment.
+  return /\s/.test(v) || !/^[A-Za-z0-9._\-/]+$/.test(v);
+}
+
 /** Classify a URL as a print source. Explicit input kinds win. */
 export function classifyPrintSource(
   url: string | null | undefined,
@@ -226,6 +248,7 @@ export function classifyPrintSource(
 ): PrintSourceKind {
   if (isDisplayDerivativeUrl(url)) return "display_derivative";
   if (isLocalPreviewSource(url)) return "local_preview";
+  if (isMalformedPrintSource(url)) return "unknown";
   if (declared) return declared;
   if (!url) return "unknown";
   return "persisted_original";
@@ -387,7 +410,11 @@ export function validatePrintReadiness(
       "A local browser preview cannot be used as a print source. Wait for the canonical master to persist.",
     );
   } else if (sourceKind === "unknown") {
-    blockingErrors.push("No canonical master available for this export.");
+    blockingErrors.push(
+      url && isMalformedPrintSource(url)
+        ? "The canonical source is malformed and cannot be used as a print source."
+        : "No canonical master available for this export.",
+    );
   }
 
   // ── Dimensions ───────────────────────────────────────────────────
