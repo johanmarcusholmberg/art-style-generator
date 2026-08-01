@@ -190,3 +190,42 @@ describe("determinism", () => {
     expect(twice).toBe(once);
   });
 });
+
+describe("handleDisplayImageError (canonical fallback, one-shot)", () => {
+  const RENDER =
+    "https://x.supabase.co/storage/v1/render/image/public/generated-images/a.png?width=500&resize=contain&quality=80";
+  const OBJECT =
+    "https://x.supabase.co/storage/v1/object/public/generated-images/a.png";
+
+  function fakeImg(src: string) {
+    return { src, currentSrc: src, dataset: {} as Record<string, string> } as unknown as HTMLImageElement;
+  }
+
+  it("falls back to the canonical object URL exactly once", () => {
+    const el = fakeImg(RENDER);
+    handleDisplayImageError(el, { storage_path: "a.png", publicUrl: OBJECT });
+    expect(el.src).toBe(OBJECT);
+    // Second failure must not retry.
+    el.currentSrc = el.src;
+    handleDisplayImageError(el, { storage_path: "a.png", publicUrl: OBJECT });
+    expect(el.src).toBe(OBJECT);
+  });
+
+  it("derives the canonical URL when no metadata is available", () => {
+    const el = fakeImg(RENDER);
+    handleDisplayImageError(el, { url: RENDER, publicUrl: RENDER });
+    expect(el.src).toBe(OBJECT);
+  });
+
+  it("does nothing for a failed canonical URL (no loop)", () => {
+    const el = fakeImg(OBJECT);
+    handleDisplayImageError(el, { storage_path: "a.png", publicUrl: OBJECT });
+    expect(el.src).toBe(OBJECT);
+  });
+
+  it("canonicalFromTransformedUrl ignores non-render URLs", () => {
+    expect(canonicalFromTransformedUrl(OBJECT)).toBeNull();
+    expect(canonicalFromTransformedUrl("blob:abc")).toBeNull();
+    expect(canonicalFromTransformedUrl(RENDER)).toBe(OBJECT);
+  });
+});
