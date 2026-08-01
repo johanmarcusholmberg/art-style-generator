@@ -136,16 +136,30 @@ export function evaluateCanonicalPromotion(input: PromotionInput): PromotionDeci
       }),
     );
   }
-  // 9. never silently downgrade an existing valid canonical
+  // 9. derivatives and display assets are never canonical masters
+  if (
+    candidate.role === "format_derivative" ||
+    candidate.role === "display_derivative" ||
+    candidate.role === "temporary"
+  ) {
+    blockers.push(
+      assetIssue("ASSET_PROMOTION_REJECTED", "error", {
+        assetId: candidate.id,
+        message: `Role "${candidate.role}" can never be the canonical master.`,
+      }),
+    );
+  }
+  // 10. never silently downgrade an existing valid canonical
   const prevAsset = previous ? graph.assets.find((a) => a.id === previous) ?? null : null;
   if (
     prevAsset &&
+    prevAsset.id !== candidate.id &&
     hasValidDimensions(prevAsset) &&
     hasValidDimensions(candidate) &&
     candidate.width! * candidate.height! < prevAsset.width! * prevAsset.height!
   ) {
-    warnings.push(
-      assetIssue("ASSET_CANONICAL_CONFLICT", "warning", {
+    blockers.push(
+      assetIssue("ASSET_PROMOTION_REJECTED", "error", {
         assetId: candidate.id,
         relatedAssetIds: [prevAsset.id],
         message: "Candidate is lower resolution than the current canonical master.",
@@ -153,6 +167,7 @@ export function evaluateCanonicalPromotion(input: PromotionInput): PromotionDeci
       }),
     );
   }
+
 
   const allowed = blockers.length === 0;
   return {
