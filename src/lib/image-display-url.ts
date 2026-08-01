@@ -331,8 +331,21 @@ export function handleDisplayImageError(
 ): void {
   if (el.dataset.canonicalFallback === "1") return;
   el.dataset.canonicalFallback = "1";
-  const next = getDisplayFallbackUrl(img, el.currentSrc || el.src);
-  if (next) el.src = next;
+  const failed = el.currentSrc || el.src;
+  const next =
+    getDisplayFallbackUrl(img, failed) ?? canonicalFromTransformedUrl(failed);
+  if (next && next !== failed) el.src = next;
+}
+
+/**
+ * Derive the canonical public object URL from a render/image URL. Used only
+ * as a display fallback when no richer metadata is available.
+ */
+export function canonicalFromTransformedUrl(
+  url: string | null | undefined,
+): string | null {
+  if (!url || !url.includes(RENDER_PUBLIC)) return null;
+  return url.split("?")[0]!.replace(RENDER_PUBLIC, OBJECT_PUBLIC);
 }
 
 

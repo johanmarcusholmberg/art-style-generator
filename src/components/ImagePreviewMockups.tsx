@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { handleDisplayImageError } from "@/lib/image-display-url";
 import {
   Select,
   SelectContent,
@@ -34,7 +35,7 @@ function FramedImage({ imageUrl, alt, frame, className }: { imageUrl: string; al
   return (
     <div className={cn("rounded-sm shadow-xl", frame.border, className)} style={{ padding: framePx }}>
       <div className={cn(frame.inner)} style={{ padding: innerPx }}>
-        <img src={imageUrl} alt={alt} className="max-w-full max-h-[600px] block" />
+        <img src={imageUrl} alt={alt} className="max-w-full max-h-[600px] block" onError={(e) => handleDisplayImageError(e.currentTarget, { url: imageUrl, publicUrl: imageUrl })} />
       </div>
     </div>
   );
