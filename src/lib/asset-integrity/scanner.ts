@@ -194,7 +194,11 @@ export function scanAssetIntegrity(input: IntegrityScanInput): IntegrityScanResu
   const deduped: IntegrityFinding[] = [];
   const seenFindings = new Set<string>();
   for (const f of findings) {
-    const key = [f.code, f.assetId ?? "-", f.bucket ?? "-", f.path ?? "-"].join("|");
+    // Keyed by asset when known, otherwise by object — the same defect on the
+    // same asset must not be reported twice by two different validators.
+    const key = f.assetId
+      ? `${f.code}|asset:${f.assetId}`
+      : `${f.code}|obj:${f.bucket ?? "-"}/${f.path ?? "-"}`;
     if (seenFindings.has(key)) continue;
     seenFindings.add(key);
     deduped.push(f);
