@@ -190,11 +190,21 @@ export function scanAssetIntegrity(input: IntegrityScanInput): IntegrityScanResu
     }
   }
 
+  // Several validators can surface the same defect; report each defect once.
+  const deduped: IntegrityFinding[] = [];
+  const seenFindings = new Set<string>();
+  for (const f of findings) {
+    const key = [f.code, f.assetId ?? "-", f.bucket ?? "-", f.path ?? "-"].join("|");
+    if (seenFindings.has(key)) continue;
+    seenFindings.add(key);
+    deduped.push(f);
+  }
+
   return {
-    findings,
+    findings: deduped,
     scannedAssets,
     scannedGraphs: input.graphs.length,
-    errorCount: findings.filter((f) => f.severity === "error").length,
-    warningCount: findings.filter((f) => f.severity === "warning").length,
+    errorCount: deduped.filter((f) => f.severity === "error").length,
+    warningCount: deduped.filter((f) => f.severity === "warning").length,
   };
 }

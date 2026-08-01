@@ -244,7 +244,7 @@ export function isTransientAssetReference(value: string | null | undefined): boo
 }
 
 const TOKEN_PARAMS =
-  /([?&](?:token|signature|sig|x-amz-signature|x-amz-credential|x-amz-security-token|jwt|apikey|api_key|access_token|refresh_token)=)[^&#]*/gi;
+  /(\b(?:token|signature|sig|x-amz-signature|x-amz-credential|x-amz-security-token|jwt|apikey|api_key|access_token|refresh_token)=)[^&#\s]*/gi;
 
 
 /** Redact signed tokens / credentials before logging any reference. */
