@@ -52,6 +52,21 @@ const RENDER_PUBLIC = "/storage/v1/render/image/public/";
 const RENDER_SIGN = "/storage/v1/render/image/sign/";
 const RENDER_AUTH = "/storage/v1/render/image/";
 
+/**
+ * Accepted Supabase Storage endpoint hosts. Any other host — even one whose
+ * path mimics `/storage/v1/object/public/...` — is external, never identity.
+ */
+const SUPABASE_HOST_SUFFIXES = [".supabase.co", ".supabase.in", ".supabase.net"];
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1", "host.docker.internal"]);
+
+export function isAcceptedStorageHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (LOCAL_HOSTS.has(host)) return true;
+  if (host === "supabase.co" || host === "supabase.in") return false;
+  return SUPABASE_HOST_SUFFIXES.some((s) => host.endsWith(s));
+}
+
+
 function empty(reason?: string): StorageObjectReference {
   return {
     kind: "empty",
@@ -148,30 +163,44 @@ export function normalizeStorageObjectReference(
   const isUrl = /^https?:\/\//i.test(raw);
 
   if (isUrl) {
-    if (raw.includes(RENDER_PUBLIC)) {
-      return fromPrefix(raw, RENDER_PUBLIC, "render_display", { display: true });
+    let parsed: URL;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      return malformed("unparseable url");
     }
-    if (raw.includes(RENDER_SIGN)) {
-      return fromPrefix(raw, RENDER_SIGN, "render_display", { display: true, signed: true });
-    }
-    if (raw.includes(OBJECT_PUBLIC)) {
-      return fromPrefix(raw, OBJECT_PUBLIC, "object_public");
-    }
-    if (raw.includes(OBJECT_SIGN)) {
-      return fromPrefix(raw, OBJECT_SIGN, "object_signed", { signed: true });
-    }
-    if (raw.includes(RENDER_AUTH)) {
-      return fromPrefix(raw, RENDER_AUTH, "render_display", { display: true });
-    }
-    if (raw.includes(OBJECT_AUTH)) {
-      return fromPrefix(raw, OBJECT_AUTH, "object_signed", { signed: true });
-    }
-    return {
+    const external = (reason: string): StorageObjectReference => ({
       ...empty(),
       kind: "external",
-      reason: "external or provider-temporary url",
-    };
+      reason,
+    });
+    if (!isAcceptedStorageHost(parsed.hostname)) {
+      return external("host is not an accepted Supabase storage endpoint");
+    }
+    // Identity is derived from the pathname only — never substring matching,
+    // so query strings and fragments can never fabricate a storage prefix.
+    const pathname = parsed.pathname;
+    if (pathname.startsWith(RENDER_PUBLIC)) {
+      return fromPrefix(pathname, RENDER_PUBLIC, "render_display", { display: true });
+    }
+    if (pathname.startsWith(RENDER_SIGN)) {
+      return fromPrefix(pathname, RENDER_SIGN, "render_display", { display: true, signed: true });
+    }
+    if (pathname.startsWith(OBJECT_PUBLIC)) {
+      return fromPrefix(pathname, OBJECT_PUBLIC, "object_public");
+    }
+    if (pathname.startsWith(OBJECT_SIGN)) {
+      return fromPrefix(pathname, OBJECT_SIGN, "object_signed", { signed: true });
+    }
+    if (pathname.startsWith(RENDER_AUTH)) {
+      return fromPrefix(pathname, RENDER_AUTH, "render_display", { display: true });
+    }
+    if (pathname.startsWith(OBJECT_AUTH)) {
+      return fromPrefix(pathname, OBJECT_AUTH, "object_signed", { signed: true });
+    }
+    return external("external or provider-temporary url");
   }
+
 
   // Bare, bucket-relative storage path.
   const path = normalizeObjectPath(raw.split("#")[0].split("?")[0]);
@@ -214,7 +243,9 @@ export function isTransientAssetReference(value: string | null | undefined): boo
   );
 }
 
-const TOKEN_PARAMS = /([?&](?:token|signature|sig|x-amz-signature|jwt|apikey|access_token)=)[^&#]*/gi;
+const TOKEN_PARAMS =
+  /(\b(?:token|signature|sig|x-amz-signature|x-amz-credential|x-amz-security-token|jwt|apikey|api_key|access_token|refresh_token)=)[^&#\s]*/gi;
+
 
 /** Redact signed tokens / credentials before logging any reference. */
 export function redactStorageReference(value: string | null | undefined): string {

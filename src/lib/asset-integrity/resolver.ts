@@ -23,6 +23,7 @@ import {
   normalizeStorageObjectReference,
   isTransientAssetReference,
 } from "./storage-reference";
+import { detectCycles } from "./promotion";
 
 export interface AssetIdentityResolution {
   galleryAssetId: string | null;
@@ -191,6 +192,34 @@ export function resolveAssetIdentity(
 
   // ── Lineage (delegated deeply in lineage.ts; local sanity here) ────────
   let lineageValid = true;
+
+  // A cycle anywhere in the lineage invalidates the whole graph.
+  // Self-parenting is invalid lineage anywhere in the graph, not only on focus.
+  for (const a of assets) {
+    if (a.parentAssetId && a.parentAssetId === a.id && a.id !== input.focusAssetId) {
+      lineageValid = false;
+      errors.push(
+        assetIssue("ASSET_LINEAGE_INVALID", "error", {
+          assetId: a.id,
+          message: "Asset is its own parent.",
+        }),
+      );
+    }
+  }
+
+  const cycleIds = detectCycles(assets);
+  if (cycleIds.length > 0) {
+    lineageValid = false;
+    errors.push(
+      assetIssue("ASSET_LINEAGE_CYCLE", "error", {
+        assetId: cycleIds[0],
+        relatedAssetIds: cycleIds.slice(1),
+        message: "Lineage contains a cycle.",
+        suggestedAction: "Repair parent references before trusting this lineage.",
+      }),
+    );
+  }
+
   if (focus) {
     if (focus.parentAssetId === focus.id) {
       lineageValid = false;
@@ -250,7 +279,14 @@ export function resolveAssetIdentity(
     sourceType,
     lifecycleRole: focus?.role ?? null,
     persisted: sourceType === "persisted",
-    lineageValid: lineageValid && errors.every((e) => e.code !== "ASSET_LINEAGE_CYCLE"),
+    lineageValid:
+      lineageValid &&
+      errors.every(
+        (e) =>
+          e.code !== "ASSET_LINEAGE_CYCLE" &&
+          e.code !== "ASSET_LINEAGE_INVALID" &&
+          e.code !== "ASSET_CANONICAL_CONFLICT",
+      ),
     warnings,
     errors,
   };
