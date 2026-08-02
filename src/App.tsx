@@ -77,7 +77,6 @@ const App = () => (
 
               {/* Diagnostics — admin only */}
               <Route path="/backend-info" element={protect(<BackendInfo />, true)} />
-              <Route path="/access" element={<QuickAccess />} />
 
               {/* Account */}
               <Route path="/account" element={protect(<Account />, false, false)} />
