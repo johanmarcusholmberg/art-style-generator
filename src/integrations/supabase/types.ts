@@ -1443,6 +1443,19 @@ export type Database = {
         }[]
       }
       current_profile_id: { Args: never; Returns: string }
+      execute_asset_mutation: {
+        Args: {
+          p_asset_id?: string
+          p_confirmed?: boolean
+          p_expected_canonical_asset_id?: string
+          p_expected_live_asset_ids?: string[]
+          p_membership_id?: string
+          p_mode: string
+          p_promote_asset_id?: string
+          p_root_image_id: string
+        }
+        Returns: Json
+      }
       expire_exhausted_items: { Args: never; Returns: number }
       fail_generation_item: {
         Args: {

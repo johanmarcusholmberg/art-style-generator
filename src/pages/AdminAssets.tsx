@@ -59,7 +59,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { deleteFromGallery } from "@/lib/gallery";
+import {
+  previewAssetMutation,
+  executeAssetMutation,
+  previewBulkAssetMutation,
+  executeBulkAssetMutation,
+  describePreview,
+} from "@/lib/asset-integrity/mutation-service";
 import { getThumbnailUrl, getPreviewUrl, handleDisplayImageError } from "@/lib/image-display-url";
 import {
   getBaseAssetUrl,
@@ -476,12 +482,18 @@ export default function AdminAssets() {
   };
 
   const handleDelete = async (id: string) => {
-    const row = rows.find((r) => r.id === id);
-    if (!row) return;
     try {
-      await deleteFromGallery(id, row.storage_path || "");
+      const preview = await previewAssetMutation({ rootImageId: id, confirmed: true });
+      if (preview.blocked) {
+        toast.error("Deletion blocked", { description: describePreview(preview) });
+        return;
+      }
+      const res = await executeAssetMutation(preview, { confirmed: true });
       setRows((prev) => prev.filter((r) => r.id !== id));
-      toast.success("Asset deleted");
+      toast[res.storageCleanupFailures.length ? "warning" : "success"](
+        preview.mode === "archive" ? "Asset archived" : "Asset deleted",
+        { description: res.message },
+      );
     } catch (err: any) {
       toast.error("Delete failed", { description: err?.message });
     } finally {
@@ -492,22 +504,33 @@ export default function AdminAssets() {
   const handleBulkDelete = async () => {
     setBusy(true);
     const ids = Array.from(selected);
-    let ok = 0;
-    for (const id of ids) {
-      const r = rows.find((x) => x.id === id);
-      if (!r) continue;
-      try {
-        await deleteFromGallery(id, r.storage_path || "");
-        ok++;
-      } catch {
-        /* skip */
+    try {
+      const bulk = await previewBulkAssetMutation(ids);
+      if (bulk.anyBlocked) {
+        // Default safety rule: one blocked item means nothing is mutated.
+        toast.error(`${bulk.blockedPreviews.length} asset(s) blocked — nothing was deleted`, {
+          description: bulk.blockedPreviews
+            .map((p) => `${p.rootImageId.slice(0, 8)}: ${describePreview(p)}`)
+            .join(" | "),
+        });
+        return; // selection preserved
       }
+      const res = await executeBulkAssetMutation(bulk, { confirmed: true });
+      const done = new Set(ids);
+      setRows((prev) => prev.filter((r) => !done.has(r.id)));
+      setSelected(new Set());
+      toast.success(
+        `Deleted ${res.deleted}, archived ${res.archived}, skipped ${res.skipped}`,
+        res.cleanupFailures.length
+          ? { description: `${res.cleanupFailures.length} stored file(s) await cleanup retry.` }
+          : undefined,
+      );
+    } catch (err: any) {
+      toast.error("Bulk delete failed", { description: err?.message });
+    } finally {
+      setBusy(false);
+      setBulkDeleteOpen(false);
     }
-    setRows((prev) => prev.filter((r) => !ids.includes(r.id)));
-    setSelected(new Set());
-    setBusy(false);
-    setBulkDeleteOpen(false);
-    toast.success(`Deleted ${ok} assets`);
   };
 
   const handleUpscale = async (row: AssetRow, mode: UpscaleMode) => {

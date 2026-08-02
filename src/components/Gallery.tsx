@@ -25,7 +25,13 @@ import {
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
-import { fetchGalleryImages, deleteFromGallery, saveToGallery, replaceInGallery } from "@/lib/gallery";
+import { fetchGalleryImages, saveToGallery, replaceInGallery } from "@/lib/gallery";
+import {
+  previewAssetMutation,
+  executeAssetMutation,
+  describePreview,
+  type AssetMutationPreview,
+} from "@/lib/asset-integrity/mutation-service";
 import { getImageDisplayUrl, getThumbnailUrl, handleDisplayImageError } from "@/lib/image-display-url";
 import { fetchCollections, fetchCollectionImageIds, addBulkToCollection, removeBulkFromCollection, type Collection } from "@/lib/collections";
 import { toast } from "sonner";
@@ -1029,26 +1035,53 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     if (!deleteTarget) return;
     const target = deleteTarget;
     setDeleteTarget(null);
+
+    // Turn 4A: plan against live persisted lineage BEFORE anything happens.
+    let preview: AssetMutationPreview;
+    try {
+      preview = await previewAssetMutation({ rootImageId: target.id, confirmed: true });
+    } catch (err: any) {
+      toast.error("Could not check this image", { description: err?.message });
+      return;
+    }
+    if (preview.blocked) {
+      toast.error("Deletion blocked", { description: describePreview(preview) });
+      return;
+    }
+
     setImages((prev) => prev.filter((img) => img.id !== target.id));
     if (selected?.id === target.id) setSelected(null);
 
+    // The server mutation only runs once the undo window has expired, so
+    // "Undo" genuinely cancels rather than faking a rollback.
     const timer = setTimeout(async () => {
-      try { await deleteFromGallery(target.id, target.storage_path); }
-      catch { setImages((prev) => [target, ...prev]); toast.error("Failed to delete image"); }
+      try {
+        const res = await executeAssetMutation(preview, { confirmed: true });
+        if (res.storageCleanupFailures.length) {
+          toast.warning("Deleted, but file cleanup is pending", { description: res.message });
+        }
+      } catch (err: any) {
+        setImages((prev) => [target, ...prev]);
+        toast.error("Failed to delete image", { description: err?.message });
+      }
     }, 5000);
 
-    toast.success("Image deleted", {
-      action: {
-        label: "Undo",
-        onClick: () => {
-          clearTimeout(timer);
-          setImages((prev) => [target, ...prev].sort((a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
-          toast.info("Delete undone");
+    toast.success(
+      preview.mode === "archive" ? "Image will be archived" : "Image deleted",
+      {
+        description: describePreview(preview),
+        action: {
+          label: "Undo",
+          onClick: () => {
+            clearTimeout(timer);
+            setImages((prev) => [target, ...prev].sort((a, b) =>
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+            toast.info("Delete undone");
+          },
         },
+        duration: 5000,
       },
-      duration: 5000,
-    });
+    );
   };
 
   useEffect(() => {

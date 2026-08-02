@@ -295,31 +295,18 @@ export async function fetchGalleryImages(opts: FetchGalleryOptions = {}) {
 }
 
 
-export async function deleteFromGallery(id: string, storagePath: string) {
-  // Also fetch enhanced path to clean up
-  const { data: row } = await supabase
-    .from("generated_images")
-    .select("enhanced_storage_path, master_storage_path")
-    .eq("id", id)
-    .single();
-
-  const pathsToRemove = [storagePath];
-  if (row?.enhanced_storage_path && row.enhanced_storage_path !== storagePath) {
-    pathsToRemove.push(row.enhanced_storage_path);
-  }
-
-  const { error: storageError } = await supabase.storage
-    .from("generated-images")
-    .remove(pathsToRemove);
-
-  if (storageError) throw storageError;
-
-  const { error: dbError } = await supabase
-    .from("generated_images")
-    .delete()
-    .eq("id", id);
-
-  if (dbError) throw dbError;
+/**
+ * @deprecated Turn 4A: unsafe. It removed storage objects BEFORE the database
+ * row, ignored lineage, canonical status, collection memberships and anchors,
+ * and could orphan or destroy shared objects.
+ *
+ * Use `previewAssetMutation` + `executeAssetMutation` from
+ * `@/lib/asset-integrity/mutation-service` instead.
+ */
+export async function deleteFromGallery(_id: string, _storagePath: string): Promise<never> {
+  throw new Error(
+    "deleteFromGallery is removed. Use previewAssetMutation/executeAssetMutation from @/lib/asset-integrity/mutation-service.",
+  );
 }
 
 /**
