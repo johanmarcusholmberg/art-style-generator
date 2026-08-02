@@ -73,7 +73,10 @@ const App = () => (
               {/* Public auth routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/backend-info" element={<BackendInfo />} />
+              <Route path="/access" element={<QuickAccess />} />
+
+              {/* Diagnostics — admin only */}
+              <Route path="/backend-info" element={protect(<BackendInfo />, true)} />
               <Route path="/access" element={<QuickAccess />} />
 
               {/* Account */}
