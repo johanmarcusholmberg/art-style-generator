@@ -10,3 +10,5 @@ export * from "./idempotency";
 export * from "./deletion-planner";
 export * from "./scanner";
 export * from "./repair";
+export * from "./graph-loader";
+export * from "./mutation-service";
