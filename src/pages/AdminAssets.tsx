@@ -59,7 +59,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { deleteFromGallery } from "@/lib/gallery";
+import {
+  previewAssetMutation,
+  executeAssetMutation,
+  previewBulkAssetMutation,
+  executeBulkAssetMutation,
+  describePreview,
+} from "@/lib/asset-integrity/mutation-service";
 import { getThumbnailUrl, getPreviewUrl, handleDisplayImageError } from "@/lib/image-display-url";
 import {
   getBaseAssetUrl,
