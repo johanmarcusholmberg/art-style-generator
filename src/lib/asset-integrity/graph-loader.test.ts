@@ -125,21 +125,22 @@ describe("graph feeds the planner correctly", () => {
     expect(plan.blocked).toBe(true);
   });
 
-  it("blocks deleting the canonical version when no valid replacement exists", () => {
-    const r = raw();
-    r.assets = [r.assets[1]]; // only the canonical upscale survives
-    r.assets[0].source_asset_id = null;
-    const g = buildAssetGraph(r);
+  it("promotes a valid replacement before deleting the canonical version", () => {
+    const g = buildAssetGraph(raw());
     const plan = planAssetDeletion({ graph: g, assetId: "a-up" });
-    expect(plan.blocked).toBe(true);
-    expect(plan.blockers.some((b) => b.code === "ASSET_DELETE_BLOCKED_CANONICAL")).toBe(true);
+    expect(plan.isCanonical).toBe(true);
+    expect(plan.replacementCanonicalAssetId).toBeTruthy();
+    expect(plan.steps[0].action).toBe("promote_replacement_canonical");
   });
 
   it("archives instead of deleting when the root anchors a matching collection", () => {
-    const r = raw({ assets: [], anchorCollectionIds: ["c9"] });
+    const r = raw({ anchorCollectionIds: ["c9"] });
+    // Only the canonical upscale survives, and it does not hang off the root,
+    // so the root itself has no live dependants.
+    r.assets = [{ ...r.assets[1], source_asset_id: "missing-parent" }];
     const g = buildAssetGraph(r);
+    expect(g.assets.find((a) => a.isCanonical)!.id).toBe("a-up");
     const plan = planAssetDeletion({ graph: g, assetId: "root-1" });
-    // Root with no versions: cascade not requested, anchor forces archive.
     expect(plan.mode).toBe("archive");
     expect(plan.steps.every((s) => s.action !== "delete_storage_object")).toBe(true);
   });
