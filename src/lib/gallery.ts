@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { QualityTarget } from "@/lib/print-resolution";
 import { loadImageDimensions } from "@/lib/image-metadata";
 import { ensurePrintMasterInSaveOpts } from "@/lib/poster-master";
+import { cleanupStorage } from "@/lib/asset-integrity/mutation-service";
 
 
 /**
