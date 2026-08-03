@@ -183,7 +183,7 @@ export function rpcModeFor(p: AssetMutationPreview): RpcMode {
 }
 
 /** Recheck, then remove only objects with no surviving live reference. */
-async function cleanupStorage(paths: string[]): Promise<{
+export async function cleanupStorage(paths: string[]): Promise<{
   removed: string[];
   failures: string[];
 }> {
