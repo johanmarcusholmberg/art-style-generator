@@ -53,7 +53,13 @@ vi.mock("@/integrations/supabase/client", () => {
     const api = {
       select: vi.fn(() => api),
       eq: vi.fn(() => api),
+      is: vi.fn(() => api),
+      or: vi.fn(() => api),
+      // Reference re-check performed by the shared storage cleanup helper:
+      // no surviving live reference in these fixtures.
+      limit: vi.fn(async () => ({ data: [], error: null })),
       single: vi.fn(async () => {
+
         calls.selects += 1;
         return { data: existingRow, error: null };
       }),
@@ -127,11 +133,13 @@ describe("gallery · replaceInGallery safety", () => {
     expect(calls.updates[0].storage_path).toBe(newPath);
     expect(calls.updates[0].master_storage_path).toBe(newPath);
 
-    // Cleanup removed the old paths but NOT the new one.
-    expect(calls.removes).toHaveLength(1);
-    const removed = calls.removes[0].paths;
+    // Cleanup removed the old paths but NOT the new one. The shared
+    // reference-safe helper removes objects one at a time after re-checking
+    // that no live row still points at them.
+    const removed = calls.removes.flatMap((r) => r.paths);
     expect(removed).toEqual(expect.arrayContaining(["test-OLD.png", "test-enh-OLD.png"]));
     expect(removed).not.toContain(newPath);
+
   });
 
   it("fills missing actual dimensions via best-effort probe", async () => {

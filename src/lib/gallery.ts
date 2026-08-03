@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { QualityTarget } from "@/lib/print-resolution";
 import { loadImageDimensions } from "@/lib/image-metadata";
 import { ensurePrintMasterInSaveOpts } from "@/lib/poster-master";
+import { cleanupStorage } from "@/lib/asset-integrity/mutation-service";
 
 
 /**
@@ -465,15 +466,15 @@ export async function replaceInGallery(
   if (enhancedPath) oldPaths.delete(enhancedPath);
 
   if (oldPaths.size > 0) {
-    const { error: cleanupErr } = await supabase.storage
-      .from("generated-images")
-      .remove([...oldPaths]);
-    if (cleanupErr) {
+    // Turn 4A rule: never remove an object another live row still points at.
+    const { failures } = await cleanupStorage([...oldPaths]);
+    if (failures.length) {
       // Non-fatal: DB row consistent; orphan files only.
-      console.warn("[replaceInGallery] old asset cleanup failed:", cleanupErr);
+      console.warn("[replaceInGallery] old asset cleanup failed:", failures);
     }
   }
 }
+
 
 /**
  * Update enhanced asset for an existing gallery image after async enhancement completes.

@@ -175,12 +175,36 @@ export async function retryFailedItems(jobId: string) {
   );
 }
 
+/**
+ * Delete a completed job's history record only.
+ *
+ * This removes the job row and its item rows. Generated artwork lives in
+ * `generated_images` / `generated_image_assets`, which have no foreign key
+ * back to jobs, so gallery images and stored files are never affected.
+ * Active jobs cannot be deleted as history — cancel them first.
+ */
 export async function deleteJob(jobId: string) {
+  const { data: job, error: readErr } = await supabase
+    .from("generation_jobs")
+    .select("id, status")
+    .eq("id", jobId)
+    .maybeSingle();
+  if (readErr) throw readErr;
+  if (!job) throw new Error("Job no longer exists.");
+  if (job.status === "queued" || job.status === "processing") {
+    throw new Error("This job is still active. Cancel it before deleting its history.");
+  }
+
   // Delete items first (cascade should handle this, but be explicit)
-  await supabase.from("generation_job_items").delete().eq("job_id", jobId);
+  const { error: itemsErr } = await supabase
+    .from("generation_job_items")
+    .delete()
+    .eq("job_id", jobId);
+  if (itemsErr) throw itemsErr;
   const { error } = await supabase.from("generation_jobs").delete().eq("id", jobId);
   if (error) throw error;
 }
+
 
 /**
  * All available styles for the style grid. Derived from the canonical

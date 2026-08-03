@@ -516,15 +516,20 @@ export default function AdminAssets() {
         return; // selection preserved
       }
       const res = await executeBulkAssetMutation(bulk, { confirmed: true });
-      const done = new Set(ids);
-      setRows((prev) => prev.filter((r) => !done.has(r.id)));
+      // Never optimistically drop the whole selection: skipped items survive
+      // and archived items stay visible. Persisted rows are the only truth.
+      await loadRows();
       setSelected(new Set());
-      toast.success(
-        `Deleted ${res.deleted}, archived ${res.archived}, skipped ${res.skipped}`,
-        res.cleanupFailures.length
-          ? { description: `${res.cleanupFailures.length} stored file(s) await cleanup retry.` }
-          : undefined,
-      );
+      const parts = [
+        `Deleted ${res.deleted}`,
+        `archived ${res.archived}`,
+        `skipped ${res.skipped}`,
+      ];
+      if (res.cleanupFailures.length) parts.push(`cleanup-failed ${res.cleanupFailures.length}`);
+      const summary = parts.join(", ");
+      if (res.skipped || res.cleanupFailures.length) toast.warning(summary);
+      else toast.success(summary);
+
     } catch (err: any) {
       toast.error("Bulk delete failed", { description: err?.message });
     } finally {

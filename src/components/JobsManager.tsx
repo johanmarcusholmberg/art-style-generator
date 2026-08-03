@@ -59,6 +59,7 @@ const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
   const typeConfig = JOB_TYPE_CONFIG[job.job_type] || JOB_TYPE_CONFIG.batch;
 
   const [cancelling, setCancelling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleCancel = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -85,13 +86,20 @@ const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (deleting) return;
+    setDeleting(true);
     try {
       await deleteJob(job.id);
-      toast.success("Job deleted");
-    } catch {
-      toast.error("Failed to delete job");
+      toast.success("Job history deleted", {
+        description: "Generated images are kept in your gallery.",
+      });
+    } catch (err: any) {
+      toast.error("Failed to delete job", { description: err?.message });
+    } finally {
+      setDeleting(false);
     }
   };
+
 
   return (
     <div className="border border-border rounded-sm bg-card overflow-hidden">
@@ -187,11 +195,18 @@ const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
               variant="ghost"
               size="sm"
               onClick={handleDelete}
+              disabled={deleting}
               className="font-display text-xs h-7 text-muted-foreground hover:text-destructive"
             >
-              <Trash2 className="mr-1 h-3 w-3" /> Delete
+              {deleting ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : (
+                <Trash2 className="mr-1 h-3 w-3" />
+              )}
+              Delete
             </Button>
           )}
+
         </div>
       )}
 
