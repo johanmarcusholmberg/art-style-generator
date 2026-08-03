@@ -195,11 +195,18 @@ const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
               variant="ghost"
               size="sm"
               onClick={handleDelete}
+              disabled={deleting}
               className="font-display text-xs h-7 text-muted-foreground hover:text-destructive"
             >
-              <Trash2 className="mr-1 h-3 w-3" /> Delete
+              {deleting ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : (
+                <Trash2 className="mr-1 h-3 w-3" />
+              )}
+              Delete
             </Button>
           )}
+
         </div>
       )}
 
