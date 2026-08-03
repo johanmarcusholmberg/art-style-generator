@@ -85,13 +85,20 @@ const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (deleting) return;
+    setDeleting(true);
     try {
       await deleteJob(job.id);
-      toast.success("Job deleted");
-    } catch {
-      toast.error("Failed to delete job");
+      toast.success("Job history deleted", {
+        description: "Generated images are kept in your gallery.",
+      });
+    } catch (err: any) {
+      toast.error("Failed to delete job", { description: err?.message });
+    } finally {
+      setDeleting(false);
     }
   };
+
 
   return (
     <div className="border border-border rounded-sm bg-card overflow-hidden">
