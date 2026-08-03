@@ -59,6 +59,7 @@ const JobCard = memo(function JobCard({ job }: { job: JobRow }) {
   const typeConfig = JOB_TYPE_CONFIG[job.job_type] || JOB_TYPE_CONFIG.batch;
 
   const [cancelling, setCancelling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleCancel = async (e: React.MouseEvent) => {
     e.stopPropagation();
