@@ -53,7 +53,13 @@ vi.mock("@/integrations/supabase/client", () => {
     const api = {
       select: vi.fn(() => api),
       eq: vi.fn(() => api),
+      is: vi.fn(() => api),
+      or: vi.fn(() => api),
+      // Reference re-check performed by the shared storage cleanup helper:
+      // no surviving live reference in these fixtures.
+      limit: vi.fn(async () => ({ data: [], error: null })),
       single: vi.fn(async () => {
+
         calls.selects += 1;
         return { data: existingRow, error: null };
       }),
