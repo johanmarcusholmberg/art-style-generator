@@ -1447,12 +1447,15 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
 
   const handlePrintExport = async (img: GalleryImage) => {
-    // Source selection is centralized — exports MUST start from master.
-    const exportSourceUrl = getExportSourceAssetForImage(img);
-    if (!exportSourceUrl) {
-      toast.error("Source image is missing — cannot create print export");
+    // Turn 4B — one shared source contract. Exports MUST start from the
+    // persisted canonical master; display URLs are rejected outright.
+    const exportSource = resolveActionSourceFromRow(img, { intent: "print_export" });
+    if (!exportSource.ok || !exportSource.url) {
+      toast.error(exportSource.reason ?? "Source image is missing — cannot create print export");
       return;
     }
+    const exportSourceUrl = exportSource.url;
+    for (const w of exportSource.warnings) toast.warning(w, { duration: 5000 });
 
     // Surface print-readiness up-front so the user knows what they're getting.
     const readiness = getPrintReadiness(img, img.print_format_id);
