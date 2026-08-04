@@ -705,20 +705,27 @@ export default function AdminAssets() {
     for (const id of selected) {
       const r = rows.find((x) => x.id === id);
       if (!r) continue;
-      const url =
-        variant === "master"
-          ? getMasterAssetUrl(r)
-          : variant === "base"
-            ? getBaseAssetUrl(r)
-            : r.publicUrl;
+      // Turn 4B — ZIP contents resolve through the shared source contract so
+      // "master" always means the canonical master and "base" always means
+      // the original. `web` stays an explicit display-preview export.
+      const src =
+        variant === "web"
+          ? null
+          : resolveActionSourceFromRow(r, {
+              intent: variant === "master" ? "download_master" : "download_original",
+            });
+      const url = variant === "web" ? r.publicUrl : src?.ok ? src.url : null;
       if (!url) {
         skipped++;
         continue;
       }
       try {
         const res = await fetch(url);
+        if (!res.ok) throw new Error(String(res.status));
         const blob = await res.blob();
-        zip.file(`${r.id}-${variant}.png`, blob);
+        if (blob.size === 0) throw new Error("empty");
+        const ext = (src?.path?.match(/\.([a-zA-Z0-9]{2,5})$/)?.[1] ?? "png").toLowerCase();
+        zip.file(`${r.id}-${variant}.${ext}`, blob);
         included++;
       } catch {
         skipped++;
