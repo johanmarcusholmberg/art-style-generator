@@ -92,6 +92,22 @@ export default function DownloadButton({
     }
   };
 
+  const handleMasterDownload = async () => {
+    if (masterBusy || !masterSource?.ok) return;
+    setMasterBusy(true);
+    try {
+      const r = await downloadCanonicalMaster(masterSource, filename);
+      toast.success(`Saved ${r.filename}`, {
+        description: `${describeActionSource(masterSource)} · exact file, no bleed`,
+        duration: 3000,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Master download failed");
+    } finally {
+      setMasterBusy(false);
+    }
+  };
+
   return (
     <div className="inline-flex items-center gap-1.5">
       <Select value={format} onValueChange={handleFormatChange} disabled={busy}>
@@ -123,6 +139,24 @@ export default function DownloadButton({
         )}
         Download{versionLabel ? ` (${versionLabel})` : ""} ({sizeLabel})
       </Button>
+      {masterSource?.ok && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleMasterDownload}
+          disabled={masterBusy}
+          className="font-display text-xs tracking-wider"
+          title={`${describeActionSource(masterSource)} — exact stored file, no bleed or conversion`}
+        >
+          {masterBusy ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <FileDown className="mr-2 h-4 w-4" />
+          )}
+          Master (exact)
+        </Button>
+      )}
     </div>
+
   );
 }
