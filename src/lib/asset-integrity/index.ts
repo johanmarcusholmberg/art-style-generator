@@ -12,3 +12,5 @@ export * from "./scanner";
 export * from "./repair";
 export * from "./graph-loader";
 export * from "./mutation-service";
+export * from "./source-resolver";
+export * from "./download-service";
