@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import DownloadButton from "@/components/generation/DownloadButton";
+import { resolveSessionActionSource } from "@/lib/asset-integrity/source-resolver";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import type { StyleConfig } from "@/lib/style-config";
 import type { PrintFormat } from "@/lib/print-formats";
@@ -132,6 +133,10 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
       )}
       <DownloadButton
         url={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
+        masterSource={resolveSessionActionSource(
+          viewVersion === "original" && hasEnhanced ? baseImageUrl : imageUrl,
+          "download_master",
+        )}
         filename={`${styleConfig.downloadPrefix}-${mode}-${effectiveAspectRatio.replace(":", "x")}-${Date.now()}.png`}
         versionLabel={hasEnhanced ? (viewVersion === "original" ? "Original" : "Enhanced") : undefined}
         sizeLabel={generationMode === "print-ready" ? selectedPrintFormat.label : printSize.dimensions}

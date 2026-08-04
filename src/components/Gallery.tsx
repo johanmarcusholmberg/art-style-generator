@@ -70,7 +70,13 @@ import EtsyExportDialog from "@/components/EtsyExportDialog";
 import EtsyMockupDialog from "@/components/EtsyMockupDialog";
 import RouteBadge from "@/components/RouteBadge";
 import ImportArtworkButton from "@/components/gallery/ImportArtworkButton";
-import { downloadWithBleed, renderRawWithBleed } from "@/lib/raw-download";
+import { renderRawWithBleed } from "@/lib/raw-download";
+import {
+  resolveActionSourceFromRow,
+  describeActionSource,
+  type CanonicalActionSource,
+} from "@/lib/asset-integrity/source-resolver";
+import { downloadCanonicalMaster } from "@/lib/asset-integrity/download-service";
 import { runReplicateUpscale } from "@/lib/upscale-providers/replicate";
 import { updateEnhancedAsset } from "@/lib/gallery";
 import { bulkSetImageAdminStatus, type AdminStatus } from "@/lib/style-lab";
@@ -170,8 +176,26 @@ const STYLE_CARDS = getGalleryOnboardingStyles(6).map((s) => ({
   to: s.to,
 }));
 
-const downloadImage = (url: string, filename: string) =>
-  downloadWithBleed(url, { filename });
+/**
+ * Turn 4B — exact master download. Resolves the persisted canonical object
+ * through the shared source contract and hands over the bytes untouched
+ * (no bleed, no canvas, no format conversion).
+ */
+async function downloadExactMaster(source: CanonicalActionSource, baseName: string) {
+  if (!source.ok) {
+    toast.error(source.reason ?? "No persisted master available");
+    return;
+  }
+  try {
+    const r = await downloadCanonicalMaster(source, baseName);
+    toast.success(`Saved ${r.filename}`, {
+      description: `${describeActionSource(source)} · exact file, no bleed`,
+      duration: 3000,
+    });
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : "Download failed");
+  }
+}
 
 // ── Skeleton grid ──────────────────────────────────────────────────────────────
 function GallerySkeleton() {
@@ -279,7 +303,19 @@ function LightboxContent({
     },
     "preview",
   ).url;
-  const downloadUrl = selectedAsset?.publicUrl || img.masterUrl;
+  // Exact-master source: a selected version wins, otherwise the row's
+  // canonical master. Display/preview URLs can never win here.
+  const masterSource = selectedAsset
+    ? resolveActionSourceFromRow(
+        {
+          storage_path: selectedAsset.storage_path,
+          master_storage_path: selectedAsset.storage_path,
+          actual_width_px: selectedAsset.width_px,
+          actual_height_px: selectedAsset.height_px,
+        },
+        { intent: "download_master" },
+      )
+    : resolveActionSourceFromRow(img, { intent: "download_master" });
   const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
 
   const hasExport = !!img.export_storage_path;
@@ -480,11 +516,21 @@ function LightboxContent({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => downloadImage(downloadUrl, `art-${img.id}${selectedAsset ? `-v${selectedAsset.version_index}` : ""}.png`)}
+            onClick={() =>
+              downloadExactMaster(
+                masterSource,
+                `art-${img.id}${selectedAsset ? `-v${selectedAsset.version_index}` : ""}`,
+              )
+            }
+            disabled={!masterSource.ok}
             className="font-display text-xs"
-            title={selectedAsset ? `Download ${selectedAsset.asset_type === "original" ? "Original" : `Upscale ${selectedAsset.version_index}`}` : "Download"}
+            title={
+              masterSource.ok
+                ? `${describeActionSource(masterSource)} — exact stored file, no bleed`
+                : masterSource.reason ?? "No persisted master"
+            }
           >
-            <Download className="mr-2 h-4 w-4" /> Download
+            <Download className="mr-2 h-4 w-4" /> Download master
           </Button>
 
           <div className="inline-flex items-center gap-1.5">
@@ -840,14 +886,22 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       const selectedImages = images.filter((img) => selectedIds.has(img.id));
       const fmt = getStoredExportFormat();
       const meta = EXPORT_FORMAT_META[fmt];
+      let skipped = 0;
       await Promise.all(
         selectedImages.map(async (img, i) => {
-          // Every poster in the ZIP carries the static 3 mm bleed.
-          const r = await renderRawWithBleed(img.publicUrl, { exportFormat: fmt });
-          const baseName = `art-${i + 1}-${img.mode}`;
+          // Turn 4B — ZIP entries come from the canonical master, never a
+          // web preview, and every poster carries the static 3 mm bleed.
+          const src = resolveActionSourceFromRow(img, { intent: "print_export" });
+          if (!src.ok || !src.url) { skipped++; return; }
+          const r = await renderRawWithBleed(src.url, { exportFormat: fmt });
+          const baseName = `art-${i + 1}-${img.mode}-master`;
           zip.file(buildExportFilename(baseName, fmt, r.bleedMm), r.blob);
         })
       );
+      if (Object.keys(zip.files).length === 0) {
+        toast.error("No persisted masters available for the selected images");
+        return;
+      }
       const content = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(content);
       const a = document.createElement("a");
@@ -857,7 +911,10 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       URL.revokeObjectURL(url);
       setSelectMode(false);
       setSelectedIds(new Set());
-      toast.success(`Downloaded ${selectedImages.length} ${meta.label} files`, { duration: 3000 });
+      toast.success(
+        `Downloaded ${selectedImages.length - skipped} ${meta.label} print files (master source)`,
+        { duration: 3000, description: skipped ? `${skipped} skipped — no persisted master` : undefined },
+      );
     } catch (e) {
       console.error(e);
       toast.error("Failed to create ZIP");
@@ -1371,6 +1428,10 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       if (best) {
         const augmented = {
           ...img,
+          // Persisted path wins in the shared source contract, so override it
+          // too — otherwise the "best available" choice would be ignored.
+          master_storage_path: best.storage_path,
+          enhanced_storage_path: null,
           masterUrl: best.publicUrl,
           actual_width_px: best.width_px ?? img.actual_width_px,
           actual_height_px: best.height_px ?? img.actual_height_px,
@@ -1390,12 +1451,15 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
 
   const handlePrintExport = async (img: GalleryImage) => {
-    // Source selection is centralized — exports MUST start from master.
-    const exportSourceUrl = getExportSourceAssetForImage(img);
-    if (!exportSourceUrl) {
-      toast.error("Source image is missing — cannot create print export");
+    // Turn 4B — one shared source contract. Exports MUST start from the
+    // persisted canonical master; display URLs are rejected outright.
+    const exportSource = resolveActionSourceFromRow(img, { intent: "print_export" });
+    if (!exportSource.ok || !exportSource.url) {
+      toast.error(exportSource.reason ?? "Source image is missing — cannot create print export");
       return;
     }
+    const exportSourceUrl = exportSource.url;
+    for (const w of exportSource.warnings) toast.warning(w, { duration: 5000 });
 
     // Surface print-readiness up-front so the user knows what they're getting.
     const readiness = getPrintReadiness(img, img.print_format_id);

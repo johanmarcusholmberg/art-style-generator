@@ -63,6 +63,7 @@ import {
 } from "@/lib/durable-result-metadata";
 
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
+import { resolveSessionActionSource } from "@/lib/asset-integrity/source-resolver";
 import { EXPORT_FORMAT_META, getStoredExportFormat } from "@/lib/export-formats";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -1272,10 +1273,17 @@ export default function ImageGenerator({
     if (!imageUrl || exporting) return;
     setExporting(true);
     try {
-      // Master selection during generation: enhanced beats base beats raw imageUrl.
-      // This mirrors the centralized rules in src/lib/image-assets.ts but
-      // operates on local state since nothing has been persisted yet.
-      const exportSource = enhancedImageUrl || baseImageUrl || imageUrl;
+      // Turn 4B — one shared source contract. Enhanced beats base beats the
+      // raw session image, and the resolver rejects display-only render URLs
+      // so an export can never be built from a resized web derivative.
+      const resolved = resolveSessionActionSource(
+        enhancedImageUrl || baseImageUrl || imageUrl,
+        "print_export",
+      );
+      if (!resolved.ok || !resolved.url) {
+        throw new Error(resolved.reason ?? "No usable source image for export");
+      }
+      const exportSource = resolved.url;
 
       const fmt = getStoredExportFormat();
       const fmtMeta = EXPORT_FORMAT_META[fmt];
