@@ -38,6 +38,11 @@ import {
 import { regenerateCollectionMember } from "@/lib/matching-collection/regenerate";
 import { startQueuedItem, canStartCandidate } from "@/lib/matching-collection/start-item";
 import { assessFormatReadiness } from "@/lib/matching-collection/ratio-readiness";
+import {
+  resolveActionSourceFromRow,
+  describeActionSource,
+} from "@/lib/asset-integrity/source-resolver";
+import { downloadCanonicalMaster } from "@/lib/asset-integrity/download-service";
 import { useRatioFinalizationQueue } from "@/hooks/useRatioFinalizationQueue";
 import { shouldEnqueueRatioFinalization } from "@/lib/ratio-finalization/presentation";
 import { createReloadCoordinator } from "@/lib/reload-coordinator";
@@ -580,13 +585,53 @@ export default function CollectionPage() {
                             <a href={url} target="_blank" rel="noreferrer" className="text-xs underline text-muted-foreground self-center">
                               View
                             </a>
-                            <a
-                              href={url}
-                              download={`collection-${m.itemId}.png`}
-                              className="text-xs underline text-muted-foreground self-center"
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={!ratio.ready || busyItemId === m.itemId}
+                              title={
+                                ratio.ready
+                                  ? "Download the exact stored master for this candidate"
+                                  : "Poster-format finalization must complete before export"
+                              }
+                              onClick={async () => {
+                                const src = resolveActionSourceFromRow(
+                                  {
+                                    storage_path: m.correctedMasterStoragePath ?? m.storagePath,
+                                    master_storage_path: m.correctedMasterStoragePath ?? m.storagePath,
+                                    actual_width_px: m.correctedMasterWidth,
+                                    actual_height_px: m.correctedMasterHeight,
+                                  },
+                                  { intent: "download_master" },
+                                );
+                                if (!src.ok) {
+                                  toast({
+                                    title: "Export unavailable",
+                                    description: src.reason ?? "No persisted master",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                                setBusyItemId(m.itemId);
+                                try {
+                                  const r = await downloadCanonicalMaster(src, `collection-${m.itemId}`);
+                                  toast({
+                                    title: `Saved ${r.filename}`,
+                                    description: `${describeActionSource(src)} · exact file`,
+                                  });
+                                } catch (e) {
+                                  toast({
+                                    title: "Export failed",
+                                    description: e instanceof Error ? e.message : String(e),
+                                    variant: "destructive",
+                                  });
+                                } finally {
+                                  setBusyItemId(null);
+                                }
+                              }}
                             >
-                              Export
-                            </a>
+                              Export master
+                            </Button>
                             <Link
                               to="/"
                               className="text-xs underline text-primary self-center"
