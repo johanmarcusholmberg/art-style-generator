@@ -588,9 +588,9 @@ export default function CollectionPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              disabled={!ratio.ready || busyItemId === m.itemId}
+                              disabled={!ratio.isFormatReady || busyItemId === m.itemId}
                               title={
-                                ratio.ready
+                                ratio.isFormatReady
                                   ? "Download the exact stored master for this candidate"
                                   : "Poster-format finalization must complete before export"
                               }
