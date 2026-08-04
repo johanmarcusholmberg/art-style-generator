@@ -70,7 +70,7 @@ import EtsyExportDialog from "@/components/EtsyExportDialog";
 import EtsyMockupDialog from "@/components/EtsyMockupDialog";
 import RouteBadge from "@/components/RouteBadge";
 import ImportArtworkButton from "@/components/gallery/ImportArtworkButton";
-import { downloadWithBleed, renderRawWithBleed } from "@/lib/raw-download";
+import { renderRawWithBleed } from "@/lib/raw-download";
 import {
   resolveActionSourceFromRow,
   describeActionSource,
@@ -175,9 +175,6 @@ const STYLE_CARDS = getGalleryOnboardingStyles(6).map((s) => ({
   desc: s.desc,
   to: s.to,
 }));
-
-const downloadImage = (url: string, filename: string) =>
-  downloadWithBleed(url, { filename });
 
 /**
  * Turn 4B — exact master download. Resolves the persisted canonical object
@@ -306,7 +303,6 @@ function LightboxContent({
     },
     "preview",
   ).url;
-  const downloadUrl = selectedAsset?.publicUrl || img.masterUrl;
   // Exact-master source: a selected version wins, otherwise the row's
   // canonical master. Display/preview URLs can never win here.
   const masterSource = selectedAsset
