@@ -1428,6 +1428,10 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       if (best) {
         const augmented = {
           ...img,
+          // Persisted path wins in the shared source contract, so override it
+          // too — otherwise the "best available" choice would be ignored.
+          master_storage_path: best.storage_path,
+          enhanced_storage_path: null,
           masterUrl: best.publicUrl,
           actual_width_px: best.width_px ?? img.actual_width_px,
           actual_height_px: best.height_px ?? img.actual_height_px,
