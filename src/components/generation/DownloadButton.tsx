@@ -1,13 +1,15 @@
 /**
- * DownloadButton — every download in the app routes through
- * `downloadWithBleed`, so the global 3 mm bleed is always applied,
- * even when no print format is associated with the image.
+ * DownloadButton — two clearly separated actions:
  *
- * Users can pick PNG / JPEG / PDF; the choice is persisted in
- * localStorage and applies to every subsequent export across the app.
+ *   1. "Download" — the centralized print pipeline. Always routes through
+ *      `downloadWithBleed`, so the global 3 mm bleed is applied and the user
+ *      can pick PNG / JPEG / PDF (persisted in localStorage).
+ *   2. "Master (exact)" — hands over the persisted canonical object
+ *      byte-for-byte: no bleed, no canvas, no format conversion. Only shown
+ *      when a persisted master actually exists.
  */
 import { useState, useEffect } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { Download, FileDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { downloadWithBleed } from "@/lib/raw-download";
+import { downloadCanonicalMaster } from "@/lib/asset-integrity/download-service";
+import {
+  describeActionSource,
+  type CanonicalActionSource,
+} from "@/lib/asset-integrity/source-resolver";
 import {
   type ExportFormat,
   EXPORT_FORMATS,
@@ -37,6 +44,11 @@ export interface DownloadButtonProps {
   printFormatId?: string | null;
   /** Optional DPI hint when no print format is known. */
   dpi?: number;
+  /**
+   * Resolved canonical source for the exact-master download. When absent or
+   * not `ok`, the exact-master button is hidden.
+   */
+  masterSource?: CanonicalActionSource | null;
 }
 
 export default function DownloadButton({
@@ -46,7 +58,10 @@ export default function DownloadButton({
   sizeLabel,
   printFormatId,
   dpi,
+  masterSource,
 }: DownloadButtonProps) {
+  const [masterBusy, setMasterBusy] = useState(false);
+
   const [busy, setBusy] = useState(false);
   const [format, setFormat] = useState<ExportFormat>(() => getStoredExportFormat());
 
