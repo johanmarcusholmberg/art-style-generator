@@ -27,6 +27,11 @@ import {
   Info,
 } from "lucide-react";
 import JSZip from "jszip";
+import {
+  resolveActionSourceFromRow,
+  describeActionSource,
+} from "@/lib/asset-integrity/source-resolver";
+import { downloadCanonicalMaster } from "@/lib/asset-integrity/download-service";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,16 +172,27 @@ function shortPrompt(p: string | null | undefined, len = 60): string {
   return s.length > len ? s.slice(0, len) + "…" : s;
 }
 
-async function downloadUrl(url: string, filename: string) {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(a.href);
+/**
+ * Turn 4B — every admin download resolves its bytes through the shared
+ * source contract, so the button label always matches the file the operator
+ * actually receives (print master vs original vs web preview).
+ */
+async function downloadResolved(
+  row: AssetRow,
+  intent: "download_master" | "download_original",
+  baseName: string,
+) {
+  const src = resolveActionSourceFromRow(row, { intent });
+  if (!src.ok) {
+    toast.error(src.reason ?? "No persisted source available");
+    return;
+  }
+  try {
+    const r = await downloadCanonicalMaster(src, baseName);
+    toast.success(`Saved ${r.filename}`, { description: describeActionSource(src) });
+  } catch (e: any) {
+    toast.error("Download failed", { description: e?.message });
+  }
 }
 
 function upscaleModeLabel(mode: string | null | undefined): string {
@@ -1439,30 +1455,18 @@ function AssetDetail({
           <Button
             variant="default"
             disabled={!masterUrl}
-            onClick={() =>
-              masterUrl && downloadUrl(masterUrl, `${row.id}-print.png`)
-            }
+            onClick={() => downloadResolved(row, "download_master", `${row.id}-master`)}
           >
             <Download className="h-4 w-4 mr-2" />
-            {masterUrl ? "Download print version" : "No upscaled version available"}
-          </Button>
-          <Button
-            variant="outline"
-            disabled={!row.publicUrl}
-            onClick={() =>
-              row.publicUrl && downloadUrl(row.publicUrl, `${row.id}-web.png`)
-            }
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Download web version
+            {masterUrl ? "Download print master (exact)" : "No master available"}
           </Button>
           <Button
             variant="outline"
             disabled={!baseUrl}
-            onClick={() => baseUrl && downloadUrl(baseUrl, `${row.id}-original.png`)}
+            onClick={() => downloadResolved(row, "download_original", `${row.id}-original`)}
           >
             <Download className="h-4 w-4 mr-2" />
-            Download original
+            Download original (exact)
           </Button>
           <div className="border rounded-md p-3 space-y-2">
             <div className="text-xs font-medium text-muted-foreground">
