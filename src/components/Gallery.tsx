@@ -886,14 +886,22 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       const selectedImages = images.filter((img) => selectedIds.has(img.id));
       const fmt = getStoredExportFormat();
       const meta = EXPORT_FORMAT_META[fmt];
+      let skipped = 0;
       await Promise.all(
         selectedImages.map(async (img, i) => {
-          // Every poster in the ZIP carries the static 3 mm bleed.
-          const r = await renderRawWithBleed(img.publicUrl, { exportFormat: fmt });
-          const baseName = `art-${i + 1}-${img.mode}`;
+          // Turn 4B — ZIP entries come from the canonical master, never a
+          // web preview, and every poster carries the static 3 mm bleed.
+          const src = resolveActionSourceFromRow(img, { intent: "print_export" });
+          if (!src.ok || !src.url) { skipped++; return; }
+          const r = await renderRawWithBleed(src.url, { exportFormat: fmt });
+          const baseName = `art-${i + 1}-${img.mode}-master`;
           zip.file(buildExportFilename(baseName, fmt, r.bleedMm), r.blob);
         })
       );
+      if (Object.keys(zip.files).length === 0) {
+        toast.error("No persisted masters available for the selected images");
+        return;
+      }
       const content = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(content);
       const a = document.createElement("a");
@@ -903,7 +911,10 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       URL.revokeObjectURL(url);
       setSelectMode(false);
       setSelectedIds(new Set());
-      toast.success(`Downloaded ${selectedImages.length} ${meta.label} files`, { duration: 3000 });
+      toast.success(
+        `Downloaded ${selectedImages.length - skipped} ${meta.label} print files (master source)`,
+        { duration: 3000, description: skipped ? `${skipped} skipped — no persisted master` : undefined },
+      );
     } catch (e) {
       console.error(e);
       toast.error("Failed to create ZIP");
