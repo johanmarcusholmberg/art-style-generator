@@ -71,6 +71,12 @@ import EtsyMockupDialog from "@/components/EtsyMockupDialog";
 import RouteBadge from "@/components/RouteBadge";
 import ImportArtworkButton from "@/components/gallery/ImportArtworkButton";
 import { downloadWithBleed, renderRawWithBleed } from "@/lib/raw-download";
+import {
+  resolveActionSourceFromRow,
+  describeActionSource,
+  type CanonicalActionSource,
+} from "@/lib/asset-integrity/source-resolver";
+import { downloadCanonicalMaster } from "@/lib/asset-integrity/download-service";
 import { runReplicateUpscale } from "@/lib/upscale-providers/replicate";
 import { updateEnhancedAsset } from "@/lib/gallery";
 import { bulkSetImageAdminStatus, type AdminStatus } from "@/lib/style-lab";
@@ -172,6 +178,27 @@ const STYLE_CARDS = getGalleryOnboardingStyles(6).map((s) => ({
 
 const downloadImage = (url: string, filename: string) =>
   downloadWithBleed(url, { filename });
+
+/**
+ * Turn 4B — exact master download. Resolves the persisted canonical object
+ * through the shared source contract and hands over the bytes untouched
+ * (no bleed, no canvas, no format conversion).
+ */
+async function downloadExactMaster(source: CanonicalActionSource, baseName: string) {
+  if (!source.ok) {
+    toast.error(source.reason ?? "No persisted master available");
+    return;
+  }
+  try {
+    const r = await downloadCanonicalMaster(source, baseName);
+    toast.success(`Saved ${r.filename}`, {
+      description: `${describeActionSource(source)} · exact file, no bleed`,
+      duration: 3000,
+    });
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : "Download failed");
+  }
+}
 
 // ── Skeleton grid ──────────────────────────────────────────────────────────────
 function GallerySkeleton() {
@@ -280,6 +307,19 @@ function LightboxContent({
     "preview",
   ).url;
   const downloadUrl = selectedAsset?.publicUrl || img.masterUrl;
+  // Exact-master source: a selected version wins, otherwise the row's
+  // canonical master. Display/preview URLs can never win here.
+  const masterSource = selectedAsset
+    ? resolveActionSourceFromRow(
+        {
+          storage_path: selectedAsset.storage_path,
+          master_storage_path: selectedAsset.storage_path,
+          actual_width_px: selectedAsset.width_px,
+          actual_height_px: selectedAsset.height_px,
+        },
+        { intent: "download_master" },
+      )
+    : resolveActionSourceFromRow(img, { intent: "download_master" });
   const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
 
   const hasExport = !!img.export_storage_path;
@@ -480,11 +520,21 @@ function LightboxContent({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => downloadImage(downloadUrl, `art-${img.id}${selectedAsset ? `-v${selectedAsset.version_index}` : ""}.png`)}
+            onClick={() =>
+              downloadExactMaster(
+                masterSource,
+                `art-${img.id}${selectedAsset ? `-v${selectedAsset.version_index}` : ""}`,
+              )
+            }
+            disabled={!masterSource.ok}
             className="font-display text-xs"
-            title={selectedAsset ? `Download ${selectedAsset.asset_type === "original" ? "Original" : `Upscale ${selectedAsset.version_index}`}` : "Download"}
+            title={
+              masterSource.ok
+                ? `${describeActionSource(masterSource)} — exact stored file, no bleed`
+                : masterSource.reason ?? "No persisted master"
+            }
           >
-            <Download className="mr-2 h-4 w-4" /> Download
+            <Download className="mr-2 h-4 w-4" /> Download master
           </Button>
 
           <div className="inline-flex items-center gap-1.5">
