@@ -188,9 +188,12 @@ export function resolveActionSourceFromRow(
 }
 
 /**
- * Resolve an in-session generator image (nothing persisted yet).
- * Print export may proceed from session pixels; an exact "download master"
- * may NOT, because there is no stored master to hand over byte-for-byte.
+ * Resolve an in-session generator image.
+ *
+ * Turn 4B closure: an unsaved image (`blob:` / `data:`) or a provider-temporary
+ * URL is NEVER an action source — not for an exact master download and not for
+ * a print export. The user must wait for durable persistence and poster-format
+ * finalization before either action becomes available.
  */
 export function resolveSessionActionSource(
   imageUrl: string | null | undefined,
@@ -200,36 +203,25 @@ export function resolveSessionActionSource(
   if (usable && ref.path) {
     return {
       ok: true,
-      kind: "canonical_master",
+      kind: intent === "download_original" ? "original" : "canonical_master",
       url: publicUrlFor(ref.bucket ?? BUCKET, ref.path),
       bucket: ref.bucket ?? BUCKET,
       path: ref.path,
       width: null,
       height: null,
-      label: "Print master",
+      label: intent === "download_original" ? "Original" : "Print master",
       reason: null,
       warnings: [],
     };
   }
   if (ref.isLocal || ref.kind === "external") {
-    if (intent === "print_export") {
-      return {
-        ok: true,
-        kind: "session_preview",
-        url: imageUrl ?? null,
-        bucket: null,
-        path: null,
-        width: null,
-        height: null,
-        label: "Session image (not yet saved)",
-        reason: null,
-        warnings: ["This image is not saved yet — the export is rendered from the session image."],
-      };
-    }
-    return unavailable("Save this image to the gallery before downloading the master.");
+    return unavailable(
+      "This image is not saved yet — wait for it to be stored and format-finalized before downloading or exporting.",
+    );
   }
   return unavailable(reason ?? "No usable source image");
 }
+
 
 /**
  * Authoritative, network-backed resolution. Rebuilds the Turn 4A asset graph
