@@ -284,7 +284,15 @@ export default function ImageGenerator({
   } = useUpscale();
 
   const savedGalleryIdRef = useRef<string | null>(null);
+  /**
+   * Turn 4B — mirrored persisted id so production actions can react to
+   * durable persistence. Production actions never use the React preview URL.
+   */
+  const [persistedImageId, setPersistedImageId] = useState<string | null>(null);
+  const [canonicalSource, setCanonicalSource] = useState<CanonicalActionSource | null>(null);
+  const [canonicalLoading, setCanonicalLoading] = useState(false);
   const upscaleRunId = useRef(0);
+
 
   // ── Durable server-owned single-image path ─────────────────────────
   // Only the ordinary "Generate" flow is wired here. Variant fan-out and
