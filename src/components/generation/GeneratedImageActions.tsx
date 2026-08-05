@@ -5,7 +5,7 @@
  * All business logic remains in ImageGenerator; this component is a pure
  * presentation wrapper around the action buttons, toggles, and dialogs.
  */
-import { Loader2, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle } from "lucide-react";
+import { Loader2, Save, Replace, Trash2, Pencil, FileImage, FileDown, ArrowUpCircle } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,8 +18,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import DownloadButton from "@/components/generation/DownloadButton";
-import { resolveSessionActionSource } from "@/lib/asset-integrity/source-resolver";
+import {
+  describeActionSource,
+  type CanonicalActionSource,
+} from "@/lib/asset-integrity/source-resolver";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import type { StyleConfig } from "@/lib/style-config";
 import type { PrintFormat } from "@/lib/print-formats";
@@ -65,6 +67,11 @@ export interface GeneratedImageActionsProps {
   saving: boolean;
   replacing: boolean;
   exporting: boolean;
+  /** Persisted canonical master; both production actions require it. */
+  canonicalSource: CanonicalActionSource | null;
+  canonicalLoading: boolean;
+  downloadingMaster: boolean;
+  onDownloadMaster: () => void;
   onSaveToGallery: () => void;
   onReplaceOriginal: () => void;
   onPrintExport: () => void;
@@ -106,6 +113,10 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
     saving,
     replacing,
     exporting,
+    canonicalSource,
+    canonicalLoading,
+    downloadingMaster,
+    onDownloadMaster,
     onSaveToGallery,
     onReplaceOriginal,
     onPrintExport,
