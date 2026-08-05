@@ -63,7 +63,10 @@ import {
 } from "@/lib/durable-result-metadata";
 
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
-import { resolveSessionActionSource } from "@/lib/asset-integrity/source-resolver";
+import {
+  loadCanonicalActionSource,
+  type CanonicalActionSource,
+} from "@/lib/asset-integrity/source-resolver";
 import { EXPORT_FORMAT_META, getStoredExportFormat } from "@/lib/export-formats";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
