@@ -1280,21 +1280,53 @@ export default function ImageGenerator({
     }
   };
 
+  /**
+   * Turn 4B — production actions read persisted canonical truth only.
+   * Reloaded whenever the persisted image, enhancement or finalization
+   * state changes; unavailable until a canonical master exists.
+   */
+  const formatPending =
+    durablePresentation.phase === "format_processing" ||
+    durablePresentation.phase === "format_failed" ||
+    adoptingCanonical;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!persistedImageId || formatPending || isUpscaling || saving || replacing) {
+      setCanonicalSource(null);
+      return;
+    }
+    setCanonicalLoading(true);
+    loadCanonicalActionSource(persistedImageId, "download_master")
+      .then((src) => {
+        if (!cancelled) setCanonicalSource(src.ok ? src : null);
+      })
+      .catch(() => {
+        if (!cancelled) setCanonicalSource(null);
+      })
+      .finally(() => {
+        if (!cancelled) setCanonicalLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [persistedImageId, formatPending, isUpscaling, saving, replacing, enhancedImageUrl]);
+
   const handlePrintExport = async () => {
-    if (!imageUrl || exporting) return;
+    if (exporting) return;
+    if (!canonicalSource?.ok || !canonicalSource.url) {
+      toast({
+        title: "Not ready for print export",
+        description:
+          "Wait until the image is saved and its print format is finalized.",
+        variant: "destructive",
+      });
+      return;
+    }
     setExporting(true);
     try {
-      // Turn 4B — one shared source contract. Enhanced beats base beats the
-      // raw session image, and the resolver rejects display-only render URLs
-      // so an export can never be built from a resized web derivative.
-      const resolved = resolveSessionActionSource(
-        enhancedImageUrl || baseImageUrl || imageUrl,
-        "print_export",
-      );
-      if (!resolved.ok || !resolved.url) {
-        throw new Error(resolved.reason ?? "No usable source image for export");
-      }
-      const exportSource = resolved.url;
+      const exportSource = canonicalSource.url;
+
 
       const fmt = getStoredExportFormat();
       const fmtMeta = EXPORT_FORMAT_META[fmt];
