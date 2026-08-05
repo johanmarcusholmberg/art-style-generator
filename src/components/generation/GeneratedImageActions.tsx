@@ -131,36 +131,53 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
           ))}
         </div>
       )}
-      <DownloadButton
-        url={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
-        masterSource={resolveSessionActionSource(
-          viewVersion === "original" && hasEnhanced ? baseImageUrl : imageUrl,
-          "download_master",
+      {/*
+        Turn 4B — exactly two production actions, both backed by the persisted
+        canonical master. No generic bleed download lives here any more.
+      */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onDownloadMaster}
+        disabled={!canonicalSource?.ok || downloadingMaster || canonicalLoading}
+        title={
+          canonicalSource?.ok
+            ? `${describeActionSource(canonicalSource)} — exact stored file`
+            : "Available once the image is saved and its print format is finalized"
+        }
+        className="font-display text-xs tracking-wider"
+      >
+        {downloadingMaster ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <FileDown className="mr-2 h-4 w-4" />
         )}
-        filename={`${styleConfig.downloadPrefix}-${mode}-${effectiveAspectRatio.replace(":", "x")}-${Date.now()}.png`}
-        versionLabel={hasEnhanced ? (viewVersion === "original" ? "Original" : "Enhanced") : undefined}
-        sizeLabel={generationMode === "print-ready" ? selectedPrintFormat.label : printSize.dimensions}
-      />
+        Download master
+      </Button>
 
-      {generationMode === "print-ready" && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onPrintExport}
-          disabled={exporting}
-          className="font-display text-xs tracking-wider border-primary/30 text-primary hover:bg-primary/10"
-        >
-          {exporting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…
-            </>
-          ) : (
-            <>
-              <FileImage className="mr-2 h-4 w-4" /> Export Print ({selectedPrintFormat.label})
-            </>
-          )}
-        </Button>
-      )}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onPrintExport}
+        disabled={exporting || !canonicalSource?.ok || canonicalLoading}
+        title={
+          canonicalSource?.ok
+            ? `Print export from ${describeActionSource(canonicalSource)}`
+            : "Available once the image is saved and its print format is finalized"
+        }
+        className="font-display text-xs tracking-wider border-primary/30 text-primary hover:bg-primary/10"
+      >
+        {exporting ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…
+          </>
+        ) : (
+          <>
+            <FileImage className="mr-2 h-4 w-4" /> Export for print ({selectedPrintFormat.label})
+          </>
+        )}
+      </Button>
+
 
       {canManualUpscale && (
         <EnhanceForPrintDialog
