@@ -63,6 +63,7 @@ import {
 } from "@/lib/durable-result-metadata";
 
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
+import { downloadCanonicalMaster } from "@/lib/asset-integrity/download-service";
 import {
   loadCanonicalActionSource,
   type CanonicalActionSource,
@@ -294,6 +295,7 @@ export default function ImageGenerator({
   const [persistedImageId, setPersistedImageId] = useState<string | null>(null);
   const [canonicalSource, setCanonicalSource] = useState<CanonicalActionSource | null>(null);
   const [canonicalLoading, setCanonicalLoading] = useState(false);
+  const [downloadingMaster, setDownloadingMaster] = useState(false);
   const upscaleRunId = useRef(0);
 
 
@@ -1317,6 +1319,35 @@ export default function ImageGenerator({
     };
   }, [persistedImageId, formatPending, isUpscaling, saving, replacing, enhancedImageUrl]);
 
+  const handleDownloadMaster = async () => {
+    if (downloadingMaster) return;
+    if (!canonicalSource?.ok) {
+      toast({
+        title: "Master not ready",
+        description:
+          "Wait until the image is saved and its print format is finalized.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setDownloadingMaster(true);
+    try {
+      const r = await downloadCanonicalMaster(
+        canonicalSource,
+        `${styleConfig.downloadPrefix}-${mode}-master-${Date.now()}.png`,
+      );
+      toast({ title: "Master downloaded", description: r.filename });
+    } catch (err: any) {
+      toast({
+        title: "Download failed",
+        description: err?.message || "Could not download the master file",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingMaster(false);
+    }
+  };
+
   const handlePrintExport = async () => {
     if (exporting) return;
     if (!canonicalSource?.ok || !canonicalSource.url) {
@@ -2219,6 +2250,10 @@ export default function ImageGenerator({
               exporting={exporting}
               onSaveToGallery={handleSaveToGallery}
               onReplaceOriginal={handleReplaceOriginal}
+              canonicalSource={canonicalSource}
+              canonicalLoading={canonicalLoading}
+              downloadingMaster={downloadingMaster}
+              onDownloadMaster={handleDownloadMaster}
               onPrintExport={handlePrintExport}
               onStartInlineEdit={handleStartInlineEdit}
               onRemoveImage={handleRemoveImage}
