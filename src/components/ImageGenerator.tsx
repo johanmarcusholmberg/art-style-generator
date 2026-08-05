@@ -414,6 +414,7 @@ export default function ImageGenerator({
         if (a.galleryImageId) {
           savedGalleryIdRef.current = a.galleryImageId;
           setSavedToGallery(true);
+          setPersistedImageId(a.galleryImageId);
         }
         durable.clear();
         finalizationQueue.clearOutcome(itemId);
@@ -849,6 +850,7 @@ export default function ImageGenerator({
     resetUpscale();
     setEnhancedImageUrl(null);
     savedGalleryIdRef.current = null;
+    setPersistedImageId(null);
     // Clear previous anchor identity so the new generation cannot
     // inherit the prior image's gallery id, storage path, or dims.
     setDurableBaseUrl(null);
@@ -1009,6 +1011,7 @@ export default function ImageGenerator({
       if (persistedId) {
         savedGalleryIdRef.current = persistedId;
         setSavedToGallery(true);
+        setPersistedImageId(persistedId);
       }
       if (meta?.storagePath) setDurableBaseStoragePath(meta.storagePath);
       if (meta?.actualWidthPx) setDurableBaseWidth(meta.actualWidthPx);
@@ -1168,6 +1171,7 @@ export default function ImageGenerator({
         modelFallbackReason: lastModelFallbackReason,
       });
       setSavedToGallery(true);
+      setPersistedImageId(newId);
       onImageSaved?.();
       // Cost-event log uses the id returned by saveToGallery — no race.
       try {
@@ -1244,6 +1248,7 @@ export default function ImageGenerator({
         modelFallbackReason: lastModelFallbackReason,
       });
       setSavedToGallery(true);
+      setPersistedImageId(originalImageId);
       onImageSaved?.();
       try {
         await recordAssetCostEvent({
@@ -1388,6 +1393,7 @@ export default function ImageGenerator({
     setImageUrl(null);
     setBaseImageUrl(null);
     setSavedToGallery(false);
+    setPersistedImageId(null);
     setViewVersion("enhanced");
     setEnhancedImageUrl(null);
   };
