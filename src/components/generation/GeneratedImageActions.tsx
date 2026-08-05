@@ -87,18 +87,12 @@ export interface GeneratedImageActionsProps {
 
 export default function GeneratedImageActions(props: GeneratedImageActionsProps) {
   const {
-    imageUrl,
-    baseImageUrl,
     enhancedImageUrl,
     hasEnhanced,
     viewVersion,
     onChangeViewVersion,
-    mode,
-    generationMode,
     selectedPrintFormat,
-    printSize,
-    effectiveAspectRatio,
-    styleConfig,
+
     isUpscaling,
     canManualUpscale,
     sourceWidth,
