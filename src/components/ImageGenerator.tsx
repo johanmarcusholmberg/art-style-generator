@@ -63,7 +63,11 @@ import {
 } from "@/lib/durable-result-metadata";
 
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
-import { resolveSessionActionSource } from "@/lib/asset-integrity/source-resolver";
+import { downloadCanonicalMaster } from "@/lib/asset-integrity/download-service";
+import {
+  loadCanonicalActionSource,
+  type CanonicalActionSource,
+} from "@/lib/asset-integrity/source-resolver";
 import { EXPORT_FORMAT_META, getStoredExportFormat } from "@/lib/export-formats";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -284,7 +288,16 @@ export default function ImageGenerator({
   } = useUpscale();
 
   const savedGalleryIdRef = useRef<string | null>(null);
+  /**
+   * Turn 4B — mirrored persisted id so production actions can react to
+   * durable persistence. Production actions never use the React preview URL.
+   */
+  const [persistedImageId, setPersistedImageId] = useState<string | null>(null);
+  const [canonicalSource, setCanonicalSource] = useState<CanonicalActionSource | null>(null);
+  const [canonicalLoading, setCanonicalLoading] = useState(false);
+  const [downloadingMaster, setDownloadingMaster] = useState(false);
   const upscaleRunId = useRef(0);
+
 
   // ── Durable server-owned single-image path ─────────────────────────
   // Only the ordinary "Generate" flow is wired here. Variant fan-out and
@@ -403,6 +416,7 @@ export default function ImageGenerator({
         if (a.galleryImageId) {
           savedGalleryIdRef.current = a.galleryImageId;
           setSavedToGallery(true);
+          setPersistedImageId(a.galleryImageId);
         }
         durable.clear();
         finalizationQueue.clearOutcome(itemId);
@@ -838,6 +852,7 @@ export default function ImageGenerator({
     resetUpscale();
     setEnhancedImageUrl(null);
     savedGalleryIdRef.current = null;
+    setPersistedImageId(null);
     // Clear previous anchor identity so the new generation cannot
     // inherit the prior image's gallery id, storage path, or dims.
     setDurableBaseUrl(null);
@@ -998,6 +1013,7 @@ export default function ImageGenerator({
       if (persistedId) {
         savedGalleryIdRef.current = persistedId;
         setSavedToGallery(true);
+        setPersistedImageId(persistedId);
       }
       if (meta?.storagePath) setDurableBaseStoragePath(meta.storagePath);
       if (meta?.actualWidthPx) setDurableBaseWidth(meta.actualWidthPx);
@@ -1157,6 +1173,7 @@ export default function ImageGenerator({
         modelFallbackReason: lastModelFallbackReason,
       });
       setSavedToGallery(true);
+      setPersistedImageId(newId);
       onImageSaved?.();
       // Cost-event log uses the id returned by saveToGallery — no race.
       try {
@@ -1233,6 +1250,7 @@ export default function ImageGenerator({
         modelFallbackReason: lastModelFallbackReason,
       });
       setSavedToGallery(true);
+      setPersistedImageId(originalImageId);
       onImageSaved?.();
       try {
         await recordAssetCostEvent({
@@ -1269,21 +1287,82 @@ export default function ImageGenerator({
     }
   };
 
+  /**
+   * Turn 4B — production actions read persisted canonical truth only.
+   * Reloaded whenever the persisted image, enhancement or finalization
+   * state changes; unavailable until a canonical master exists.
+   */
+  const formatPending =
+    durablePresentation.phase === "format_processing" ||
+    durablePresentation.phase === "format_failed" ||
+    adoptingCanonical;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!persistedImageId || formatPending || isUpscaling || saving || replacing) {
+      setCanonicalSource(null);
+      return;
+    }
+    setCanonicalLoading(true);
+    loadCanonicalActionSource(persistedImageId, "download_master")
+      .then((src) => {
+        if (!cancelled) setCanonicalSource(src.ok ? src : null);
+      })
+      .catch(() => {
+        if (!cancelled) setCanonicalSource(null);
+      })
+      .finally(() => {
+        if (!cancelled) setCanonicalLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [persistedImageId, formatPending, isUpscaling, saving, replacing, enhancedImageUrl]);
+
+  const handleDownloadMaster = async () => {
+    if (downloadingMaster) return;
+    if (!canonicalSource?.ok) {
+      toast({
+        title: "Master not ready",
+        description:
+          "Wait until the image is saved and its print format is finalized.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setDownloadingMaster(true);
+    try {
+      const r = await downloadCanonicalMaster(
+        canonicalSource,
+        `${styleConfig.downloadPrefix}-${mode}-master-${Date.now()}.png`,
+      );
+      toast({ title: "Master downloaded", description: r.filename });
+    } catch (err: any) {
+      toast({
+        title: "Download failed",
+        description: err?.message || "Could not download the master file",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingMaster(false);
+    }
+  };
+
   const handlePrintExport = async () => {
-    if (!imageUrl || exporting) return;
+    if (exporting) return;
+    if (!canonicalSource?.ok || !canonicalSource.url) {
+      toast({
+        title: "Not ready for print export",
+        description:
+          "Wait until the image is saved and its print format is finalized.",
+        variant: "destructive",
+      });
+      return;
+    }
     setExporting(true);
     try {
-      // Turn 4B — one shared source contract. Enhanced beats base beats the
-      // raw session image, and the resolver rejects display-only render URLs
-      // so an export can never be built from a resized web derivative.
-      const resolved = resolveSessionActionSource(
-        enhancedImageUrl || baseImageUrl || imageUrl,
-        "print_export",
-      );
-      if (!resolved.ok || !resolved.url) {
-        throw new Error(resolved.reason ?? "No usable source image for export");
-      }
-      const exportSource = resolved.url;
+      const exportSource = canonicalSource.url;
+
 
       const fmt = getStoredExportFormat();
       const fmtMeta = EXPORT_FORMAT_META[fmt];
@@ -1345,6 +1424,7 @@ export default function ImageGenerator({
     setImageUrl(null);
     setBaseImageUrl(null);
     setSavedToGallery(false);
+    setPersistedImageId(null);
     setViewVersion("enhanced");
     setEnhancedImageUrl(null);
   };
@@ -2170,6 +2250,10 @@ export default function ImageGenerator({
               exporting={exporting}
               onSaveToGallery={handleSaveToGallery}
               onReplaceOriginal={handleReplaceOriginal}
+              canonicalSource={canonicalSource}
+              canonicalLoading={canonicalLoading}
+              downloadingMaster={downloadingMaster}
+              onDownloadMaster={handleDownloadMaster}
               onPrintExport={handlePrintExport}
               onStartInlineEdit={handleStartInlineEdit}
               onRemoveImage={handleRemoveImage}
