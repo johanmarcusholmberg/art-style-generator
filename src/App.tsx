@@ -47,6 +47,7 @@ import LooseWatercolor from "./pages/LooseWatercolor";
 import BackendInfo from "./pages/BackendInfo";
 import QuickAccess from "./pages/QuickAccess";
 import CollectionPage from "./pages/CollectionPage";
+import AppErrorBoundary from "@/components/AppErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
           <AuthProvider>
             <BatchNotifications />
             
+            <AppErrorBoundary>
             <Routes>
               {/* Public auth routes */}
               <Route path="/login" element={<Login />} />
@@ -124,6 +126,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </AppErrorBoundary>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
