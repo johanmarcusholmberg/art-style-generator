@@ -69,6 +69,7 @@ const App = () => (
           <AuthProvider>
             <BatchNotifications />
             
+            <AppErrorBoundary>
             <Routes>
               {/* Public auth routes */}
               <Route path="/login" element={<Login />} />
