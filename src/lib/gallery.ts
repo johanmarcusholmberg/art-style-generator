@@ -259,7 +259,6 @@ export async function fetchGalleryImages(opts: FetchGalleryOptions = {}) {
   let query = supabase
     .from("generated_images")
     .select("*")
-    .is("archived_at", null)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
