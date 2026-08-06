@@ -47,6 +47,7 @@ import LooseWatercolor from "./pages/LooseWatercolor";
 import BackendInfo from "./pages/BackendInfo";
 import QuickAccess from "./pages/QuickAccess";
 import CollectionPage from "./pages/CollectionPage";
+import AppErrorBoundary from "@/components/AppErrorBoundary";
 
 const queryClient = new QueryClient();
 
