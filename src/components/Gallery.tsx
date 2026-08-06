@@ -77,8 +77,6 @@ import {
   type CanonicalActionSource,
 } from "@/lib/asset-integrity/source-resolver";
 import { downloadCanonicalMaster } from "@/lib/asset-integrity/download-service";
-import { runReplicateUpscale } from "@/lib/upscale-providers/replicate";
-import { updateEnhancedAsset } from "@/lib/gallery";
 import { bulkSetImageAdminStatus, type AdminStatus } from "@/lib/style-lab";
 import {
   buildExportFilename,
@@ -760,8 +758,6 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState(false);
-  const [bulkUpscaling, setBulkUpscaling] = useState(false);
-  const [bulkUpscaleProgress, setBulkUpscaleProgress] = useState<{ done: number; total: number; failed: number } | null>(null);
 
   const [collectionFilter, setCollectionFilter] = useState<string | null>(null);
   const [collectionImageIds, setCollectionImageIds] = useState<string[] | null>(null);
@@ -923,63 +919,6 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     }
   };
 
-  /**
-   * Bulk HD 4× upscale for selected images.
-   *
-   * Runs `realesrgan_4x` (Real-ESRGAN) on each selected image with a small
-   * concurrency pool. Always pulls the reprocess source (= the original/base
-   * asset) so re-running never compounds on an already-upscaled derivative.
-   * Failures are tallied and surfaced — successful upscales are persisted
-   * via `updateEnhancedAsset` and the gallery row is updated locally.
-   */
-  const handleBulkUpscale = async () => {
-    if (selectedIds.size === 0 || bulkUpscaling) return;
-    const targets = images.filter((img) => selectedIds.has(img.id) && !img.enhanced);
-    const skipped = selectedIds.size - targets.length;
-    if (targets.length === 0) {
-      toast.info("All selected images are already enhanced.");
-      return;
-    }
-    if (skipped > 0) {
-      toast.info(`Skipping ${skipped} already-enhanced image${skipped > 1 ? "s" : ""}.`);
-    }
-
-    setBulkUpscaling(true);
-    setBulkUpscaleProgress({ done: 0, total: targets.length, failed: 0 });
-
-    const CONCURRENCY = 3;
-    let cursor = 0;
-    let done = 0;
-    let failed = 0;
-
-    const runOne = async (img: GalleryImage) => {
-      try {
-        const sourceUrl = getReprocessSourceAssetForImage(img) || img.publicUrl || img.masterUrl;
-        const result = await runReplicateUpscale({
-          imageUrl: sourceUrl,
-          method: "realesrgan",
-          scale: 4,
-        });
-        try {
-          await updateEnhancedAsset(img.id, result.upscaledImageUrl, {
-            enhancementModel: result.provider,
-            upscaleFactor: result.scale,
-            upscaleMode: "realesrgan_4x",
-            enhancedWidthPx: result.width ?? undefined,
-            enhancedHeightPx: result.height ?? undefined,
-          });
-        } catch (persistErr) {
-          console.warn("Bulk upscale: failed to persist enhanced master", persistErr);
-        }
-        const update: Partial<GalleryImage> = {
-          upscale_applied: true,
-          enhanced: true,
-          masterUrl: result.upscaledImageUrl,
-          enhancedUrl: result.upscaledImageUrl,
-          upscale_mode: "realesrgan_4x",
-          upscale_factor: result.scale,
-          enhancement_model: result.provider,
-        };
         setImages((prev) => prev.map((i) => (i.id === img.id ? { ...i, ...update } : i)));
         if (selected?.id === img.id) {
           setSelected((prev) => (prev ? { ...prev, ...update } : prev));
@@ -1658,27 +1597,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
         {selectMode && selectedIds.size > 0 && (
           <>
-            <Button size="sm" className="font-display text-xs h-8" onClick={handleBatchDownload} disabled={downloading || bulkUpscaling}>
+            <Button size="sm" className="font-display text-xs h-8" onClick={handleBatchDownload} disabled={downloading}>
               {downloading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
               Download {selectedIds.size} as ZIP
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="font-display text-xs h-8 border-primary/40 text-primary hover:bg-primary/10"
-              onClick={handleBulkUpscale}
-              disabled={bulkUpscaling || downloading}
-              title="Run HD 4× (Real-ESRGAN) on each selected image. Already-enhanced images are skipped."
-            >
-              {bulkUpscaling ? (
-                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-              ) : (
-                <Sparkles className="h-3 w-3 mr-1" />
-              )}
-              {bulkUpscaling && bulkUpscaleProgress
-                ? `Enhancing ${bulkUpscaleProgress.done}/${bulkUpscaleProgress.total}…`
-                : `Enhance ${selectedIds.size} (HD 4×)`}
             </Button>
 
             {/* Bulk review actions — write to admin_status (single source of truth). */}
@@ -1687,7 +1608,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
               size="sm"
               className="font-display text-xs h-8 border-primary/40 text-primary hover:bg-primary/10"
               onClick={() => handleBulkStatus("approved")}
-              disabled={bulkStatusBusy || bulkUpscaling}
+              disabled={bulkStatusBusy}
               title="Mark selected as Approved"
             >
               {bulkStatusBusy
@@ -1700,7 +1621,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
               size="sm"
               className="font-display text-xs h-8 border-destructive/40 text-destructive hover:bg-destructive/10"
               onClick={() => handleBulkStatus("rejected")}
-              disabled={bulkStatusBusy || bulkUpscaling}
+              disabled={bulkStatusBusy}
               title="Mark selected as Rejected"
             >
               <XCircle className="h-3 w-3 mr-1" />
@@ -1711,7 +1632,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
               size="sm"
               className="font-display text-xs h-8"
               onClick={() => handleBulkStatus("needs_review")}
-              disabled={bulkStatusBusy || bulkUpscaling}
+              disabled={bulkStatusBusy}
               title="Mark selected as Needs review"
             >
               <Clock className="h-3 w-3 mr-1" />
@@ -1722,7 +1643,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
             {allCollections.length > 0 && (
               <Popover open={bulkPopoverOpen} onOpenChange={setBulkPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="font-display text-xs h-8" disabled={bulkUpscaling}
+                  <Button variant="outline" size="sm" className="font-display text-xs h-8" 
                     onClick={() => { setBulkAction("add"); setBulkPopoverOpen(true); }}>
                     <FolderPlus className="h-3 w-3 mr-1" /> Add to folder
                   </Button>
