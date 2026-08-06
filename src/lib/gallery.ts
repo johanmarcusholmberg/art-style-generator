@@ -4,7 +4,6 @@ import { loadImageDimensions } from "@/lib/image-metadata";
 import { ensurePrintMasterInSaveOpts } from "@/lib/poster-master";
 import { cleanupStorage } from "@/lib/asset-integrity/mutation-service";
 
-
 /**
  * Converts a base64 data URL to a Blob
  */
@@ -38,9 +37,7 @@ async function uploadImage(imageUrl: string, prefix: string): Promise<{ filename
 
   if (error) throw error;
 
-  const { data: urlData } = supabase.storage
-    .from("generated-images")
-    .getPublicUrl(filename);
+  const { data: urlData } = supabase.storage.from("generated-images").getPublicUrl(filename);
 
   return { filename, publicUrl: urlData.publicUrl };
 }
@@ -135,7 +132,6 @@ export async function saveToGallery(opts: GallerySaveOptions) {
   // Upload the (now ratio-correct) base image
   const base = await uploadImage(opts.imageUrl, opts.mode);
 
-
   // Upload enhanced image if provided
   let enhancedPath: string | null = null;
   if (opts.enhancedImageUrl && opts.enhancedImageUrl !== opts.imageUrl) {
@@ -152,10 +148,7 @@ export async function saveToGallery(opts: GallerySaveOptions) {
   let actualHeightPx = opts.actualHeightPx;
   if (!actualWidthPx || !actualHeightPx) {
     try {
-      
-      const masterUrl = supabase.storage
-        .from("generated-images")
-        .getPublicUrl(masterPath).data.publicUrl;
+      const masterUrl = supabase.storage.from("generated-images").getPublicUrl(masterPath).data.publicUrl;
       const dims = await loadImageDimensions(masterUrl);
       actualWidthPx = actualWidthPx ?? dims.width;
       actualHeightPx = actualHeightPx ?? dims.height;
@@ -163,7 +156,6 @@ export async function saveToGallery(opts: GallerySaveOptions) {
       /* non-fatal */
     }
   }
-
 
   const { data: inserted, error: dbError } = await supabase
     .from("generated_images")
@@ -206,9 +198,7 @@ export async function saveToGallery(opts: GallerySaveOptions) {
       fallback_used: opts.fallbackUsed || false,
       execution_route: opts.executionRoute || null,
       // ── Part C: asset metadata foundation ──
-      asset_role:
-        opts.assetRole ||
-        (enhancedPath ? "enhanced_master" : "base_generation"),
+      asset_role: opts.assetRole || (enhancedPath ? "enhanced_master" : "base_generation"),
       provider: opts.provider || null,
       model: opts.model || null,
       route: opts.route || null,
@@ -239,9 +229,7 @@ export async function saveToGallery(opts: GallerySaveOptions) {
 
   // Return the master public URL + the inserted row id so callers can
   // reliably target the new row without best-effort lookups.
-  const { data: masterUrlData } = supabase.storage
-    .from("generated-images")
-    .getPublicUrl(masterPath);
+  const { data: masterUrlData } = supabase.storage.from("generated-images").getPublicUrl(masterPath);
 
   return {
     id: (inserted as { id: string }).id,
@@ -271,6 +259,7 @@ export async function fetchGalleryImages(opts: FetchGalleryOptions = {}) {
   let query = supabase
     .from("generated_images")
     .select("*")
+    .is("archived_at", null)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -294,7 +283,6 @@ export async function fetchGalleryImages(opts: FetchGalleryOptions = {}) {
     };
   });
 }
-
 
 /**
  * @deprecated Turn 4A: unsafe. It removed storage objects BEFORE the database
@@ -324,9 +312,7 @@ export async function deleteFromGallery(_id: string, _storagePath: string): Prom
  * If step 4 fails, the DB row is already consistent with the new asset —
  * only orphan files remain; we log and continue.
  */
-export async function replaceInGallery(
-  opts: GallerySaveOptions & { originalId: string; originalStoragePath: string },
-) {
+export async function replaceInGallery(opts: GallerySaveOptions & { originalId: string; originalStoragePath: string }) {
   // Print-ready invariant — same guard as saveToGallery. Run BEFORE we
   // upload anything so an enforcement failure never leaves orphan files.
   const guarded = await ensurePrintMasterInSaveOpts(opts);
@@ -334,7 +320,6 @@ export async function replaceInGallery(
 
   // 1) Upload replacement assets first — never touch originals yet.
   const base = await uploadImage(opts.imageUrl, opts.mode);
-
 
   let enhancedPath: string | null = null;
   try {
@@ -344,7 +329,10 @@ export async function replaceInGallery(
     }
   } catch (uploadErr) {
     // Clean up the base we just uploaded so we don't leave orphans.
-    await supabase.storage.from("generated-images").remove([base.filename]).catch(() => {});
+    await supabase.storage
+      .from("generated-images")
+      .remove([base.filename])
+      .catch(() => {});
     throw uploadErr;
   }
 
@@ -355,10 +343,7 @@ export async function replaceInGallery(
   let actualHeightPx = opts.actualHeightPx;
   if (!actualWidthPx || !actualHeightPx) {
     try {
-      
-      const masterUrl = supabase.storage
-        .from("generated-images")
-        .getPublicUrl(masterPath).data.publicUrl;
+      const masterUrl = supabase.storage.from("generated-images").getPublicUrl(masterPath).data.publicUrl;
       const dims = await loadImageDimensions(masterUrl);
       actualWidthPx = actualWidthPx ?? dims.width;
       actualHeightPx = actualHeightPx ?? dims.height;
@@ -415,9 +400,7 @@ export async function replaceInGallery(
       provider_strategy: opts.providerStrategy || null,
       fallback_used: opts.fallbackUsed || false,
       execution_route: opts.executionRoute || null,
-      asset_role:
-        opts.assetRole ||
-        (enhancedPath ? "enhanced_master" : "base_generation"),
+      asset_role: opts.assetRole || (enhancedPath ? "enhanced_master" : "base_generation"),
       provider: opts.provider || null,
       model: opts.model || null,
       route: opts.route || null,
@@ -446,7 +429,10 @@ export async function replaceInGallery(
     // don't leave orphans, and keep the original asset intact.
     const orphans = [base.filename];
     if (enhancedPath) orphans.push(enhancedPath);
-    await supabase.storage.from("generated-images").remove(orphans).catch(() => {});
+    await supabase.storage
+      .from("generated-images")
+      .remove(orphans)
+      .catch(() => {});
     throw dbError;
   }
 
@@ -474,7 +460,6 @@ export async function replaceInGallery(
     }
   }
 }
-
 
 /**
  * Update enhanced asset for an existing gallery image after async enhancement completes.
@@ -505,8 +490,7 @@ export async function updateEnhancedAsset(
     .eq("id", imageId)
     .single();
 
-  const originalPath =
-    (existing as any)?.original_storage_path || (existing as any)?.storage_path || null;
+  const originalPath = (existing as any)?.original_storage_path || (existing as any)?.storage_path || null;
 
   const { error } = await supabase
     .from("generated_images")
