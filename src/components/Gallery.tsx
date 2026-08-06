@@ -919,53 +919,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     }
   };
 
-        setImages((prev) => prev.map((i) => (i.id === img.id ? { ...i, ...update } : i)));
-        if (selected?.id === img.id) {
-          setSelected((prev) => (prev ? { ...prev, ...update } : prev));
-        }
-      } catch (e) {
-        console.error(`Bulk upscale failed for ${img.id}:`, e);
-        failed++;
-      } finally {
-        done++;
-        setBulkUpscaleProgress({ done, total: targets.length, failed });
-      }
-    };
 
-    const workers = Array.from({ length: Math.min(CONCURRENCY, targets.length) }, async () => {
-      while (cursor < targets.length) {
-        const idx = cursor++;
-        await runOne(targets[idx]);
-      }
-    });
-    await Promise.all(workers);
-
-    setBulkUpscaling(false);
-    setBulkUpscaleProgress(null);
-
-    const succeeded = targets.length - failed;
-    if (failed === 0) {
-      // Full success — exit select mode for a clean slate.
-      setSelectMode(false);
-      setSelectedIds(new Set());
-      toast.success(
-        `Enhanced ${succeeded} image${succeeded > 1 ? "s" : ""} (HD 4×)`,
-        { duration: 3000 },
-      );
-    } else {
-      // Partial / total failure — keep select mode on and leave selection
-      // intact so the user can retry without having to re-pick everything.
-      if (succeeded === 0) {
-        toast.error(
-          `Bulk upscale failed for all ${failed} image${failed > 1 ? "s" : ""}. Selection preserved — try again.`,
-        );
-      } else {
-        toast.warning(
-          `Enhanced ${succeeded} · ${failed} failed. Selection preserved — re-run to retry.`,
-        );
-      }
-    }
-  };
 
 
   /**
