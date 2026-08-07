@@ -375,7 +375,11 @@ export default function EnhanceForPrintDialog({
       : "Enhance for 300 PPI print";
 
   const recStatusSentence = !recPlan
-    ? "Select a print format to calculate the target."
+    ? !posterFormatId
+      ? "Select a print format to calculate the target."
+      : !effectiveWidth || !effectiveHeight
+        ? "Image dimensions are unavailable. Finalize or reload the image before enhancing for print."
+        : "The print target could not be calculated for this image."
     : recPlan.status === "already_ready"
       ? "This image already reaches 300 PPI for the selected format."
       : recPlan.status === "output_too_large"
