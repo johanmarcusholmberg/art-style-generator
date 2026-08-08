@@ -19,6 +19,12 @@
  */
 
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { decodeImageDimensions } from "./image-dimensions.ts";
+import {
+  assertMetadataComplete,
+  canonicalAspectRatio,
+  isPrintReadyGeneration,
+} from "./generation-metadata-invariant.ts";
 
 export interface PersistArgs {
   imageUrl: string;
@@ -84,7 +90,16 @@ export interface PersistResult {
   costEventInserted: boolean;
   promptHistoryInserted: boolean;
   promptHistoryLinked: boolean;
+  /** Dimensions measured from the persisted bytes — DB truth. */
+  measuredWidthPx: number;
+  measuredHeightPx: number;
+  /** Canonical values actually written to the row. */
+  printFormatId: string | null;
+  aspectRatio: string;
+  /** True when an existing (incomplete) row was repaired on this pass. */
+  repairedExistingRow: boolean;
 }
+
 
 async function toBytes(imageUrl: string): Promise<Uint8Array> {
   if (imageUrl.startsWith("data:")) {
@@ -120,10 +135,22 @@ export async function persistGenerationResult(
   }
   const itemId = args.generationJobItemId;
 
+  // Canonical metadata — the print format wins over any provider- or
+  // client-supplied aspect ratio so stored truth can never drift.
+  const printFormatId = args.printFormatId ?? null;
+  const aspectRatio =
+    canonicalAspectRatio(printFormatId, args.aspectRatio) ?? args.aspectRatio;
+
+  if (isPrintReadyGeneration(args.generationMode) && !printFormatId) {
+    throw new Error("metadata_incomplete: missing_print_format");
+  }
+
   // 1. Idempotency check — reuse existing row if a prior attempt got here.
   const { data: existing, error: exErr } = await supabase
     .from("generated_images")
-    .select("id, storage_path")
+    .select(
+      "id, storage_path, actual_width_px, actual_height_px, print_format_id, aspect_ratio, master_width, master_height",
+    )
     .eq("generation_job_item_id", itemId)
     .maybeSingle();
   if (exErr) throw new Error(`idempotency lookup: ${exErr.message}`);
@@ -131,86 +158,178 @@ export async function persistGenerationResult(
   let storagePath = existing?.storage_path ?? deterministicStoragePath(args.mode, itemId);
   let galleryImageId = existing?.id ?? null;
   let bytesLen = 0;
+  let measuredWidth: number | null = null;
+  let measuredHeight: number | null = null;
+  let repairedExistingRow = false;
 
-  if (!existing) {
-    // 2. Upload storage. Deterministic filename + upsert = idempotent on retry.
+  const existingComplete =
+    !!existing &&
+    !!(existing as Record<string, unknown>).actual_width_px &&
+    !!(existing as Record<string, unknown>).actual_height_px &&
+    (!isPrintReadyGeneration(args.generationMode) ||
+      !!(existing as Record<string, unknown>).print_format_id);
+
+  if (existing && existingComplete) {
+    measuredWidth = (existing as Record<string, number>).actual_width_px;
+    measuredHeight = (existing as Record<string, number>).actual_height_px;
+  } else {
+    // 2. Fetch + measure the REAL bytes. Provider-reported dimensions are
+    //    diagnostics only — Gemini frequently omits them entirely.
     const bytes = await toBytes(args.imageUrl);
     bytesLen = bytes.byteLength;
-    const { error: upErr } = await supabase.storage
-      .from("generated-images")
-      .upload(storagePath, bytes, { contentType: "image/png", upsert: true });
-    if (upErr) throw new Error(`storage upload: ${upErr.message}`);
+    const decoded = decodeImageDimensions(bytes);
+    measuredWidth = decoded?.width ?? args.actualWidthPx ?? null;
+    measuredHeight = decoded?.height ?? args.actualHeightPx ?? null;
 
-    // 3. Insert gallery row. Unique partial index on generation_job_item_id
-    //    protects against races; if a concurrent worker beat us, fall back
-    //    to the existing row.
-    const { data: row, error: insErr } = await supabase
-      .from("generated_images")
-      .insert({
-        prompt: args.prompt,
-        mode: args.mode,
-        aspect_ratio: args.aspectRatio,
-        storage_path: storagePath,
-        master_storage_path: storagePath,
-        print_size: args.printSize ?? null,
-        quality_mode: args.qualityMode ?? "quality",
-        target_ppi: args.targetPpi ?? null,
-        target_width_px: args.targetWidthPx ?? null,
-        target_height_px: args.targetHeightPx ?? null,
-        actual_width_px: args.actualWidthPx ?? null,
-        actual_height_px: args.actualHeightPx ?? null,
-        enhanced: args.enhanced ?? false,
-        generation_provider: args.generationProvider ?? null,
-        generation_model: args.generationModel ?? null,
-        provider_strategy: args.providerStrategy ?? null,
-        fallback_used: args.fallbackUsed ?? false,
-        execution_route: args.executionRoute ?? null,
-        print_format_id: args.printFormatId ?? null,
-        generation_mode: args.generationMode ?? null,
-        asset_role: "base_generation",
-        provider: args.provider ?? null,
-        model: args.model ?? null,
-        route: args.route ?? null,
-        estimated_cost: args.estimatedCost ?? null,
-        currency: args.currency ?? "USD",
-        prompt_version: args.promptVersion ?? null,
-        upscale_applied: args.upscaleApplied ?? false,
-        upscale_method: args.upscaleMethod ?? null,
-        upscale_factor: args.upscaleFactor ?? null,
-        requested_model_id: args.requestedModelId ?? null,
-        resolved_model_id: args.resolvedModelId ?? null,
-        selected_adapter_id: args.selectedAdapterId ?? null,
-        quality_profile: args.qualityProfile ?? null,
-        generation_strategy: args.generationStrategy ?? null,
-        model_fallback_reason: args.modelFallbackReason ?? null,
-        source_image_url: args.sourceImageUrl ?? null,
-        source_storage_path: args.sourceStoragePath ?? null,
-        source_file_name: args.sourceFileName ?? null,
-        generation_job_id: args.generationJobId ?? null,
-        generation_job_item_id: itemId,
-        matching_collection_id: args.matchingCollectionId ?? null,
-        matching_subject: args.matchingSubject ?? null,
-        matching_review_state: args.matchingReviewState ?? null,
-        matching_is_anchor: args.matchingIsAnchor ?? false,
-      })
-      .select("id")
-      .single();
-    if (insErr) {
-      // Race: another worker inserted first. Recover.
-      const { data: raced } = await supabase
+    // Invariant gate — refuse to persist an untrustworthy row.
+    assertMetadataComplete({
+      widthPx: measuredWidth,
+      heightPx: measuredHeight,
+      printFormatId,
+      aspectRatio,
+      generationMode: args.generationMode,
+    });
+
+    if (!existing) {
+      // 3. Upload storage. Deterministic filename + upsert = idempotent.
+      const { error: upErr } = await supabase.storage
+        .from("generated-images")
+        .upload(storagePath, bytes, { contentType: "image/png", upsert: true });
+      if (upErr) throw new Error(`storage upload: ${upErr.message}`);
+
+      // 4. Insert gallery row. Unique partial index on generation_job_item_id
+      //    protects against races; if a concurrent worker beat us, fall back
+      //    to the existing row.
+      const { data: row, error: insErr } = await supabase
         .from("generated_images")
-        .select("id, storage_path")
-        .eq("generation_job_item_id", itemId)
-        .maybeSingle();
-      if (!raced) throw new Error(`gallery insert: ${insErr.message}`);
-      galleryImageId = raced.id as string;
-      storagePath = raced.storage_path as string;
-    } else if (row) {
-      galleryImageId = row.id as string;
+        .insert({
+          prompt: args.prompt,
+          mode: args.mode,
+          aspect_ratio: aspectRatio,
+          storage_path: storagePath,
+          master_storage_path: storagePath,
+          print_size: args.printSize ?? null,
+          quality_mode: args.qualityMode ?? "quality",
+          target_ppi: args.targetPpi ?? null,
+          target_width_px: args.targetWidthPx ?? null,
+          target_height_px: args.targetHeightPx ?? null,
+          actual_width_px: measuredWidth,
+          actual_height_px: measuredHeight,
+          base_width_px: measuredWidth,
+          base_height_px: measuredHeight,
+          master_width: measuredWidth,
+          master_height: measuredHeight,
+          enhanced: args.enhanced ?? false,
+          generation_provider: args.generationProvider ?? null,
+          generation_model: args.generationModel ?? null,
+          provider_strategy: args.providerStrategy ?? null,
+          fallback_used: args.fallbackUsed ?? false,
+          execution_route: args.executionRoute ?? null,
+          print_format_id: printFormatId,
+          generation_mode: args.generationMode ?? null,
+          asset_role: "base_generation",
+          provider: args.provider ?? null,
+          model: args.model ?? null,
+          route: args.route ?? null,
+          estimated_cost: args.estimatedCost ?? null,
+          currency: args.currency ?? "USD",
+          prompt_version: args.promptVersion ?? null,
+          upscale_applied: args.upscaleApplied ?? false,
+          upscale_method: args.upscaleMethod ?? null,
+          upscale_factor: args.upscaleFactor ?? null,
+          requested_model_id: args.requestedModelId ?? null,
+          resolved_model_id: args.resolvedModelId ?? null,
+          selected_adapter_id: args.selectedAdapterId ?? null,
+          quality_profile: args.qualityProfile ?? null,
+          generation_strategy: args.generationStrategy ?? null,
+          model_fallback_reason: args.modelFallbackReason ?? null,
+          source_image_url: args.sourceImageUrl ?? null,
+          source_storage_path: args.sourceStoragePath ?? null,
+          source_file_name: args.sourceFileName ?? null,
+          generation_job_id: args.generationJobId ?? null,
+          generation_job_item_id: itemId,
+          matching_collection_id: args.matchingCollectionId ?? null,
+          matching_subject: args.matchingSubject ?? null,
+          matching_review_state: args.matchingReviewState ?? null,
+          matching_is_anchor: args.matchingIsAnchor ?? false,
+        })
+        .select("id")
+        .single();
+      if (insErr) {
+        // Race: another worker inserted first. Recover.
+        const { data: raced } = await supabase
+          .from("generated_images")
+          .select("id, storage_path")
+          .eq("generation_job_item_id", itemId)
+          .maybeSingle();
+        if (!raced) throw new Error(`gallery insert: ${insErr.message}`);
+        galleryImageId = raced.id as string;
+        storagePath = raced.storage_path as string;
+      } else if (row) {
+        galleryImageId = row.id as string;
+      }
+    } else {
+      // Existing row from an older/partial attempt — repair it in place so
+      // retries converge on complete metadata instead of duplicating rows.
+      const patch: Record<string, unknown> = {
+        actual_width_px: measuredWidth,
+        actual_height_px: measuredHeight,
+        master_width: measuredWidth,
+        master_height: measuredHeight,
+        aspect_ratio: aspectRatio,
+      };
+      if (!(existing as Record<string, unknown>).print_format_id && printFormatId) {
+        patch.print_format_id = printFormatId;
+      }
+      await supabase.from("generated_images").update(patch).eq("id", existing.id);
+      repairedExistingRow = true;
     }
   }
 
   if (!galleryImageId) throw new Error("gallery insert produced no id");
+  if (!measuredWidth || !measuredHeight) {
+    throw new Error("metadata_incomplete: missing_dimensions");
+  }
+
+  // 5. Keep the versioned `original` asset row in sync with the master.
+  {
+    const { data: originalAsset } = await supabase
+      .from("generated_image_assets")
+      .select("id, width_px, height_px, storage_path")
+      .eq("generated_image_id", galleryImageId)
+      .eq("asset_type", "original")
+      .eq("version_index", 0)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!originalAsset) {
+      await supabase.from("generated_image_assets").insert({
+        generated_image_id: galleryImageId,
+        asset_type: "original",
+        version_index: 0,
+        source_asset_id: null,
+        storage_bucket: "generated-images",
+        storage_path: storagePath,
+        width_px: measuredWidth,
+        height_px: measuredHeight,
+        mime_type: "image/png",
+        file_size_bytes: bytesLen || null,
+      });
+    } else if (
+      originalAsset.width_px !== measuredWidth ||
+      originalAsset.height_px !== measuredHeight ||
+      originalAsset.storage_path !== storagePath
+    ) {
+      await supabase
+        .from("generated_image_assets")
+        .update({
+          storage_path: storagePath,
+          width_px: measuredWidth,
+          height_px: measuredHeight,
+        })
+        .eq("id", originalAsset.id);
+    }
+  }
+
 
   // 4. Cost event — unique index (generation_job_item_id, event_type).
   let costEventInserted = false;
@@ -305,5 +424,10 @@ export async function persistGenerationResult(
     costEventInserted,
     promptHistoryInserted,
     promptHistoryLinked,
+    measuredWidthPx: measuredWidth,
+    measuredHeightPx: measuredHeight,
+    printFormatId,
+    aspectRatio,
+    repairedExistingRow,
   };
 }

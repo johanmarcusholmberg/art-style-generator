@@ -31,10 +31,14 @@ vi.mock("@/integrations/supabase/client", () => {
           then: (resolve: any) => resolve({ data: rows, error: null }),
         };
       }),
+      is: vi.fn(() => api),
+      eq: vi.fn(() => api),
+      or: vi.fn(() => api),
       in: vi.fn((col: string, values: string[]) => {
         calls.inFilter.push({ col, values });
         return api;
       }),
+
     };
     return api;
   };

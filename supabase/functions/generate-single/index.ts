@@ -17,6 +17,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { runWithResolver, ProviderError, type GenerateArgs, type GeneratorPreference } from "../_shared/generators.ts";
 import { persistGenerationResult, serviceClient } from "../_shared/persist-generation-result.ts";
+import { printFormatRatioDecimal } from "../_shared/generation-metadata-invariant.ts";
 import {
   buildDurableResultMetadata,
   executionRouteForProvider,
@@ -190,11 +191,19 @@ serve(async (httpReq) => {
       },
     });
 
-    // Determine ratio enforcement status: if provider was adjusted vs
-    // requested poster format, mark 'pending' so the client can finalize.
-    // (Client-side Canvas enforcement is preserved by design for parity.)
+    // Determine ratio enforcement status. Truth is the MEASURED master:
+    // if its ratio doesn't match the selected poster format, finalization
+    // is required regardless of what the provider reported.
+    const targetDecimal = printFormatRatioDecimal(req.printFormatId);
+    const measuredDecimal = persisted.measuredWidthPx / persisted.measuredHeightPx;
+    const ratioMismatch =
+      !!req.printFormatId &&
+      !!targetDecimal &&
+      Math.abs(measuredDecimal - targetDecimal) / targetDecimal > 0.005;
     const ratioStatus =
-      outcome.providerAdjusted && req.printFormatId ? "pending" : "not_required";
+      (outcome.providerAdjusted || ratioMismatch) && req.printFormatId
+        ? "pending"
+        : "not_required";
 
     if (heartbeat) clearInterval(heartbeat);
 
@@ -205,20 +214,23 @@ serve(async (httpReq) => {
       providerStrategy: outcome.strategy,
       fallbackUsed: outcome.fallbackUsed,
       attempted: outcome.attempted,
-      actualWidthPx: outcome.width ?? null,
-      actualHeightPx: outcome.height ?? null,
+      // Measured from the persisted bytes — matches the database row.
+      actualWidthPx: persisted.measuredWidthPx,
+      actualHeightPx: persisted.measuredHeightPx,
       requestedWidth: outcome.requestedWidth ?? null,
       requestedHeight: outcome.requestedHeight ?? null,
       requestedAspectRatio: outcome.requestedAspectRatio ?? null,
       providerExactMatch: outcome.providerExactMatch,
       providerAdjusted: outcome.providerAdjusted,
-      printFormatId: req.printFormatId,
+      printFormatId: persisted.printFormatId,
+
       printSize: req.printSize,
       qualityMode: req.qualityMode,
       targetPpi: req.targetPpi,
       targetWidthPx: req.targetWidthPx,
       targetHeightPx: req.targetHeightPx,
-      aspectRatio: req.aspectRatio,
+      aspectRatio: persisted.aspectRatio,
+
       sizeIntent: req.sizeIntent,
       requestedModelId: req.requestedModelId,
       resolvedModelId: outcome.modelId,
