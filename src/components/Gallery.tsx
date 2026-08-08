@@ -61,6 +61,7 @@ import MatchingCollectionDialog from "@/components/matching-collection/MatchingC
 import type { AnchorInheritedSettings } from "@/lib/matching-collection/types";
 
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
+import { needsMetadataRepair, repairImageMetadata } from "@/lib/image-metadata-repair";
 import { useUpscale } from "@/hooks/use-upscale";
 import { UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
 import { resolveUpscaleRecipe, generatorFamilyFromProvider, type UpscaleRecipe } from "@/lib/upscale-recipes";
@@ -1040,6 +1041,29 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       return () => { document.body.style.overflow = ""; };
     }
   }, [selected, isMobile]);
+
+  // Self-heal legacy rows: measure the real master once and write the
+  // dimensions + canonical aspect ratio back, so print actions never see
+  // "dimensions unavailable" for an image that exists in storage.
+  useEffect(() => {
+    if (!selected || !needsMetadataRepair(selected)) return;
+    let cancelled = false;
+    const target = selected;
+    void repairImageMetadata(target, target.masterUrl || target.publicUrl)
+      .then((res) => {
+        if (cancelled || !res.repaired) return;
+        const patch: Partial<GalleryImage> = {
+          actual_width_px: res.width,
+          actual_height_px: res.height,
+          ...(res.aspectRatio ? { aspect_ratio: res.aspectRatio } : {}),
+        };
+        setImages((prev) => prev.map((i) => (i.id === target.id ? { ...i, ...patch } : i)));
+        setSelected((prev) => (prev && prev.id === target.id ? { ...prev, ...patch } : prev));
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [selected]);
+
 
   const selectedIndex = selected ? filtered.findIndex((img) => img.id === selected.id) : -1;
   const goPrev = useCallback(() => {
