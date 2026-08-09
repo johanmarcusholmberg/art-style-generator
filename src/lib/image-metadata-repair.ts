@@ -28,14 +28,20 @@ export interface MetadataRepairResult {
   reason?: "already_complete" | "no_source" | "measure_failed";
 }
 
-/** Pure: does this row need a repair pass? */
-export function needsMetadataRepair(img: RepairableImage): boolean {
-  return !img.actual_width_px || !img.actual_height_px;
-}
-
 /** Pure: the canonical aspect ratio a row should carry. */
 export function repairedAspectRatio(img: RepairableImage): string | null {
   return canonicalAspectRatio(img.print_format_id, img.aspect_ratio ?? null);
+}
+
+/** Pure: is the persisted aspect ratio missing or stale vs the print format? */
+export function needsAspectRatioRepair(img: RepairableImage): boolean {
+  const canonical = repairedAspectRatio(img);
+  return !!canonical && (img.aspect_ratio ?? null) !== canonical;
+}
+
+/** Pure: does this row need a repair pass? */
+export function needsMetadataRepair(img: RepairableImage): boolean {
+  return !img.actual_width_px || !img.actual_height_px || needsAspectRatioRepair(img);
 }
 
 /**
@@ -56,6 +62,21 @@ export async function repairImageMetadata(
       reason: "already_complete",
     };
   }
+
+  // Dimensions already trustworthy — only the canonical ratio is stale.
+  if (img.actual_width_px && img.actual_height_px) {
+    await (supabase as any)
+      .from("generated_images")
+      .update({ aspect_ratio: ratio })
+      .eq("id", img.id);
+    return {
+      repaired: true,
+      width: img.actual_width_px,
+      height: img.actual_height_px,
+      aspectRatio: ratio,
+    };
+  }
+
   if (!masterUrl) {
     return { repaired: false, width: null, height: null, aspectRatio: ratio, reason: "no_source" };
   }
