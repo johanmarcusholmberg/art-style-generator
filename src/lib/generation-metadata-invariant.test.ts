@@ -76,7 +76,17 @@ describe("canonical aspect ratio mapping across print formats", () => {
     const isoIds = ["print_a2", "print_a3", "print_a4"];
     expect(new Set(isoIds.map((id) => canonicalAspectRatio(id))).size).toBe(1);
     const decimals = isoIds.map((id) => printFormatRatioDecimal(id)!);
-    expect(new Set(decimals.map((d) => d.toFixed(6))).size).toBe(3);
+    // A2 (420/594) and A4 (210/297) reduce to the same decimal; A3 (297/420)
+    // rounds slightly differently — the shared "ISO-A" token must cover both.
+    expect(new Set(decimals.map((d) => d.toFixed(6))).size).toBe(2);
+    expect(printFormatRatioDecimal("print_a2")).toBeCloseTo(
+      printFormatRatioDecimal("print_a4")!,
+      12,
+    );
+    expect(printFormatRatioDecimal("print_a3")).not.toBeCloseTo(
+      printFormatRatioDecimal("print_a2")!,
+      6,
+    );
     for (const d of decimals) expect(d).toBeCloseTo(1 / Math.SQRT2, 2);
   });
 });
