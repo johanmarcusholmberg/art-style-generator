@@ -167,7 +167,8 @@ export async function persistGenerationResult(
     !!(existing as Record<string, unknown>).actual_width_px &&
     !!(existing as Record<string, unknown>).actual_height_px &&
     (!isPrintReadyGeneration(args.generationMode) ||
-      !!(existing as Record<string, unknown>).print_format_id);
+      !!(existing as Record<string, unknown>).print_format_id) &&
+    (existing as Record<string, unknown>).aspect_ratio === aspectRatio;
 
   if (existing && existingComplete) {
     measuredWidth = (existing as Record<string, number>).actual_width_px;
@@ -177,9 +178,17 @@ export async function persistGenerationResult(
     //    diagnostics only — Gemini frequently omits them entirely.
     const bytes = await toBytes(args.imageUrl);
     bytesLen = bytes.byteLength;
+    // The persisted file is the ONLY source of truth. Provider-reported
+    // dimensions (args.actualWidthPx/HeightPx) are diagnostics only and must
+    // never become "actual" dimensions.
     const decoded = decodeImageDimensions(bytes);
-    measuredWidth = decoded?.width ?? args.actualWidthPx ?? null;
-    measuredHeight = decoded?.height ?? args.actualHeightPx ?? null;
+    if (!decoded || !decoded.width || !decoded.height) {
+      throw new Error(
+        "metadata_incomplete: undecodable_image_bytes (provider dimensions are diagnostics only)",
+      );
+    }
+    measuredWidth = decoded.width;
+    measuredHeight = decoded.height;
 
     // Invariant gate — refuse to persist an untrustworthy row.
     assertMetadataComplete({
