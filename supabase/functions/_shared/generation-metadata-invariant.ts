@@ -22,6 +22,8 @@ export class MetadataIncompleteError extends Error {
 // Mirrors the aspectRatio field of src/lib/print-formats.ts.
 const FORMAT_ASPECT_RATIOS: Record<string, string> = {
   print_50x70: "5:7",
+  print_70x50: "7:5",
+  print_70x100: "7:10",
   print_30x40: "3:4",
   print_50x50: "1:1",
   print_a2: "ISO-A",
@@ -76,6 +78,8 @@ export function assertMetadataComplete(c: MetadataCandidate): void {
 // Decimal (w/h) ratio per format — mirrors print-formats.ts.
 const FORMAT_RATIO_DECIMALS: Record<string, number> = {
   print_50x70: 50 / 70,
+  print_70x50: 70 / 50,
+  print_70x100: 70 / 100,
   print_30x40: 30 / 40,
   print_50x50: 1,
   print_a2: 420 / 594,
