@@ -112,7 +112,7 @@ const expectedRatio: Record<string, string> = {
   b: "3:4",
   c: "7:5",
   d: "1:1",
-  e: "1:1.414",
+  e: "ISO-A",
   f: "5:7",
   g: "5:7",
 };
