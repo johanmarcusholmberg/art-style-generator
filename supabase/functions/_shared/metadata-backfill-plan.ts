@@ -79,8 +79,12 @@ export function inferPrintFormatId(
   }
   if (matches.length === 0) return null;
   matches.sort((a, b) => a.delta - b.delta);
-  // Ambiguous: two different formats fit the same pixels.
-  if (matches.length > 1 && matches[1].delta - matches[0].delta < 1e-9) return null;
+  // Ambiguous: several formats share the same canonical ratio (ISO-A family),
+  // so pixels alone cannot tell A2 from A3 from A4.
+  if (matches.length > 1) {
+    const tokens = new Set(matches.map((m) => canonicalAspectRatio(m.id)));
+    if (tokens.size === 1) return null;
+  }
   return matches[0].id;
 
 }
