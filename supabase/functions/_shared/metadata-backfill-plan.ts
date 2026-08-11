@@ -60,7 +60,9 @@ export interface BackfillPlan {
 
 /**
  * Infer a print format from pixel dimensions. Returns null when no registered
- * format matches within tolerance — we never guess.
+ * format matches within tolerance, or when several distinct formats match
+ * equally well (e.g. the ISO-A family, whose sizes share one ratio) — we
+ * never guess.
  */
 export function inferPrintFormatId(
   width?: number | null,
@@ -68,16 +70,23 @@ export function inferPrintFormatId(
 ): string | null {
   if (!width || !height || width <= 0 || height <= 0) return null;
   const actual = width / height;
-  let best: { id: string; delta: number } | null = null;
+  const matches: { id: string; delta: number }[] = [];
   for (const id of BACKFILL_FORMAT_IDS) {
     const target = printFormatRatioDecimal(id);
     if (!target) continue;
     const delta = Math.abs(actual - target) / target;
-    if (delta <= RATIO_INFERENCE_TOLERANCE && (!best || delta < best.delta)) {
-      best = { id, delta };
-    }
+    if (delta <= RATIO_INFERENCE_TOLERANCE) matches.push({ id, delta });
   }
-  return best?.id ?? null;
+  if (matches.length === 0) return null;
+  matches.sort((a, b) => a.delta - b.delta);
+  // Ambiguous: several formats share the same canonical ratio (ISO-A family),
+  // so pixels alone cannot tell A2 from A3 from A4.
+  if (matches.length > 1) {
+    const tokens = new Set(matches.map((m) => canonicalAspectRatio(m.id)));
+    if (tokens.size === 1) return null;
+  }
+  return matches[0].id;
+
 }
 
 /**
