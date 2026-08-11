@@ -16,12 +16,14 @@ describe("inferPrintFormatId", () => {
   });
 
   for (const fmt of PRINT_FORMATS) {
-    it(`infers ${fmt.id} from its 300 PPI pixel target`, () => {
-      expect(
-        inferPrintFormatId(fmt.preferredPixelWidth, fmt.preferredPixelHeight),
-      ).toBe(fmt.id);
+    const ambiguous = fmt.aspectRatio === "ISO-A";
+    it(`${ambiguous ? "declines to guess" : "infers"} ${fmt.id} from its 300 PPI pixel target`, () => {
+      const inferred = inferPrintFormatId(fmt.preferredPixelWidth, fmt.preferredPixelHeight);
+      // ISO-A sizes share one ratio — pixels cannot disambiguate A2/A3/A4.
+      expect(inferred).toBe(ambiguous ? null : fmt.id);
     });
   }
+
 
   it("returns null for unknown ratios", () => {
     expect(inferPrintFormatId(1920, 1080)).toBeNull();
