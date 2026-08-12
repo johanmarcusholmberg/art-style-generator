@@ -85,6 +85,15 @@ Deno.serve(async (req) => {
   const dryRun = body.dry_run !== false; // default: dry run
   const limit = Math.min(Math.max(Number(body.limit) || 50, 1), MAX_LIMIT);
 
+  // Preflight: verify connectivity + required permissions before planning
+  // or writing anything. Never partially runs.
+  const preflight = await runBackfillPreflight(admin as never, { dryRun });
+  if (!preflight.ok) {
+    return json({ error: describePreflightFailure(preflight), preflight }, 503);
+  }
+
+
+
   let query = admin
     .from("generated_images")
     .select(
