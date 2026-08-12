@@ -57,6 +57,13 @@ for (;;) {
     body: { dry_run: !apply, limit: 100, cursor },
   });
   if (error) throw new Error(`invoke failed: ${error.message}`);
+  if (data?.error) throw new Error(data.error);
+  if (page === 0 && data.preflight) {
+    console.log("preflight:");
+    for (const c of data.preflight.checks) {
+      console.log(`  ${c.ok ? "ok " : "FAIL"} ${c.label}${c.error ? ` — ${c.error}` : ""}`);
+    }
+  }
   page++;
   totals.scanned += data.scanned;
   totals.already_canonical += data.already_canonical;
@@ -71,6 +78,7 @@ for (;;) {
   if (!data.has_more || !data.next_cursor) break;
   cursor = data.next_cursor;
 }
+
 
 console.log(`\n${apply ? "APPLIED" : "DRY RUN"} — summary:`);
 console.log(JSON.stringify(totals, null, 2));
