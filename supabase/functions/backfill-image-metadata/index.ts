@@ -19,6 +19,10 @@ import {
   planIsNoop,
   type BackfillRow,
 } from "../_shared/metadata-backfill-plan.ts";
+import {
+  runBackfillPreflight,
+  describePreflightFailure,
+} from "../_shared/backfill-preflight.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
