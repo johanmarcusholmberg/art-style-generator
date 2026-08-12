@@ -109,6 +109,8 @@ Deno.serve(async (req) => {
 
   const summary = {
     dry_run: dryRun,
+    preflight,
+
     scanned: 0,
     already_canonical: 0,
     measured: 0,
