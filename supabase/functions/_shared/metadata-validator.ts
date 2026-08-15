@@ -26,7 +26,6 @@ import { isValidPixelDimension } from "./image-dimensions.ts";
 export type MetadataIssueCode =
   | MetadataDefectCode
   | "unknown_print_format"
-  | "non_integer_dimensions"
   | "aspect_ratio_mismatch"
   | "dimension_ratio_drift"
   | "master_dimension_mismatch"
@@ -95,10 +94,6 @@ function issue(
   return { code, severity, field, message };
 }
 
-function isWholePixel(v: unknown): boolean {
-  return typeof v === "number" && Number.isInteger(v);
-}
-
 /** Validate a single persisted gallery row. */
 export function validateGeneratedImageMetadata(
   row: GeneratedImageMetadataRow,
@@ -120,15 +115,6 @@ export function validateGeneratedImageMetadata(
         "error",
         "actual_width_px/actual_height_px",
         "Pixel dimensions must be measured from the persisted image bytes.",
-      ),
-    );
-  } else if (!isWholePixel(width) || !isWholePixel(height)) {
-    issues.push(
-      issue(
-        "non_integer_dimensions",
-        "error",
-        "actual_width_px/actual_height_px",
-        "Pixel dimensions must be whole numbers.",
       ),
     );
   }

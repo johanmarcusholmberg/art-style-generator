@@ -83,11 +83,11 @@ describe("validator: hard errors", () => {
     }
   });
 
-  it("flags fractional dimensions", () => {
+  it("rejects fractional dimensions as unmeasured", () => {
     const res = validateGeneratedImageMetadata(
       rowFor("print_50x70", { actual_width_px: 5906.5 }),
     );
-    expect(codes(res)).toContain("non_integer_dimensions");
+    expect(codes(res)).toEqual(["missing_dimensions"]);
     expect(res.ok).toBe(false);
   });
 
