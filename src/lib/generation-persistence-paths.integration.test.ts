@@ -368,7 +368,7 @@ describe("generated_images / generated_image_assets cannot silently diverge", ()
     const row = persist({
       itemId: "item-sync",
       outcome: { providerId: "openai", bytes: pngBytes(1536, 2048) },
-      printFormatId: "print_3x4",
+      printFormatId: "print_30x40",
       providedAspectRatio: "3:4",
       generationMode: "print-ready",
     });
@@ -379,7 +379,7 @@ describe("generated_images / generated_image_assets cannot silently diverge", ()
     const row = persist({
       itemId: "item-div",
       outcome: { providerId: "gemini", bytes: pngBytes(1536, 2048) },
-      printFormatId: "print_3x4",
+      printFormatId: "print_30x40",
       providedAspectRatio: "3:4",
       generationMode: "print-ready",
     });
@@ -393,7 +393,7 @@ describe("generated_images / generated_image_assets cannot silently diverge", ()
     const row = persist({
       itemId: "item-div2",
       outcome: { providerId: "lovable", bytes: pngBytes(1536, 2048) },
-      printFormatId: "print_3x4",
+      printFormatId: "print_30x40",
       providedAspectRatio: "3:4",
       generationMode: "print-ready",
     });
