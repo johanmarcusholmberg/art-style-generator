@@ -623,7 +623,7 @@ describe("self-heal and backfill apply the same canonical rules", () => {
         storage_path: row.storage_path ?? null,
         master_storage_path: row.master_storage_path ?? null,
       },
-      { width_px: asset.width_px ?? null, height_px: asset.height_px ?? null, storage_path: asset.storage_path ?? null },
+      { id: asset.id, width_px: asset.width_px ?? null, height_px: asset.height_px ?? null, storage_path: asset.storage_path ?? null },
       { width: row.actual_width_px as number, height: row.actual_height_px as number },
     );
     expect(planIsNoop(plan)).toBe(true);
