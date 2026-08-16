@@ -569,7 +569,12 @@ describe("self-heal and backfill apply the same canonical rules", () => {
       storage_path: "legacy/1.png",
       master_storage_path: "legacy/1.png",
     };
-    const asset = { width_px: null, height_px: null, storage_path: "legacy/1.png" };
+    const asset = {
+      id: "legacy-asset-1",
+      width_px: null,
+      height_px: null,
+      storage_path: "legacy/1.png",
+    };
 
     const first = planRowBackfill(broken, asset, null);
     expect(first.needsMeasurement).toBe(true);
@@ -585,12 +590,19 @@ describe("self-heal and backfill apply the same canonical rules", () => {
 
     // Idempotent: a second pass writes nothing.
     const second = planRowBackfill(
-      { ...(healed as never), id: "legacy-1", storage_path: "legacy/1.png", master_storage_path: "legacy/1.png" },
-      healedAsset as never,
+      {
+        ...broken,
+        ...plan.imagePatch,
+        id: "legacy-1",
+        storage_path: "legacy/1.png",
+        master_storage_path: "legacy/1.png",
+      },
+      { ...asset, ...plan.assetPatch },
       measured,
     );
     expect(planIsNoop(second)).toBe(true);
   });
+
 
   it("a freshly persisted row is already a backfill no-op", () => {
     const row = persist({
