@@ -11,7 +11,7 @@
  *   - src/lib/prompt-rules.ts  STYLE_RULES       (frontend style rule map)
  *   - supabase/functions/_shared/prompt-compiler.ts STYLE_RULES (backend rule map,
  *     also the allow-list used by generate-image-router)
- *   - supabase/functions/generate-image-*/index.ts (per-style edge functions)
+ *   - per-style edge functions under supabase/functions (generate-image-...)
  *
  * Everything is read from the real sources; no duplicated key list lives here.
  * All checks are pure filesystem + module reads — no network, no Supabase.
