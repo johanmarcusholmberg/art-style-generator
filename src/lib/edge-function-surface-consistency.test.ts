@@ -185,7 +185,7 @@ function walk(dir: string, out: string[] = []): string[] {
     if (e.name === "node_modules" || e.name.startsWith(".")) continue;
     const p = path.join(dir, e.name);
     if (e.isDirectory()) walk(p, out);
-    else if (/\.(ts|tsx|mjs|js)$/.test(e.name)) out.push(p);
+    else if (/\.(ts|tsx|mjs|js)$/.test(e.name) && !/\.test\.[jt]sx?$/.test(e.name)) out.push(p);
   }
   return out;
 }
