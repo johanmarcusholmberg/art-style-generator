@@ -20,8 +20,10 @@
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { STYLE_MODES } from "./style-registry";
-import { ALL_STYLES } from "./style-config";
+import { STYLE_MODES, STYLE_CONFIG_BY_ROUTE } from "./style-registry";
+
+/** Active generation configs, derived from the canonical route map. */
+const ALL_STYLES = Object.values(STYLE_CONFIG_BY_ROUTE);
 
 const ROOT = path.resolve(__dirname, "../..");
 const FUNCTIONS_DIR = path.join(ROOT, "supabase/functions");
