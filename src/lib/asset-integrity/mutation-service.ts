@@ -23,7 +23,6 @@ import {
 import {
   buildAssetGraph,
   loadRawGraphData,
-  storageReferenceCounts,
   DEFAULT_BUCKET,
   type RawGraphData,
 } from "./graph-loader";

@@ -49,6 +49,13 @@ describe("bulk mutation refresh contract", () => {
     const res = await executeBulkAssetMutation(bulk(["a", "b", "c"]), { confirmed: true });
     expect(res.deleted).toBe(2);
     expect(res.skipped).toBe(1);
+    expect(res.failures).toEqual([
+      {
+        targetAssetId: "b",
+        rootImageId: "b",
+        message: "stale_preflight_assets",
+      },
+    ]);
   });
 
   it("leaves a skipped asset present in the reloaded persisted rows", async () => {
