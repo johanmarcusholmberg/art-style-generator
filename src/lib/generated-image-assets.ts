@@ -516,16 +516,13 @@ export async function saveUpscaleAsset(
 }
 
 /**
- * Soft-delete an upscale asset. Originals are protected — attempting to
- * delete one throws synchronously before any DB call.
+ * @deprecated Unsafe direct delete path. Use
+ * `previewAssetMutation` + `executeAssetMutation` from
+ * `@/lib/asset-integrity/mutation-service` so canonical replacement,
+ * lineage blockers, and reference-safe storage cleanup are enforced.
  */
-export async function deleteUpscaleAsset(asset: ImageAssetRow): Promise<void> {
-  if (!canDeleteAsset(asset)) {
-    throw new Error("Original version cannot be deleted.");
-  }
-  const { error } = await (supabase as any)
-    .from("generated_image_assets")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", asset.id);
-  if (error) throw error;
+export async function deleteUpscaleAsset(_asset: ImageAssetRow): Promise<never> {
+  throw new Error(
+    "deleteUpscaleAsset is removed. Use previewAssetMutation/executeAssetMutation from asset-integrity/mutation-service.",
+  );
 }

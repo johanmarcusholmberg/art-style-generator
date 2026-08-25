@@ -31,6 +31,7 @@ let existingRow: {
   enhanced_storage_path?: string | null;
   master_storage_path?: string | null;
 } = {};
+let liveReferencePaths = new Set<string>();
 
 vi.mock("@/integrations/supabase/client", () => {
   const storageFrom = (bucket: string) => ({
@@ -49,15 +50,34 @@ vi.mock("@/integrations/supabase/client", () => {
     }),
   });
 
-  const tableFrom = () => {
+  const tableFrom = (table: string) => {
+    let storagePathFilter: string | null = null;
+    let legacyPathFilters: string[] = [];
     const api = {
       select: vi.fn(() => api),
-      eq: vi.fn(() => api),
+      eq: vi.fn((column: string, value: string) => {
+        if (column === "storage_path") storagePathFilter = value;
+        return api;
+      }),
       is: vi.fn(() => api),
-      or: vi.fn(() => api),
+      or: vi.fn((expr: string) => {
+        legacyPathFilters = expr
+          .split(",")
+          .map((part) => part.split(".eq.")[1])
+          .filter(Boolean);
+        return api;
+      }),
       // Reference re-check performed by the shared storage cleanup helper:
       // no surviving live reference in these fixtures.
-      limit: vi.fn(async () => ({ data: [], error: null })),
+      limit: vi.fn(async () => {
+        if (table === "generated_image_assets" && storagePathFilter && liveReferencePaths.has(storagePathFilter)) {
+          return { data: [{ id: "live-asset-ref" }], error: null };
+        }
+        if (table === "generated_images" && legacyPathFilters.some((path) => liveReferencePaths.has(path))) {
+          return { data: [{ id: "live-root-ref" }], error: null };
+        }
+        return { data: [], error: null };
+      }),
       single: vi.fn(async () => {
 
         calls.selects += 1;
@@ -118,6 +138,7 @@ beforeEach(() => {
     enhanced_storage_path: "test-enh-OLD.png",
     master_storage_path: "test-enh-OLD.png",
   };
+  liveReferencePaths = new Set<string>();
 });
 
 describe("gallery · replaceInGallery safety", () => {
@@ -174,5 +195,15 @@ describe("gallery · replaceInGallery safety", () => {
     await expect(replaceInGallery(baseOpts)).rejects.toThrow(/upload failed/);
     expect(calls.updates).toHaveLength(0);
     expect(calls.removes).toHaveLength(0);
+  });
+
+  it("does not remove old files still referenced by live version rows", async () => {
+    liveReferencePaths = new Set(["test-OLD.png"]);
+
+    await replaceInGallery(baseOpts);
+
+    const removed = calls.removes.flatMap((r) => r.paths);
+    expect(removed).not.toContain("test-OLD.png");
+    expect(removed).toContain("test-enh-OLD.png");
   });
 });

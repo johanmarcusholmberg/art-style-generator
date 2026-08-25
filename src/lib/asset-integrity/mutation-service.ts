@@ -23,7 +23,6 @@ import {
 import {
   buildAssetGraph,
   loadRawGraphData,
-  storageReferenceCounts,
   DEFAULT_BUCKET,
   type RawGraphData,
 } from "./graph-loader";
@@ -338,6 +337,7 @@ export interface BulkResult {
   archived: number;
   skipped: number;
   cleanupFailures: string[];
+  failures: { targetAssetId: string; rootImageId: string; message: string }[];
 }
 
 export async function executeBulkAssetMutation(
@@ -349,15 +349,20 @@ export async function executeBulkAssetMutation(
       `${bulk.blockedPreviews.length} selected asset(s) are blocked; nothing was changed.`,
     );
   }
-  const out: BulkResult = { deleted: 0, archived: 0, skipped: 0, cleanupFailures: [] };
+  const out: BulkResult = { deleted: 0, archived: 0, skipped: 0, cleanupFailures: [], failures: [] };
   for (const p of bulk.previews) {
     try {
       const res = await executeAssetMutation(p, options);
       if (res.mode === "archive") out.archived++;
       else out.deleted++;
       out.cleanupFailures.push(...res.storageCleanupFailures);
-    } catch {
+    } catch (err) {
       out.skipped++;
+      out.failures.push({
+        targetAssetId: p.targetAssetId,
+        rootImageId: p.rootImageId,
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   }
   return out;
