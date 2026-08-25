@@ -284,7 +284,8 @@ export async function fetchCollectionImages(collectionId: string): Promise<Colle
     .select(
       "added_at,image_id,generated_images!inner(id,prompt,mode,created_at,storage_path,master_storage_path,generation_provider,generation_model,execution_route,fallback_used,rating,is_favorite,is_archived,is_rejected,deleted_at)",
     )
-    .eq("collection_id", collectionId);
+    .eq("collection_id", collectionId)
+    .is("generated_images.deleted_at", null);
   if (error) throw error;
 
   const rows = (data ?? []) as Array<{

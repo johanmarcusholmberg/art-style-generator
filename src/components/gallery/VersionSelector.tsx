@@ -33,7 +33,6 @@ import { toast } from "sonner";
 import {
   fetchImageAssets,
   ensureOriginalAssetForImage,
-  deleteUpscaleAsset,
   defaultSelectedAsset,
   formatSourceLabel,
   versionLabel,
@@ -42,6 +41,11 @@ import {
   pickNextSelectionAfterDelete,
   type ImageAsset,
 } from "@/lib/generated-image-assets";
+import {
+  describePreview,
+  executeAssetMutation,
+  previewAssetMutation,
+} from "@/lib/asset-integrity/mutation-service";
 import { UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
 
 interface VersionSelectorProps {
@@ -113,14 +117,26 @@ export default function VersionSelector({
     setDeleteTarget(null);
     setBusy("delete");
     try {
-      await deleteUpscaleAsset(target);
+      const preview = await previewAssetMutation({
+        rootImageId: image.id,
+        assetId: target.id,
+      });
+      if (preview.blocked) {
+        toast.error("Version deletion blocked", { description: describePreview(preview) });
+        return;
+      }
+
+      const result = await executeAssetMutation(preview);
       const next = await fetchImageAssets(image.id);
       setAssets(next);
       setSelectedId((prev) => {
         if (prev && prev !== target.id && next.some((r) => r.id === prev)) return prev;
         return pickNextSelectionAfterDelete(next, target.id)?.id ?? defaultSelectedAsset(next)?.id ?? null;
       });
-      toast.success(`Deleted ${versionLabel(target)}`, { duration: 3000 });
+      toast.success(result.mode === "archive" ? `Archived ${versionLabel(target)}` : `Deleted ${versionLabel(target)}`, {
+        description: result.message,
+        duration: 3000,
+      });
       onAfterMutation?.();
     } catch (e: any) {
       console.error("[VersionSelector] delete failed:", e);
@@ -233,7 +249,7 @@ export default function VersionSelector({
               Delete {deleteTarget ? versionLabel(deleteTarget) : "version"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently hides this upscaled version. The original is always preserved.
+              This removes this upscaled version from the library. Stored files are cleaned up only when no live record still references them; the original is always preserved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

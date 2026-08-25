@@ -1,4 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+import {
+  executeAssetMutation,
+  previewCollectionMembershipRemoval,
+} from "@/lib/asset-integrity/mutation-service";
 
 export interface Collection {
   id: string;
@@ -86,21 +90,33 @@ export async function addBulkToCollection(collectionId: string, imageIds: string
 
 export async function removeBulkFromCollection(collectionId: string, imageIds: string[]): Promise<void> {
   if (imageIds.length === 0) return;
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("collection_images")
-    .delete()
+    .select("id,image_id")
     .eq("collection_id", collectionId)
     .in("image_id", imageIds);
   if (error) throw error;
+  await Promise.all(
+    (data ?? []).map((row: { id: string; image_id: string }) =>
+      executeAssetMutation(
+        previewCollectionMembershipRemoval(row.image_id, row.id, collectionId),
+      ),
+    ),
+  );
 }
 
 export async function removeFromCollection(collectionId: string, imageId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("collection_images")
-    .delete()
+    .select("id")
     .eq("collection_id", collectionId)
-    .eq("image_id", imageId);
+    .eq("image_id", imageId)
+    .maybeSingle();
   if (error) throw error;
+  if (!data?.id) return;
+  await executeAssetMutation(
+    previewCollectionMembershipRemoval(imageId, data.id, collectionId),
+  );
 }
 
 export async function fetchCollectionImageIds(collectionId: string): Promise<string[]> {

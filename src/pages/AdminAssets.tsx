@@ -505,9 +505,14 @@ export default function AdminAssets() {
         return;
       }
       const res = await executeAssetMutation(preview, { confirmed: true });
-      setRows((prev) => prev.filter((r) => r.id !== id));
+      await loadRows();
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       toast[res.storageCleanupFailures.length ? "warning" : "success"](
-        preview.mode === "archive" ? "Asset archived" : "Asset deleted",
+        res.mode === "archive" ? "Asset archived" : "Asset deleted",
         { description: res.message },
       );
     } catch (err: any) {
@@ -542,6 +547,11 @@ export default function AdminAssets() {
         `skipped ${res.skipped}`,
       ];
       if (res.cleanupFailures.length) parts.push(`cleanup-failed ${res.cleanupFailures.length}`);
+      if (res.failures.length) {
+        parts.push(
+          `failed ids ${res.failures.map((f) => f.rootImageId.slice(0, 8)).join(", ")}`,
+        );
+      }
       const summary = parts.join(", ");
       if (res.skipped || res.cleanupFailures.length) toast.warning(summary);
       else toast.success(summary);
@@ -1840,10 +1850,22 @@ function ManageFoldersDialog({
   };
 
   const remove = async (id: string) => {
+    setBusy(true);
+    const { error: detachError } = await (supabase as any)
+      .from("generated_images")
+      .update({ folder_id: null })
+      .eq("folder_id", id)
+      .is("deleted_at", null);
+    if (detachError) {
+      setBusy(false);
+      toast.error("Archive failed", { description: detachError.message });
+      return;
+    }
     const { error } = await (supabase as any)
       .from("asset_folders")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id);
+    setBusy(false);
     if (error) {
       toast.error("Archive failed", { description: error.message });
       return;
