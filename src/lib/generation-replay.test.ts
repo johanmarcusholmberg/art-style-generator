@@ -54,7 +54,7 @@ describe("buildGenerationReplayPreset", () => {
   });
 
   it("never carries post-processing or provenance state", () => {
-    const p = buildGenerationReplayPreset(printRow) as Record<string, unknown>;
+    const p = buildGenerationReplayPreset(printRow) as unknown as Record<string, unknown>;
     for (const banned of [
       "upscaleApplied",
       "enhancedImageUrl",
