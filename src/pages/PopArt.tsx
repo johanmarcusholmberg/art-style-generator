@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import ImageGenerator from "@/components/ImageGenerator";
 import Gallery from "@/components/Gallery";
 import type { EditRequest } from "@/components/Gallery";
+import { generatorReplayProps, replayEditKey, replayDialogCopy } from "@/lib/generation-replay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -74,7 +75,7 @@ const PopArt = () => {
     setPendingEdit(req);
   }, []);
 
-  const editKey = editState ? `${editState.mode}-${editState.prompt}-${editState.originalId}` : "default";
+  const editKey = replayEditKey(editState);
 
   return (
     <div className="min-h-screen bg-background paper-texture">
@@ -121,11 +122,7 @@ const PopArt = () => {
               mode={styleConfig.themedModeValue}
               styleConfig={styleConfig}
               onImageSaved={refreshGallery}
-              onExitEdit={editState?.mode === styleConfig.themedModeValue ? handleExitEdit : undefined}
-              initialPrompt={editState?.mode === styleConfig.themedModeValue ? editState.prompt : undefined}
-              initialImageUrl={editState?.mode === styleConfig.themedModeValue ? editState.imageUrl : undefined}
-              originalImageId={editState?.mode === styleConfig.themedModeValue ? editState.originalId : undefined}
-              originalStoragePath={editState?.mode === styleConfig.themedModeValue ? editState.originalStoragePath : undefined}
+              {...generatorReplayProps(editState, styleConfig.themedModeValue, handleExitEdit)}
             />
           </TabsContent>
           <TabsContent value={styleConfig.freestyleModeValue}>
@@ -134,11 +131,7 @@ const PopArt = () => {
               mode={styleConfig.freestyleModeValue}
               styleConfig={styleConfig}
               onImageSaved={refreshGallery}
-              onExitEdit={editState?.mode === styleConfig.freestyleModeValue ? handleExitEdit : undefined}
-              initialPrompt={editState?.mode === styleConfig.freestyleModeValue ? editState.prompt : undefined}
-              initialImageUrl={editState?.mode === styleConfig.freestyleModeValue ? editState.imageUrl : undefined}
-              originalImageId={editState?.mode === styleConfig.freestyleModeValue ? editState.originalId : undefined}
-              originalStoragePath={editState?.mode === styleConfig.freestyleModeValue ? editState.originalStoragePath : undefined}
+              {...generatorReplayProps(editState, styleConfig.freestyleModeValue, handleExitEdit)}
             />
           </TabsContent>
         </Tabs>
@@ -172,7 +165,7 @@ const PopArt = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {hasUnsavedImage ? "You have an unsaved image" : "Edit this image?"}
+              {replayDialogCopy(pendingEdit, hasUnsavedImage).title}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {hasUnsavedImage
@@ -188,7 +181,7 @@ const PopArt = () => {
                 setPendingEdit(null);
               }}
             >
-              {hasUnsavedImage ? "Discard & Edit" : "Continue"}
+              {replayDialogCopy(pendingEdit, hasUnsavedImage).action}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -108,6 +108,8 @@ import {
   type ReferenceStrength,
 } from "@/lib/reference-strength";
 import { displayUrlFromString } from "@/lib/image-display-url";
+import type { GenerationReplayPreset } from "@/lib/generation-replay";
+
 
 /**
  * Presentation-only: request an optimized ~1600px web preview for persisted
@@ -129,6 +131,13 @@ interface ImageGeneratorProps {
   initialImageUrl?: string;
   originalImageId?: string;
   originalStoragePath?: string;
+  /**
+   * Reusable generation inputs restored from an existing artwork
+   * ("Generate again" / "Reuse settings"). Never carries a source image.
+   */
+  initialPreset?: GenerationReplayPreset;
+  /** When true (Generate again), start one generation automatically. */
+  autoGenerate?: boolean;
 }
 
 export default function ImageGenerator({
@@ -140,8 +149,11 @@ export default function ImageGenerator({
   initialImageUrl,
   originalImageId,
   originalStoragePath,
+  initialPreset,
+  autoGenerate,
 }: ImageGeneratorProps) {
   const isEditMode = !!initialImageUrl;
+
   const isThemed = mode === styleConfig.themedModeValue;
   const isTertiary = mode === styleConfig.tertiaryModeValue;
   const edgeFn = isTertiary ? styleConfig.tertiaryEdgeFn! : isThemed ? styleConfig.themedEdgeFn : styleConfig.freestyleEdgeFn;
@@ -193,19 +205,33 @@ export default function ImageGenerator({
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [paperColor, setPaperColor] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
-  const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
-  const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
-  const [generationMode, setGenerationMode] = useState<"standard" | "print-ready">("print-ready");
-  const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(PRINT_FORMATS[0]);
+  const [printSize, setPrintSize] = useState<PrintSize>(
+    () =>
+      PRINT_SIZES.find((s) => s.dimensions === initialPreset?.printSizeDimensions) ??
+      PRINT_SIZES[2],
+  );
+  const [qualityTarget, setQualityTarget] = useState<QualityTarget>(
+    initialPreset?.qualityTarget ?? "print-300",
+  );
+  const [generationMode, setGenerationMode] = useState<"standard" | "print-ready">(
+    initialPreset?.generationMode ?? "print-ready",
+  );
+  const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(
+    () =>
+      PRINT_FORMATS.find((f) => f.id === initialPreset?.printFormatId) ?? PRINT_FORMATS[0],
+  );
   // Phase 1: generator provider preference (auto/sdxl/gemini), persisted in sessionStorage
-  const [generatorPref, setGeneratorPref] = useState<GeneratorPreference>(() => loadGeneratorPreference());
+  const [generatorPref, setGeneratorPref] = useState<GeneratorPreference>(
+    () => initialPreset?.providerPreference ?? loadGeneratorPreference(),
+  );
   // Phase 3: registry-driven model + quality/strategy selection. UI/request
   // plumbing only — router dispatch still keyed off `generatorPref`.
-  const [modelSelection, setModelSelection] = useState<ModelSelectorValue>({
-    modelId: null,
-    qualityProfile: "balanced",
-    generationStrategy: null,
-  });
+  const [modelSelection, setModelSelection] = useState<ModelSelectorValue>(() => ({
+    modelId: initialPreset?.modelId ?? null,
+    qualityProfile: initialPreset?.qualityProfile ?? "balanced",
+    generationStrategy: initialPreset?.generationStrategy ?? null,
+  }));
+
   const [lastProviderUsed, setLastProviderUsed] = useState<string | null>(null);
   const [lastModelUsed, setLastModelUsed] = useState<string | null>(null);
   const [lastFallbackUsed, setLastFallbackUsed] = useState<boolean>(false);
@@ -920,6 +946,41 @@ export default function ImageGenerator({
       setLoading(false);
     }
   };
+
+  // ── Replay ("Generate again" / "Reuse settings") ────────────────────
+  // Both paths hydrate the ordinary generator state above and then use the
+  // normal `generate()` command — no separate generation implementation.
+  const generateRef = useRef(generate);
+  generateRef.current = generate;
+  const autoGenerateFiredRef = useRef(false);
+
+  // Surface any setting that could not be restored (unknown print format,
+  // retired model/provider, source image left out on purpose).
+  useEffect(() => {
+    if (!initialPreset?.warnings?.length) return;
+    toast({
+      title: "Some settings were adjusted",
+      description: initialPreset.warnings.join(" "),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPreset]);
+
+  useEffect(() => {
+    if (!autoGenerate || autoGenerateFiredRef.current) return;
+    if (!initialPreset?.prompt?.trim()) return;
+    autoGenerateFiredRef.current = true;
+    void generateRef.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoGenerate, initialPreset]);
+
+  /** Immediate "Generate again" from the current result — same settings. */
+  const handleGenerateAgain = () => {
+    if (loading || isUpscaling) return;
+    setIsInlineEditing(false);
+    void generate();
+  };
+
+
 
   /**
    * Retry a failed durable item. Server-side re-queues and re-invokes
@@ -2257,6 +2318,8 @@ export default function ImageGenerator({
               onPrintExport={handlePrintExport}
               onStartInlineEdit={handleStartInlineEdit}
               onRemoveImage={handleRemoveImage}
+              onGenerateAgain={handleGenerateAgain}
+              generating={loading}
             />
 
             {imageUrl && (() => {

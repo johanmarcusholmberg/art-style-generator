@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import ImageGenerator from "@/components/ImageGenerator";
 import Gallery from "@/components/Gallery";
 import type { EditRequest } from "@/components/Gallery";
+import { generatorReplayProps, replayEditKey, replayDialogCopy } from "@/lib/generation-replay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -44,7 +45,7 @@ const XeroxZine = () => {
     setPendingEdit(req);
   }, []);
 
-  const editKey = editState ? `${editState.mode}-${editState.prompt}-${editState.originalId}` : "default";
+  const editKey = replayEditKey(editState);
 
   return (
     <div className="min-h-screen bg-background paper-texture">
@@ -71,10 +72,10 @@ const XeroxZine = () => {
             <TabsTrigger value={styleConfig.freestyleModeValue} className="font-display text-sm">{styleConfig.freestyleTabLabel}</TabsTrigger>
           </TabsList>
           <TabsContent value={styleConfig.themedModeValue}>
-            <ImageGenerator key={activeTab === styleConfig.themedModeValue ? editKey : "t"} mode={styleConfig.themedModeValue} styleConfig={styleConfig} onImageSaved={refreshGallery} onExitEdit={editState?.mode === styleConfig.themedModeValue ? handleExitEdit : undefined} initialPrompt={editState?.mode === styleConfig.themedModeValue ? editState.prompt : undefined} initialImageUrl={editState?.mode === styleConfig.themedModeValue ? editState.imageUrl : undefined} originalImageId={editState?.mode === styleConfig.themedModeValue ? editState.originalId : undefined} originalStoragePath={editState?.mode === styleConfig.themedModeValue ? editState.originalStoragePath : undefined} />
+            <ImageGenerator key={activeTab === styleConfig.themedModeValue ? editKey : "t"} mode={styleConfig.themedModeValue} styleConfig={styleConfig} onImageSaved={refreshGallery} {...generatorReplayProps(editState, styleConfig.themedModeValue, handleExitEdit)} />
           </TabsContent>
           <TabsContent value={styleConfig.freestyleModeValue}>
-            <ImageGenerator key={activeTab === styleConfig.freestyleModeValue ? editKey : "f"} mode={styleConfig.freestyleModeValue} styleConfig={styleConfig} onImageSaved={refreshGallery} onExitEdit={editState?.mode === styleConfig.freestyleModeValue ? handleExitEdit : undefined} initialPrompt={editState?.mode === styleConfig.freestyleModeValue ? editState.prompt : undefined} initialImageUrl={editState?.mode === styleConfig.freestyleModeValue ? editState.imageUrl : undefined} originalImageId={editState?.mode === styleConfig.freestyleModeValue ? editState.originalId : undefined} originalStoragePath={editState?.mode === styleConfig.freestyleModeValue ? editState.originalStoragePath : undefined} />
+            <ImageGenerator key={activeTab === styleConfig.freestyleModeValue ? editKey : "f"} mode={styleConfig.freestyleModeValue} styleConfig={styleConfig} onImageSaved={refreshGallery} {...generatorReplayProps(editState, styleConfig.freestyleModeValue, handleExitEdit)} />
           </TabsContent>
         </Tabs>
       </main>
@@ -97,12 +98,12 @@ const XeroxZine = () => {
       <AlertDialog open={!!pendingEdit} onOpenChange={() => setPendingEdit(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display">{hasUnsavedImage ? "You have an unsaved image" : "Edit this image?"}</AlertDialogTitle>
-            <AlertDialogDescription>{hasUnsavedImage ? "Your current generated image hasn't been saved to the gallery yet. Loading a new image for editing will discard it. Do you want to continue?" : "This will load the selected image into the editor. You can then modify it with a new prompt and choose to replace the original or save as a new image."}</AlertDialogDescription>
+            <AlertDialogTitle className="font-display">{replayDialogCopy(pendingEdit, hasUnsavedImage).title}</AlertDialogTitle>
+            <AlertDialogDescription>{replayDialogCopy(pendingEdit, hasUnsavedImage).description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (pendingEdit) applyEdit(pendingEdit); setPendingEdit(null); }}>{hasUnsavedImage ? "Discard & Edit" : "Continue"}</AlertDialogAction>
+            <AlertDialogAction onClick={() => { if (pendingEdit) applyEdit(pendingEdit); setPendingEdit(null); }}>{replayDialogCopy(pendingEdit, hasUnsavedImage).action}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

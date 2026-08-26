@@ -3,7 +3,7 @@ import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
   Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
   FolderPlus, FolderMinus, Printer, ArrowUpCircle, ShoppingBag, Layers, ChevronDown,
-  CheckCircle2, XCircle, Clock,
+  CheckCircle2, XCircle, Clock, RefreshCw, SlidersHorizontal,
 } from "lucide-react";
 
 import type { StyleConfig } from "@/lib/style-config";
@@ -143,15 +143,22 @@ interface GalleryImage {
   fallback_used?: boolean | null;
   /** Formal review lifecycle. Source of truth for review state. */
   admin_status?: AdminStatus | null;
+  // ── Replay inputs (see src/lib/generation-replay.ts) ────────────────
+  provider_strategy?: string | null;
+  requested_model_id?: string | null;
+  quality_profile?: string | null;
+  generation_strategy?: string | null;
+  source_image_url?: string | null;
 }
 
-export interface EditRequest {
-  prompt: string;
-  imageUrl: string;
-  mode: string;
-  originalId: string;
-  originalStoragePath: string;
-}
+
+import {
+  buildGenerationReplayPreset,
+  type EditRequest,
+} from "@/lib/generation-replay";
+
+export type { EditRequest };
+
 
 // Style → edge-function lookup is derived from the canonical style
 // registry so background regeneration automatically covers every
@@ -243,6 +250,9 @@ function GalleryOnboarding() {
 interface LightboxContentProps {
   img: GalleryImage;
   onEdit?: () => void;
+  onGenerateAgain?: () => void;
+  onReuseSettings?: () => void;
+
   onDelete: () => void;
   onCopyUrl: () => void;
   onChangeBg: (style: "white" | "cream") => void;
@@ -275,7 +285,9 @@ interface LightboxContentProps {
 
 
 function LightboxContent({
-  img, onEdit, onDelete, onCopyUrl,
+  img, onEdit, onGenerateAgain, onReuseSettings, onDelete, onCopyUrl,
+
+
   onChangeBg, onSaveBg, onDiscardBg,
   bgChanging, bgResult, showEdit,
   onPrintExport, printExporting,
@@ -671,11 +683,40 @@ function LightboxContent({
           >
             <Layers className="mr-2 h-4 w-4" /> Matching collection
           </Button>
-          {showEdit && onEdit && (
-            <Button variant="outline" size="sm" onClick={onEdit} className="font-display text-xs">
-              <Pencil className="mr-2 h-4 w-4" /> Edit
+          {showEdit && onGenerateAgain && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onGenerateAgain}
+              className="font-display text-xs border-primary/40 text-primary hover:bg-primary/10"
+              title="Fresh output using the same prompt and generation setup"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" /> Generate again
             </Button>
           )}
+          {showEdit && onReuseSettings && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onReuseSettings}
+              className="font-display text-xs"
+              title="Load the generator with this setup so you can modify it"
+            >
+              <SlidersHorizontal className="mr-2 h-4 w-4" /> Reuse settings
+            </Button>
+          )}
+          {showEdit && onEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onEdit}
+              className="font-display text-xs"
+              title="Image-to-image editing using this artwork as the source"
+            >
+              <Pencil className="mr-2 h-4 w-4" /> Edit image
+            </Button>
+          )}
+
           <Button variant="destructive" size="sm" onClick={onDelete} className="font-display text-xs">
             <Trash2 className="mr-2 h-4 w-4" /> Delete
           </Button>
@@ -1084,8 +1125,27 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     return () => window.removeEventListener("keydown", handler);
   }, [selected, goPrev, goNext]);
 
+  /**
+   * Replay / reuse — clean text+settings rerun. Deliberately does NOT pass
+   * imageUrl / originalId / originalStoragePath, so the generator never
+   * enters image-to-image edit mode. Generation itself still runs through
+   * the normal durable generator path.
+   */
+  const handleReplay = (img: GalleryImage, intent: "replay" | "reuse") => {
+    setSelected(null);
+    const preset = buildGenerationReplayPreset(img);
+    onEditImage?.({
+      prompt: preset.prompt || img.prompt,
+      mode: img.mode,
+      intent,
+      preset,
+      requestId: `${intent}-${img.id}-${Date.now()}`,
+    });
+  };
+
   const handleEdit = (img: GalleryImage) => {
     setSelected(null);
+
     onEditImage?.({
       prompt: img.prompt,
       imageUrl: img.publicUrl,
@@ -1477,6 +1537,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const lightboxProps = selected ? {
     img: selected,
     onEdit: onEditImage ? () => handleEdit(selected) : undefined,
+    onGenerateAgain: onEditImage ? () => handleReplay(selected, "replay") : undefined,
+    onReuseSettings: onEditImage ? () => handleReplay(selected, "reuse") : undefined,
+
     onDelete: () => setDeleteTarget(selected),
     onCopyUrl: () => handleCopyUrl(selected.masterUrl),
     onChangeBg: (style: "white" | "cream") => handleChangeBackground(selected, style),

@@ -59,6 +59,8 @@ function renderRow(source: CanonicalActionSource | null) {
       onPrintExport={() => {}}
       onStartInlineEdit={() => {}}
       onRemoveImage={() => {}}
+      onGenerateAgain={() => {}}
+
     />,
   );
 }

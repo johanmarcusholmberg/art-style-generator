@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import ImageGenerator from "@/components/ImageGenerator";
 import Gallery from "@/components/Gallery";
 import type { EditRequest } from "@/components/Gallery";
+import { generatorReplayProps, replayEditKey, replayDialogCopy } from "@/lib/generation-replay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -66,7 +67,7 @@ const LineArt = () => {
     setPendingEdit(req);
   }, []);
 
-  const editKey = editState ? `${editState.mode}-${editState.prompt}-${editState.originalId}` : "default";
+  const editKey = replayEditKey(editState);
 
   return (
     <div className="min-h-screen bg-background paper-texture">
@@ -116,11 +117,7 @@ const LineArt = () => {
               mode={styleConfig.themedModeValue}
               styleConfig={styleConfig}
               onImageSaved={refreshGallery}
-              onExitEdit={editState?.mode === styleConfig.themedModeValue ? handleExitEdit : undefined}
-              initialPrompt={editState?.mode === styleConfig.themedModeValue ? editState.prompt : undefined}
-              initialImageUrl={editState?.mode === styleConfig.themedModeValue ? editState.imageUrl : undefined}
-              originalImageId={editState?.mode === styleConfig.themedModeValue ? editState.originalId : undefined}
-              originalStoragePath={editState?.mode === styleConfig.themedModeValue ? editState.originalStoragePath : undefined}
+              {...generatorReplayProps(editState, styleConfig.themedModeValue, handleExitEdit)}
             />
           </TabsContent>
           <TabsContent value={styleConfig.tertiaryModeValue!}>
@@ -129,11 +126,7 @@ const LineArt = () => {
               mode={styleConfig.tertiaryModeValue!}
               styleConfig={styleConfig}
               onImageSaved={refreshGallery}
-              onExitEdit={editState?.mode === styleConfig.tertiaryModeValue ? handleExitEdit : undefined}
-              initialPrompt={editState?.mode === styleConfig.tertiaryModeValue ? editState.prompt : undefined}
-              initialImageUrl={editState?.mode === styleConfig.tertiaryModeValue ? editState.imageUrl : undefined}
-              originalImageId={editState?.mode === styleConfig.tertiaryModeValue ? editState.originalId : undefined}
-              originalStoragePath={editState?.mode === styleConfig.tertiaryModeValue ? editState.originalStoragePath : undefined}
+              {...generatorReplayProps(editState, styleConfig.tertiaryModeValue, handleExitEdit)}
             />
           </TabsContent>
           <TabsContent value={styleConfig.freestyleModeValue}>
@@ -142,11 +135,7 @@ const LineArt = () => {
               mode={styleConfig.freestyleModeValue}
               styleConfig={styleConfig}
               onImageSaved={refreshGallery}
-              onExitEdit={editState?.mode === styleConfig.freestyleModeValue ? handleExitEdit : undefined}
-              initialPrompt={editState?.mode === styleConfig.freestyleModeValue ? editState.prompt : undefined}
-              initialImageUrl={editState?.mode === styleConfig.freestyleModeValue ? editState.imageUrl : undefined}
-              originalImageId={editState?.mode === styleConfig.freestyleModeValue ? editState.originalId : undefined}
-              originalStoragePath={editState?.mode === styleConfig.freestyleModeValue ? editState.originalStoragePath : undefined}
+              {...generatorReplayProps(editState, styleConfig.freestyleModeValue, handleExitEdit)}
             />
           </TabsContent>
         </Tabs>
@@ -180,7 +169,7 @@ const LineArt = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display">
-              {hasUnsavedImage ? "You have an unsaved image" : "Edit this image?"}
+              {replayDialogCopy(pendingEdit, hasUnsavedImage).title}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {hasUnsavedImage
@@ -196,7 +185,7 @@ const LineArt = () => {
                 setPendingEdit(null);
               }}
             >
-              {hasUnsavedImage ? "Discard & Edit" : "Continue"}
+              {replayDialogCopy(pendingEdit, hasUnsavedImage).action}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
