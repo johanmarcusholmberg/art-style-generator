@@ -74,7 +74,7 @@ const PopArt = () => {
     setPendingEdit(req);
   }, []);
 
-  const editKey = editState ? `${editState.mode}-${editState.prompt}-${editState.originalId}` : "default";
+  const editKey = replayEditKey(editState);
 
   return (
     <div className="min-h-screen bg-background paper-texture">
@@ -172,7 +172,7 @@ const PopArt = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {hasUnsavedImage ? "You have an unsaved image" : "Edit this image?"}
+              {replayDialogCopy(pendingEdit, hasUnsavedImage).title}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {hasUnsavedImage
@@ -188,7 +188,7 @@ const PopArt = () => {
                 setPendingEdit(null);
               }}
             >
-              {hasUnsavedImage ? "Discard & Edit" : "Continue"}
+              {replayDialogCopy(pendingEdit, hasUnsavedImage).action}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
