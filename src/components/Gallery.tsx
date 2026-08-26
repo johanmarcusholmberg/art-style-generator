@@ -250,6 +250,9 @@ function GalleryOnboarding() {
 interface LightboxContentProps {
   img: GalleryImage;
   onEdit?: () => void;
+  onGenerateAgain?: () => void;
+  onReuseSettings?: () => void;
+
   onDelete: () => void;
   onCopyUrl: () => void;
   onChangeBg: (style: "white" | "cream") => void;
