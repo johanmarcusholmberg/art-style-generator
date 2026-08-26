@@ -947,6 +947,41 @@ export default function ImageGenerator({
     }
   };
 
+  // ── Replay ("Generate again" / "Reuse settings") ────────────────────
+  // Both paths hydrate the ordinary generator state above and then use the
+  // normal `generate()` command — no separate generation implementation.
+  const generateRef = useRef(generate);
+  generateRef.current = generate;
+  const autoGenerateFiredRef = useRef(false);
+
+  // Surface any setting that could not be restored (unknown print format,
+  // retired model/provider, source image left out on purpose).
+  useEffect(() => {
+    if (!initialPreset?.warnings?.length) return;
+    toast({
+      title: "Some settings were adjusted",
+      description: initialPreset.warnings.join(" "),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPreset]);
+
+  useEffect(() => {
+    if (!autoGenerate || autoGenerateFiredRef.current) return;
+    if (!initialPreset?.prompt?.trim()) return;
+    autoGenerateFiredRef.current = true;
+    void generateRef.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoGenerate, initialPreset]);
+
+  /** Immediate "Generate again" from the current result — same settings. */
+  const handleGenerateAgain = () => {
+    if (loading || isUpscaling) return;
+    setIsInlineEditing(false);
+    void generate();
+  };
+
+
+
   /**
    * Retry a failed durable item. Server-side re-queues and re-invokes
    * generate-single; realtime carries the result back.
