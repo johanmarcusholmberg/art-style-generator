@@ -205,19 +205,33 @@ export default function ImageGenerator({
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [paperColor, setPaperColor] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
-  const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
-  const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
-  const [generationMode, setGenerationMode] = useState<"standard" | "print-ready">("print-ready");
-  const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(PRINT_FORMATS[0]);
+  const [printSize, setPrintSize] = useState<PrintSize>(
+    () =>
+      PRINT_SIZES.find((s) => s.dimensions === initialPreset?.printSizeDimensions) ??
+      PRINT_SIZES[2],
+  );
+  const [qualityTarget, setQualityTarget] = useState<QualityTarget>(
+    initialPreset?.qualityTarget ?? "print-300",
+  );
+  const [generationMode, setGenerationMode] = useState<"standard" | "print-ready">(
+    initialPreset?.generationMode ?? "print-ready",
+  );
+  const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(
+    () =>
+      PRINT_FORMATS.find((f) => f.id === initialPreset?.printFormatId) ?? PRINT_FORMATS[0],
+  );
   // Phase 1: generator provider preference (auto/sdxl/gemini), persisted in sessionStorage
-  const [generatorPref, setGeneratorPref] = useState<GeneratorPreference>(() => loadGeneratorPreference());
+  const [generatorPref, setGeneratorPref] = useState<GeneratorPreference>(
+    () => initialPreset?.providerPreference ?? loadGeneratorPreference(),
+  );
   // Phase 3: registry-driven model + quality/strategy selection. UI/request
   // plumbing only — router dispatch still keyed off `generatorPref`.
-  const [modelSelection, setModelSelection] = useState<ModelSelectorValue>({
-    modelId: null,
-    qualityProfile: "balanced",
-    generationStrategy: null,
-  });
+  const [modelSelection, setModelSelection] = useState<ModelSelectorValue>(() => ({
+    modelId: initialPreset?.modelId ?? null,
+    qualityProfile: initialPreset?.qualityProfile ?? "balanced",
+    generationStrategy: initialPreset?.generationStrategy ?? null,
+  }));
+
   const [lastProviderUsed, setLastProviderUsed] = useState<string | null>(null);
   const [lastModelUsed, setLastModelUsed] = useState<string | null>(null);
   const [lastFallbackUsed, setLastFallbackUsed] = useState<boolean>(false);
