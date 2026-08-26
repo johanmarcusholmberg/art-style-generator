@@ -108,6 +108,8 @@ import {
   type ReferenceStrength,
 } from "@/lib/reference-strength";
 import { displayUrlFromString } from "@/lib/image-display-url";
+import type { GenerationReplayPreset } from "@/lib/generation-replay";
+
 
 /**
  * Presentation-only: request an optimized ~1600px web preview for persisted
