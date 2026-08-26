@@ -683,11 +683,40 @@ function LightboxContent({
           >
             <Layers className="mr-2 h-4 w-4" /> Matching collection
           </Button>
-          {showEdit && onEdit && (
-            <Button variant="outline" size="sm" onClick={onEdit} className="font-display text-xs">
-              <Pencil className="mr-2 h-4 w-4" /> Edit
+          {showEdit && onGenerateAgain && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onGenerateAgain}
+              className="font-display text-xs border-primary/40 text-primary hover:bg-primary/10"
+              title="Fresh output using the same prompt and generation setup"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" /> Generate again
             </Button>
           )}
+          {showEdit && onReuseSettings && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onReuseSettings}
+              className="font-display text-xs"
+              title="Load the generator with this setup so you can modify it"
+            >
+              <SlidersHorizontal className="mr-2 h-4 w-4" /> Reuse settings
+            </Button>
+          )}
+          {showEdit && onEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onEdit}
+              className="font-display text-xs"
+              title="Image-to-image editing using this artwork as the source"
+            >
+              <Pencil className="mr-2 h-4 w-4" /> Edit image
+            </Button>
+          )}
+
           <Button variant="destructive" size="sm" onClick={onDelete} className="font-display text-xs">
             <Trash2 className="mr-2 h-4 w-4" /> Delete
           </Button>
