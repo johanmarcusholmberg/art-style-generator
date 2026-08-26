@@ -2318,6 +2318,8 @@ export default function ImageGenerator({
               onPrintExport={handlePrintExport}
               onStartInlineEdit={handleStartInlineEdit}
               onRemoveImage={handleRemoveImage}
+              onGenerateAgain={handleGenerateAgain}
+              generating={loading}
             />
 
             {imageUrl && (() => {
