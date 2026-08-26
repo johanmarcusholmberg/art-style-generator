@@ -129,6 +129,13 @@ interface ImageGeneratorProps {
   initialImageUrl?: string;
   originalImageId?: string;
   originalStoragePath?: string;
+  /**
+   * Reusable generation inputs restored from an existing artwork
+   * ("Generate again" / "Reuse settings"). Never carries a source image.
+   */
+  initialPreset?: GenerationReplayPreset;
+  /** When true (Generate again), start one generation automatically. */
+  autoGenerate?: boolean;
 }
 
 export default function ImageGenerator({
@@ -140,8 +147,11 @@ export default function ImageGenerator({
   initialImageUrl,
   originalImageId,
   originalStoragePath,
+  initialPreset,
+  autoGenerate,
 }: ImageGeneratorProps) {
   const isEditMode = !!initialImageUrl;
+
   const isThemed = mode === styleConfig.themedModeValue;
   const isTertiary = mode === styleConfig.tertiaryModeValue;
   const edgeFn = isTertiary ? styleConfig.tertiaryEdgeFn! : isThemed ? styleConfig.themedEdgeFn : styleConfig.freestyleEdgeFn;
