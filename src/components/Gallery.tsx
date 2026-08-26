@@ -143,7 +143,14 @@ interface GalleryImage {
   fallback_used?: boolean | null;
   /** Formal review lifecycle. Source of truth for review state. */
   admin_status?: AdminStatus | null;
+  // ── Replay inputs (see src/lib/generation-replay.ts) ────────────────
+  provider_strategy?: string | null;
+  requested_model_id?: string | null;
+  quality_profile?: string | null;
+  generation_strategy?: string | null;
+  source_image_url?: string | null;
 }
+
 
 import {
   buildGenerationReplayPreset,
