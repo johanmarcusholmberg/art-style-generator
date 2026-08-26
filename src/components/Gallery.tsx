@@ -145,13 +145,13 @@ interface GalleryImage {
   admin_status?: AdminStatus | null;
 }
 
-export interface EditRequest {
-  prompt: string;
-  imageUrl: string;
-  mode: string;
-  originalId: string;
-  originalStoragePath: string;
-}
+import {
+  buildGenerationReplayPreset,
+  type EditRequest,
+} from "@/lib/generation-replay";
+
+export type { EditRequest };
+
 
 // Style → edge-function lookup is derived from the canonical style
 // registry so background regeneration automatically covers every
