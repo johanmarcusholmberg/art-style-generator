@@ -3,7 +3,7 @@ import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
   Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
   FolderPlus, FolderMinus, Printer, ArrowUpCircle, ShoppingBag, Layers, ChevronDown,
-  CheckCircle2, XCircle, Clock,
+  CheckCircle2, XCircle, Clock, RefreshCw, SlidersHorizontal,
 } from "lucide-react";
 
 import type { StyleConfig } from "@/lib/style-config";
