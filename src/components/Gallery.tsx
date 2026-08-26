@@ -1125,8 +1125,27 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     return () => window.removeEventListener("keydown", handler);
   }, [selected, goPrev, goNext]);
 
+  /**
+   * Replay / reuse — clean text+settings rerun. Deliberately does NOT pass
+   * imageUrl / originalId / originalStoragePath, so the generator never
+   * enters image-to-image edit mode. Generation itself still runs through
+   * the normal durable generator path.
+   */
+  const handleReplay = (img: GalleryImage, intent: "replay" | "reuse") => {
+    setSelected(null);
+    const preset = buildGenerationReplayPreset(img);
+    onEditImage?.({
+      prompt: preset.prompt || img.prompt,
+      mode: img.mode,
+      intent,
+      preset,
+      requestId: `${intent}-${img.id}-${Date.now()}`,
+    });
+  };
+
   const handleEdit = (img: GalleryImage) => {
     setSelected(null);
+
     onEditImage?.({
       prompt: img.prompt,
       imageUrl: img.publicUrl,
