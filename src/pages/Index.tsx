@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import ImageGenerator from "@/components/ImageGenerator";
 import Gallery from "@/components/Gallery";
 import type { EditRequest } from "@/components/Gallery";
+import { generatorReplayProps, replayEditKey, replayDialogCopy } from "@/lib/generation-replay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
