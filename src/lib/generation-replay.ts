@@ -231,7 +231,7 @@ export function replayEditKey(req: EditRequest | null | undefined): string {
  */
 export function generatorReplayProps(
   editState: EditRequest | null | undefined,
-  mode: string,
+  mode: string | undefined,
   onExitEdit: () => void,
 ) {
   if (!editState || editState.mode !== mode) return {} as Record<string, never>;
