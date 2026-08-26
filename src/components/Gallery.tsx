@@ -1537,6 +1537,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   const lightboxProps = selected ? {
     img: selected,
     onEdit: onEditImage ? () => handleEdit(selected) : undefined,
+    onGenerateAgain: onEditImage ? () => handleReplay(selected, "replay") : undefined,
+    onReuseSettings: onEditImage ? () => handleReplay(selected, "reuse") : undefined,
+
     onDelete: () => setDeleteTarget(selected),
     onCopyUrl: () => handleCopyUrl(selected.masterUrl),
     onChangeBg: (style: "white" | "cream") => handleChangeBackground(selected, style),
