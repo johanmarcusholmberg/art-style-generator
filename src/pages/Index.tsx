@@ -121,11 +121,7 @@ const Index = () => {
               mode={styleConfig.themedModeValue}
               styleConfig={styleConfig}
               onImageSaved={refreshGallery}
-              onExitEdit={editState?.mode === styleConfig.themedModeValue ? handleExitEdit : undefined}
-              initialPrompt={editState?.mode === styleConfig.themedModeValue ? editState.prompt : undefined}
-              initialImageUrl={editState?.mode === styleConfig.themedModeValue ? editState.imageUrl : undefined}
-              originalImageId={editState?.mode === styleConfig.themedModeValue ? editState.originalId : undefined}
-              originalStoragePath={editState?.mode === styleConfig.themedModeValue ? editState.originalStoragePath : undefined}
+              {...generatorReplayProps(editState, styleConfig.themedModeValue, handleExitEdit)}
             />
           </TabsContent>
           <TabsContent value={styleConfig.freestyleModeValue}>
@@ -134,11 +130,7 @@ const Index = () => {
               mode={styleConfig.freestyleModeValue}
               styleConfig={styleConfig}
               onImageSaved={refreshGallery}
-              onExitEdit={editState?.mode === styleConfig.freestyleModeValue ? handleExitEdit : undefined}
-              initialPrompt={editState?.mode === styleConfig.freestyleModeValue ? editState.prompt : undefined}
-              initialImageUrl={editState?.mode === styleConfig.freestyleModeValue ? editState.imageUrl : undefined}
-              originalImageId={editState?.mode === styleConfig.freestyleModeValue ? editState.originalId : undefined}
-              originalStoragePath={editState?.mode === styleConfig.freestyleModeValue ? editState.originalStoragePath : undefined}
+              {...generatorReplayProps(editState, styleConfig.freestyleModeValue, handleExitEdit)}
             />
           </TabsContent>
         </Tabs>

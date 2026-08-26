@@ -116,11 +116,7 @@ const LineArt = () => {
               mode={styleConfig.themedModeValue}
               styleConfig={styleConfig}
               onImageSaved={refreshGallery}
-              onExitEdit={editState?.mode === styleConfig.themedModeValue ? handleExitEdit : undefined}
-              initialPrompt={editState?.mode === styleConfig.themedModeValue ? editState.prompt : undefined}
-              initialImageUrl={editState?.mode === styleConfig.themedModeValue ? editState.imageUrl : undefined}
-              originalImageId={editState?.mode === styleConfig.themedModeValue ? editState.originalId : undefined}
-              originalStoragePath={editState?.mode === styleConfig.themedModeValue ? editState.originalStoragePath : undefined}
+              {...generatorReplayProps(editState, styleConfig.themedModeValue, handleExitEdit)}
             />
           </TabsContent>
           <TabsContent value={styleConfig.tertiaryModeValue!}>
@@ -129,11 +125,7 @@ const LineArt = () => {
               mode={styleConfig.tertiaryModeValue!}
               styleConfig={styleConfig}
               onImageSaved={refreshGallery}
-              onExitEdit={editState?.mode === styleConfig.tertiaryModeValue ? handleExitEdit : undefined}
-              initialPrompt={editState?.mode === styleConfig.tertiaryModeValue ? editState.prompt : undefined}
-              initialImageUrl={editState?.mode === styleConfig.tertiaryModeValue ? editState.imageUrl : undefined}
-              originalImageId={editState?.mode === styleConfig.tertiaryModeValue ? editState.originalId : undefined}
-              originalStoragePath={editState?.mode === styleConfig.tertiaryModeValue ? editState.originalStoragePath : undefined}
+              {...generatorReplayProps(editState, styleConfig.tertiaryModeValue, handleExitEdit)}
             />
           </TabsContent>
           <TabsContent value={styleConfig.freestyleModeValue}>
@@ -142,11 +134,7 @@ const LineArt = () => {
               mode={styleConfig.freestyleModeValue}
               styleConfig={styleConfig}
               onImageSaved={refreshGallery}
-              onExitEdit={editState?.mode === styleConfig.freestyleModeValue ? handleExitEdit : undefined}
-              initialPrompt={editState?.mode === styleConfig.freestyleModeValue ? editState.prompt : undefined}
-              initialImageUrl={editState?.mode === styleConfig.freestyleModeValue ? editState.imageUrl : undefined}
-              originalImageId={editState?.mode === styleConfig.freestyleModeValue ? editState.originalId : undefined}
-              originalStoragePath={editState?.mode === styleConfig.freestyleModeValue ? editState.originalStoragePath : undefined}
+              {...generatorReplayProps(editState, styleConfig.freestyleModeValue, handleExitEdit)}
             />
           </TabsContent>
         </Tabs>
