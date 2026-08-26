@@ -5,7 +5,7 @@
  * All business logic remains in ImageGenerator; this component is a pure
  * presentation wrapper around the action buttons, toggles, and dialogs.
  */
-import { Loader2, Save, Replace, Trash2, Pencil, FileImage, FileDown, ArrowUpCircle } from "lucide-react";
+import { Loader2, Save, Replace, Trash2, Pencil, FileImage, FileDown, ArrowUpCircle, RefreshCw } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,6 +79,14 @@ export interface GeneratedImageActionsProps {
   // Inline edit
   onStartInlineEdit: () => void;
 
+  /**
+   * Generate again — a fresh run of the CURRENT prompt/settings through the
+   * normal generator command. Never passes the current image as a source.
+   */
+  onGenerateAgain: () => void;
+  /** True while a generation is already running. */
+  generating?: boolean;
+
   // Remove
   onRemoveImage: () => void;
 
@@ -116,7 +124,27 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
     onPrintExport,
     onStartInlineEdit,
     onRemoveImage,
+    onGenerateAgain,
+    generating,
   } = props;
+
+  const generateAgainButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={!!generating}
+      className="font-display text-xs tracking-wider border-primary/40 text-primary hover:bg-primary/10"
+      onClick={savedToGallery ? onGenerateAgain : undefined}
+      title="Fresh generation using the current prompt and settings"
+    >
+      {generating ? (
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      ) : (
+        <RefreshCw className="mr-2 h-4 w-4" />
+      )}
+      Generate again
+    </Button>
+  );
 
 
   return (
@@ -256,6 +284,31 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
             </>
           )}
         </Button>
+      )}
+
+      {savedToGallery ? (
+        generateAgainButton
+      ) : (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>{generateAgainButton}</AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-display">
+                You have an unsaved image
+              </AlertDialogTitle>
+              <AlertDialogDescription className="font-display">
+                This image hasn't been saved to the gallery yet. Generating again will
+                replace it with a new result. Do you want to continue?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="font-display">Cancel</AlertDialogCancel>
+              <AlertDialogAction className="font-display" onClick={onGenerateAgain}>
+                Discard &amp; Generate Again
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
 
       <Button
