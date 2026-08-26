@@ -285,7 +285,8 @@ interface LightboxContentProps {
 
 
 function LightboxContent({
-  img, onEdit, onDelete, onCopyUrl,
+  img, onEdit, onGenerateAgain, onReuseSettings, onDelete, onCopyUrl,
+
 
   onChangeBg, onSaveBg, onDiscardBg,
   bgChanging, bgResult, showEdit,
