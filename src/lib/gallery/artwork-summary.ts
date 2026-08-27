@@ -18,7 +18,6 @@ import {
   type AssetImageLike,
 } from "@/lib/image-assets";
 import {
-  bestAvailableAsset,
   versionLabel,
   type ImageAssetRow,
 } from "@/lib/generated-image-assets";

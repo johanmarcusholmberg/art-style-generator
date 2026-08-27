@@ -38,7 +38,6 @@ import {
   versionLabel,
   getVersionPrintReadiness,
   canDeleteAsset,
-  bestAvailableAsset,
   pickNextSelectionAfterDelete,
   type ImageAsset,
 } from "@/lib/generated-image-assets";
@@ -47,6 +46,7 @@ import {
   executeAssetMutation,
   previewAssetMutation,
 } from "@/lib/asset-integrity/mutation-service";
+import { resolveMasterAssetId } from "@/lib/gallery/artwork-summary";
 import { UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
 
 interface VersionSelectorProps {
@@ -54,6 +54,8 @@ interface VersionSelectorProps {
     id: string;
     storage_path?: string | null;
     original_storage_path?: string | null;
+    master_storage_path?: string | null;
+    enhanced_storage_path?: string | null;
     actual_width_px?: number | null;
     actual_height_px?: number | null;
     base_width_px?: number | null;
@@ -106,7 +108,9 @@ export default function VersionSelector({
   }, [load, refreshKey]);
 
 
-  const masterId = useMemo(() => bestAvailableAsset(assets)?.id ?? null, [assets]);
+  // Persisted master identity (master → enhanced → base storage path).
+  // Null when it cannot be matched — we never guess a master.
+  const masterId = useMemo(() => resolveMasterAssetId(image, assets), [image, assets]);
 
   useEffect(() => {
     onAssetsChange?.(assets);
