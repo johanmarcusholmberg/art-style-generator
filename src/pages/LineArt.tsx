@@ -172,9 +172,7 @@ const LineArt = () => {
               {replayDialogCopy(pendingEdit, hasUnsavedImage).title}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {hasUnsavedImage
-                ? "Your current generated image hasn't been saved to the gallery yet. Loading a new image for editing will discard it. Do you want to continue?"
-                : "This will load the selected image into the editor. You can then modify it with a new prompt and choose to replace the original or save as a new image."}
+              {replayDialogCopy(pendingEdit, hasUnsavedImage).description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
