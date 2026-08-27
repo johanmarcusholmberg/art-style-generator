@@ -212,8 +212,10 @@ export function buildArtworkDetailSummary(
   assets: ImageAssetRow[] = [],
   printFormatLabel?: string | null,
 ): ArtworkDetailSummary {
-  const masterAsset = bestAvailableAsset(assets);
-  const masterId = masterAsset?.id ?? null;
+  // The master is the PERSISTED master identity (master → enhanced → base
+  // storage path), not merely the largest asset.
+  const masterId = resolveMasterAssetId(image, assets);
+  const masterAsset = masterId ? assets.find((a) => a.id === masterId) ?? null : null;
 
   const selected = selectedAsset
     ? toVersionSummary(selectedAsset, masterId)
@@ -224,7 +226,17 @@ export function buildArtworkDetailSummary(
     (selected?.dimensions ?? null) ||
     dims(image.actual_width_px, image.actual_height_px);
 
-  const printReadiness = buildPrintReadinessSummary(image, displayDimensions);
+  // Readiness is evaluated from the production/master source, so its copy must
+  // quote the master's dimensions — never the previewed version's.
+  const masterDimensions =
+    (master?.dimensions ?? null) ||
+    dims(image.actual_width_px, image.actual_height_px);
+
+  const printReadiness = buildPrintReadinessSummary(
+    image,
+    masterDimensions,
+    master ? "Current master" : null,
+  );
 
   const providerKey = image.generation_provider ?? null;
   const providerName = providerKey
