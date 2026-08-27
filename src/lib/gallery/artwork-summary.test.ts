@@ -26,7 +26,7 @@ function asset(over: Partial<ImageAssetRow> & { id: string }): ImageAssetRow {
   } as ImageAssetRow;
 }
 
-const original = asset({ id: "a0" });
+const original = asset({ id: "a0", storage_path: "orig.png" });
 const up1 = asset({
   id: "a1",
   asset_type: "upscale",
@@ -34,11 +34,13 @@ const up1 = asset({
   width_px: 6144,
   height_px: 8601,
   upscale_method: "hd",
+  storage_path: "up1.png",
 });
 
 const baseImage = {
   id: "img-1",
-  storage_path: "img.png",
+  storage_path: "orig.png",
+  master_storage_path: "up1.png",
   print_format_id: "50x70",
   created_at: "2026-01-02T00:00:00Z",
 } as any;
@@ -57,7 +59,7 @@ describe("buildArtworkDetailSummary", () => {
     expect(s.selected?.isOriginal).toBe(false);
   });
 
-  it("marks the largest active version as current master", () => {
+  it("marks the persisted master_storage_path version as current master", () => {
     const s = buildArtworkDetailSummary(baseImage, up1, [original, up1]);
     expect(s.master?.label).toBe("Upscale 1");
     expect(s.selected?.isMaster).toBe(true);
@@ -70,6 +72,41 @@ describe("buildArtworkDetailSummary", () => {
     expect(s.selected?.isMaster).toBe(false);
     expect(s.master?.label).toBe("Upscale 1");
     expect(s.previewingNonMaster).toBe(true);
+  });
+
+  it("does not label a larger non-master version as current master", () => {
+    const bigger = asset({
+      id: "a2",
+      asset_type: "upscale",
+      version_index: 2,
+      width_px: 8192,
+      height_px: 11468,
+      storage_path: "up2.png",
+    });
+    const s = buildArtworkDetailSummary(baseImage, bigger, [original, up1, bigger]);
+    expect(s.master?.label).toBe("Upscale 1");
+    expect(s.selected?.isMaster).toBe(false);
+  });
+
+  it("falls back to enhanced_storage_path when no master path exists", () => {
+    const img = { ...baseImage, master_storage_path: null, enhanced_storage_path: "up1.png" };
+    const s = buildArtworkDetailSummary(img, original, [original, up1]);
+    expect(s.master?.label).toBe("Upscale 1");
+  });
+
+  it("uses storage_path so Original is master when no enhanced/master path exists", () => {
+    const img = { ...baseImage, master_storage_path: null, enhanced_storage_path: null };
+    const s = buildArtworkDetailSummary(img, original, [original, up1]);
+    expect(s.master?.label).toBe("Original");
+    expect(s.selected?.isMaster).toBe(true);
+  });
+
+  it("omits the master when the persisted path cannot be matched", () => {
+    const img = { ...baseImage, master_storage_path: "gone.png", storage_path: "also-gone.png" };
+    const s = buildArtworkDetailSummary(img, up1, [original, up1]);
+    expect(s.master).toBeNull();
+    expect(s.selected?.isMaster).toBe(false);
+    expect(s.previewingNonMaster).toBe(false);
   });
 
   it("uses the selected version dimensions for display", () => {
@@ -107,6 +144,22 @@ describe("buildArtworkDetailSummary", () => {
     expect(s.printReadiness.state).toBe("ready");
     expect(s.printReadiness.headline).toBe("Ready for print");
     expect(s.printReadiness.ppiLabel).toMatch(/PPI$/);
+  });
+
+  it("quotes master dimensions in readiness copy, not the previewed version", () => {
+    const big = { ...baseImage, actual_width_px: 6144, actual_height_px: 8601 };
+    const s = buildArtworkDetailSummary(big, original, [original, up1]);
+    expect(s.selected?.dimensions).toBe("2048 × 2867");
+    expect(s.printReadiness.detail).toContain("Current master · 6144 × 8601");
+    expect(s.printReadiness.detail).not.toContain("2048 × 2867");
+  });
+
+  it("keeps master readiness unchanged when an earlier version is selected", () => {
+    const big = { ...baseImage, actual_width_px: 6144, actual_height_px: 8601 };
+    const a = buildArtworkDetailSummary(big, up1, [original, up1]);
+    const b = buildArtworkDetailSummary(big, original, [original, up1]);
+    expect(b.printReadiness.state).toBe(a.printReadiness.state);
+    expect(b.printReadiness.detail).toBe(a.printReadiness.detail);
   });
 
   it("recommends enhancement for small masters", () => {
