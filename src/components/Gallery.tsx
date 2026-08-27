@@ -90,6 +90,8 @@ import {
 import { recordAssetCostEvent } from "@/lib/cost-events";
 import { buildUpscaleRoutingMetadata } from "@/lib/upscale-routing-metadata";
 import VersionSelector from "@/components/gallery/VersionSelector";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { buildArtworkDetailSummary } from "@/lib/gallery/artwork-summary";
 import {
   fetchUpscaleCounts,
   bestAvailableAsset,
@@ -302,6 +304,7 @@ function LightboxContent({
   onCreateMatchingCollection,
 }: LightboxContentProps) {
   const [selectedAsset, setSelectedAsset] = useState<ImageAsset | null>(null);
+  const [versionAssets, setVersionAssets] = useState<ImageAsset[]>([]);
   const [useBestForExport, setUseBestForExport] = useState(false);
   // Display uses an optimized ~1600px web preview; download/print keep the
   // full canonical master (see src/lib/image-display-url.ts).
@@ -344,186 +347,166 @@ function LightboxContent({
     setExportFormat(next);
     setStoredExportFormat(next);
   };
+  const summary = buildArtworkDetailSummary(
+    img,
+    selectedAsset,
+    versionAssets,
+    printFormat?.label ?? null,
+  );
+  const readiness = summary.printReadiness;
+  const readinessTone =
+    readiness.state === "ready"
+      ? "text-primary"
+      : readiness.state === "good"
+        ? "text-foreground"
+        : readiness.state === "insufficient"
+          ? "text-orange-500"
+          : "text-muted-foreground";
+
   return (
     <div className="space-y-4">
-      <ImagePreviewMockups imageUrl={displayUrl} alt={img.prompt} />
-      <VersionSelector
-        image={img}
-        refreshKey={versionRefreshKey}
-        onSelectedAssetChange={setSelectedAsset}
-        onAfterMutation={onVersionsChanged}
-      />
+      {/* ── A. Artwork preview ─────────────────────────────────────────── */}
+      <div className="space-y-1.5">
+        <ImagePreviewMockups imageUrl={displayUrl} alt={img.prompt} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="font-display text-[10px] border-primary/40 text-primary">
+            {summary.selected?.label ?? "Original"}
+            {summary.selected?.dimensions ? ` · ${summary.selected.dimensions}` : ""}
+          </Badge>
+          {summary.selected?.isMaster && (
+            <span className="font-display text-[10px] text-primary">Current master</span>
+          )}
+          {summary.previewingNonMaster && summary.master && (
+            <span className="font-display text-[10px] text-muted-foreground">
+              Viewing an earlier version · current master is {summary.master.label}
+              {summary.master.dimensions ? ` (${summary.master.dimensions})` : ""}
+            </span>
+          )}
+        </div>
+      </div>
 
-
+      {/* ── B. Primary information ─────────────────────────────────────── */}
       <div className="space-y-2">
         <p className="font-display text-sm text-foreground">{img.prompt}</p>
         <div className="flex flex-wrap gap-2 items-center">
           <Badge variant="secondary" className="font-display text-xs">{img.mode}</Badge>
           <Badge variant="outline" className="font-display text-xs">{img.aspect_ratio}</Badge>
-          {img.print_size && (
-            <Badge variant="outline" className="font-display text-xs">{img.print_size}</Badge>
+          {printFormat && (
+            <Badge variant="outline" className="font-display text-xs">{printFormat.label}</Badge>
           )}
-          {img.enhanced && (
-            <Badge variant="outline" className="font-display text-xs text-primary border-primary/30">Enhanced</Badge>
+          {summary.displayDimensions && (
+            <Badge variant="outline" className="font-display text-xs tabular-nums">
+              {summary.displayDimensions} px
+            </Badge>
           )}
-          {(img.generation_provider || img.execution_route) && (
-            <RouteBadge
-              provider={img.generation_provider}
-              model={img.generation_model}
-              route={img.execution_route}
-              fallback={!!img.fallback_used}
-              variant="full"
-            />
-          )}
-          <span className="text-xs text-muted-foreground font-display">
-            {new Date(img.created_at).toLocaleDateString()}
-          </span>
         </div>
 
-        {/* Lifecycle status: Base / Enhanced / Print-ready / Exported */}
-        <AssetStatusBadges
-          image={img}
-          enhancementStatus={
-            upscaling
-              ? "enhancing"
-              : img.enhanced
-                ? "done"
-                : "idle"
-          }
-        />
-
-        {/* Full asset metadata (Part E badges) */}
-        <div className="rounded-sm border border-border bg-card/50 p-3">
-          <AssetMetaBadges
-            variant="full"
-            provider={(img as any).provider || (img as any).generation_provider}
-            model={(img as any).model || (img as any).generation_model}
-            route={(img as any).route || (img as any).execution_route}
-            assetRole={(img as any).asset_role || ((img as any).enhanced ? "enhanced_master" : "base_generation")}
-            baseWidth={(img as any).base_width_px}
-            baseHeight={(img as any).base_height_px}
-            masterWidth={(img as any).master_width || (img as any).enhanced_width_px || (img as any).actual_width_px}
-            masterHeight={(img as any).master_height || (img as any).enhanced_height_px || (img as any).actual_height_px}
-            exportWidth={(img as any).export_width}
-            exportHeight={(img as any).export_height}
-            printReadiness={
-              ((img as any).print_readiness as any) ||
-              classifyPrintReadiness(
-                (img as any).master_width || (img as any).actual_width_px,
-                (img as any).master_height || (img as any).actual_height_px,
-                (img as any).print_format_id,
-              )
-            }
-            estimatedCost={(img as any).estimated_cost ?? null}
-            currency={(img as any).currency || "USD"}
-            createdAt={img.created_at}
-          />
-          {(img as any).source_image_url && (
-            <p className="mt-2 font-display text-[11px] text-muted-foreground">
-              Source image used
-              {(img as any).source_file_name ? (
-                <span className="text-foreground"> · {(img as any).source_file_name}</span>
-              ) : null}
+        <div className="rounded-sm border border-border bg-card/50 p-3 space-y-1">
+          <p className={cn("font-display text-xs font-bold", readinessTone)}>
+            {readiness.headline}
+          </p>
+          <p className="font-display text-[11px] text-muted-foreground">
+            {readiness.detail}
+            {readiness.ppiLabel ? ` · ${readiness.ppiLabel}` : ""}
+          </p>
+          {readiness.recommendation && (
+            <p className="font-display text-[11px] text-muted-foreground italic">
+              {readiness.recommendation}
             </p>
           )}
+          {hasExport && (
+            <p className="font-display text-[11px] text-primary font-medium">✓ Print export ready</p>
+          )}
         </div>
+      </div>
 
-        {/* Export source notice — surfaces "enhanced master" vs "base only" */}
-        {(() => {
-          const exportInfo = describeExportSource(img);
-          if (exportInfo.source === "missing") return null;
-          return (
-            <p
+      {/* ── C. Primary actions ─────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-2">
+        {showEdit && onGenerateAgain && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onGenerateAgain}
+            className="font-display text-xs border-primary/40 text-primary hover:bg-primary/10"
+            title="Fresh output using the same prompt and generation setup"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" /> Generate again
+          </Button>
+        )}
+        {showEdit && onReuseSettings && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onReuseSettings}
+            className="font-display text-xs"
+            title="Load the generator with this setup so you can modify it"
+          >
+            <SlidersHorizontal className="mr-2 h-4 w-4" /> Reuse settings
+          </Button>
+        )}
+        {showEdit && onEdit && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onEdit}
+            className="font-display text-xs"
+            title="Image-to-image editing using this artwork as the source"
+          >
+            <Pencil className="mr-2 h-4 w-4" /> Edit image
+          </Button>
+        )}
+        <EnhanceForPrintDialog
+          hasEnhanced={!!img.enhanced}
+          sourceWidth={img.actual_width_px ?? null}
+          sourceHeight={img.actual_height_px ?? null}
+          originalSource={{
+            url: getBaseAssetUrl(img),
+            width: img.actual_width_px ?? null,
+            height: img.actual_height_px ?? null,
+          }}
+          enhancedSource={
+            img.enhanced || img.enhancedUrl
+              ? {
+                  url: getEnhancedAssetUrl(img),
+                  width: img.enhanced_width_px ?? null,
+                  height: img.enhanced_height_px ?? null,
+                }
+              : null
+          }
+          posterFormatId={img.print_format_id ?? null}
+          alreadyUpscaled={!!img.upscale_applied}
+          recommendedRecipe={recommendedRecipe}
+          disabled={upscaling}
+          onConfirm={(m, recipe, source) => onUpscale(img, m, recipe ?? null, source)}
+          trigger={
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={upscaling}
               className={cn(
-                "font-display text-[11px]",
-                exportInfo.source === "enhanced"
-                  ? "text-primary"
-                  : "text-muted-foreground italic",
+                "font-display text-xs",
+                img.enhanced
+                  ? "border-border"
+                  : "border-primary/40 text-primary hover:bg-primary/10",
               )}
             >
-              {exportInfo.label}
-              {exportInfo.recommendation && (
-                <span className="block text-muted-foreground not-italic">
-                  {exportInfo.recommendation}
-                </span>
+              {upscaling ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
               )}
-            </p>
-          );
-        })()}
+              {img.enhanced ? "Re-enhance" : "Enhance for print"}
+            </Button>
+          }
+        />
+      </div>
 
-        {/* Print quality indicator — always visible when image has dimensions */}
-        {img.actual_width_px && img.actual_height_px && (
-          <PrintQualityIndicator
-            actualWidthPx={img.actual_width_px}
-            actualHeightPx={img.actual_height_px}
-            printFormatId={img.print_format_id}
-          />
-        )}
-
-        {/* Print metadata details */}
-        {(printFormat || img.target_ppi || img.target_width_px) && (
-          <div className="bg-muted/50 rounded-sm p-3 space-y-1.5">
-            {printFormat && (
-              <p className="font-display text-xs font-bold text-foreground">
-                🖨️ Print: {printFormat.label}
-              </p>
-            )}
-            {img.export_width && img.export_height && (
-              <p className="font-display text-[11px] text-foreground">
-                Export: <span className="font-bold">{img.export_width} × {img.export_height} px</span>
-              </p>
-            )}
-            {img.target_width_px && img.target_height_px && (
-              <p className="font-display text-[11px] text-muted-foreground">
-                Target: {img.target_width_px} × {img.target_height_px} px
-              </p>
-            )}
-            {exportReadiness && (
-              <p className="font-display text-[11px] text-muted-foreground">
-                {exportReadiness.description}
-              </p>
-            )}
-            {/* Master-aware print readiness — uses the canonical master asset
-                dimensions, not preview/DOM size. */}
-            {(() => {
-              const r = getPrintReadiness(img, img.print_format_id);
-              if (r.level === "unknown") {
-                return (
-                  <p className="font-display text-[11px] text-muted-foreground">
-                    Print quality not measured for this image.
-                    <span className="block italic">
-                      Export still works — we just can&apos;t verify the final PPI until dimensions are recorded.
-                    </span>
-                  </p>
-                );
-              }
-              const cls =
-                r.level === "ready-300" ? "text-primary" :
-                r.level === "ready-150" ? "text-foreground" :
-                r.level === "soft" ? "text-orange-500" :
-                "text-destructive";
-              return (
-                <p className={cn("font-display text-[11px] font-medium", cls)}>
-                  {r.summary}
-                  {r.recommendation && r.level !== "ready-300" && (
-                    <span className="block text-muted-foreground italic font-normal">
-                      {r.recommendation}
-                    </span>
-                  )}
-                </p>
-              );
-            })()}
-            {img.upscale_applied && (
-              <p className="font-display text-[11px] text-muted-foreground italic">Upscale applied</p>
-            )}
-            {hasExport && (
-              <p className="font-display text-[11px] text-primary font-medium">✓ Print export ready</p>
-            )}
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2 pt-2">
+      {/* ── D. Production actions ──────────────────────────────────────── */}
+      <div className="rounded-sm border border-border bg-card/50 p-3 space-y-2">
+        <p className="font-display text-[11px] font-bold text-foreground uppercase tracking-wider">
+          Production
+        </p>
+        <div className="flex flex-wrap gap-2 items-center">
           <Button
             variant="outline"
             size="sm"
@@ -575,7 +558,7 @@ function LightboxContent({
               {printExporting
                 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 : <Printer className="mr-2 h-4 w-4" />}
-              {hasExport ? "Re-export Print" : "Export Print"}
+              {hasExport ? "Re-export print" : "Export for print"}
             </Button>
             <label className="inline-flex items-center gap-1 font-display text-[11px] text-muted-foreground cursor-pointer select-none">
               <input
@@ -587,77 +570,7 @@ function LightboxContent({
               Best available
             </label>
           </div>
-          <p className="font-display text-[10px] text-muted-foreground -mt-1">
-            {useBestForExport
-              ? "Export source: Best available (highest-resolution stored version)."
-              : `Export source: Selected version${selectedAsset ? ` · ${selectedAsset.asset_type === "original" ? "Original" : `Upscale ${selectedAsset.version_index}`}${selectedAsset.width_px && selectedAsset.height_px ? ` · ${selectedAsset.width_px}×${selectedAsset.height_px}` : ""}` : ""}.`}
-          </p>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onEtsyExport(img)}
-            className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
-          >
-            <ShoppingBag className="mr-2 h-4 w-4" />
-            Export for Etsy
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onEtsyMockup(img)}
-            className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
-          >
-            <Layers className="mr-2 h-4 w-4" />
-            Etsy Mockups
-          </Button>
-          {/* Enhance / Re-enhance — explicit confirmation dialog with method,
-              expected output, and cost label. Re-enhance always reprocesses
-              from the original/base asset (never an upscaled derivative). */}
-          <EnhanceForPrintDialog
-            hasEnhanced={!!img.enhanced}
-            sourceWidth={img.actual_width_px ?? null}
-            sourceHeight={img.actual_height_px ?? null}
-            originalSource={{
-              url: getBaseAssetUrl(img),
-              width: img.actual_width_px ?? null,
-              height: img.actual_height_px ?? null,
-            }}
-            enhancedSource={
-              img.enhanced || img.enhancedUrl
-                ? {
-                    url: getEnhancedAssetUrl(img),
-                    width: img.enhanced_width_px ?? null,
-                    height: img.enhanced_height_px ?? null,
-                  }
-                : null
-            }
-            posterFormatId={img.print_format_id ?? null}
-            alreadyUpscaled={!!img.upscale_applied}
-            recommendedRecipe={recommendedRecipe}
-            disabled={upscaling}
-            onConfirm={(m, recipe, source) => onUpscale(img, m, recipe ?? null, source)}
-            trigger={
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={upscaling}
-                className={cn(
-                  "font-display text-xs",
-                  img.enhanced
-                    ? "border-border"
-                    : "border-primary/40 text-primary hover:bg-primary/10",
-                )}
-              >
-                {upscaling ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="mr-2 h-4 w-4" />
-                )}
-                {img.enhanced ? "Re-enhance" : "Enhance for print"}
-              </Button>
-            }
-          />
           <FormatDerivativesDialog
             sourceImageId={img.id}
             sourceImageUrl={getEnhancedAssetUrl(img)}
@@ -665,106 +578,239 @@ function LightboxContent({
             sourceWidth={img.enhanced_width_px ?? img.actual_width_px ?? null}
             sourceHeight={img.enhanced_height_px ?? img.actual_height_px ?? null}
           />
-
-          {img.upscale_applied && currentModeLabel && (
-            <Badge variant="outline" className="font-display text-xs text-primary border-primary/30">
-              <Sparkles className="mr-1 h-3 w-3" /> {currentModeLabel}
-            </Badge>
-          )}
-          <Button variant="outline" size="sm" onClick={onCopyUrl} className="font-display text-xs">
-            <Share2 className="mr-2 h-4 w-4" /> Copy URL
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onCreateMatchingCollection(img)}
-            className="font-display text-xs border-primary/40 text-primary hover:bg-primary/10"
-            title="Generate a coordinated poster set from this image"
-          >
-            <Layers className="mr-2 h-4 w-4" /> Matching collection
-          </Button>
-          {showEdit && onGenerateAgain && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onGenerateAgain}
-              className="font-display text-xs border-primary/40 text-primary hover:bg-primary/10"
-              title="Fresh output using the same prompt and generation setup"
-            >
-              <RefreshCw className="mr-2 h-4 w-4" /> Generate again
-            </Button>
-          )}
-          {showEdit && onReuseSettings && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onReuseSettings}
-              className="font-display text-xs"
-              title="Load the generator with this setup so you can modify it"
-            >
-              <SlidersHorizontal className="mr-2 h-4 w-4" /> Reuse settings
-            </Button>
-          )}
-          {showEdit && onEdit && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onEdit}
-              className="font-display text-xs"
-              title="Image-to-image editing using this artwork as the source"
-            >
-              <Pencil className="mr-2 h-4 w-4" /> Edit image
-            </Button>
-          )}
-
-          <Button variant="destructive" size="sm" onClick={onDelete} className="font-display text-xs">
-            <Trash2 className="mr-2 h-4 w-4" /> Delete
-          </Button>
         </div>
+        <p className="font-display text-[10px] text-muted-foreground">
+          Download master · {summary.downloadMasterDescription}
+        </p>
+        <p className="font-display text-[10px] text-muted-foreground">
+          {useBestForExport
+            ? "Export source: Best available (highest-resolution stored version)."
+            : `Export source: Selected version${selectedAsset ? ` · ${selectedAsset.asset_type === "original" ? "Original" : `Upscale ${selectedAsset.version_index}`}${selectedAsset.width_px && selectedAsset.height_px ? ` · ${selectedAsset.width_px}×${selectedAsset.height_px}` : ""}` : ""}.`}
+        </p>
+      </div>
 
-        {/* Collections */}
-        <div className="pt-3 border-t border-border">
-          <CollectionsManager imageId={img.id} />
-        </div>
+      {/* ── E. Versions ────────────────────────────────────────────────── */}
+      <VersionSelector
+        image={img}
+        refreshKey={versionRefreshKey}
+        onSelectedAssetChange={setSelectedAsset}
+        onAssetsChange={setVersionAssets}
+        onAfterMutation={onVersionsChanged}
+      />
 
-        {/* Background change */}
-        {edgeFnForMode(img.mode) && !bgResult && (
-          <div className="pt-3 border-t border-border">
-            <p className="font-display text-xs text-muted-foreground mb-2">Change background color</p>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" disabled={!!bgChanging} onClick={() => onChangeBg("white")} className="font-display text-xs">
-                {bgChanging === "white" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sun className="mr-2 h-4 w-4" />}
-                Pure White
-              </Button>
-              <Button variant="outline" size="sm" disabled={!!bgChanging} onClick={() => onChangeBg("cream")} className="font-display text-xs">
-                {bgChanging === "cream" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-                Cream Paper
-              </Button>
-            </div>
-            {bgChanging && (
-              <p className="font-display text-xs text-muted-foreground mt-2 animate-pulse">
-                Regenerating with {bgChanging === "white" ? "pure white" : "cream"} background…
+      {/* ── F. Secondary details ───────────────────────────────────────── */}
+      <Collapsible>
+        <CollapsibleTrigger className="w-full flex items-center justify-between rounded-sm border border-border bg-card/50 px-3 py-2 font-display text-[11px] font-bold uppercase tracking-wider text-foreground">
+          Generation & print details
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2 space-y-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            {(img.generation_provider || img.execution_route) && (
+              <RouteBadge
+                provider={img.generation_provider}
+                model={img.generation_model}
+                route={img.execution_route}
+                fallback={!!img.fallback_used}
+                variant="full"
+              />
+            )}
+            {!img.generation_provider && !img.execution_route && (
+              <span className="font-display text-[11px] text-muted-foreground">
+                {summary.providerLabel}
+              </span>
+            )}
+            {summary.createdLabel && (
+              <span className="text-xs text-muted-foreground font-display">
+                {summary.createdLabel}
+              </span>
+            )}
+          </div>
+
+          <AssetStatusBadges
+            image={img}
+            enhancementStatus={
+              upscaling ? "enhancing" : img.enhanced ? "done" : "idle"
+            }
+          />
+
+          <div className="rounded-sm border border-border bg-card/50 p-3">
+            <AssetMetaBadges
+              variant="full"
+              provider={(img as any).provider || (img as any).generation_provider}
+              model={(img as any).model || (img as any).generation_model}
+              route={(img as any).route || (img as any).execution_route}
+              assetRole={(img as any).asset_role || ((img as any).enhanced ? "enhanced_master" : "base_generation")}
+              baseWidth={(img as any).base_width_px}
+              baseHeight={(img as any).base_height_px}
+              masterWidth={(img as any).master_width || (img as any).enhanced_width_px || (img as any).actual_width_px}
+              masterHeight={(img as any).master_height || (img as any).enhanced_height_px || (img as any).actual_height_px}
+              exportWidth={(img as any).export_width}
+              exportHeight={(img as any).export_height}
+              printReadiness={
+                ((img as any).print_readiness as any) ||
+                classifyPrintReadiness(
+                  (img as any).master_width || (img as any).actual_width_px,
+                  (img as any).master_height || (img as any).actual_height_px,
+                  (img as any).print_format_id,
+                )
+              }
+              estimatedCost={(img as any).estimated_cost ?? null}
+              currency={(img as any).currency || "USD"}
+              createdAt={img.created_at}
+            />
+            {(img as any).source_image_url && (
+              <p className="mt-2 font-display text-[11px] text-muted-foreground">
+                Source image used
+                {(img as any).source_file_name ? (
+                  <span className="text-foreground"> · {(img as any).source_file_name}</span>
+                ) : null}
               </p>
             )}
           </div>
-        )}
 
-        {/* BG result */}
-        {bgResult && (
-          <div className="pt-3 border-t border-border space-y-3">
-            <p className="font-display text-xs text-muted-foreground">
-              New version with {bgResult.bgStyle === "white" ? "pure white" : "cream"} background:
-            </p>
-            <div className="rounded-sm border border-border overflow-hidden">
-              <img src={bgResult.imageUrl} alt="New background" className="w-full max-h-[40vh] object-contain bg-muted" />
+          {img.actual_width_px && img.actual_height_px && (
+            <PrintQualityIndicator
+              actualWidthPx={img.actual_width_px}
+              actualHeightPx={img.actual_height_px}
+              printFormatId={img.print_format_id}
+            />
+          )}
+
+          {(printFormat || img.target_ppi || img.target_width_px) && (
+            <div className="bg-muted/50 rounded-sm p-3 space-y-1.5">
+              {img.export_width && img.export_height && (
+                <p className="font-display text-[11px] text-foreground">
+                  Export: <span className="font-bold">{img.export_width} × {img.export_height} px</span>
+                </p>
+              )}
+              {img.target_width_px && img.target_height_px && (
+                <p className="font-display text-[11px] text-muted-foreground">
+                  Target: {img.target_width_px} × {img.target_height_px} px
+                </p>
+              )}
+              {exportReadiness && (
+                <p className="font-display text-[11px] text-muted-foreground">
+                  {exportReadiness.description}
+                </p>
+              )}
+              {img.upscale_applied && currentModeLabel && (
+                <p className="font-display text-[11px] text-muted-foreground italic">
+                  Upscale applied · {currentModeLabel}
+                </p>
+              )}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={!!bgChanging} onClick={() => onSaveBg(false)} className="font-display text-xs">Save as New</Button>
-              <Button variant="outline" size="sm" disabled={!!bgChanging} onClick={() => onSaveBg(true)} className="font-display text-xs">Replace Original</Button>
-              <Button variant="ghost" size="sm" onClick={onDiscardBg} className="font-display text-xs">Discard</Button>
-            </div>
+          )}
+
+          {(() => {
+            const exportInfo = describeExportSource(img);
+            if (exportInfo.source === "missing") return null;
+            return (
+              <p
+                className={cn(
+                  "font-display text-[11px]",
+                  exportInfo.source === "enhanced" ? "text-primary" : "text-muted-foreground italic",
+                )}
+              >
+                {exportInfo.label}
+                {exportInfo.recommendation && (
+                  <span className="block text-muted-foreground not-italic">
+                    {exportInfo.recommendation}
+                  </span>
+                )}
+              </p>
+            );
+          })()}
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* ── G. Organize / more actions ─────────────────────────────────── */}
+      <Collapsible>
+        <CollapsibleTrigger className="w-full flex items-center justify-between rounded-sm border border-border bg-card/50 px-3 py-2 font-display text-[11px] font-bold uppercase tracking-wider text-foreground">
+          Organize & more actions
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onCreateMatchingCollection(img)}
+              className="font-display text-xs border-primary/40 text-primary hover:bg-primary/10"
+              title="Generate a coordinated poster set from this image"
+            >
+              <Layers className="mr-2 h-4 w-4" /> Matching collection
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEtsyExport(img)}
+              className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+            >
+              <ShoppingBag className="mr-2 h-4 w-4" /> Export for Etsy
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEtsyMockup(img)}
+              className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+            >
+              <Layers className="mr-2 h-4 w-4" /> Etsy mockups
+            </Button>
+            <Button variant="outline" size="sm" onClick={onCopyUrl} className="font-display text-xs">
+              <Share2 className="mr-2 h-4 w-4" /> Copy URL
+            </Button>
           </div>
-        )}
+
+          <div className="pt-1">
+            <CollectionsManager imageId={img.id} />
+          </div>
+
+          {edgeFnForMode(img.mode) && !bgResult && (
+            <div className="pt-2 border-t border-border">
+              <p className="font-display text-xs text-muted-foreground mb-2">Change background color</p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" disabled={!!bgChanging} onClick={() => onChangeBg("white")} className="font-display text-xs">
+                  {bgChanging === "white" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sun className="mr-2 h-4 w-4" />}
+                  Pure White
+                </Button>
+                <Button variant="outline" size="sm" disabled={!!bgChanging} onClick={() => onChangeBg("cream")} className="font-display text-xs">
+                  {bgChanging === "cream" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                  Cream Paper
+                </Button>
+              </div>
+              {bgChanging && (
+                <p className="font-display text-xs text-muted-foreground mt-2 animate-pulse">
+                  Regenerating with {bgChanging === "white" ? "pure white" : "cream"} background…
+                </p>
+              )}
+            </div>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* BG result */}
+      {bgResult && (
+        <div className="pt-3 border-t border-border space-y-3">
+          <p className="font-display text-xs text-muted-foreground">
+            New version with {bgResult.bgStyle === "white" ? "pure white" : "cream"} background:
+          </p>
+          <div className="rounded-sm border border-border overflow-hidden">
+            <img src={bgResult.imageUrl} alt="New background" className="w-full max-h-[40vh] object-contain bg-muted" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" disabled={!!bgChanging} onClick={() => onSaveBg(false)} className="font-display text-xs">Save as New</Button>
+            <Button variant="outline" size="sm" disabled={!!bgChanging} onClick={() => onSaveBg(true)} className="font-display text-xs">Replace Original</Button>
+            <Button variant="ghost" size="sm" onClick={onDiscardBg} className="font-display text-xs">Discard</Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── H. Destructive ─────────────────────────────────────────────── */}
+      <div className="pt-3 border-t border-border">
+        <Button variant="destructive" size="sm" onClick={onDelete} className="font-display text-xs">
+          <Trash2 className="mr-2 h-4 w-4" /> Delete artwork
+        </Button>
       </div>
     </div>
   );

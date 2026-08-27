@@ -38,6 +38,7 @@ import {
   versionLabel,
   getVersionPrintReadiness,
   canDeleteAsset,
+  bestAvailableAsset,
   pickNextSelectionAfterDelete,
   type ImageAsset,
 } from "@/lib/generated-image-assets";
@@ -61,6 +62,8 @@ interface VersionSelectorProps {
   /** Bump from the parent to force an asset re-fetch (e.g. after an external upscale persists). */
   refreshKey?: number;
   onSelectedAssetChange?: (asset: ImageAsset | null) => void;
+  /** Presentation-only: lets the parent build the artwork summary. */
+  onAssetsChange?: (assets: ImageAsset[]) => void;
   onAfterMutation?: () => void;
 }
 
@@ -68,6 +71,7 @@ export default function VersionSelector({
   image,
   refreshKey,
   onSelectedAssetChange,
+  onAssetsChange,
   onAfterMutation,
 }: VersionSelectorProps) {
   const [assets, setAssets] = useState<ImageAsset[]>([]);
@@ -101,6 +105,12 @@ export default function VersionSelector({
     // trigger a reload without changing the image identity.
   }, [load, refreshKey]);
 
+
+  const masterId = useMemo(() => bestAvailableAsset(assets)?.id ?? null, [assets]);
+
+  useEffect(() => {
+    onAssetsChange?.(assets);
+  }, [assets, onAssetsChange]);
 
   const selected = useMemo(
     () => assets.find((a) => a.id === selectedId) ?? null,
@@ -201,8 +211,18 @@ export default function VersionSelector({
                       </span>
                     )}
                   </span>
-                  <span className="font-display text-[10px] text-muted-foreground tabular-nums">
-                    {a.width_px && a.height_px ? `${a.width_px}×${a.height_px}` : "—"}
+                  <span className="flex items-center gap-1.5">
+                    {a.id === masterId && (
+                      <Badge
+                        variant="outline"
+                        className="font-display text-[9px] px-1 py-0 border-primary/50 text-primary"
+                      >
+                        Current master
+                      </Badge>
+                    )}
+                    <span className="font-display text-[10px] text-muted-foreground tabular-nums">
+                      {a.width_px && a.height_px ? `${a.width_px}×${a.height_px}` : "—"}
+                    </span>
                   </span>
                 </div>
                 <div className="mt-0.5 flex items-center justify-between gap-2">
