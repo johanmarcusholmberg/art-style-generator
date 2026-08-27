@@ -18,7 +18,6 @@ import {
   type AssetImageLike,
 } from "@/lib/image-assets";
 import {
-  bestAvailableAsset,
   versionLabel,
   type ImageAssetRow,
 } from "@/lib/generated-image-assets";
@@ -112,9 +111,40 @@ function toVersionSummary(
   };
 }
 
+/**
+ * Identify which versioned asset row IS the persisted master.
+ *
+ * Presentation-only: it re-uses the SAME path precedence the source layer
+ * already applies (master → enhanced → base) and matches it to an active
+ * asset's `storage_path`. When no reliable match exists we return null so the
+ * UI omits the badge rather than guessing.
+ */
+export function resolveMasterAssetId(
+  image: {
+    master_storage_path?: string | null;
+    enhanced_storage_path?: string | null;
+    storage_path?: string | null;
+  },
+  assets: ImageAssetRow[],
+): string | null {
+  const candidates = [
+    image.master_storage_path,
+    image.enhanced_storage_path,
+    image.storage_path,
+  ].filter((p): p is string => !!p);
+
+  for (const path of candidates) {
+    const matches = assets.filter((a) => a.storage_path === path);
+    if (matches.length === 1) return matches[0].id;
+    if (matches.length > 1) return null; // ambiguous — never guess
+  }
+  return null;
+}
+
 export function buildPrintReadinessSummary(
   image: AssetImageLike & { print_format_id?: string | null },
   displayDims: string | null,
+  sourceLabel?: string | null,
 ): PrintReadinessSummary {
   const r = getPrintReadiness(image, image.print_format_id);
   const size = r.format?.label ?? null;
@@ -132,7 +162,9 @@ export function buildPrintReadinessSummary(
 
   const ppiLabel = r.achievablePpi ? `${r.achievablePpi} PPI` : null;
   const sizePart = size ? ` · ${size}` : "";
-  const base = displayDims ?? "";
+  const base = [sourceLabel || null, displayDims || null]
+    .filter(Boolean)
+    .join(" · ");
 
   if (r.level === "ready-300") {
     return {
@@ -179,8 +211,10 @@ export function buildArtworkDetailSummary(
   assets: ImageAssetRow[] = [],
   printFormatLabel?: string | null,
 ): ArtworkDetailSummary {
-  const masterAsset = bestAvailableAsset(assets);
-  const masterId = masterAsset?.id ?? null;
+  // The master is the PERSISTED master identity (master → enhanced → base
+  // storage path), not merely the largest asset.
+  const masterId = resolveMasterAssetId(image, assets);
+  const masterAsset = masterId ? assets.find((a) => a.id === masterId) ?? null : null;
 
   const selected = selectedAsset
     ? toVersionSummary(selectedAsset, masterId)
@@ -191,7 +225,17 @@ export function buildArtworkDetailSummary(
     (selected?.dimensions ?? null) ||
     dims(image.actual_width_px, image.actual_height_px);
 
-  const printReadiness = buildPrintReadinessSummary(image, displayDimensions);
+  // Readiness is evaluated from the production/master source, so its copy must
+  // quote the master's dimensions — never the previewed version's.
+  const masterDimensions =
+    (master?.dimensions ?? null) ||
+    dims(image.actual_width_px, image.actual_height_px);
+
+  const printReadiness = buildPrintReadinessSummary(
+    image,
+    masterDimensions,
+    master ? "Current master" : null,
+  );
 
   const providerKey = image.generation_provider ?? null;
   const providerName = providerKey
