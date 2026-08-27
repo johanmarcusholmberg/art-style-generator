@@ -163,7 +163,9 @@ export function buildPrintReadinessSummary(
 
   const ppiLabel = r.achievablePpi ? `${r.achievablePpi} PPI` : null;
   const sizePart = size ? ` · ${size}` : "";
-  const base = displayDims ?? "";
+  const base = [sourceLabel || null, displayDims || null]
+    .filter(Boolean)
+    .join(" · ");
 
   if (r.level === "ready-300") {
     return {
