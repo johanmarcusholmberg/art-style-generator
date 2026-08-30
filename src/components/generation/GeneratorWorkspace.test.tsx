@@ -4,6 +4,7 @@ import {
   GeneratorWorkspace,
   WorkspaceControls,
   WorkspaceResult,
+  WorkspaceWideResult,
 } from "./GeneratorWorkspace";
 
 describe("GeneratorWorkspace", () => {
@@ -47,5 +48,56 @@ describe("GeneratorWorkspace", () => {
       </GeneratorWorkspace>,
     );
     expect(screen.getByTestId("generator-controls").textContent).toBe("only-child");
+  });
+});
+
+describe("GeneratorWorkspace wide result", () => {
+  it("renders wide surfaces outside the controls column, spanning both columns", () => {
+    render(
+      <GeneratorWorkspace>
+        <WorkspaceControls>controls</WorkspaceControls>
+        <WorkspaceResult>result</WorkspaceResult>
+        <WorkspaceWideResult>
+          <div>provider comparison</div>
+        </WorkspaceWideResult>
+      </GeneratorWorkspace>,
+    );
+    const wide = screen.getByTestId("generator-wide-result");
+    expect(wide.className).toContain("lg:col-span-2");
+    expect(screen.getByTestId("generator-controls").textContent).toBe("controls");
+    expect(wide.textContent).toBe("provider comparison");
+  });
+
+  it("uses a header-safe sticky offset and matching max height", () => {
+    render(
+      <GeneratorWorkspace>
+        <WorkspaceControls>a</WorkspaceControls>
+        <WorkspaceResult>b</WorkspaceResult>
+      </GeneratorWorkspace>,
+    );
+    const result = screen.getByTestId("generator-result");
+    expect(result.className).toContain("lg:top-[72px]");
+    expect(result.className).toContain("lg:max-h-[calc(100vh-88px)]");
+    expect(result.className).not.toContain("lg:top-4");
+  });
+
+  it("top-aligns and scrolls populated content, centres empty/loading states", () => {
+    const { rerender } = render(
+      <GeneratorWorkspace>
+        <WorkspaceControls>a</WorkspaceControls>
+        <WorkspaceResult align="top">tall</WorkspaceResult>
+      </GeneratorWorkspace>,
+    );
+    let result = screen.getByTestId("generator-result");
+    expect(result.className).toContain("items-start");
+    expect(result.className).toContain("overflow-y-auto");
+    rerender(
+      <GeneratorWorkspace>
+        <WorkspaceControls>a</WorkspaceControls>
+        <WorkspaceResult align="center">empty</WorkspaceResult>
+      </GeneratorWorkspace>,
+    );
+    result = screen.getByTestId("generator-result");
+    expect(result.className).toContain("items-center");
   });
 });
