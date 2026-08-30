@@ -38,7 +38,7 @@ import { recordAssetCostEvent } from "@/lib/cost-events";
 import DownloadButton from "@/components/generation/DownloadButton";
 import UploadedImageInput, { type UploadedSource } from "@/components/generation/UploadedImageInput";
 import GeneratedImageActions from "@/components/generation/GeneratedImageActions";
-import { GeneratorWorkspace, WorkspaceControls, WorkspaceResult } from "@/components/generation/GeneratorWorkspace";
+import { GeneratorWorkspace, WorkspaceControls, WorkspaceResult, WorkspaceWideResult } from "@/components/generation/GeneratorWorkspace";
 
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import PromptHistoryPanel from "@/components/PromptHistoryPanel";
@@ -1861,98 +1861,6 @@ export default function ImageGenerator({
           </div>
         </details>
 
-        {compareOpen && (prompt.trim() || isInlineEditing) && (
-          <ProviderComparison
-            request={{
-              prompt: (isInlineEditing ? editPrompt : prompt).trim(),
-              styleKey: variantStyleKey,
-              aspectRatio: effectiveAspectRatio,
-              backgroundStyle,
-              printMode: true,
-              referenceImageUrl:
-                isInlineEditing && imageUrl
-                  ? imageUrl
-                  : effectiveSourceImageUrl || undefined,
-              isEdit: !!(isInlineEditing && imageUrl) || !!effectiveSourceImageUrl,
-            }}
-            adapters={[
-              { id: "replicate", label: "SDXL (direct Replicate)" },
-              { id: "gemini", label: "Gemini (direct)" },
-              { id: "openai", label: "OpenAI gpt-image-2 (direct)" },
-              { id: "lovable", label: "SDXL (via Lovable)" },
-            ]}
-            onPick={({ imageUrl: pickedUrl, response }) => {
-              setBaseImageUrl(pickedUrl);
-              setImageUrl(pickedUrl);
-              setLastProviderUsed(response.generationProvider);
-              setLastModelUsed(response.generationModel);
-              setLastFallbackUsed(response.fallbackUsed);
-              setLastStrategyUsed(response.strategy);
-              setLastExecutionRoute(response.executionRoute);
-              setLastRoutingReason(response.routingReason ?? null);
-              setLastProviderExactMatch(
-                typeof response.providerExactMatch === "boolean"
-                  ? response.providerExactMatch
-                  : null,
-              );
-              setLastRequestedSize(
-                response.requestedWidth && response.requestedHeight
-                  ? `${response.requestedWidth}×${response.requestedHeight}`
-                  : response.requestedAspectRatio ?? null,
-              );
-              setSavedToGallery(false);
-              resetUpscale();
-              setEnhancedImageUrl(null);
-              setCompareOpen(false);
-              toast({
-                title: "Result selected",
-                description: `Using ${response.generationProvider.toUpperCase()} via ${response.executionRoute}.`,
-              });
-            }}
-            onSaveResult={async ({ imageUrl: resultUrl, response }) => {
-              const finalPrompt = isEditMode && initialPrompt
-                ? `${initialPrompt} | Edited: ${prompt.trim()}`
-                : (isInlineEditing ? editPrompt : prompt).trim();
-              const isPrint = generationMode === "print-ready";
-              const { baseDims, masterDims, readiness } =
-                await probeDimensionsAndReadiness(
-                  resultUrl,
-                  resultUrl,
-                  isPrint ? selectedPrintFormat.id : null,
-                );
-              const baseOpts = buildSaveOptions();
-              await saveToGallery({
-                ...baseOpts,
-                imageUrl: resultUrl,
-                prompt: finalPrompt,
-                baseImageUrl: resultUrl,
-                masterImageUrl: resultUrl,
-                baseWidthPx: baseDims?.width,
-                baseHeightPx: baseDims?.height,
-                masterWidth: masterDims?.width,
-                masterHeight: masterDims?.height,
-                actualWidthPx: masterDims?.width ?? baseDims?.width,
-                actualHeightPx: masterDims?.height ?? baseDims?.height,
-                printReadiness: readiness,
-                // Override provider/route metadata with the comparison result
-                // so the saved row reflects the provider the user actually saved.
-                generationProvider: response.generationProvider,
-                generationModel: response.generationModel,
-                providerStrategy: response.strategy,
-                fallbackUsed: response.fallbackUsed,
-                executionRoute: response.executionRoute,
-                assetRole: "base_generation",
-                // Comparison results are unenhanced raw base images.
-                enhanced: false,
-                enhancedImageUrl: undefined,
-                enhancementModel: undefined,
-                upscaleFactor: undefined,
-              });
-              onImageSaved?.();
-            }}
-            onClose={() => setCompareOpen(false)}
-          />
-        )}
 
         {/* Variant fan-out — opt-in. Pick which generators to fan out to;
             one variant is produced per selected provider. */}
@@ -2125,25 +2033,9 @@ export default function ImageGenerator({
 
 
 
-        {variantMode && (
-          <VariantGrid
-            tiles={variantFanOut.tiles}
-            busy={variantFanOut.isRunning}
-            onKeep={handleKeepVariant}
-            onDiscard={variantFanOut.discard}
-            onRetry={variantFanOut.retryOne}
-            onDiscardAll={() => {
-              variantFanOut.discardAll();
-              setSavedTileIds(new Set());
-            }}
-            savedTileIds={savedTileIds}
-            savingTileId={savingTileId}
-            printFormatId={generationMode === "print-ready" ? selectedPrintFormat.id : null}
-          />
-        )}
       </WorkspaceControls>
 
-      <WorkspaceResult>
+      <WorkspaceResult align={imageUrl && !isGenerating ? "top" : "center"}>
 
         {/* Blocking generation spinner — only during base image generation */}
         {isGenerating && (
@@ -2392,6 +2284,120 @@ export default function ImageGenerator({
           </div>
         )}
       </WorkspaceResult>
+
+      <WorkspaceWideResult>
+        {compareOpen && (prompt.trim() || isInlineEditing) && (
+          <ProviderComparison
+            request={{
+              prompt: (isInlineEditing ? editPrompt : prompt).trim(),
+              styleKey: variantStyleKey,
+              aspectRatio: effectiveAspectRatio,
+              backgroundStyle,
+              printMode: true,
+              referenceImageUrl:
+                isInlineEditing && imageUrl
+                  ? imageUrl
+                  : effectiveSourceImageUrl || undefined,
+              isEdit: !!(isInlineEditing && imageUrl) || !!effectiveSourceImageUrl,
+            }}
+            adapters={[
+              { id: "replicate", label: "SDXL (direct Replicate)" },
+              { id: "gemini", label: "Gemini (direct)" },
+              { id: "openai", label: "OpenAI gpt-image-2 (direct)" },
+              { id: "lovable", label: "SDXL (via Lovable)" },
+            ]}
+            onPick={({ imageUrl: pickedUrl, response }) => {
+              setBaseImageUrl(pickedUrl);
+              setImageUrl(pickedUrl);
+              setLastProviderUsed(response.generationProvider);
+              setLastModelUsed(response.generationModel);
+              setLastFallbackUsed(response.fallbackUsed);
+              setLastStrategyUsed(response.strategy);
+              setLastExecutionRoute(response.executionRoute);
+              setLastRoutingReason(response.routingReason ?? null);
+              setLastProviderExactMatch(
+                typeof response.providerExactMatch === "boolean"
+                  ? response.providerExactMatch
+                  : null,
+              );
+              setLastRequestedSize(
+                response.requestedWidth && response.requestedHeight
+                  ? `${response.requestedWidth}×${response.requestedHeight}`
+                  : response.requestedAspectRatio ?? null,
+              );
+              setSavedToGallery(false);
+              resetUpscale();
+              setEnhancedImageUrl(null);
+              setCompareOpen(false);
+              toast({
+                title: "Result selected",
+                description: `Using ${response.generationProvider.toUpperCase()} via ${response.executionRoute}.`,
+              });
+            }}
+            onSaveResult={async ({ imageUrl: resultUrl, response }) => {
+              const finalPrompt = isEditMode && initialPrompt
+                ? `${initialPrompt} | Edited: ${prompt.trim()}`
+                : (isInlineEditing ? editPrompt : prompt).trim();
+              const isPrint = generationMode === "print-ready";
+              const { baseDims, masterDims, readiness } =
+                await probeDimensionsAndReadiness(
+                  resultUrl,
+                  resultUrl,
+                  isPrint ? selectedPrintFormat.id : null,
+                );
+              const baseOpts = buildSaveOptions();
+              await saveToGallery({
+                ...baseOpts,
+                imageUrl: resultUrl,
+                prompt: finalPrompt,
+                baseImageUrl: resultUrl,
+                masterImageUrl: resultUrl,
+                baseWidthPx: baseDims?.width,
+                baseHeightPx: baseDims?.height,
+                masterWidth: masterDims?.width,
+                masterHeight: masterDims?.height,
+                actualWidthPx: masterDims?.width ?? baseDims?.width,
+                actualHeightPx: masterDims?.height ?? baseDims?.height,
+                printReadiness: readiness,
+                // Override provider/route metadata with the comparison result
+                // so the saved row reflects the provider the user actually saved.
+                generationProvider: response.generationProvider,
+                generationModel: response.generationModel,
+                providerStrategy: response.strategy,
+                fallbackUsed: response.fallbackUsed,
+                executionRoute: response.executionRoute,
+                assetRole: "base_generation",
+                // Comparison results are unenhanced raw base images.
+                enhanced: false,
+                enhancedImageUrl: undefined,
+                enhancementModel: undefined,
+                upscaleFactor: undefined,
+              });
+              onImageSaved?.();
+            }}
+            onClose={() => setCompareOpen(false)}
+          />
+        )}
+      </WorkspaceWideResult>
+
+      <WorkspaceWideResult>
+        {variantMode && (
+          <VariantGrid
+            tiles={variantFanOut.tiles}
+            busy={variantFanOut.isRunning}
+            onKeep={handleKeepVariant}
+            onDiscard={variantFanOut.discard}
+            onRetry={variantFanOut.retryOne}
+            onDiscardAll={() => {
+              variantFanOut.discardAll();
+              setSavedTileIds(new Set());
+            }}
+            savedTileIds={savedTileIds}
+            savingTileId={savingTileId}
+            printFormatId={generationMode === "print-ready" ? selectedPrintFormat.id : null}
+          />
+        )}
+      </WorkspaceWideResult>
       </GeneratorWorkspace>
 
 
