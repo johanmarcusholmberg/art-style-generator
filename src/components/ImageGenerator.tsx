@@ -2137,9 +2137,10 @@ export default function ImageGenerator({
             printFormatId={generationMode === "print-ready" ? selectedPrintFormat.id : null}
           />
         )}
-      </div>
+      </WorkspaceControls>
 
-      <div className="relative min-h-[300px] flex items-center justify-center rounded-sm border border-border bg-card paper-texture">
+      <WorkspaceResult>
+
         {/* Blocking generation spinner — only during base image generation */}
         {isGenerating && (
           <div className="flex flex-col items-center gap-4 text-muted-foreground w-full max-w-xs px-4">
