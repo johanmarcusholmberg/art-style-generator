@@ -1497,8 +1497,10 @@ export default function ImageGenerator({
   const isGenerating = loading;
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4">
-      <div className="space-y-4 mb-8">
+    <div className="w-full max-w-7xl mx-auto px-4">
+      <GeneratorWorkspace>
+      <WorkspaceControls>
+
         {/* Edit mode banner */}
         {isEditMode && sourceImageUrl && (
           <div className="flex items-start gap-4 p-3 rounded-sm border border-primary/30 bg-primary/5">
