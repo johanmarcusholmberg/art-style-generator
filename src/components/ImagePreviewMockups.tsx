@@ -35,7 +35,7 @@ function FramedImage({ imageUrl, alt, frame, className }: { imageUrl: string; al
   return (
     <div className={cn("rounded-sm shadow-xl", frame.border, className)} style={{ padding: framePx }}>
       <div className={cn(frame.inner)} style={{ padding: innerPx }}>
-        <img src={imageUrl} alt={alt} className="max-w-full max-h-[600px] block" onError={(e) => handleDisplayImageError(e.currentTarget, { url: imageUrl, publicUrl: imageUrl })} />
+        <img src={imageUrl} alt={alt} className="max-w-full max-h-[600px] lg:max-h-[70vh] block" onError={(e) => handleDisplayImageError(e.currentTarget, { url: imageUrl, publicUrl: imageUrl })} />
       </div>
     </div>
   );
@@ -113,13 +113,13 @@ export default function ImagePreviewMockups({ imageUrl, alt, compareUrl }: Image
               <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full max-h-[500px]" />
             </FramedContent>
           ) : (
-            <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full max-h-[600px]" />
+            <BeforeAfterSlider beforeUrl={compareUrl} afterUrl={imageUrl} alt={alt} className="max-w-full max-h-[600px] lg:max-h-[70vh]" />
           )
         ) : mode === "original" ? (
           <img
             src={imageUrl}
             alt={alt}
-            className="max-w-full max-h-[600px] rounded-sm animate-ink-spread"
+            className="max-w-full max-h-[600px] lg:max-h-[70vh] rounded-sm animate-ink-spread"
           />
         ) : mode === "frame" ? (
           <FramedImage imageUrl={imageUrl} alt={alt} frame={selectedFrame} />
