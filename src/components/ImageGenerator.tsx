@@ -38,6 +38,8 @@ import { recordAssetCostEvent } from "@/lib/cost-events";
 import DownloadButton from "@/components/generation/DownloadButton";
 import UploadedImageInput, { type UploadedSource } from "@/components/generation/UploadedImageInput";
 import GeneratedImageActions from "@/components/generation/GeneratedImageActions";
+import { GeneratorWorkspace, WorkspaceControls, WorkspaceResult } from "@/components/generation/GeneratorWorkspace";
+
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import PromptHistoryPanel from "@/components/PromptHistoryPanel";
 import { savePromptHistory } from "@/lib/prompt-history";
