@@ -38,6 +38,8 @@ import { recordAssetCostEvent } from "@/lib/cost-events";
 import DownloadButton from "@/components/generation/DownloadButton";
 import UploadedImageInput, { type UploadedSource } from "@/components/generation/UploadedImageInput";
 import GeneratedImageActions from "@/components/generation/GeneratedImageActions";
+import { GeneratorWorkspace, WorkspaceControls, WorkspaceResult } from "@/components/generation/GeneratorWorkspace";
+
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import PromptHistoryPanel from "@/components/PromptHistoryPanel";
 import { savePromptHistory } from "@/lib/prompt-history";
@@ -1497,8 +1499,10 @@ export default function ImageGenerator({
   const isGenerating = loading;
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4">
-      <div className="space-y-4 mb-8">
+    <div className="w-full max-w-7xl mx-auto px-4">
+      <GeneratorWorkspace>
+      <WorkspaceControls>
+
         {/* Edit mode banner */}
         {isEditMode && sourceImageUrl && (
           <div className="flex items-start gap-4 p-3 rounded-sm border border-primary/30 bg-primary/5">
@@ -2137,9 +2141,10 @@ export default function ImageGenerator({
             printFormatId={generationMode === "print-ready" ? selectedPrintFormat.id : null}
           />
         )}
-      </div>
+      </WorkspaceControls>
 
-      <div className="relative min-h-[300px] flex items-center justify-center rounded-sm border border-border bg-card paper-texture">
+      <WorkspaceResult>
+
         {/* Blocking generation spinner — only during base image generation */}
         {isGenerating && (
           <div className="flex flex-col items-center gap-4 text-muted-foreground w-full max-w-xs px-4">
@@ -2374,9 +2379,21 @@ export default function ImageGenerator({
         )}
 
         {!isGenerating && !imageUrl && (
-          <p className="font-display text-muted-foreground text-sm">Your artwork will appear here</p>
+          <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+            <div className="w-28 h-36 rounded-sm border border-dashed border-border bg-muted/20" />
+            <p className="font-display text-muted-foreground text-sm">
+              Your generated artwork will appear here
+            </p>
+            <p className="font-display text-[11px] text-muted-foreground/70">
+              {generationMode === "print-ready"
+                ? `${selectedPrintFormat.label} · ${effectiveAspectRatio}`
+                : `Ratio ${effectiveAspectRatio}`}
+            </p>
+          </div>
         )}
-      </div>
+      </WorkspaceResult>
+      </GeneratorWorkspace>
+
 
       {imageUrl && (() => {
         const selectedUrl = enhancedImageUrl || imageUrl;
