@@ -38,7 +38,7 @@ import { recordAssetCostEvent } from "@/lib/cost-events";
 import DownloadButton from "@/components/generation/DownloadButton";
 import UploadedImageInput, { type UploadedSource } from "@/components/generation/UploadedImageInput";
 import GeneratedImageActions from "@/components/generation/GeneratedImageActions";
-import { GeneratorWorkspace, WorkspaceControls, WorkspaceResult } from "@/components/generation/GeneratorWorkspace";
+import { GeneratorWorkspace, WorkspaceControls, WorkspaceResult, WorkspaceWideResult } from "@/components/generation/GeneratorWorkspace";
 
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import PromptHistoryPanel from "@/components/PromptHistoryPanel";
@@ -1842,22 +1842,6 @@ export default function ImageGenerator({
                 title="Generate the same prompt on both providers and pick the best result"
               >
                 <Layers className="h-3 w-3 mr-1" />
-                {compareOpen ? "Hide compare" : "Compare providers"}
-              </Button>
-            </div>
-            {generationMode === "standard" && (
-              <div className="pt-2 border-t border-border/60">
-                <PrintSizeSelector
-                  selected={printSize}
-                  onChange={setPrintSize}
-                  qualityTarget={qualityTarget}
-                  onQualityChange={setQualityTarget}
-                />
-                <p className="font-display text-[10px] text-muted-foreground mt-2">
-                  Standard-mode legacy quality controls. Poster size above remains the source of truth for aspect ratio.
-                </p>
-              </div>
-            )}
           </div>
         </details>
 
@@ -1973,28 +1957,6 @@ export default function ImageGenerator({
                 {selectedVariantProviders.size}× cost · pick the best
               </span>
             </label>
-            {variantMode && (
-              <div className="flex flex-wrap gap-2 pl-9">
-                {VARIANT_PROVIDER_IDS.map((id) => {
-                  const active = selectedVariantProviders.has(id);
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() =>
-                        setSelectedVariantProviders((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(id)) next.delete(id);
-                          else next.add(id);
-                          return next;
-                        })
-                      }
-                      className={cn(
-                        "font-display text-[11px] px-2.5 py-1 rounded-sm border transition-colors",
-                        active
-                          ? "border-primary bg-primary/15 text-foreground"
-                          : "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
-                      )}
                       aria-pressed={active}
                     >
                       {GENERATOR_PROVIDERS[id].displayName}
@@ -2143,7 +2105,7 @@ export default function ImageGenerator({
         )}
       </WorkspaceControls>
 
-      <WorkspaceResult>
+      <WorkspaceResult align={imageUrl && !isGenerating ? "top" : "center"}>
 
         {/* Blocking generation spinner — only during base image generation */}
         {isGenerating && (
@@ -2392,6 +2354,50 @@ export default function ImageGenerator({
           </div>
         )}
       </WorkspaceResult>
+
+      <WorkspaceWideResult>
+                {compareOpen ? "Hide compare" : "Compare providers"}
+              </Button>
+            </div>
+            {generationMode === "standard" && (
+              <div className="pt-2 border-t border-border/60">
+                <PrintSizeSelector
+                  selected={printSize}
+                  onChange={setPrintSize}
+                  qualityTarget={qualityTarget}
+                  onQualityChange={setQualityTarget}
+                />
+                <p className="font-display text-[10px] text-muted-foreground mt-2">
+                  Standard-mode legacy quality controls. Poster size above remains the source of truth for aspect ratio.
+                </p>
+              </div>
+            )}
+      </WorkspaceWideResult>
+
+      <WorkspaceWideResult>
+            {variantMode && (
+              <div className="flex flex-wrap gap-2 pl-9">
+                {VARIANT_PROVIDER_IDS.map((id) => {
+                  const active = selectedVariantProviders.has(id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() =>
+                        setSelectedVariantProviders((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(id)) next.delete(id);
+                          else next.add(id);
+                          return next;
+                        })
+                      }
+                      className={cn(
+                        "font-display text-[11px] px-2.5 py-1 rounded-sm border transition-colors",
+                        active
+                          ? "border-primary bg-primary/15 text-foreground"
+                          : "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
+                      )}
+      </WorkspaceWideResult>
       </GeneratorWorkspace>
 
 
