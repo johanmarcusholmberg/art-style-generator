@@ -91,7 +91,7 @@ const Vintage = () => {
         <div className="mt-6 w-24 h-px bg-border mx-auto" />
       </header>
 
-      <main className="pb-12 px-4" ref={generatorRef}>
+      <main className="pb-6 px-4" ref={generatorRef}>
         <Tabs
           value={activeTab}
           onValueChange={(v) => { setActiveTab(v); setEditState(null); }}
@@ -111,7 +111,7 @@ const Vintage = () => {
       </main>
 
       <section className="pb-20 px-4">
-        <div className="w-full max-w-4xl mx-auto">
+        <div className="w-full max-w-7xl mx-auto">
           <div className="flex items-center gap-3 mb-6">
             <div className="h-px flex-1 bg-border" />
             <h2 className="font-display text-lg font-bold text-foreground">Gallery</h2>
