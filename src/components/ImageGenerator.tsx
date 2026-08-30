@@ -2374,9 +2374,21 @@ export default function ImageGenerator({
         )}
 
         {!isGenerating && !imageUrl && (
-          <p className="font-display text-muted-foreground text-sm">Your artwork will appear here</p>
+          <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+            <div className="w-28 h-36 rounded-sm border border-dashed border-border bg-muted/20" />
+            <p className="font-display text-muted-foreground text-sm">
+              Your generated artwork will appear here
+            </p>
+            <p className="font-display text-[11px] text-muted-foreground/70">
+              {generationMode === "print-ready"
+                ? `${selectedPrintFormat.label} · ${effectiveAspectRatio}`
+                : `Ratio ${effectiveAspectRatio}`}
+            </p>
+          </div>
         )}
-      </div>
+      </WorkspaceResult>
+      </GeneratorWorkspace>
+
 
       {imageUrl && (() => {
         const selectedUrl = enhancedImageUrl || imageUrl;
