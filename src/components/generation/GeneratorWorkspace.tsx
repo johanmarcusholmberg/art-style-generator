@@ -34,7 +34,43 @@ export function WorkspaceControls({
   );
 }
 
+/**
+ * Sticky offset accounts for the app header (`StyleNav`, h-14 = 56px) plus
+ * 16px breathing room, so the artwork never hides underneath it.
+ */
 export function WorkspaceResult({
+  children,
+  className,
+  align = "center",
+}: {
+  children: ReactNode;
+  className?: string;
+  /** Populated results scroll from the top; loading/empty states centre. */
+  align?: "center" | "top";
+}) {
+  return (
+    <div
+      data-testid="generator-result"
+      data-align={align}
+      className={cn(
+        "relative min-h-[320px] lg:min-h-[520px] flex justify-center",
+        align === "top" ? "items-start overflow-y-auto" : "items-center",
+        "rounded-sm border border-border bg-card paper-texture",
+        "lg:sticky lg:top-[72px] lg:max-h-[calc(100vh-88px)] lg:overflow-y-auto",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Full-width workspace band below the two primary columns. Used for visual
+ * comparison surfaces (provider comparison, variant fan-out) that need the
+ * whole `max-w-7xl` width to be useful on desktop.
+ */
+export function WorkspaceWideResult({
   children,
   className,
 }: {
@@ -43,13 +79,8 @@ export function WorkspaceResult({
 }) {
   return (
     <div
-      data-testid="generator-result"
-      className={cn(
-        "relative min-h-[320px] lg:min-h-[520px] flex items-center justify-center",
-        "rounded-sm border border-border bg-card paper-texture",
-        "lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto",
-        className,
-      )}
+      data-testid="generator-wide-result"
+      className={cn("min-w-0 lg:col-span-2 empty:hidden", className)}
     >
       {children}
     </div>
