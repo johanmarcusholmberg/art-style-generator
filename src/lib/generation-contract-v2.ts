@@ -31,7 +31,7 @@ export type GenerationRequestVersion = typeof GENERATION_REQUEST_VERSION;
  * Kept in sync with `generation-executable-providers.ts` (client) and
  * `supabase/functions/_shared/executable-providers.ts` (Deno).
  */
-export type ExecutableProviderId = "gemini" | "sdxl";
+export type ExecutableProviderId = "gemini" | "sdxl" | "openai";
 
 /** Full preference space the browser router understands. */
 export type ProviderPreferenceV2 = GeneratorPreference; // "auto" | "gemini" | "sdxl" | "openai"

@@ -11,7 +11,7 @@
 
 export const GENERATION_REQUEST_VERSION = 2 as const;
 
-export type ExecutableProviderId = "gemini" | "sdxl";
+export type ExecutableProviderId = "gemini" | "sdxl" | "openai";
 export type ProviderPreferenceV2 = "auto" | "gemini" | "sdxl" | "openai";
 
 export type GenerationKind =
