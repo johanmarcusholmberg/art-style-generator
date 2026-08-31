@@ -17,7 +17,11 @@ import type { GeneratorPreference } from "@/lib/generators";
 import type { ExecutableProviderId, ProviderPreferenceV2 } from "@/lib/generation-contract-v2";
 
 /** Providers the durable worker (`generate-single` edge function) executes. */
-export const DURABLY_EXECUTABLE_PROVIDERS: readonly ExecutableProviderId[] = ["gemini", "sdxl"] as const;
+export const DURABLY_EXECUTABLE_PROVIDERS: readonly ExecutableProviderId[] = [
+  "gemini",
+  "sdxl",
+  "openai",
+] as const;
 
 const EXEC_SET = new Set<string>(DURABLY_EXECUTABLE_PROVIDERS);
 
@@ -36,20 +40,13 @@ export interface ExecutabilityCheck {
 /**
  * Returns whether a provider preference is safe to submit to the
  * durable worker. `auto` is always safe (the resolver picks an
- * executable provider). Manual selections must map to an executable
- * provider — OpenAI in particular is rejected.
+ * executable provider). Manual selections must map to a provider the
+ * server worker can run — OpenAI now runs server-side through the
+ * `generate-image-direct-openai` edge function.
  */
 export function checkDurableExecutability(pref: ProviderPreferenceV2): ExecutabilityCheck {
   if (pref === "auto") return { ok: true };
   if (isDurablyExecutable(pref)) return { ok: true };
-  if (pref === "openai") {
-    return {
-      ok: false,
-      reason:
-        "OpenAI can't run as a background job yet — it only runs in the browser. Pick Gemini or SDXL, or use Auto.",
-      suggestion: "gemini",
-    };
-  }
   return {
     ok: false,
     reason: `Provider "${pref}" is not available for background generation.`,
