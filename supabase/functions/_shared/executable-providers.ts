@@ -26,8 +26,5 @@ export function isDurablyExecutable(provider: string | null | undefined): provid
 export function reasonToRejectDurable(pref: string | null | undefined): string | null {
   if (!pref || pref === "auto") return null;
   if (isDurablyExecutable(pref)) return null;
-  if (pref === "openai") {
-    return "OpenAI is not available for background generation. Select Gemini, SDXL, or Auto.";
-  }
   return `Provider "${pref}" is not available for background generation.`;
 }
