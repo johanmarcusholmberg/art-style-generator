@@ -24,6 +24,7 @@ import {
 } from "../_shared/durable-result-metadata.ts";
 import { normalizeLegacyGenerationRequest, type GenerationRequestV2 } from "../_shared/generation-contract-v2.ts";
 import { reasonToRejectDurable } from "../_shared/executable-providers.ts";
+import { runOpenAIDurable } from "../_shared/openai-durable.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
