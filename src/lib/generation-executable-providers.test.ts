@@ -34,28 +34,33 @@ describe("DURABLY_EXECUTABLE_PROVIDERS parity", () => {
     // The runners live in the shared generators module used by the
     // durable worker. Grepping there proves the contract lists no
     // provider without a corresponding execution path.
-    const runnersSrc = readFileSync(
-      resolve(__dirname, "../../supabase/functions/_shared/generators.ts"),
-      "utf8",
-    );
+    const runnersSrc =
+      readFileSync(
+        resolve(__dirname, "../../supabase/functions/_shared/generators.ts"),
+        "utf8",
+      ) +
+      readFileSync(
+        resolve(__dirname, "../../supabase/functions/_shared/openai-durable.ts"),
+        "utf8",
+      );
     for (const p of DURABLY_EXECUTABLE_PROVIDERS) {
       expect(runnersSrc, `runner reference for ${p}`).toMatch(new RegExp(`["']${p}["']`));
     }
   });
 
-  it("auto is always accepted; openai always rejected with suggestion", () => {
+  it("auto and openai are accepted; unknown providers are rejected", () => {
     expect(checkDurableExecutability("auto").ok).toBe(true);
-    const r = checkDurableExecutability("openai");
+    expect(checkDurableExecutability("openai").ok).toBe(true);
+    const r = checkDurableExecutability("midjourney" as never);
     expect(r.ok).toBe(false);
-    expect(r.suggestion).toBe("gemini");
-    expect(r.reason).toMatch(/OpenAI/);
+    expect(r.suggestion).toBe("auto");
   });
 
   it("isDurablyExecutable returns false for unknown / null values", () => {
     expect(isDurablyExecutable(null)).toBe(false);
     expect(isDurablyExecutable(undefined)).toBe(false);
     expect(isDurablyExecutable("midjourney")).toBe(false);
-    expect(isDurablyExecutable("openai")).toBe(false);
+    expect(isDurablyExecutable("openai")).toBe(true);
     expect(isDurablyExecutable("gemini")).toBe(true);
     expect(isDurablyExecutable("sdxl")).toBe(true);
   });
