@@ -24,6 +24,7 @@ import {
 } from "../_shared/durable-result-metadata.ts";
 import { normalizeLegacyGenerationRequest, type GenerationRequestV2 } from "../_shared/generation-contract-v2.ts";
 import { reasonToRejectDurable } from "../_shared/executable-providers.ts";
+import { runOpenAIDurable } from "../_shared/openai-durable.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -126,9 +127,12 @@ serve(async (httpReq) => {
       strictness: (req.strictness as GenerateArgs["strictness"]) ?? undefined,
     };
 
-    // After `reasonToRejectDurable`, `openai` is impossible here — cast is safe.
-    const providerPref = req.providerPreference as GeneratorPreference;
-    const outcome = await runWithResolver(providerPref, generateArgs);
+    // OpenAI runs server-side through `generate-image-direct-openai`;
+    // every other preference goes through the shared resolver.
+    const outcome =
+      req.providerPreference === "openai"
+        ? await runOpenAIDurable(generateArgs)
+        : await runWithResolver(req.providerPreference as GeneratorPreference, generateArgs);
 
     const executionRoute = executionRouteForProvider(outcome.providerId);
 

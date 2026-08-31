@@ -163,21 +163,21 @@ describe("createMatchingCollectionJob — atomic RPC", () => {
     expect(result.dispatchedItemIds).toEqual(["it-b"]);
   });
 
-  it("rejects OpenAI durable submissions BEFORE calling the RPC", async () => {
+  it("rejects unsupported provider submissions BEFORE calling the RPC", async () => {
     const rpc = vi.fn();
     const invoke = vi.fn();
     await expect(
       createMatchingCollectionJob(
         {
           collectionName: "X",
-          frozen: frozen({ providerPreference: "openai", resolvedProvider: "openai", resolvedModel: "gpt-image-2" }),
-          provider: OPENAI_PROVIDER,
+          frozen: frozen({ providerPreference: "midjourney" as never, resolvedProvider: "midjourney" as never, resolvedModel: "mj" }),
+          provider: { ...OPENAI_PROVIDER, providerPreference: "midjourney" as never },
           subjects: ["A"],
           fingerprint: "fp4",
         },
         { rpc: rpc as never, invoke: invoke as never },
       ),
-    ).rejects.toThrow(/OpenAI/i);
+    ).rejects.toThrow(/not available for background generation/i);
     expect(rpc).not.toHaveBeenCalled();
     expect(invoke).not.toHaveBeenCalled();
   });

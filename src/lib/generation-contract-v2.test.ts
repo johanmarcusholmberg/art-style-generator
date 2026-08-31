@@ -125,20 +125,20 @@ describe("GenerationRequestV2 validator", () => {
 });
 
 describe("Executable-provider gating", () => {
-  it("gemini and sdxl are executable, openai is not", () => {
+  it("gemini, sdxl and openai are all durably executable", () => {
     expect(isDurablyExecutable("gemini")).toBe(true);
     expect(isDurablyExecutable("sdxl")).toBe(true);
-    expect(isDurablyExecutable("openai")).toBe(false);
-    expect(DURABLY_EXECUTABLE_PROVIDERS).toEqual(["gemini", "sdxl"]);
+    expect(isDurablyExecutable("openai")).toBe(true);
+    expect(DURABLY_EXECUTABLE_PROVIDERS).toEqual(["gemini", "sdxl", "openai"]);
   });
   it("auto is always safe for durable dispatch", () => {
     expect(checkDurableExecutability("auto").ok).toBe(true);
   });
-  it("openai is rejected with a suggestion", () => {
-    const r = checkDurableExecutability("openai");
+  it("openai is accepted; unknown providers are rejected with a suggestion", () => {
+    expect(checkDurableExecutability("openai").ok).toBe(true);
+    const r = checkDurableExecutability("midjourney" as never);
     expect(r.ok).toBe(false);
-    expect(r.reason).toMatch(/OpenAI/);
-    expect(r.suggestion).toBe("gemini");
+    expect(r.suggestion).toBe("auto");
   });
 });
 

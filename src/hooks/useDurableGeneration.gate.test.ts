@@ -1,10 +1,10 @@
 /**
  * Turn 1 gate — durable dispatch:
- *   1. OpenAI is rejected BEFORE the idempotency key is written to
+ *   1. An unsupported provider is rejected BEFORE the idempotency key is written to
  *      localStorage AND BEFORE `create_generation_job` is called AND
  *      BEFORE a Supabase function is invoked.
  *   2. A subsequent Gemini call is not blocked by any stale state left
- *      over from the rejected OpenAI attempt.
+ *      over from the rejected attempt.
  *
  * These tests target the pure boundary logic. The `useDurableGeneration`
  * hook wraps a small set of Supabase calls — we mock the client so the
@@ -51,7 +51,7 @@ beforeEach(() => {
 });
 
 describe("useDurableGeneration executability gate", () => {
-  it("OpenAI is rejected BEFORE idempotency key write, RPC, and function invoke", async () => {
+  it("an unsupported provider is rejected BEFORE idempotency key write, RPC, and function invoke", async () => {
     rpc.mockResolvedValue({ data: null, error: null });
     invoke.mockResolvedValue({ data: null, error: null });
 
@@ -64,10 +64,10 @@ describe("useDurableGeneration executability gate", () => {
           aspectRatio: "5:7",
           backgroundStyle: "white",
           generationMode: "standard",
-          providerPreference: "openai",
+          providerPreference: "midjourney" as never,
         });
       }),
-    ).rejects.toThrow(/OpenAI/);
+    ).rejects.toThrow(/not available for background generation/);
 
     expect(rpc).not.toHaveBeenCalled();
     expect(invoke).not.toHaveBeenCalled();
@@ -75,10 +75,10 @@ describe("useDurableGeneration executability gate", () => {
     expect(window.localStorage.getItem(currentJobKey(STYLE))).toBeNull();
   });
 
-  it("a valid Gemini call immediately after rejected OpenAI is not blocked by stale state", async () => {
+  it("a valid Gemini call immediately after a rejected provider is not blocked by stale state", async () => {
     const { result } = renderHook(() => useDurableGeneration({ styleKey: STYLE }));
 
-    // First: rejected OpenAI.
+    // First: rejected unsupported provider.
     await expect(
       act(async () => {
         await result.current.start({
@@ -86,7 +86,7 @@ describe("useDurableGeneration executability gate", () => {
           aspectRatio: "5:7",
           backgroundStyle: "white",
           generationMode: "standard",
-          providerPreference: "openai",
+          providerPreference: "midjourney" as never,
         });
       }),
     ).rejects.toThrow();
