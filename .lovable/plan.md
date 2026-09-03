@@ -111,4 +111,4 @@ No migration, no new secrets (reuses `REPLICATE_API_TOKEN`), no Topaz/premium, n
 
 ## Manual smoke test after merge
 
-Generate one Large (1600×2240) SDXL image, open Enhance: Normal must show Unavailable with the MP explanation, Auto must show "Will use: Large-image Real-ESRGAN"; run it at 2× and confirm a 3200×4480 enhanced master is saved with the original intact.
+Generate one Large (1440×2016) SDXL image, open Enhance: Normal must show Unavailable with the MP explanation, Auto must show "Will use: Large-image Real-ESRGAN"; run it at 2× and confirm a 2880×4032 enhanced master is saved with the original intact.
