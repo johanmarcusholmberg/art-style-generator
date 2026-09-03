@@ -81,7 +81,7 @@ The dialog shows "Will use: …" for Auto.
 Inside the existing `EnhanceForPrintDialog` (no new dialog):
 
 - **Upscaler** list: Auto (with resolved model), Normal Real-ESRGAN, Large-image Real-ESRGAN, Clarity — each with one-line description and an Available/Unavailable state.
-- Compact readout: `Source 1600 × 2240 · 3.58 MP` / `Selected …` / `Scale 2×` / `Output 3200 × 4480 · 14.34 MP`.
+- Compact readout: `Source 1440 × 2016 · 2.90 MP` / `Selected …` / `Scale 2×` / `Output 2880 × 4032 · 11.61 MP`.
 - Scale defaults to the smallest factor that reaches the print target (reusing `calculatePrintTargetUpscale`), not a blind 4×/8×.
 - Model IDs and raw payload details move under the existing collapsible **Technical details**.
 - Failure state becomes actionable: friendly reason, source MP, the limit, recommended and alternative upscalers, plus a **Copy diagnostic** button.
