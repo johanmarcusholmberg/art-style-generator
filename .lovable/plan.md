@@ -1,50 +1,99 @@
-# Variant Fan-Out (Pick-Best)
+# SDXL Size Choice + Multi-Upscaler Routing
 
-Generate 4 variants from the same prompt + style in parallel, present them in a 2×2 picker, and let you keep the winner(s). Reuses existing generation routing — no provider, prompt, or upscale behavior changes.
+## What exists today (verified)
 
-## Why
-Single-shot generation is hit-or-miss for poster quality. Running 4 variants at once raises the chance one survives 300 PPI export without adding manual re-roll churn.
+- SDXL generation goes: `ImageGenerator` → `generation-providers/replicate.ts` → `generate-image-direct-replicate`. The edge function already accepts a `requestedWidth`/`requestedHeight` override, but clamps both to **max 2048** and multiples of 8. Sizes otherwise come from `provider-print-sizing.ts` / `provider-size-map.ts`.
+- Upscale goes through `EnhanceForPrintDialog` → `useUpscale` → either `upscale-image-replicate` (sync Real-ESRGAN, hardcoded single model version) or `upscale-image` (async Clarity, `upscale_jobs` + webhook).
+- Mode registry is `src/lib/upscale-modes.ts`; recipes/recommendation live in `upscale-recipes.ts`, `upscale-recommendation.ts`, `print-target-upscale.ts`, `manual-upscale.ts`.
+- There is **no input-pixel preflight anywhere** — the "too large" case is only caught after Replicate rejects it, and is turned into a friendly string in `upscale-image-replicate`.
+- `upscale_jobs` has a `pipeline` jsonb column plus `replicate_prediction_id` and `error_message` — enough for diagnostics, **no migration needed**.
 
-## UX
+## 1. Two SDXL generation sizes (exact 5:7)
 
-- New "Generate 4 variants" toggle in the generator panel (off by default).
-- When on, clicking Generate fires 4 concurrent calls through the existing router with the same inputs (prompt, style, aspect, background, print mode, format).
-- Live 2×2 grid below the prompt:
-  - Each tile shows a skeleton → image as it arrives.
-  - Per-tile badges: provider, route, effective PPI (for the current print format), cost.
-  - Per-tile actions: **Keep** (saves to gallery via existing save path), **Discard** (removes from local state), **Open** (lightbox).
-- "Keep all" and "Discard all" buttons above the grid.
-- Failures show inline error + "Retry this tile" (only that one re-runs).
-- Variants are NOT auto-saved. Only kept tiles persist (mirrors existing single-image behavior so we don't bloat the gallery).
+New tiny module `src/lib/sdxl-generation-size.ts`:
 
-## Scope guards
-- Single-image flow remains the default and is untouched.
-- No changes to `generation-router`, edge functions, or provider adapters.
-- No new prompt-history rows for discarded tiles; only kept ones save (and thereby record history via existing path).
-- No upscale auto-trigger; user upscales kept tiles manually like today.
-- Hard cap: 4 variants, no user-configurable count (keeps cost predictable).
+- `small`: **1200 × 1680** — exact 5:7, 2,016,000 px, under the observed Real-ESRGAN ceiling of 2,096,704 px. Label "Small — Normal upscale", helper "Optimized for Normal Real-ESRGAN."
+- `large`: **1600 × 2240** — exact 5:7, 3,584,000 px. Label "Large — High detail", helper "Higher-detail source. Requires an upscaler that supports larger images."
+- Both are multiples of 8 and asserted `w*5 === h*... ` (exact ratio test in a unit test).
+- Default: **Small**.
 
-## Files
+Wiring:
+- Radio selector rendered in the generator controls only when the SDXL provider is active (in `ModelSelector`/generator controls area, one small block — no extra settings).
+- The chosen size is passed as `requestedWidth`/`requestedHeight` through the existing normalized request → `generateWithReplicateAdapter` → edge function override path (it takes precedence over the format map).
+- Raise the edge-function override clamp from 2048 to 2304 so 2240 is accepted; keep multiple-of-8 and lower bound.
 
-**New**
-- `src/features/generation/useVariantFanOut.ts` — hook owning the 4-slot state array `{ id, status, result?, error? }`, kicks off 4 parallel `generateImage` calls, exposes `start`, `retryOne`, `discard`, `discardAll`.
-- `src/features/generation/VariantGrid.tsx` — 2×2 responsive grid (stacks on mobile) rendering tiles with badges and actions. Reuses `GeneratorBadge`, `RouteBadge`, `PrintQualityIndicator`.
-- `src/features/generation/useVariantFanOut.test.ts` — unit tests for the hook (mocked router): 4 parallel starts, partial failure handling, retryOne isolation, discard semantics.
+## 2. Upscaler registry (one small source of truth)
 
-**Edited**
-- `src/components/ImageGenerator.tsx` — add the toggle, branch to `VariantGrid` when on, wire save-on-keep through existing `useSaveGeneratedImage`.
+New `src/lib/upscalers.ts` with a mirrored Deno copy `supabase/functions/_shared/upscalers.ts` (kept in sync by a parity test, same pattern already used for executable providers):
 
-## Tests
-- Hook tests above (4 cases).
-- Run full vitest suite; target: previous 94 passing + 4 new = 98.
+| id | label | route | maxInputPixels | large-image | notes |
+|---|---|---|---|---|---|
+| `realesrgan_normal` | Normal Real-ESRGAN | existing sync `upscale-image-replicate` | 2,096,704 | no | fast, cheap |
+| `realesrgan_large` | Large-image Real-ESRGAN | same edge fn, new model branch | ~16 MP | yes | A100 deployment |
+| `clarity` | Clarity | existing async `upscale-image` (`clarity_dynamic`) | ~16 MP | yes | tiled, generative |
 
-## Out of scope
-- Variant diffing/comparison overlay.
-- Server-side batching (the existing client-side parallel calls are enough at N=4).
-- Cost cap UI / spend guard (existing cost dashboard already surfaces this).
-- Auto-pick by quality heuristic.
+Fields: `id, label, description, provider, model, enabled, maxInputPixels, minScale, maxScale, supportsLargeImages, tiled, async, speed, cost`. No premium/Topaz for now — the registry leaves room to add one entry later.
 
-## Limitations
-- 4 concurrent provider calls = ~4× cost per generate click when toggled on. The toggle's helper text will say so.
-- If the provider rate-limits, some tiles will fail; user retries them individually.
-- Effective PPI badge requires a chosen print format; without one, tiles show resolution only.
+**Large-image model:** `daanelson/real-esrgan-a100` — same Real-ESRGAN fork as the current model but deployed on an A100 80 GB, so the GPU-memory rejection does not apply; identical `image` + `scale`/`face_enhance` inputs, so the existing call code is reused. It will be called via Replicate's model endpoint `POST /v1/models/daanelson/real-esrgan-a100/predictions` (latest version, no hardcoded hash to go stale). Its real input schema and large-image behaviour get confirmed against the live API during implementation before the branch is finalised; if it does not behave, the fallback is Clarity and the registry entry is marked disabled with the finding reported.
+
+Existing mode ids (`realesrgan_4x`, `clarity_dynamic`, `print_target_300`) stay as the routing/storage tags so history and cost views keep working; the registry maps id → mode.
+
+## 3. Preflight + hard blocking
+
+New pure `src/lib/upscale-preflight.ts` (mirrored minimal copy on the server):
+
+```
+preflightUpscale({ width, height, upscalerId, scale }) ->
+  { sourcePixels, sourceMP, projectedWidth, projectedHeight, projectedMP,
+    eligible, reason }
+```
+
+- Eligibility always uses **actual source pixel dimensions**, never the generation-size choice.
+- Frontend: ineligible upscalers render disabled with the explanation ("This source is 3.58 MP. Normal Real-ESRGAN supports approximately 2 MP in the current configuration."), and `useUpscale` throws before invoking Supabase if a caller passes an ineligible combination.
+- Backend: `upscale-image-replicate` and `upscale-image` run the same check (source dimensions probed from the image bytes as they already do for output) and return 400 with the reason instead of calling Replicate.
+- No silent downscaling and no silent model substitution on a manual choice.
+
+## 4. Auto routing (deterministic)
+
+`chooseAutoUpscaler(sourcePixels)`:
+- fits Normal → `realesrgan_normal`
+- otherwise → `realesrgan_large`
+- Clarity is never chosen automatically.
+
+The dialog shows "Will use: …" for Auto.
+
+## 5. Enhance dialog UI
+
+Inside the existing `EnhanceForPrintDialog` (no new dialog):
+
+- **Upscaler** list: Auto (with resolved model), Normal Real-ESRGAN, Large-image Real-ESRGAN, Clarity — each with one-line description and an Available/Unavailable state.
+- Compact readout: `Source 1600 × 2240 · 3.58 MP` / `Selected …` / `Scale 2×` / `Output 3200 × 4480 · 14.34 MP`.
+- Scale defaults to the smallest factor that reaches the print target (reusing `calculatePrintTargetUpscale`), not a blind 4×/8×.
+- Model IDs and raw payload details move under the existing collapsible **Technical details**.
+- Failure state becomes actionable: friendly reason, source MP, the limit, recommended and alternative upscalers, plus a **Copy diagnostic** button.
+
+## 6. Diagnostics
+
+- One diagnostic record per attempt: upscale id, timestamp, upscaler, provider, model, source w/h/px/MP, requested scale, projected w/h/MP, preflight result + reason, Replicate prediction id, provider status, `rawProviderError`, `friendlyError`, elapsed ms, whether Auto routed, final status.
+- Stored in the existing `upscale_jobs.pipeline` jsonb for async runs and returned in the response body for sync runs; also `console.log`ged as one structured line per attempt in both edge functions.
+- Raw provider text is always preserved alongside the friendly message.
+- `Copy diagnostic` builds the compact text block and passes it through the existing `src/lib/debug-sanitize.ts` helper (keys, auth headers, signed URLs).
+- Original/base assets are untouched on failure — the existing enhanced-master write only happens on success; no change to that behaviour.
+
+## 7. Tests (all mocked, no paid calls)
+
+- 5:7 exactness + exact pixel values for both SDXL sizes; adapter body carries the selected `requestedWidth/Height`; no other custom size leaks through.
+- Normal eligibility: 1200×1680 eligible; 1600×2240 not; exact boundary and boundary+1; ineligible request blocked before provider call (frontend and server helper).
+- Auto routing for both cases; Clarity never auto-selected.
+- Large-image payload: correct image, scale, model endpoint.
+- Failure path: mocked Replicate failure preserves raw error, produces friendly error, keeps prediction id, leaves the original asset untouched.
+- Projected-dimension math.
+- Frontend/backend registry parity.
+
+## Not included
+
+No migration, no new secrets (reuses `REPLICATE_API_TOKEN`), no Topaz/premium, no roles/quotas/observability service, no unrelated refactors.
+
+## Manual smoke test after merge
+
+Generate one Large (1600×2240) SDXL image, open Enhance: Normal must show Unavailable with the MP explanation, Auto must show "Will use: Large-image Real-ESRGAN"; run it at 2× and confirm a 3200×4480 enhanced master is saved with the original intact.
