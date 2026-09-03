@@ -96,8 +96,9 @@ Inside the existing `EnhanceForPrintDialog` (no new dialog):
 
 ## 7. Tests (all mocked, no paid calls)
 
-- 5:7 exactness + exact pixel values for both SDXL sizes; adapter body carries the selected `requestedWidth/Height`; no other custom size leaks through.
-- Normal eligibility: 1200×1680 eligible; 1600×2240 not; exact boundary and boundary+1; ineligible request blocked before provider call (frontend and server helper).
+- 5:7 exactness (`w*7 === h*5`, both multiples of 8) and exact pixel values for both presets; adapter body carries the selected `requestedWidth/Height`, the preset wins over `resolveAdapterSizingOverrides`, and no other custom size leaks through.
+- Sizing telemetry: preset runs report `sizeSource = sdxl_preset_small|sdxl_preset_large`, `providerExactMatch = true`, `providerAdjusted = false`, and echo the dimensions actually sent.
+- Normal eligibility: 1200×1680 eligible; 1440×2016 not; exact boundary and boundary+1; ineligible request blocked before provider call (frontend and server helper).
 - Auto routing for both cases; Clarity never auto-selected.
 - Large-image payload: correct image, scale, model endpoint.
 - Failure path: mocked Replicate failure preserves raw error, produces friendly error, keeps prediction id, leaves the original asset untouched.
