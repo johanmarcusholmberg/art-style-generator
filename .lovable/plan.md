@@ -63,7 +63,7 @@ preflightUpscale({ width, height, upscalerId, scale }) ->
 ```
 
 - Eligibility always uses **actual source pixel dimensions**, never the generation-size choice.
-- Frontend: ineligible upscalers render disabled with the explanation ("This source is 3.58 MP. Normal Real-ESRGAN supports approximately 2 MP in the current configuration."), and `useUpscale` throws before invoking Supabase if a caller passes an ineligible combination.
+- Frontend: ineligible upscalers render disabled with the explanation ("This source is 2.90 MP. Normal Real-ESRGAN supports approximately 2 MP in the current configuration."), and `useUpscale` throws before invoking Supabase if a caller passes an ineligible combination.
 - Backend: `upscale-image-replicate` and `upscale-image` run the same check (source dimensions probed from the image bytes as they already do for output) and return 400 with the reason instead of calling Replicate.
 - No silent downscaling and no silent model substitution on a manual choice.
 
