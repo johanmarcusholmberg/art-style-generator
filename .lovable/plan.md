@@ -13,14 +13,28 @@
 New tiny module `src/lib/sdxl-generation-size.ts`:
 
 - `small`: **1200 × 1680** — exact 5:7, 2,016,000 px, under the observed Real-ESRGAN ceiling of 2,096,704 px. Label "Small — Normal upscale", helper "Optimized for Normal Real-ESRGAN."
-- `large`: **1600 × 2240** — exact 5:7, 3,584,000 px. Label "Large — High detail", helper "Higher-detail source. Requires an upscaler that supports larger images."
-- Both are multiples of 8 and asserted `w*5 === h*... ` (exact ratio test in a unit test).
+- `large`: **1440 × 2016** — exact 5:7, 2,903,040 px (2.90 MP). Label "Large — High detail", helper "Higher-detail source. Requires an upscaler that supports larger images."
+- Validation (unit-tested for both presets): `width * 7 === height * 5`, and both dimensions multiples of 8.
 - Default: **Small**.
 
-Wiring:
-- Radio selector rendered in the generator controls only when the SDXL provider is active (in `ModelSelector`/generator controls area, one small block — no extra settings).
-- The chosen size is passed as `requestedWidth`/`requestedHeight` through the existing normalized request → `generateWithReplicateAdapter` → edge function override path (it takes precedence over the format map).
-- Raise the edge-function override clamp from 2048 to 2304 so 2240 is accepted; keep multiple-of-8 and lower bound.
+**Why 1440 × 2016 and not 1600 × 2240:** the direct SDXL edge function clamps explicit dimensions to 2048 per axis, and the model version pinned in the function (`stability-ai/sdxl`, version `39ed52f2…`) documents 1024 as its native size with no verified guarantee at 2240. There is no read access to the Replicate schema/runtime from this environment to prove 2240 is reliable, so the clamp stays as-is and Large uses the largest exact 5:7 preset that fits it. 2.90 MP is still ~38% above the Normal Real-ESRGAN input ceiling, so it exercises the Large-image upscale route exactly as intended. If the model schema is later verified to support 2240 reliably, bumping Large to 1600 × 2240 is a one-line registry change plus the clamp raise — documented in the final report.
+
+Wiring (explicit priority):
+1. Selected Small/Large SDXL preset → sent as explicit `requestedWidth`/`requestedHeight`.
+2. Any explicit requested dimensions already supplied by the caller.
+3. `resolveAdapterSizingOverrides` (existing resolver) only when no preset was supplied.
+
+`generation-providers/replicate.ts` currently derives dimensions solely through `resolveAdapterSizingOverrides`; it will be updated so a preset takes precedence and also passes a `sizePreset` tag ("small" | "large") for telemetry.
+
+### 1a. Fix sizing telemetry in `generate-image-direct-replicate`
+
+Today the function computes a local `sizeSource = "override"` but returns `sized.source`, and `providerExactMatch` / `providerAdjusted` reflect the discarded format-map calculation instead of the accepted override. Fix so the response is truthful:
+
+- `sizeSource` = `sdxl_preset_small` / `sdxl_preset_large` when a preset was accepted, `override` for a non-preset explicit size, otherwise the resolver's own source.
+- For the two exact presets: `providerExactMatch = true`, `providerAdjusted = false`.
+- `requestedWidth` / `requestedHeight` = the dimensions actually sent to Replicate.
+- Server-side revalidation of preset dimensions with the same `width * 7 === height * 5` and multiple-of-8 rules before accepting them.
+
 
 ## 2. Upscaler registry (one small source of truth)
 
