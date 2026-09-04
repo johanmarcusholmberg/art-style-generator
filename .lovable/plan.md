@@ -129,23 +129,25 @@ New `UpscaleAttemptDiagnostic` type shared by hook, dialog and edge functions:
 ## Files likely to change
 
 - New: `src/lib/sdxl-size-presets.ts`, `supabase/functions/_shared/sdxl-size-presets.ts`, `src/lib/upscalers.ts`, `supabase/functions/_shared/upscalers.ts`, `src/lib/upscale-preflight.ts`, `supabase/functions/_shared/upscale-preflight.ts`, `src/lib/upscale-diagnostics.ts` (+ tests).
-- Edited: `src/lib/generation-contract-v2.ts` and its Deno mirror, `src/components/ImageGenerator.tsx` (+ small preset selector), `src/hooks/useDurableGeneration.ts`, `supabase/functions/generate-single/index.ts`, `supabase/functions/_shared/generators.ts`, `src/lib/generation-providers/replicate.ts`, `supabase/functions/generate-image-direct-replicate/index.ts`, `src/hooks/use-upscale.ts`, `src/components/EnhanceForPrintDialog.tsx`, `supabase/functions/upscale-image-replicate/index.ts`, `supabase/functions/upscale-image/index.ts`.
+- Edited: `src/lib/generation-contract-v2.ts` and its Deno mirror, `src/lib/generation-types.ts`, `src/lib/generation-router.ts`, `src/components/ImageGenerator.tsx` (+ small preset selector), `src/hooks/useDurableGeneration.ts`, `supabase/functions/generate-single/index.ts`, `supabase/functions/_shared/generators.ts`, `src/lib/generation-providers/replicate.ts`, `supabase/functions/generate-image-direct-replicate/index.ts`, `src/lib/generated-image-assets.ts` (remove duplicated cap), `src/hooks/use-upscale.ts`, `src/components/EnhanceForPrintDialog.tsx`, `supabase/functions/upscale-image-replicate/index.ts`, `supabase/functions/upscale-image/index.ts`, `src/lib/generation-replay.ts` (warning only).
 
 ## Tests (all mocked, no paid provider calls)
 
 - Preset geometry: `w*7 === h*5`, multiples of 8, exact pixel values.
 - Durable path carries `sdxlSizePreset` end-to-end into the SDXL runner args.
-- Direct/router path carries the preset and resulting dimensions.
-- Preset scope: applied for SDXL + `print_50x70`; ignored for other formats and other providers.
-- Precedence: preset > explicit dims > resolver.
-- Truthful telemetry on **both** SDXL implementations (source/exact/adjusted/requested dims for preset, explicit and resolver cases).
+- Direct/router path (`NormalizedGenerationRequest` → adapter) carries the preset and resulting dimensions.
+- Preset scope: applied for explicit SDXL + `print_50x70`; ignored for Auto preference, other providers and other formats.
+- Precedence: preset > explicit dims > resolver, from the one shared resolver.
+- Truthful telemetry on **both** SDXL implementations, including recomputed exact/adjusted for the explicit-override case.
+- Small preset (2,016,000 px) is eligible for Normal against the single shared ceiling — regression test for the removed `MAX_REALESRGAN_INPUT_PIXELS`; `estimateUpscaleOutput()` and the registry agree.
 - Normal eligibility: 1200×1680 eligible; 1440×2016 rejected; boundary and boundary+1.
 - Auto: Normal / Large / unavailable; Clarity never auto-selected.
+- `maxInputPixels: null` does not block Clarity; `enabled: false` always blocks.
 - Preflight uses corrected-master dimensions, not the preset or pre-correction dims.
-- Manual choice never substitutes; ineligible manual choice blocked in hook and server helper.
+- Manual choice never substitutes; ineligible manual choice blocked in hook and server helper; legacy `tile_8x` behavior unchanged.
 - A100 payload shape (image, scale, pinned version) with a mocked fetch.
 - Failure path: raw + friendly error, prediction id preserved, original asset untouched.
-- Registry/mirror parity (presets, upscalers, preflight).
+- Registry/mirror parity (presets, upscalers, preflight, contract field list).
 
 ## Remaining assumptions needing live verification
 
