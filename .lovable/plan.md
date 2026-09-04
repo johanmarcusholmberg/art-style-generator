@@ -90,6 +90,7 @@ preflightUpscale({ sourceWidth, sourceHeight, upscalerId, scale })
 ```
 
 - **Capability-state semantics**: `enabled: false` always means unavailable. `maxInputPixels: null` means *no verified hard ceiling* — pixel count alone must not approve or block; the upscaler stays selectable and the provider's own known constraints apply instead (for Clarity: the existing projected-output / long-side safety checks and tiling). Only a numeric `maxInputPixels` produces a pixel-count rejection. `verifiedInputPixels` is a *tested envelope*, not a ceiling: a null `maxInputPixels` never implies that an arbitrarily larger input is safe.
+- **Verified envelope governs Large for both Auto and manual selection.** While `realesrgan_large.maxInputPixels` is `null` and `verifiedInputPixels` is set, that value is the conservative operational eligibility limit: sources above it are blocked (manual too, with the reason shown) until a larger input is verified or a real hard limit is established. Clarity keeps its existing provider-specific constraints and is unaffected.
 - Flow:
   1. **Dialog (advisory)** — previews eligibility from the known source dimensions so options can be greyed out before confirm.
   2. **`useUpscale` (authoritative, frontend)** — runs preflight **after** `preparePosterMaster()`, on the corrected master's real dimensions, and throws before any Supabase invoke if ineligible.
