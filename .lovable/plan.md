@@ -53,7 +53,7 @@ For the override case the discarded resolver result is never reused — exactnes
 
 ### Replay ("Generate again" / "Reuse settings")
 
-`generation-replay.ts` reads persisted `generated_images` columns, and that table has **no generic metadata jsonb** and no size-preset column. The durable job's `result_metadata` (jsonb) can carry `sdxlSizePreset` additively with no migration, but gallery replay does not read it. So: the preset is recorded in durable metadata, and replay from a saved artwork will **not** restore Large — it falls back to the normal resolver path with a `warnings` entry. The preset is never inferred from measured pixel dimensions. Adding a `generated_images` column is out of scope for this phase and reported as a limitation.
+`generation-replay.ts` reads persisted `generated_images` columns, and that table has **no generic metadata jsonb** and no size-preset column. The durable job's `result_metadata` (jsonb) can carry `sdxlSizePreset` additively with no migration, but gallery replay cannot reliably read it. So replay behavior is **unchanged**: it does not restore the preset, adds no warning it can't substantiate, and never infers the preset from measured image dimensions. Recorded as a known limitation; no migration is added for this alone.
 
 ## 2. Two registries, distinct responsibilities
 
@@ -61,11 +61,11 @@ For the override case the discarded resolver result is never reused — exactnes
 
 New `src/lib/upscalers.ts` + Deno mirror `supabase/functions/_shared/upscalers.ts` describe **execution capability only**:
 
-| id | label | route | model | enabled | maxInputPixels | scale range | tiled | async |
-|---|---|---|---|---|---|---|---|---|
-| `realesrgan_normal` | Normal Real-ESRGAN | sync `upscale-image-replicate` | current pinned version | yes | 2,096,704 | 2–8 | no | no |
-| `realesrgan_large` | Large-image Real-ESRGAN | sync `upscale-image-replicate`, new branch | `daanelson/real-esrgan-a100`, version pinned after verification | **starts disabled** | `null` (unknown until verified) | 2–8 | no | no |
-| `clarity` | Clarity | async `upscale-image` (`clarity_dynamic`) | `philz1337x/clarity-upscaler` (existing hash) | yes | `null` | existing | yes | yes |
+| id | label | route | model | enabled | maxInputPixels | verifiedInputPixels | scale range | tiled | async |
+|---|---|---|---|---|---|---|---|---|---|
+| `realesrgan_normal` | Normal Real-ESRGAN | sync `upscale-image-replicate` | current pinned version | yes | 2,096,704 | — | 2–8 | no | no |
+| `realesrgan_large` | Large-image Real-ESRGAN | sync `upscale-image-replicate`, new branch | `daanelson/real-esrgan-a100`, version pinned after verification | **starts disabled** | `null` (no verified hard ceiling) | `2_903_040` after a successful 1440×2016 test, else `null` | 2–8 | no | no |
+| `clarity` | Clarity | async `upscale-image` (`clarity_dynamic`) | `philz1337x/clarity-upscaler` (existing hash) | yes | `null` | — | existing | yes | yes |
 
 Every attempt carries **both** `mode` (workflow tag) and `upscalerId` (execution tag). No capability numbers are duplicated into components or edge functions.
 
@@ -75,7 +75,7 @@ Every attempt carries **both** `mode` (workflow tag) and `upscalerId` (execution
 
 ### Large-image model verification (implementation step 1)
 
-Before enabling `realesrgan_large`: read the live model + version from the Replicate API using the existing `REPLICATE_API_TOKEN`, confirm input field names and scale range, pin the tested version hash, and run one 1440×2016 @2× prediction. This verification is a throwaway script/manual call — **no committed diagnostic endpoint** is added. A successful run proves only "supports at least 2,903,040 input pixels", so `maxInputPixels` stays `null` and the evidence is recorded as `verifiedInputPixels: 2_903_040` in the registry entry/docs. `enabled: true` only after that run succeeds. If Lovable cannot safely perform the live verification, `realesrgan_large.enabled` stays `false`, Clarity stays manual-only, and Auto reports **unavailable** rather than routing to Clarity. The outcome is stated in the final report.
+Before enabling `realesrgan_large`: read the live model + version from the Replicate API using the existing `REPLICATE_API_TOKEN`, confirm input field names and scale range, pin the tested version hash, and run one 1440×2016 @2× prediction. This verification is a throwaway script/manual call — **no committed diagnostic endpoint** is added. The run must also confirm the wall-clock runtime is comfortably inside the synchronous edge-function budget; if it isn't, `realesrgan_large.enabled` stays `false` rather than being forced into an unsafe sync path or triggering a new async architecture in this phase. A successful run proves only "supports at least 2,903,040 input pixels", so `maxInputPixels` stays `null` and the evidence is recorded as `verifiedInputPixels: 2_903_040`. `enabled: true` only after that run succeeds. If Lovable cannot safely perform the live verification, it stays disabled, Clarity stays manual-only, and Auto reports **unavailable** rather than routing to Clarity. The outcome is stated in the final report.
 
 ## 3. Preflight on actual pixels
 
@@ -87,7 +87,7 @@ preflightUpscale({ sourceWidth, sourceHeight, upscalerId, scale })
        eligible, reason, limitPixels | null }
 ```
 
-- **Capability-state semantics**: `enabled: false` always means unavailable. `maxInputPixels: null` means *no verified input-pixel ceiling* — pixel count alone must not approve or block; the upscaler stays selectable and the provider's own known constraints apply instead (for Clarity: the existing projected-output / long-side safety checks and tiling). Only a numeric `maxInputPixels` produces a pixel-count rejection.
+- **Capability-state semantics**: `enabled: false` always means unavailable. `maxInputPixels: null` means *no verified hard ceiling* — pixel count alone must not approve or block; the upscaler stays selectable and the provider's own known constraints apply instead (for Clarity: the existing projected-output / long-side safety checks and tiling). Only a numeric `maxInputPixels` produces a pixel-count rejection. `verifiedInputPixels` is a *tested envelope*, not a ceiling: a null `maxInputPixels` never implies that an arbitrarily larger input is safe.
 - Flow:
   1. **Dialog (advisory)** — previews eligibility from the known source dimensions so options can be greyed out before confirm.
   2. **`useUpscale` (authoritative, frontend)** — runs preflight **after** `preparePosterMaster()`, on the corrected master's real dimensions, and throws before any Supabase invoke if ineligible.
@@ -98,12 +98,12 @@ preflightUpscale({ sourceWidth, sourceHeight, upscalerId, scale })
 
 ## 4. Auto routing
 
-`chooseAutoUpscaler(sourcePixels)`:
+`chooseAutoUpscaler(sourcePixels)` — evaluated on the **actual corrected source**:
 1. Normal eligible → `realesrgan_normal`
-2. else Large enabled **and** eligible → `realesrgan_large`
+2. else Large enabled **and** the source is within its verified envelope (`sourcePixels <= verifiedInputPixels`, or `<= maxInputPixels` once a real hard maximum is established) → `realesrgan_large`
 3. else → **Auto unavailable** (with reason)
 
-Clarity is never chosen automatically. A manual choice is either executed as chosen or blocked — never substituted.
+A source above the verified envelope makes Auto unavailable; Auto never assumes an unbounded input just because `maxInputPixels` is `null`. Clarity is never chosen automatically. A manual choice is either executed as chosen or blocked — never substituted.
 
 ## 5. Enhance dialog lifecycle
 
@@ -122,14 +122,15 @@ New `UpscaleAttemptDiagnostic` type shared by hook, dialog and edge functions:
 `attemptId, startedAt, elapsedMs, mode, upscalerId, autoRouted, provider, model, versionId, sourceWidth/Height/Pixels/MP, requestedScale, projectedWidth/Height/MP, preflightEligible, preflightReason, replicatePredictionId, providerStatus, rawProviderError, friendlyError, finalStatus`.
 
 - `useUpscale` stops collapsing failures into `null`/string: it returns/throws a typed `UpscaleAttemptError` carrying the diagnostic so raw provider text, prediction id and routing survive to the UI.
-- Sync route returns the diagnostic in the response body; async route writes it into `upscale_jobs.pipeline`. Both log one structured line per attempt.
+- Sync route returns the diagnostic in the response body. Async route (`upscale-image` **and** `upscale-webhook`) **merges** diagnostic state into the existing `upscale_jobs.pipeline` object at every transition — processing, success, failure, cancellation, and output-persistence failure — preserving existing pipeline fields rather than overwriting them. The terminal job row must still carry the final raw provider error, friendly error, prediction id, elapsed time, final status and the rest of the attempt fields.
+- `useUpscale` reads that terminal diagnostic and surfaces a typed failure instead of resolving `null`. Both routes log one structured line per attempt.
 - `Copy diagnostic` renders the compact text block through the existing `src/lib/debug-sanitize.ts` (keys, auth headers, signed URLs).
 - Original/base asset is untouched on failure — the enhanced-master write still only happens on success.
 
 ## Files likely to change
 
 - New: `src/lib/sdxl-size-presets.ts`, `supabase/functions/_shared/sdxl-size-presets.ts`, `src/lib/upscalers.ts`, `supabase/functions/_shared/upscalers.ts`, `src/lib/upscale-preflight.ts`, `supabase/functions/_shared/upscale-preflight.ts`, `src/lib/upscale-diagnostics.ts` (+ tests).
-- Edited: `src/lib/generation-contract-v2.ts` and its Deno mirror, `src/lib/generation-types.ts`, `src/lib/generation-router.ts`, `src/components/ImageGenerator.tsx` (+ small preset selector), `src/hooks/useDurableGeneration.ts`, `supabase/functions/generate-single/index.ts`, `supabase/functions/_shared/generators.ts`, `src/lib/generation-providers/replicate.ts`, `supabase/functions/generate-image-direct-replicate/index.ts`, `src/lib/generated-image-assets.ts` (remove duplicated cap), `src/hooks/use-upscale.ts`, `src/components/EnhanceForPrintDialog.tsx`, `supabase/functions/upscale-image-replicate/index.ts`, `supabase/functions/upscale-image/index.ts`, `src/lib/generation-replay.ts` (warning only).
+- Edited: `src/lib/generation-contract-v2.ts` and its Deno mirror, `src/lib/generation-types.ts`, `src/lib/generation-router.ts`, `src/components/ImageGenerator.tsx` (+ small preset selector), `src/hooks/useDurableGeneration.ts`, `supabase/functions/generate-single/index.ts`, `supabase/functions/_shared/generators.ts`, `src/lib/generation-providers/replicate.ts`, `supabase/functions/generate-image-direct-replicate/index.ts`, `src/lib/generated-image-assets.ts` (remove duplicated cap), `src/hooks/use-upscale.ts`, `src/components/EnhanceForPrintDialog.tsx`, `supabase/functions/upscale-image-replicate/index.ts`, `supabase/functions/upscale-image/index.ts`, `supabase/functions/upscale-webhook/index.ts`.
 
 ## Tests (all mocked, no paid provider calls)
 
@@ -141,12 +142,13 @@ New `UpscaleAttemptDiagnostic` type shared by hook, dialog and edge functions:
 - Truthful telemetry on **both** SDXL implementations, including recomputed exact/adjusted for the explicit-override case.
 - Small preset (2,016,000 px) is eligible for Normal against the single shared ceiling — regression test for the removed `MAX_REALESRGAN_INPUT_PIXELS`; `estimateUpscaleOutput()` and the registry agree.
 - Normal eligibility: 1200×1680 eligible; 1440×2016 rejected; boundary and boundary+1.
-- Auto: Normal / Large / unavailable; Clarity never auto-selected.
+- Auto: Normal / Large / unavailable; a source above Large's `verifiedInputPixels` makes Auto unavailable; Clarity never auto-selected.
 - `maxInputPixels: null` does not block Clarity; `enabled: false` always blocks.
 - Preflight uses corrected-master dimensions, not the preset or pre-correction dims.
 - Manual choice never substitutes; ineligible manual choice blocked in hook and server helper; legacy `tile_8x` behavior unchanged.
 - A100 payload shape (image, scale, pinned version) with a mocked fetch.
 - Failure path: raw + friendly error, prediction id preserved, original asset untouched.
+- Webhook diagnostics: `upscale_jobs.pipeline` merge preserves pre-existing fields across processing / success / failure / cancellation / output-persistence failure, and the terminal row carries the final attempt fields.
 - Registry/mirror parity (presets, upscalers, preflight, contract field list).
 
 ## Remaining assumptions needing live verification
