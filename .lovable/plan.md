@@ -122,14 +122,15 @@ New `UpscaleAttemptDiagnostic` type shared by hook, dialog and edge functions:
 `attemptId, startedAt, elapsedMs, mode, upscalerId, autoRouted, provider, model, versionId, sourceWidth/Height/Pixels/MP, requestedScale, projectedWidth/Height/MP, preflightEligible, preflightReason, replicatePredictionId, providerStatus, rawProviderError, friendlyError, finalStatus`.
 
 - `useUpscale` stops collapsing failures into `null`/string: it returns/throws a typed `UpscaleAttemptError` carrying the diagnostic so raw provider text, prediction id and routing survive to the UI.
-- Sync route returns the diagnostic in the response body; async route writes it into `upscale_jobs.pipeline`. Both log one structured line per attempt.
+- Sync route returns the diagnostic in the response body. Async route (`upscale-image` **and** `upscale-webhook`) **merges** diagnostic state into the existing `upscale_jobs.pipeline` object at every transition — processing, success, failure, cancellation, and output-persistence failure — preserving existing pipeline fields rather than overwriting them. The terminal job row must still carry the final raw provider error, friendly error, prediction id, elapsed time, final status and the rest of the attempt fields.
+- `useUpscale` reads that terminal diagnostic and surfaces a typed failure instead of resolving `null`. Both routes log one structured line per attempt.
 - `Copy diagnostic` renders the compact text block through the existing `src/lib/debug-sanitize.ts` (keys, auth headers, signed URLs).
 - Original/base asset is untouched on failure — the enhanced-master write still only happens on success.
 
 ## Files likely to change
 
 - New: `src/lib/sdxl-size-presets.ts`, `supabase/functions/_shared/sdxl-size-presets.ts`, `src/lib/upscalers.ts`, `supabase/functions/_shared/upscalers.ts`, `src/lib/upscale-preflight.ts`, `supabase/functions/_shared/upscale-preflight.ts`, `src/lib/upscale-diagnostics.ts` (+ tests).
-- Edited: `src/lib/generation-contract-v2.ts` and its Deno mirror, `src/lib/generation-types.ts`, `src/lib/generation-router.ts`, `src/components/ImageGenerator.tsx` (+ small preset selector), `src/hooks/useDurableGeneration.ts`, `supabase/functions/generate-single/index.ts`, `supabase/functions/_shared/generators.ts`, `src/lib/generation-providers/replicate.ts`, `supabase/functions/generate-image-direct-replicate/index.ts`, `src/lib/generated-image-assets.ts` (remove duplicated cap), `src/hooks/use-upscale.ts`, `src/components/EnhanceForPrintDialog.tsx`, `supabase/functions/upscale-image-replicate/index.ts`, `supabase/functions/upscale-image/index.ts`, `src/lib/generation-replay.ts` (warning only).
+- Edited: `src/lib/generation-contract-v2.ts` and its Deno mirror, `src/lib/generation-types.ts`, `src/lib/generation-router.ts`, `src/components/ImageGenerator.tsx` (+ small preset selector), `src/hooks/useDurableGeneration.ts`, `supabase/functions/generate-single/index.ts`, `supabase/functions/_shared/generators.ts`, `src/lib/generation-providers/replicate.ts`, `supabase/functions/generate-image-direct-replicate/index.ts`, `src/lib/generated-image-assets.ts` (remove duplicated cap), `src/hooks/use-upscale.ts`, `src/components/EnhanceForPrintDialog.tsx`, `supabase/functions/upscale-image-replicate/index.ts`, `supabase/functions/upscale-image/index.ts`, `supabase/functions/upscale-webhook/index.ts`.
 
 ## Tests (all mocked, no paid provider calls)
 
