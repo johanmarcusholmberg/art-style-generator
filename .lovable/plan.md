@@ -18,7 +18,7 @@ New shared module `src/lib/sdxl-size-presets.ts` + Deno mirror `supabase/functio
 - `large`: **1440 × 2016** — "Large — High detail" / "Higher-detail source. Requires an upscaler that supports larger images." (2.90 MP)
 - Exactness rule: `width * 7 === height * 5` and both dimensions `% 8 === 0`, asserted in tests.
 - **Default: Small.**
-- **Scope: SDXL + `print_50x70` only.** Any other format (A-series, 3:4, square, landscape) ignores the preset entirely and keeps today's ratio-preserving resolver. The selector is hidden when the active provider is not SDXL or the format is not 50×70.
+- **Scope: SDXL + `print_50x70` only, and only when the user explicitly selects SDXL.** With provider preference `auto` the selector is hidden and today's sizing logic applies unchanged (the provider isn't decided yet, so "Large SDXL" must not appear when Auto might run Gemini/OpenAI). Any other format (A-series, 3:4, square, landscape) also ignores the preset and keeps the ratio-preserving resolver.
 
 **Why 1440 × 2016 rather than 1600 × 2240:** both SDXL runners clamp explicit dimensions to 2048 per axis, and the pinned model (`stability-ai/sdxl`, version `39ed52f2…`) is documented at 1024 native with no verified reliability at 2240. There is no way to read the live Replicate schema from this environment, so the safety envelope stays as-is and Large uses the largest exact 5:7 preset that fits it. 2.90 MP is still ~38% over the Normal Real-ESRGAN ceiling, so it exercises the large-image route as intended.
 
