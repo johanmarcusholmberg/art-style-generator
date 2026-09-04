@@ -142,12 +142,13 @@ New `UpscaleAttemptDiagnostic` type shared by hook, dialog and edge functions:
 - Truthful telemetry on **both** SDXL implementations, including recomputed exact/adjusted for the explicit-override case.
 - Small preset (2,016,000 px) is eligible for Normal against the single shared ceiling — regression test for the removed `MAX_REALESRGAN_INPUT_PIXELS`; `estimateUpscaleOutput()` and the registry agree.
 - Normal eligibility: 1200×1680 eligible; 1440×2016 rejected; boundary and boundary+1.
-- Auto: Normal / Large / unavailable; Clarity never auto-selected.
+- Auto: Normal / Large / unavailable; a source above Large's `verifiedInputPixels` makes Auto unavailable; Clarity never auto-selected.
 - `maxInputPixels: null` does not block Clarity; `enabled: false` always blocks.
 - Preflight uses corrected-master dimensions, not the preset or pre-correction dims.
 - Manual choice never substitutes; ineligible manual choice blocked in hook and server helper; legacy `tile_8x` behavior unchanged.
 - A100 payload shape (image, scale, pinned version) with a mocked fetch.
 - Failure path: raw + friendly error, prediction id preserved, original asset untouched.
+- Webhook diagnostics: `upscale_jobs.pipeline` merge preserves pre-existing fields across processing / success / failure / cancellation / output-persistence failure, and the terminal row carries the final attempt fields.
 - Registry/mirror parity (presets, upscalers, preflight, contract field list).
 
 ## Remaining assumptions needing live verification
