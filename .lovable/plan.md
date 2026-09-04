@@ -24,9 +24,9 @@ New shared module `src/lib/sdxl-size-presets.ts` + Deno mirror `supabase/functio
 
 ### One shared size resolver
 
-`resolveSdxlRequestSize({ preset, requestedWidth, requestedHeight, posterFormatId, aspectRatio, sizeIntent })` — one implementation, mirrored for Deno. Priority:
+`resolveSdxlRequestSize({ preset, presetAllowed, requestedWidth, requestedHeight, posterFormatId, aspectRatio, sizeIntent })` — one implementation, mirrored for Deno. `presetAllowed` is explicit input, derived from `providerPreference === "sdxl"` (never inferred inside the resolver): when it is false the preset is ignored entirely, so a stale hidden Large/Small state can never apply under Auto or another provider. Priority:
 
-1. valid preset (explicit SDXL + `print_50x70` + passes the 5:7/multiple-of-8 check)
+1. valid preset (`presetAllowed` + `print_50x70` + passes the 5:7/multiple-of-8 check)
 2. existing explicit `requestedWidth`/`requestedHeight` (current clamp rules)
 3. existing `sdxlSizeForFormat` / `resolveAdapterSizingOverrides`
 
@@ -36,6 +36,8 @@ Returns `{ width, height, sizeSource, preset, exact, adjusted }`. Both `_shared/
 
 - Add `sdxlSizePreset: "small" | "large" | null` to `GenerationRequestV2`, its Deno mirror, and `GENERATION_REQUEST_V2_FIELDS` (additive, nullable, legacy normalization defaults to `null`) — the server must be able to tell "Small preset" from an arbitrary 1200×1680 override.
 - Add the same optional field to `NormalizedGenerationRequest` (`src/lib/generation-types.ts`) and map it in the router, so the direct adapter used by variant fan-out / provider comparison / style compare does not silently lose the setting.
+- **Defense in depth:** request builders omit/clear `sdxlSizePreset` (set `null`) whenever the request is not explicit SDXL — Auto preference, another provider, or a non-`print_50x70` format — so the field never travels with a request that must not honour it.
+- Add `sdxlSizePreset` and `sizeSource` to the durable result-metadata contract: `src/lib/durable-result-metadata.ts` (interface, `DURABLE_RESULT_METADATA_FIELDS`, `reconstructNormalizedResponse`), the Deno mirror (`FIELDS`, `BuildDurableMetadataInput`, `buildDurableResultMetadata`), and the existing parity test. The SDXL provider outcome carries `sizeSource` up from the resolver, and `generate-single` persists both fields into `result_metadata` — this is what makes the telemetry table below observable after the fact.
 - `ImageGenerator` holds the preset state and puts it on both request shapes; `useDurableGeneration.start()` passes it through unchanged; `generate-single` forwards it into the SDXL runner args.
 
 ### Telemetry fix (both SDXL paths)
