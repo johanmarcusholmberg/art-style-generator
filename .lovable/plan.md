@@ -87,14 +87,14 @@ preflightUpscale({ sourceWidth, sourceHeight, upscalerId, scale })
        eligible, reason, limitPixels | null }
 ```
 
-- `maxInputPixels: null` means "unknown" — an unknown limit does not fabricate eligibility; a disabled upscaler is never eligible.
+- **Capability-state semantics**: `enabled: false` always means unavailable. `maxInputPixels: null` means *no verified input-pixel ceiling* — pixel count alone must not approve or block; the upscaler stays selectable and the provider's own known constraints apply instead (for Clarity: the existing projected-output / long-side safety checks and tiling). Only a numeric `maxInputPixels` produces a pixel-count rejection.
 - Flow:
   1. **Dialog (advisory)** — previews eligibility from the known source dimensions so options can be greyed out before confirm.
   2. **`useUpscale` (authoritative, frontend)** — runs preflight **after** `preparePosterMaster()`, on the corrected master's real dimensions, and throws before any Supabase invoke if ineligible.
   3. **Backend** — `upscale-image-replicate` and `upscale-image` re-probe the actual bytes and revalidate, returning 400 with the reason instead of calling Replicate.
 - The generation preset is never used as eligibility truth.
 - Scale still comes from `calculatePrintTargetUpscale` / `planManualUpscale`; preflight only answers "can this upscaler accept this actual source at that scale". No duplicated scale math, no blind 4×/8×.
-- No silent downscaling, no silent model substitution.
+- **Scope of "no silent downscaling/substitution"**: it applies to the new Normal / Large / Clarity selection flow only. The legacy tiled `tile_8x` route keeps its existing pre-downscale/downshift behavior unchanged unless a change is strictly required for compatibility.
 
 ## 4. Auto routing
 
