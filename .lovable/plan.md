@@ -26,31 +26,34 @@ New shared module `src/lib/sdxl-size-presets.ts` + Deno mirror `supabase/functio
 
 `resolveSdxlRequestSize({ preset, requestedWidth, requestedHeight, posterFormatId, aspectRatio, sizeIntent })` — one implementation, mirrored for Deno. Priority:
 
-1. valid preset (SDXL + `print_50x70` + passes the 5:7/multiple-of-8 check)
+1. valid preset (explicit SDXL + `print_50x70` + passes the 5:7/multiple-of-8 check)
 2. existing explicit `requestedWidth`/`requestedHeight` (current clamp rules)
 3. existing `sdxlSizeForFormat` / `resolveAdapterSizingOverrides`
 
-Returns `{ width, height, sizeSource, preset, exact, adjusted }`. No file re-implements the precedence.
+Returns `{ width, height, sizeSource, preset, exact, adjusted }`. Both `_shared/generators.ts` and `generate-image-direct-replicate` call this one function — neither reimplements the precedence.
 
 ### Contract + wiring
 
-- Add `sdxlSizePreset: "small" | "large" | null` to `GenerationRequestV2` and its Deno mirror (additive, nullable, backward compatible; legacy normalization defaults to `null`).
-- `ImageGenerator` holds the preset state and puts it on the V2 request; `useDurableGeneration.start()` passes it through unchanged.
-- `generate-single` forwards it into the SDXL runner args; `_shared/generators.ts` calls the shared resolver.
-- `generation-providers/replicate.ts` calls the same resolver and sends the resulting dimensions plus the preset tag; `generate-image-direct-replicate` re-validates server-side.
+- Add `sdxlSizePreset: "small" | "large" | null` to `GenerationRequestV2`, its Deno mirror, and `GENERATION_REQUEST_V2_FIELDS` (additive, nullable, legacy normalization defaults to `null`) — the server must be able to tell "Small preset" from an arbitrary 1200×1680 override.
+- Add the same optional field to `NormalizedGenerationRequest` (`src/lib/generation-types.ts`) and map it in the router, so the direct adapter used by variant fan-out / provider comparison / style compare does not silently lose the setting.
+- `ImageGenerator` holds the preset state and puts it on both request shapes; `useDurableGeneration.start()` passes it through unchanged; `generate-single` forwards it into the SDXL runner args.
 
 ### Telemetry fix (both SDXL paths)
 
 The response must always describe what was actually sent:
 
-| preset | width×height | sizeSource | providerExactMatch | providerAdjusted |
+| case | width×height | sizeSource | providerExactMatch | providerAdjusted |
 |---|---|---|---|---|
 | small | 1200×1680 | `sdxl_preset_small` | true | false |
 | large | 1440×2016 | `sdxl_preset_large` | true | false |
-| explicit non-preset | as sent | `override` | from resolver | from resolver |
+| explicit non-preset | as sent | `override` | recomputed from the sent dimensions vs. the target format ratio | inverse of that |
 | none | resolver | resolver source | resolver | resolver |
 
-`requestedWidth`/`requestedHeight` always echo the dimensions sent upstream.
+For the override case the discarded resolver result is never reused — exactness is recalculated against the actual dimensions sent. `requestedWidth`/`requestedHeight` always echo the dimensions sent upstream.
+
+### Replay ("Generate again" / "Reuse settings")
+
+`generation-replay.ts` reads persisted `generated_images` columns, and that table has **no generic metadata jsonb** and no size-preset column. The durable job's `result_metadata` (jsonb) can carry `sdxlSizePreset` additively with no migration, but gallery replay does not read it. So: the preset is recorded in durable metadata, and replay from a saved artwork will **not** restore Large — it falls back to the normal resolver path with a `warnings` entry. The preset is never inferred from measured pixel dimensions. Adding a `generated_images` column is out of scope for this phase and reported as a limitation.
 
 ## 2. Two registries, distinct responsibilities
 
