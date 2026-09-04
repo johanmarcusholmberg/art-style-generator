@@ -151,8 +151,10 @@ New `UpscaleAttemptDiagnostic` type shared by hook, dialog and edge functions:
 
 ## Remaining assumptions needing live verification
 
-1. `daanelson/real-esrgan-a100` input schema, pinned version, real input ceiling, and a 1440×2016 @2× run — until verified it ships disabled.
+1. `daanelson/real-esrgan-a100` input schema, pinned version, and a 1440×2016 @2× run — until verified it ships disabled; its true upper input ceiling stays unknown (`maxInputPixels: null`) even after a successful run.
 2. Whether the pinned `stability-ai/sdxl` version reliably supports 1600×2240; unverified, so the 2048 clamp and 1440×2016 Large stand.
+3. The exact Normal Real-ESRGAN ceiling (2,096,704 observed) — re-confirmed during implementation and set as the single registry value.
+4. Saved-artwork replay cannot restore the preset without a new `generated_images` column; reported as a limitation rather than migrated in this phase.
 
 ## Not included
 
