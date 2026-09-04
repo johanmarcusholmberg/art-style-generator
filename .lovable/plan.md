@@ -98,12 +98,12 @@ preflightUpscale({ sourceWidth, sourceHeight, upscalerId, scale })
 
 ## 4. Auto routing
 
-`chooseAutoUpscaler(sourcePixels)`:
+`chooseAutoUpscaler(sourcePixels)` — evaluated on the **actual corrected source**:
 1. Normal eligible → `realesrgan_normal`
-2. else Large enabled **and** eligible → `realesrgan_large`
+2. else Large enabled **and** the source is within its verified envelope (`sourcePixels <= verifiedInputPixels`, or `<= maxInputPixels` once a real hard maximum is established) → `realesrgan_large`
 3. else → **Auto unavailable** (with reason)
 
-Clarity is never chosen automatically. A manual choice is either executed as chosen or blocked — never substituted.
+A source above the verified envelope makes Auto unavailable; Auto never assumes an unbounded input just because `maxInputPixels` is `null`. Clarity is never chosen automatically. A manual choice is either executed as chosen or blocked — never substituted.
 
 ## 5. Enhance dialog lifecycle
 
