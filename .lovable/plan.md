@@ -167,4 +167,9 @@ No migration, no new secrets (reuses `REPLICATE_API_TOKEN`), no Topaz/premium, n
 
 ## Manual smoke test after merge
 
-Generate one Large (1440×2016) SDXL image at 50×70, open Enhance: Normal shows Unavailable with the MP explanation, Auto shows the model it will use (or Unavailable if the A100 route failed verification); run it at 2× and confirm a 2880×4032 enhanced master is saved with the original intact, then force a failure and confirm the dialog stays open with Copy diagnostic.
+Generate one Large (1440×2016) SDXL image at 50×70, then verify both:
+
+1. **Provider capability** — run Large at 2× and confirm a ~2880×4032 enhanced master is saved with the original intact.
+2. **Recommended 50×70 flow** — let `calculatePrintTargetUpscale` drive the scale (≈4.11×) and confirm the result is ≥5906×8268 and ≥300 PPI.
+
+In the dialog, Normal shows Unavailable with the MP explanation and Auto shows the model it will use (or Unavailable if the A100 route failed verification). Finally force a failure and confirm the dialog stays open with Copy diagnostic.
