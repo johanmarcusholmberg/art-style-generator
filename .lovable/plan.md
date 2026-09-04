@@ -61,11 +61,11 @@ For the override case the discarded resolver result is never reused — exactnes
 
 New `src/lib/upscalers.ts` + Deno mirror `supabase/functions/_shared/upscalers.ts` describe **execution capability only**:
 
-| id | label | route | model | enabled | maxInputPixels | scale range | tiled | async |
-|---|---|---|---|---|---|---|---|---|
-| `realesrgan_normal` | Normal Real-ESRGAN | sync `upscale-image-replicate` | current pinned version | yes | 2,096,704 | 2–8 | no | no |
-| `realesrgan_large` | Large-image Real-ESRGAN | sync `upscale-image-replicate`, new branch | `daanelson/real-esrgan-a100`, version pinned after verification | **starts disabled** | `null` (unknown until verified) | 2–8 | no | no |
-| `clarity` | Clarity | async `upscale-image` (`clarity_dynamic`) | `philz1337x/clarity-upscaler` (existing hash) | yes | `null` | existing | yes | yes |
+| id | label | route | model | enabled | maxInputPixels | verifiedInputPixels | scale range | tiled | async |
+|---|---|---|---|---|---|---|---|---|---|
+| `realesrgan_normal` | Normal Real-ESRGAN | sync `upscale-image-replicate` | current pinned version | yes | 2,096,704 | — | 2–8 | no | no |
+| `realesrgan_large` | Large-image Real-ESRGAN | sync `upscale-image-replicate`, new branch | `daanelson/real-esrgan-a100`, version pinned after verification | **starts disabled** | `null` (no verified hard ceiling) | `2_903_040` after a successful 1440×2016 test, else `null` | 2–8 | no | no |
+| `clarity` | Clarity | async `upscale-image` (`clarity_dynamic`) | `philz1337x/clarity-upscaler` (existing hash) | yes | `null` | — | existing | yes | yes |
 
 Every attempt carries **both** `mode` (workflow tag) and `upscalerId` (execution tag). No capability numbers are duplicated into components or edge functions.
 
