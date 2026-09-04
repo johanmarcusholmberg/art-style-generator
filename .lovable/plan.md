@@ -87,7 +87,7 @@ preflightUpscale({ sourceWidth, sourceHeight, upscalerId, scale })
        eligible, reason, limitPixels | null }
 ```
 
-- **Capability-state semantics**: `enabled: false` always means unavailable. `maxInputPixels: null` means *no verified input-pixel ceiling* — pixel count alone must not approve or block; the upscaler stays selectable and the provider's own known constraints apply instead (for Clarity: the existing projected-output / long-side safety checks and tiling). Only a numeric `maxInputPixels` produces a pixel-count rejection.
+- **Capability-state semantics**: `enabled: false` always means unavailable. `maxInputPixels: null` means *no verified hard ceiling* — pixel count alone must not approve or block; the upscaler stays selectable and the provider's own known constraints apply instead (for Clarity: the existing projected-output / long-side safety checks and tiling). Only a numeric `maxInputPixels` produces a pixel-count rejection. `verifiedInputPixels` is a *tested envelope*, not a ceiling: a null `maxInputPixels` never implies that an arbitrarily larger input is safe.
 - Flow:
   1. **Dialog (advisory)** — previews eligibility from the known source dimensions so options can be greyed out before confirm.
   2. **`useUpscale` (authoritative, frontend)** — runs preflight **after** `preparePosterMaster()`, on the corrected master's real dimensions, and throws before any Supabase invoke if ineligible.
