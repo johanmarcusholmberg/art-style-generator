@@ -75,7 +75,9 @@ Every attempt carries **both** `mode` (workflow tag) and `upscalerId` (execution
 
 ### Large-image model verification (implementation step 1)
 
-Before enabling `realesrgan_large`: read the live model + version from the Replicate API using the existing `REPLICATE_API_TOKEN`, confirm input field names and scale range, pin the tested version hash, and run one 1440×2016 @2× prediction. This verification is a throwaway script/manual call — **no committed diagnostic endpoint** is added. The run must also confirm the wall-clock runtime is comfortably inside the synchronous edge-function budget; if it isn't, `realesrgan_large.enabled` stays `false` rather than being forced into an unsafe sync path or triggering a new async architecture in this phase. A successful run proves only "supports at least 2,903,040 input pixels", so `maxInputPixels` stays `null` and the evidence is recorded as `verifiedInputPixels: 2_903_040`. `enabled: true` only after that run succeeds. If Lovable cannot safely perform the live verification, it stays disabled, Clarity stays manual-only, and Auto reports **unavailable** rather than routing to Clarity. The outcome is stated in the final report.
+Before enabling `realesrgan_large`: read the live model + version from the Replicate API using the existing `REPLICATE_API_TOKEN`, confirm input field names and scale range, pin the tested version hash, and run one 1440×2016 @2× prediction. This verification is a throwaway script/manual call — **no committed diagnostic endpoint** is added. The run must also confirm (a) the wall-clock runtime is comfortably inside the synchronous edge-function budget, and (b) the pinned model accepts the **decimal/dynamic scale** the real workflow needs (see below); if either fails, `realesrgan_large.enabled` stays `false` rather than being forced into an unsafe sync path or triggering a new async architecture in this phase. A successful run proves only "supports at least 2,903,040 input pixels", so `maxInputPixels` stays `null` and the evidence is recorded as `verifiedInputPixels: 2_903_040`. `enabled: true` only after that run succeeds. If Lovable cannot safely perform the live verification, it stays disabled, Clarity stays manual-only, and Auto reports **unavailable** rather than routing to Clarity. The outcome is stated in the final report.
+
+**Provider capability ≠ print target.** The 1440×2016 @2× run is only the provider-capability test. The real 50×70 Recommended flow stays owned by `calculatePrintTargetUpscale`, which for a 1440×2016 source requires ≈4.11× to reach 5906×8268 at 300 PPI. Preflight never replaces that calculation; it only answers whether the chosen upscaler can accept that source at that computed scale.
 
 ## 3. Preflight on actual pixels
 
@@ -88,6 +90,7 @@ preflightUpscale({ sourceWidth, sourceHeight, upscalerId, scale })
 ```
 
 - **Capability-state semantics**: `enabled: false` always means unavailable. `maxInputPixels: null` means *no verified hard ceiling* — pixel count alone must not approve or block; the upscaler stays selectable and the provider's own known constraints apply instead (for Clarity: the existing projected-output / long-side safety checks and tiling). Only a numeric `maxInputPixels` produces a pixel-count rejection. `verifiedInputPixels` is a *tested envelope*, not a ceiling: a null `maxInputPixels` never implies that an arbitrarily larger input is safe.
+- **Verified envelope governs Large for both Auto and manual selection.** While `realesrgan_large.maxInputPixels` is `null` and `verifiedInputPixels` is set, that value is the conservative operational eligibility limit: sources above it are blocked (manual too, with the reason shown) until a larger input is verified or a real hard limit is established. Clarity keeps its existing provider-specific constraints and is unaffected.
 - Flow:
   1. **Dialog (advisory)** — previews eligibility from the known source dimensions so options can be greyed out before confirm.
   2. **`useUpscale` (authoritative, frontend)** — runs preflight **after** `preparePosterMaster()`, on the corrected master's real dimensions, and throws before any Supabase invoke if ineligible.
@@ -164,4 +167,9 @@ No migration, no new secrets (reuses `REPLICATE_API_TOKEN`), no Topaz/premium, n
 
 ## Manual smoke test after merge
 
-Generate one Large (1440×2016) SDXL image at 50×70, open Enhance: Normal shows Unavailable with the MP explanation, Auto shows the model it will use (or Unavailable if the A100 route failed verification); run it at 2× and confirm a 2880×4032 enhanced master is saved with the original intact, then force a failure and confirm the dialog stays open with Copy diagnostic.
+Generate one Large (1440×2016) SDXL image at 50×70, then verify both:
+
+1. **Provider capability** — run Large at 2× and confirm a ~2880×4032 enhanced master is saved with the original intact.
+2. **Recommended 50×70 flow** — let `calculatePrintTargetUpscale` drive the scale (≈4.11×) and confirm the result is ≥5906×8268 and ≥300 PPI.
+
+In the dialog, Normal shows Unavailable with the MP explanation and Auto shows the model it will use (or Unavailable if the A100 route failed verification). Finally force a failure and confirm the dialog stays open with Copy diagnostic.
