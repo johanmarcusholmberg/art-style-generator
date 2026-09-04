@@ -69,9 +69,13 @@ New `src/lib/upscalers.ts` + Deno mirror `supabase/functions/_shared/upscalers.t
 
 Every attempt carries **both** `mode` (workflow tag) and `upscalerId` (execution tag). No capability numbers are duplicated into components or edge functions.
 
+### Single Real-ESRGAN input ceiling (conflict to resolve)
+
+`src/lib/generated-image-assets.ts` currently defines `MAX_REALESRGAN_INPUT_PIXELS = 2_000_000` and `estimateUpscaleOutput()` blocks Real-ESRGAN above it. The Small preset is 2,016,000 px, so the old helper would reject exactly the source the new registry calls eligible. Resolution: **delete the duplicated constant** and have `estimateUpscaleOutput()` read `UPSCALERS.realesrgan_normal.maxInputPixels`. One ceiling, one place. (If the observed 2,096,704 figure can't be re-confirmed during implementation, the registry value is set to whatever is confirmed and Small is re-checked against it before shipping — the presets and the ceiling must agree.)
+
 ### Large-image model verification (implementation step 1)
 
-Before enabling `realesrgan_large`: read the live model + version from the Replicate API using the existing `REPLICATE_API_TOKEN` from a temporary edge-function-side check, confirm input field names and scale range, pin the tested version hash, and run one 1440×2016 @2× prediction. Only then set `enabled: true` and record a verified `maxInputPixels`. If verification fails, it stays disabled, Clarity stays manual-only, and Auto reports **unavailable** rather than routing to Clarity. The outcome is documented in the final report.
+Before enabling `realesrgan_large`: read the live model + version from the Replicate API using the existing `REPLICATE_API_TOKEN`, confirm input field names and scale range, pin the tested version hash, and run one 1440×2016 @2× prediction. This verification is a throwaway script/manual call — **no committed diagnostic endpoint** is added. A successful run proves only "supports at least 2,903,040 input pixels", so `maxInputPixels` stays `null` and the evidence is recorded as `verifiedInputPixels: 2_903_040` in the registry entry/docs. `enabled: true` only after that run succeeds. If Lovable cannot safely perform the live verification, `realesrgan_large.enabled` stays `false`, Clarity stays manual-only, and Auto reports **unavailable** rather than routing to Clarity. The outcome is stated in the final report.
 
 ## 3. Preflight on actual pixels
 
