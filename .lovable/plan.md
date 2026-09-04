@@ -53,7 +53,7 @@ For the override case the discarded resolver result is never reused — exactnes
 
 ### Replay ("Generate again" / "Reuse settings")
 
-`generation-replay.ts` reads persisted `generated_images` columns, and that table has **no generic metadata jsonb** and no size-preset column. The durable job's `result_metadata` (jsonb) can carry `sdxlSizePreset` additively with no migration, but gallery replay does not read it. So: the preset is recorded in durable metadata, and replay from a saved artwork will **not** restore Large — it falls back to the normal resolver path with a `warnings` entry. The preset is never inferred from measured pixel dimensions. Adding a `generated_images` column is out of scope for this phase and reported as a limitation.
+`generation-replay.ts` reads persisted `generated_images` columns, and that table has **no generic metadata jsonb** and no size-preset column. The durable job's `result_metadata` (jsonb) can carry `sdxlSizePreset` additively with no migration, but gallery replay cannot reliably read it. So replay behavior is **unchanged**: it does not restore the preset, adds no warning it can't substantiate, and never infers the preset from measured image dimensions. Recorded as a known limitation; no migration is added for this alone.
 
 ## 2. Two registries, distinct responsibilities
 
