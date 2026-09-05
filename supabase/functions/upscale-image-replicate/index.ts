@@ -28,6 +28,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { preflightUpscale } from "../_shared/upscale-preflight.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -245,6 +246,25 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Missing image_url or storage_path" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // Defense in depth: server-side preflight on the ACTUAL input bytes.
+    // The client runs the authoritative check post-correction; this guard
+    // makes sure no ineligible source ever reaches the provider.
+    const inputDims = await fetchImageDimensions(imageUrl);
+    if (inputDims) {
+      const pre = preflightUpscale({
+        sourceWidth: inputDims.width,
+        sourceHeight: inputDims.height,
+        scale,
+        upscalerId: "realesrgan_normal",
+      });
+      if (!pre.ok) {
+        return new Response(
+          JSON.stringify({ error: pre.reason ?? `Upscale blocked (${pre.code}).`, preflight: pre }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
     const t0 = Date.now();
