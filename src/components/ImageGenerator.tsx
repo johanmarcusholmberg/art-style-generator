@@ -1826,6 +1826,29 @@ export default function ImageGenerator({
                 lastUsedProvider={lastProviderUsed}
                 lastFallbackUsed={lastFallbackUsed}
               />
+              {generatorPref === "sdxl" && selectedPrintFormat.id === "print_50x70" && (
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
+                  title="Exact 5:7 SDXL render size for 50×70 posters"
+                >
+                  SDXL size:
+                  {(["small", "large"] as const).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setSdxlSizePreset(p)}
+                      className={
+                        sdxlSizePreset === p
+                          ? "px-1.5 rounded-sm bg-primary/20 text-primary"
+                          : "px-1.5 rounded-sm hover:text-foreground"
+                      }
+                    >
+                      {p === "small" ? "Small 1200×1680" : "Large 1440×2016"}
+                    </button>
+                  ))}
+                </span>
+              )}
+
               {/* Model/quality/strategy popover removed — GeneratorBadge above is the single source of truth for which engine runs. */}
               <span
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
