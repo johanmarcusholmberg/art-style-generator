@@ -226,6 +226,10 @@ export default function ImageGenerator({
   const [generatorPref, setGeneratorPref] = useState<GeneratorPreference>(
     () => initialPreset?.providerPreference ?? loadGeneratorPreference(),
   );
+  // SDXL exact 5:7 size preset. Only meaningful for explicit SDXL + 50×70;
+  // replay never restores or infers it.
+  const [sdxlSizePreset, setSdxlSizePreset] = useState<"small" | "large">("small");
+
   // Phase 3: registry-driven model + quality/strategy selection. UI/request
   // plumbing only — router dispatch still keyed off `generatorPref`.
   const [modelSelection, setModelSelection] = useState<ModelSelectorValue>(() => ({
