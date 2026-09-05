@@ -28,7 +28,6 @@ import {
   type UpscalePreflightResult,
 } from "@/lib/upscale-preflight";
 import type { UpscalerId } from "@/lib/upscalers";
-import { measureImageDimensions } from "@/lib/image-byte-dimensions";
 
 /**
  * Modes that route through the dedicated direct-Replicate edge function
@@ -46,6 +45,23 @@ const DIRECT_REPLICATE_METHOD: Partial<Record<UpscaleMode, ReplicateUpscaleMetho
 };
 
 // Backwards-compatible re-exports (older callers expect these symbols)
+/** Measure the real pixels of an image URL in the browser. */
+async function measureImageUrl(
+  url: string,
+): Promise<{ width: number; height: number }> {
+  return await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () =>
+      resolve({
+        width: img.naturalWidth || img.width,
+        height: img.naturalHeight || img.height,
+      });
+    img.onerror = () => reject(new Error("Could not measure source image."));
+    img.src = url;
+  });
+}
+
 export type UpscaleStatus = UpscaleStage;
 export const UPSCALE_LABELS = UPSCALE_STAGE_LABELS;
 
@@ -229,7 +245,7 @@ export function useUpscale() {
       // ineligible request is blocked with a reason.
       if (actualWidth == null || actualHeight == null) {
         try {
-          const measured = await measureImageDimensions(effectiveSourceUrl);
+          const measured = await measureImageUrl(effectiveSourceUrl);
           actualWidth = measured.width;
           actualHeight = measured.height;
         } catch {
