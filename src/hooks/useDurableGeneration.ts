@@ -61,6 +61,9 @@ export interface StartArgs {
   /** Optional reference image for image-to-image generation. */
   sourceImageUrl?: string | null;
   referenceStrength?: string | null;
+  /** SDXL exact-size preset; only honoured for explicit SDXL + print_50x70. */
+  sdxlSizePreset?: "small" | "large" | null;
+
 }
 
 export interface UseDurableGenerationResult {
