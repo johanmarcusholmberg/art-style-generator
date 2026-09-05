@@ -4,10 +4,13 @@
  * Two opinionated generation sizes for SDXL when the user has explicitly
  * selected SDXL *and* the 50×70 poster format:
  *
- *   - `small` 1200 × 1680 (2.02 MP) — stays inside the Normal Real-ESRGAN
- *     input envelope, so the standard upscale route always works.
- *   - `large` 1440 × 2016 (2.90 MP) — higher-detail source; needs an
- *     upscaler that accepts larger inputs.
+ *   - `small` 1200 × 1680 (2.02 MP) — smaller SDXL source.
+ *   - `large` 1440 × 2016 (2.90 MP) — higher-detail SDXL source.
+ *
+ * These describe GENERATION size only. Upscale eligibility is decided
+ * separately and authoritatively by `src/lib/upscalers.ts` +
+ * `src/lib/upscale-preflight.ts` against the actual corrected master —
+ * never promised here.
  *
  * Both are exact 5:7 (`w * 7 === h * 5`) and multiples of 8, and both fit
  * inside the existing 2048-per-axis SDXL clamp (deliberately unchanged).
@@ -34,17 +37,16 @@ export const SDXL_SIZE_PRESETS: Record<SdxlSizePreset, SdxlSizePresetEntry> = {
     id: "small",
     width: 1200,
     height: 1680,
-    label: "Small — Normal upscale",
-    description: "Optimized for Normal Real-ESRGAN.",
+    label: "Small",
+    description: "Smaller SDXL source.",
     megapixels: (1200 * 1680) / 1_000_000,
   },
   large: {
     id: "large",
     width: 1440,
     height: 2016,
-    label: "Large — High detail",
-    description:
-      "Higher-detail source. Requires an upscaler that supports larger images.",
+    label: "Large",
+    description: "Higher-detail SDXL source.",
     megapixels: (1440 * 2016) / 1_000_000,
   },
 };

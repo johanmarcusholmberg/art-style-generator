@@ -23,6 +23,11 @@ import {
   type ReplicateUpscaleMethod,
 } from "@/lib/upscale-providers/replicate";
 import { isWithinPosterRatio, preparePosterMaster } from "@/lib/poster-master";
+import {
+  preflightUpscale,
+  type UpscalePreflightResult,
+} from "@/lib/upscale-preflight";
+import type { UpscalerId } from "@/lib/upscalers";
 
 /**
  * Modes that route through the dedicated direct-Replicate edge function
@@ -40,6 +45,23 @@ const DIRECT_REPLICATE_METHOD: Partial<Record<UpscaleMode, ReplicateUpscaleMetho
 };
 
 // Backwards-compatible re-exports (older callers expect these symbols)
+/** Measure the real pixels of an image URL in the browser. */
+async function measureImageUrl(
+  url: string,
+): Promise<{ width: number; height: number }> {
+  return await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () =>
+      resolve({
+        width: img.naturalWidth || img.width,
+        height: img.naturalHeight || img.height,
+      });
+    img.onerror = () => reject(new Error("Could not measure source image."));
+    img.src = url;
+  });
+}
+
 export type UpscaleStatus = UpscaleStage;
 export const UPSCALE_LABELS = UPSCALE_STAGE_LABELS;
 
@@ -91,6 +113,14 @@ interface UpscaleOptions {
   sourceWasCorrectedMaster?: boolean;
   /** Optional routing metadata persisted onto the upscale_jobs row. */
   routingMetadata?: Record<string, unknown>;
+  /**
+   * Engine to run. `"auto"` (or omitted) runs the deterministic Auto
+   * selection in `preflightUpscale`. Never silently substituted.
+   */
+  upscalerId?: UpscalerId | "auto" | null;
+  /** Fallback source dimensions when no poster correction runs. */
+  sourceWidth?: number | null;
+  sourceHeight?: number | null;
 }
 
 /**
@@ -108,6 +138,8 @@ export function useUpscale() {
   const [activeMode, setActiveMode] = useState<UpscaleMode>("none");
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<UpscaleJobStatus | null>(null);
+  const [lastPreflight, setLastPreflight] =
+    useState<UpscalePreflightResult | null>(null);
   const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const asyncResolverRef = useRef<((r: UpscaleResult | null) => void) | null>(null);
@@ -133,6 +165,7 @@ export function useUpscale() {
     setActiveMode("none");
     setJobId(null);
     setJobStatus(null);
+    setLastPreflight(null);
   }, [cleanupTimers, cleanupChannel]);
 
   useEffect(() => () => {
@@ -161,6 +194,8 @@ export function useUpscale() {
       // skips the round-trip when the ratio probe passes.
       let effectiveSourceUrl = sourceUrl;
       let sourceWasCorrectedMaster = !!opts?.sourceWasCorrectedMaster;
+      let actualWidth: number | null = opts?.sourceWidth ?? null;
+      let actualHeight: number | null = opts?.sourceHeight ?? null;
       if (opts?.posterFormatId) {
         try {
           const master = await preparePosterMaster({
@@ -169,6 +204,10 @@ export function useUpscale() {
           });
           effectiveSourceUrl = master.masterImageUrl;
           sourceWasCorrectedMaster = true;
+          // AUTHORITATIVE source pixels — measured from the corrected
+          // master we are actually going to send.
+          actualWidth = master.masterWidth;
+          actualHeight = master.masterHeight;
           if (
             !isWithinPosterRatio(
               master.masterWidth,
@@ -197,6 +236,50 @@ export function useUpscale() {
         setStage("failed");
         throw new Error(
           "Upscale blocked: source was not confirmed as a corrected poster master.",
+        );
+      }
+
+      /* ---------- Authoritative upscaler preflight ---------- */
+      // Runs AFTER poster-master correction, on the real pixels of the
+      // bytes we will send. No downscaling, no engine substitution: an
+      // ineligible request is blocked with a reason.
+      if (actualWidth == null || actualHeight == null) {
+        try {
+          const measured = await measureImageUrl(effectiveSourceUrl);
+          actualWidth = measured.width;
+          actualHeight = measured.height;
+        } catch {
+          /* leave unknown — preflight reports it */
+        }
+      }
+
+      const requestedEngine: UpscalerId | null =
+        opts?.upscalerId && opts.upscalerId !== "auto"
+          ? opts.upscalerId
+          : opts?.upscaleFamily === "clarity" ||
+              mode === "clarity_dynamic" ||
+              isAsyncUpscaleMode(mode)
+            ? "clarity"
+            : null;
+
+      const preflightScale =
+        opts?.dynamicScale && opts.dynamicScale > 1
+          ? opts.dynamicScale
+          : UPSCALE_MODES[mode].scaleFactor;
+
+      const preflight = preflightUpscale({
+        sourceWidth: actualWidth,
+        sourceHeight: actualHeight,
+        scale: preflightScale,
+        upscalerId: requestedEngine,
+      });
+      setLastPreflight(preflight);
+      if (!preflight.ok) {
+        cleanupTimers();
+        setStage("failed");
+        throw new Error(
+          preflight.reason ??
+            `Upscale unavailable for this source (${preflight.code}).`,
         );
       }
 
@@ -482,6 +565,8 @@ export function useUpscale() {
     /** Async-only — present while a heavy upscale is running on Replicate */
     jobId,
     jobStatus,
+    /** Result of the last authoritative preflight (post-correction). */
+    lastPreflight,
     upscale,
     runRecommendedUpscale,
     recommendRecipe,
