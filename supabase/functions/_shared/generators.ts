@@ -109,7 +109,18 @@ export interface GenerateArgs {
    * exposes a numeric strength parameter).
    */
   referenceStrength?: ReferenceStrength;
+  /**
+   * SDXL size preset the user picked. Only honoured when
+   * `sdxlPresetAllowed` is true AND the poster format is 50×70.
+   */
+  sdxlSizePreset?: "small" | "large" | null;
+  /**
+   * TRUE only when the user explicitly selected SDXL. Prevents a stale
+   * hidden preset from applying on Auto / another provider.
+   */
+  sdxlPresetAllowed?: boolean;
 }
+
 
 
 // ── Gemini provider (existing path) ─────────────────────────────────────
