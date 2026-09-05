@@ -142,7 +142,7 @@ describe("estimateUpscaleOutput / 12K cap", () => {
       { method: "realesrgan" },
     );
     expect(r.exceedsCap).toBe(true);
-    expect(r.warning).toMatch(/HD 4×|2MP/i);
+    expect(r.warning).toMatch(/input limit of 2.0MP/i);
   });
   it("does NOT apply the realesrgan input cap to tiled mode", () => {
     const r = estimateUpscaleOutput(
