@@ -217,9 +217,11 @@ serve(async (req) => {
         requestedWidth: width,
         requestedHeight: height,
         requestedAspectRatio: aspectRatio ?? null,
-        providerExactMatch: sized.exact,
-        providerAdjusted: !sized.exact,
-        sizeSource: sized.source,
+        providerExactMatch: resolvedSize.exact,
+        providerAdjusted: resolvedSize.adjusted,
+        sizeSource: resolvedSize.sizeSource,
+        sdxlSizePreset: resolvedSize.preset,
+
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
