@@ -125,7 +125,11 @@ serve(async (httpReq) => {
       requestedHeight: req.requestedHeight ?? undefined,
       sizeIntent: req.sizeIntent,
       strictness: (req.strictness as GenerateArgs["strictness"]) ?? undefined,
+      sdxlSizePreset: req.sdxlSizePreset ?? null,
+      // Presets apply ONLY when the user explicitly chose SDXL.
+      sdxlPresetAllowed: req.providerPreference === "sdxl",
     };
+
 
     // OpenAI runs server-side through `generate-image-direct-openai`;
     // every other preference goes through the shared resolver.
@@ -226,6 +230,9 @@ serve(async (httpReq) => {
       requestedAspectRatio: outcome.requestedAspectRatio ?? null,
       providerExactMatch: outcome.providerExactMatch,
       providerAdjusted: outcome.providerAdjusted,
+      sizeSource: outcome.sizeSource ?? null,
+      sdxlSizePreset: outcome.sdxlSizePreset ?? null,
+
       printFormatId: persisted.printFormatId,
 
       printSize: req.printSize,

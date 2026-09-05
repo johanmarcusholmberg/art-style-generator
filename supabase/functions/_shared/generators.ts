@@ -12,7 +12,13 @@ import {
   type Strictness,
 } from "./style-meta.ts";
 import { STYLE_RULES } from "./prompt-compiler.ts";
-import { sdxlSizeForFormat, geminiAspectForFormat } from "./provider-sizing.ts";
+import {
+  sdxlSizeForFormat,
+  geminiAspectForFormat,
+  formatRatioDecimal,
+} from "./provider-sizing.ts";
+import { resolveSdxlRequestSize } from "./sdxl-size-presets.ts";
+
 
 export type ResolvedProviderId = "gemini" | "sdxl";
 export type GeneratorPreference = "auto" | ResolvedProviderId;
@@ -34,7 +40,15 @@ export interface ProviderResult {
   providerExactMatch?: boolean;
   /** True when the provider used an approximate ratio (export must crop). */
   providerAdjusted?: boolean;
+  /**
+   * Truthful record of WHERE the requested size came from:
+   * "sdxl_preset_small" | "sdxl_preset_large" | "override" | resolver source.
+   */
+  sizeSource?: string;
+  /** SDXL size preset actually applied (null when none). */
+  sdxlSizePreset?: "small" | "large" | null;
 }
+
 
 export type ReferenceStrength =
   | "inspiration"
@@ -101,7 +115,18 @@ export interface GenerateArgs {
    * exposes a numeric strength parameter).
    */
   referenceStrength?: ReferenceStrength;
+  /**
+   * SDXL size preset the user picked. Only honoured when
+   * `sdxlPresetAllowed` is true AND the poster format is 50×70.
+   */
+  sdxlSizePreset?: "small" | "large" | null;
+  /**
+   * TRUE only when the user explicitly selected SDXL. Prevents a stale
+   * hidden preset from applying on Auto / another provider.
+   */
+  sdxlPresetAllowed?: boolean;
 }
+
 
 
 // ── Gemini provider (existing path) ─────────────────────────────────────
@@ -241,26 +266,29 @@ export async function generateWithSDXL(args: GenerateArgs): Promise<ProviderResu
       `prompt_len=${compiled.prompt.length} neg_len=${(compiled.negativePrompt ?? "").length}`,
   );
 
-  const sized = sdxlSizeForFormat(args.posterFormatId, args.aspectRatio, args.sizeIntent ?? "standard");
-  let width = sized.width;
-  let height = sized.height;
-  let sizeSource: string = sized.source;
-  // Honor explicit width/height overrides when both are present, valid,
-  // and within SDXL's nativeMaxLongEdge envelope.
-  if (
-    typeof args.requestedWidth === "number" &&
-    typeof args.requestedHeight === "number" &&
-    args.requestedWidth >= 256 && args.requestedWidth <= 2048 &&
-    args.requestedHeight >= 256 && args.requestedHeight <= 2048 &&
-    args.requestedWidth % 8 === 0 && args.requestedHeight % 8 === 0
-  ) {
-    width = args.requestedWidth;
-    height = args.requestedHeight;
-    sizeSource = "override";
-  }
-  console.log(
-    `[sdxl] size=${width}x${height} source=${sizeSource} sizeIntent=${args.sizeIntent ?? "standard"} posterFormatId=${args.posterFormatId ?? "none"} aspectRatio=${args.aspectRatio ?? "none"}`,
+  // ONE shared resolver owns the precedence:
+  //   preset (explicit SDXL + 50×70) > explicit override > existing resolver.
+  const fallbackSize = sdxlSizeForFormat(
+    args.posterFormatId,
+    args.aspectRatio,
+    args.sizeIntent ?? "standard",
   );
+  const resolvedSize = resolveSdxlRequestSize({
+    preset: args.sdxlSizePreset ?? null,
+    presetAllowed: args.sdxlPresetAllowed === true,
+    posterFormatId: args.posterFormatId ?? null,
+    requestedWidth: args.requestedWidth ?? null,
+    requestedHeight: args.requestedHeight ?? null,
+    targetRatio: formatRatioDecimal(args.posterFormatId, args.aspectRatio),
+    fallback: fallbackSize,
+  });
+  const width = resolvedSize.width;
+  const height = resolvedSize.height;
+  const sizeSource = resolvedSize.sizeSource;
+  console.log(
+    `[sdxl] size=${width}x${height} source=${sizeSource} preset=${resolvedSize.preset ?? "none"} exact=${resolvedSize.exact} sizeIntent=${args.sizeIntent ?? "standard"} posterFormatId=${args.posterFormatId ?? "none"} aspectRatio=${args.aspectRatio ?? "none"}`,
+  );
+
 
 
   // Create prediction
@@ -339,8 +367,11 @@ export async function generateWithSDXL(args: GenerateArgs): Promise<ProviderResu
     requestedWidth: width,
     requestedHeight: height,
     requestedAspectRatio: args.aspectRatio,
-    providerExactMatch: sized.exact,
-    providerAdjusted: !sized.exact,
+    providerExactMatch: resolvedSize.exact,
+    providerAdjusted: resolvedSize.adjusted,
+    sizeSource: resolvedSize.sizeSource,
+    sdxlSizePreset: resolvedSize.preset,
+
   };
 }
 

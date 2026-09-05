@@ -64,6 +64,8 @@ describe("GenerationRequestV2 normalization", () => {
       requestedWidth: null,
       requestedHeight: null,
       sizeIntent: "print",
+      sdxlSizePreset: null,
+
       providerLabel: "Gemini Nano Banana",
       matching: null,
     };

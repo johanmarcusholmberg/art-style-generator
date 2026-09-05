@@ -61,6 +61,9 @@ export interface StartArgs {
   /** Optional reference image for image-to-image generation. */
   sourceImageUrl?: string | null;
   referenceStrength?: string | null;
+  /** SDXL exact-size preset; only honoured for explicit SDXL + print_50x70. */
+  sdxlSizePreset?: "small" | "large" | null;
+
 }
 
 export interface UseDurableGenerationResult {
@@ -234,7 +237,15 @@ export function useDurableGeneration(
             targetHeightPx: args.targetHeightPx ?? null,
             mode: styleKey,
             printFormatId: args.printFormatId ?? null,
+            // Defense in depth: never send a stale preset for Auto/other
+            // providers or a non-50×70 format.
+            sdxlSizePreset:
+              (args.providerPreference ?? "auto") === "sdxl" &&
+              (args.printFormatId ?? null) === "print_50x70"
+                ? args.sdxlSizePreset ?? null
+                : null,
           },
+
         ];
 
         const { data, error } = await supabase.rpc("create_generation_job", {

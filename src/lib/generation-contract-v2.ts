@@ -100,6 +100,13 @@ export interface GenerationRequestV2 {
   requestedWidth: number | null;
   requestedHeight: number | null;
   sizeIntent: SizeIntent;
+  /**
+   * SDXL size preset ("small" 1200×1680 / "large" 1440×2016). Only ever
+   * set when the user explicitly selected SDXL AND printFormatId is
+   * `print_50x70`; cleared (null) in every other case as defense in depth.
+   */
+  sdxlSizePreset: "small" | "large" | null;
+
 
   // Display / analytics --------------------------------------------------
   providerLabel: string | null;
@@ -286,7 +293,16 @@ export function normalizeLegacyGenerationRequest(input: unknown): GenerationRequ
       STRING(p.sizeIntent) && SIZE_INTENT_SET.has(p.sizeIntent as SizeIntent)
         ? (p.sizeIntent as SizeIntent)
         : "standard",
+    // Defense in depth: a preset only survives normalization for explicit
+    // SDXL + 50×70. Auto / other providers / other formats get null.
+    sdxlSizePreset:
+      providerPref === "sdxl" &&
+      p.printFormatId === "print_50x70" &&
+      (p.sdxlSizePreset === "small" || p.sdxlSizePreset === "large")
+        ? (p.sdxlSizePreset as "small" | "large")
+        : null,
     providerLabel: STRING(p.providerLabel) ? (p.providerLabel as string) : null,
+
     matching,
   };
   return out;
@@ -323,6 +339,8 @@ export const GENERATION_REQUEST_V2_FIELDS = [
   "requestedWidth",
   "requestedHeight",
   "sizeIntent",
+  "sdxlSizePreset",
   "providerLabel",
+
   "matching",
 ] as const;

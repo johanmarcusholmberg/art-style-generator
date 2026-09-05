@@ -59,6 +59,11 @@ export interface DurableResultMetadataV1 {
   requestedAspectRatio?: string | null;
   providerExactMatch?: boolean;
   providerAdjusted?: boolean;
+  /** Where the requested size came from (preset / override / resolver). */
+  sizeSource?: string | null;
+  /** SDXL size preset applied for this generation, if any. */
+  sdxlSizePreset?: "small" | "large" | null;
+
 
   // ── Print format & sizing ─────────────────────────────────────────────
   printFormatId?: string | null;
@@ -122,6 +127,7 @@ export function reconstructNormalizedResponse(
     requestedAspectRatio: meta.requestedAspectRatio ?? undefined,
     providerExactMatch: meta.providerExactMatch,
     providerAdjusted: meta.providerAdjusted,
+
     requestedModelId: meta.requestedModelId ?? undefined,
     resolvedModelId: meta.resolvedModelId ?? undefined,
     selectedAdapterId: meta.selectedAdapterId ?? undefined,
@@ -130,6 +136,9 @@ export function reconstructNormalizedResponse(
     generationStrategy: meta.generationStrategy ?? undefined,
     metadata: {
       promptVersion: meta.promptVersion ?? null,
+      sizeSource: meta.sizeSource ?? null,
+      sdxlSizePreset: meta.sdxlSizePreset ?? null,
+
       estimatedCost: meta.estimatedCost ?? null,
       currency: meta.currency ?? null,
       bytes: meta.bytes ?? null,
@@ -206,6 +215,9 @@ export const DURABLE_RESULT_METADATA_FIELDS: readonly string[] = [
   "requestedAspectRatio",
   "providerExactMatch",
   "providerAdjusted",
+  "sizeSource",
+  "sdxlSizePreset",
+
   "printFormatId",
   "printSize",
   "qualityMode",

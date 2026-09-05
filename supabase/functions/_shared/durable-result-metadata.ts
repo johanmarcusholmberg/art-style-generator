@@ -38,6 +38,9 @@ export const DURABLE_RESULT_METADATA_FIELDS: readonly string[] = [
   "requestedAspectRatio",
   "providerExactMatch",
   "providerAdjusted",
+  "sizeSource",
+  "sdxlSizePreset",
+
   "printFormatId",
   "printSize",
   "qualityMode",
@@ -77,6 +80,11 @@ export interface BuildDurableMetadataInput {
   requestedAspectRatio?: string | null;
   providerExactMatch?: boolean;
   providerAdjusted?: boolean;
+  /** Where the requested size came from (preset / override / resolver). */
+  sizeSource?: string | null;
+  /** SDXL size preset applied for this generation, if any. */
+  sdxlSizePreset?: "small" | "large" | null;
+
   // From request payload (client-provided at job creation)
   printFormatId?: string | null;
   printSize?: string | null;
@@ -153,6 +161,9 @@ export function buildDurableResultMetadata(
     requestedAspectRatio: input.requestedAspectRatio ?? null,
     providerExactMatch: input.providerExactMatch ?? false,
     providerAdjusted: input.providerAdjusted ?? false,
+    sizeSource: input.sizeSource ?? null,
+    sdxlSizePreset: input.sdxlSizePreset ?? null,
+
     printFormatId: input.printFormatId ?? null,
     printSize: input.printSize ?? null,
     qualityMode: input.qualityMode ?? null,

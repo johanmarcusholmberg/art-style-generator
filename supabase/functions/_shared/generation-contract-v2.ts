@@ -62,7 +62,10 @@ export interface GenerationRequestV2 {
   requestedWidth: number | null;
   requestedHeight: number | null;
   sizeIntent: "preview" | "standard" | "print";
+  /** Only set for explicit SDXL + print_50x70; null everywhere else. */
+  sdxlSizePreset: "small" | "large" | null;
   providerLabel: string | null;
+
   matching: MatchingCollectionContext | null;
 }
 
@@ -95,7 +98,9 @@ export const GENERATION_REQUEST_V2_FIELDS: readonly string[] = [
   "requestedWidth",
   "requestedHeight",
   "sizeIntent",
+  "sdxlSizePreset",
   "providerLabel",
+
   "matching",
 ] as const;
 
@@ -193,7 +198,15 @@ export function normalizeLegacyGenerationRequest(input: unknown): GenerationRequ
     sizeIntent:
       p.sizeIntent === "preview" || p.sizeIntent === "print" ? p.sizeIntent
       : "standard",
+    // Defense in depth (mirrors the client): explicit SDXL + 50×70 only.
+    sdxlSizePreset:
+      p.providerPreference === "sdxl" &&
+      p.printFormatId === "print_50x70" &&
+      (p.sdxlSizePreset === "small" || p.sdxlSizePreset === "large")
+        ? (p.sdxlSizePreset as "small" | "large")
+        : null,
     providerLabel: STRING(p.providerLabel) ? (p.providerLabel as string) : null,
+
     matching,
   };
 }
