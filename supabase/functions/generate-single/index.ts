@@ -230,6 +230,9 @@ serve(async (httpReq) => {
       requestedAspectRatio: outcome.requestedAspectRatio ?? null,
       providerExactMatch: outcome.providerExactMatch,
       providerAdjusted: outcome.providerAdjusted,
+      sizeSource: outcome.sizeSource ?? null,
+      sdxlSizePreset: outcome.sdxlSizePreset ?? null,
+
       printFormatId: persisted.printFormatId,
 
       printSize: req.printSize,
