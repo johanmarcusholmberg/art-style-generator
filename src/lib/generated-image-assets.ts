@@ -11,6 +11,7 @@
  * Existing fields stay untouched; new UI should rely on the asset list.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { UPSCALERS, inputPixelEnvelope } from "@/lib/upscalers";
 
 // ── Types ──────────────────────────────────────────────────────────────
 export type AssetType = "original" | "upscale";
@@ -42,10 +43,8 @@ export interface ImageAsset extends ImageAssetRow {
 // 12 K long-edge hard safety cap for any upscale we initiate.
 export const MAX_LONG_EDGE_PX = 12_000;
 
-// Replicate's Real-ESRGAN worker rejects inputs over ~2.1MP (the exact
-// number from the GPU error is 2_096_704). We keep a small safety margin so
-// the frontend blocks before the round-trip.
-export const MAX_REALESRGAN_INPUT_PIXELS = 2_000_000;
+// Real-ESRGAN input limits live in ONE place: `src/lib/upscalers.ts`.
+// This module reads the registry envelope and never defines its own.
 
 // ── Pure helpers (no I/O, easy to unit test) ───────────────────────────
 
@@ -171,8 +170,11 @@ export function estimateUpscaleOutput(
   // non-tiled HD path; tiled SDXL chunks the input so it isn't limited the
   // same way.
   const inputPixels = source.width_px * source.height_px;
+  const realesrganEnvelope = inputPixelEnvelope(UPSCALERS.realesrgan_normal);
   const exceedsInputCap =
-    opts.method === "realesrgan" && inputPixels > MAX_REALESRGAN_INPUT_PIXELS;
+    opts.method === "realesrgan" &&
+    realesrganEnvelope !== null &&
+    inputPixels > realesrganEnvelope;
 
   const blocked = exceedsCap || exceedsInputCap;
   let warning: string | null = null;
@@ -180,7 +182,8 @@ export function estimateUpscaleOutput(
     warning = `This upscale would exceed the ${MAX_LONG_EDGE_PX.toLocaleString()}px long-edge limit. Choose a smaller source, a lower upscale mode, or export from the best available version.`;
   } else if (exceedsInputCap) {
     const mp = (inputPixels / 1_000_000).toFixed(1);
-    warning = `Selected source is ${mp}MP — too large for HD 4× (limit ~2MP). Pick a smaller version (e.g. Original), or use Tile 4× from this version.`;
+    const limitMp = ((realesrganEnvelope ?? 0) / 1_000_000).toFixed(1);
+    warning = `Selected source is ${mp}MP — above the Real-ESRGAN (Normal) input limit of ${limitMp}MP. Pick a smaller version (e.g. Original), or use a tiled route from this version.`;
   }
   return {
     estimatedLongEdge: longEdge,
