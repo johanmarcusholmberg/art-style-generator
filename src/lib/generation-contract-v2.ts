@@ -100,6 +100,13 @@ export interface GenerationRequestV2 {
   requestedWidth: number | null;
   requestedHeight: number | null;
   sizeIntent: SizeIntent;
+  /**
+   * SDXL size preset ("small" 1200×1680 / "large" 1440×2016). Only ever
+   * set when the user explicitly selected SDXL AND printFormatId is
+   * `print_50x70`; cleared (null) in every other case as defense in depth.
+   */
+  sdxlSizePreset: "small" | "large" | null;
+
 
   // Display / analytics --------------------------------------------------
   providerLabel: string | null;
