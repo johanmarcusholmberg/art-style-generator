@@ -6,7 +6,7 @@ import {
   resolveSdxlRequestSize,
   sdxlPresetApplies,
 } from "@/lib/sdxl-size-presets";
-import { normalizeToV2 } from "@/lib/generation-contract-v2";
+import { normalizeLegacyGenerationRequest as normalizeToV2 } from "@/lib/generation-contract-v2";
 import { preflightUpscale, selectAutoUpscaler } from "@/lib/upscale-preflight";
 
 const FALLBACK = { width: 1344, height: 1888, source: "provider_map", exact: false };
