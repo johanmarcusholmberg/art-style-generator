@@ -63,6 +63,8 @@ import {
   calculatePrintTargetUpscale,
   type PrintTargetUpscalePlan,
 } from "@/lib/print-target-upscale";
+import { preflightUpscale } from "@/lib/upscale-preflight";
+import { UPSCALERS, type UpscalerId } from "@/lib/upscalers";
 import {
   planManualUpscale,
   MANUAL_UPSCALE_PRESETS,
@@ -302,6 +304,39 @@ export default function EnhanceForPrintDialog({
     posterFormatId,
   ]);
 
+  /* ---------- Real upscaler availability (registry preflight) ---------- */
+  // Uses the resolved source pixels and the scale the Recommended flow
+  // would request. Availability is reported honestly — no hidden
+  // substitution and no source shrinking.
+  const availabilityScale = recPlan?.requestedScale ?? 4;
+  const availability = useMemo(() => {
+    const engines: Array<{ key: string; label: string; id: UpscalerId | null }> = [
+      { key: "auto", label: "Auto", id: null },
+      { key: "realesrgan_normal", label: UPSCALERS.realesrgan_normal.label, id: "realesrgan_normal" },
+      { key: "realesrgan_large", label: UPSCALERS.realesrgan_large.label, id: "realesrgan_large" },
+      { key: "clarity", label: UPSCALERS.clarity.label, id: "clarity" },
+    ];
+    return engines.map((e) => {
+      const r = preflightUpscale({
+        sourceWidth: effectiveWidth,
+        sourceHeight: effectiveHeight,
+        scale: availabilityScale,
+        upscalerId: e.id,
+      });
+      return {
+        ...e,
+        ok: r.ok,
+        reason: r.reason,
+        resolved: r.upscalerId,
+      };
+    });
+  }, [effectiveWidth, effectiveHeight, availabilityScale]);
+
+  const realesrganAvailability = availability.find((a) => a.key === "auto")!;
+  const clarityAvailability = availability.find((a) => a.key === "clarity")!;
+  const recEngineAvailability =
+    recFamily === "clarity" ? clarityAvailability : realesrganAvailability;
+
   /* ---------- Confirm helpers ---------- */
   const formatLabel = posterFormatId
     ? getPrintFormat(posterFormatId)?.label ?? null
@@ -362,6 +397,7 @@ export default function EnhanceForPrintDialog({
 
   const recBadge = recommendedBadge(recPlan);
   const recBlocked =
+    !recEngineAvailability.ok ||
     !recPlan ||
     recPlan.status === "source_too_small" ||
     recPlan.status === "output_too_large";
@@ -374,7 +410,10 @@ export default function EnhanceForPrintDialog({
       ? "Cannot enhance safely"
       : "Enhance for 300 PPI print";
 
-  const recStatusSentence = !recPlan
+  const recStatusSentence = !recEngineAvailability.ok
+    ? recEngineAvailability.reason ??
+      "No eligible upscaler is available for this source."
+    : !recPlan
     ? !posterFormatId
       ? "Select a print format to calculate the target."
       : !effectiveWidth || !effectiveHeight
@@ -477,6 +516,28 @@ export default function EnhanceForPrintDialog({
             <p className="font-display text-[10px] text-muted-foreground leading-snug">
               {FAMILY_DESCRIPTION[recFamily]}
             </p>
+
+            {/* Real upscaler availability for this exact source */}
+            <div className="rounded-sm border border-border bg-background/60 p-2 space-y-1">
+              <p className="font-display text-[10px] text-muted-foreground uppercase tracking-wider">
+                Upscaler availability for this source
+              </p>
+              {availability.map((a) => (
+                <div key={a.key} className="font-display text-[10px] leading-snug">
+                  <span className="text-foreground/90">{a.label}: </span>
+                  <span className={a.ok ? "text-primary" : "text-destructive"}>
+                    {a.ok
+                      ? a.key === "auto" && a.resolved
+                        ? `Available (${UPSCALERS[a.resolved].label})`
+                        : "Available"
+                      : "Unavailable"}
+                  </span>
+                  {!a.ok && a.reason && (
+                    <span className="text-muted-foreground"> — {a.reason}</span>
+                  )}
+                </div>
+              ))}
+            </div>
 
             {/* Readout */}
             {recPlan && (
