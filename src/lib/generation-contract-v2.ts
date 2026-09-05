@@ -293,7 +293,16 @@ export function normalizeLegacyGenerationRequest(input: unknown): GenerationRequ
       STRING(p.sizeIntent) && SIZE_INTENT_SET.has(p.sizeIntent as SizeIntent)
         ? (p.sizeIntent as SizeIntent)
         : "standard",
+    // Defense in depth: a preset only survives normalization for explicit
+    // SDXL + 50×70. Auto / other providers / other formats get null.
+    sdxlSizePreset:
+      providerPref === "sdxl" &&
+      p.printFormatId === "print_50x70" &&
+      (p.sdxlSizePreset === "small" || p.sdxlSizePreset === "large")
+        ? (p.sdxlSizePreset as "small" | "large")
+        : null,
     providerLabel: STRING(p.providerLabel) ? (p.providerLabel as string) : null,
+
     matching,
   };
   return out;
