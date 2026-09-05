@@ -59,6 +59,11 @@ export interface DurableResultMetadataV1 {
   requestedAspectRatio?: string | null;
   providerExactMatch?: boolean;
   providerAdjusted?: boolean;
+  /** Where the requested size came from (preset / override / resolver). */
+  sizeSource?: string | null;
+  /** SDXL size preset applied for this generation, if any. */
+  sdxlSizePreset?: "small" | "large" | null;
+
 
   // ── Print format & sizing ─────────────────────────────────────────────
   printFormatId?: string | null;
