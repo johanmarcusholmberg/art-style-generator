@@ -62,7 +62,10 @@ export interface GenerationRequestV2 {
   requestedWidth: number | null;
   requestedHeight: number | null;
   sizeIntent: "preview" | "standard" | "print";
+  /** Only set for explicit SDXL + print_50x70; null everywhere else. */
+  sdxlSizePreset: "small" | "large" | null;
   providerLabel: string | null;
+
   matching: MatchingCollectionContext | null;
 }
 
@@ -95,7 +98,9 @@ export const GENERATION_REQUEST_V2_FIELDS: readonly string[] = [
   "requestedWidth",
   "requestedHeight",
   "sizeIntent",
+  "sdxlSizePreset",
   "providerLabel",
+
   "matching",
 ] as const;
 
