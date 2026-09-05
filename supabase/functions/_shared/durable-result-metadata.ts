@@ -161,6 +161,9 @@ export function buildDurableResultMetadata(
     requestedAspectRatio: input.requestedAspectRatio ?? null,
     providerExactMatch: input.providerExactMatch ?? false,
     providerAdjusted: input.providerAdjusted ?? false,
+    sizeSource: input.sizeSource ?? null,
+    sdxlSizePreset: input.sdxlSizePreset ?? null,
+
     printFormatId: input.printFormatId ?? null,
     printSize: input.printSize ?? null,
     qualityMode: input.qualityMode ?? null,

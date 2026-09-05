@@ -136,6 +136,9 @@ export function reconstructNormalizedResponse(
     generationStrategy: meta.generationStrategy ?? undefined,
     metadata: {
       promptVersion: meta.promptVersion ?? null,
+      sizeSource: meta.sizeSource ?? null,
+      sdxlSizePreset: meta.sdxlSizePreset ?? null,
+
       estimatedCost: meta.estimatedCost ?? null,
       currency: meta.currency ?? null,
       bytes: meta.bytes ?? null,
