@@ -121,11 +121,16 @@ describe("contract normalization clears ineligible presets", () => {
 });
 
 describe("upscale preflight", () => {
-  it("allows a Small preset source through the Normal engine", () => {
+  // NOTE: Small is 2.016 MP, marginally above the existing 2.0 MP Normal
+  // Real-ESRGAN envelope, which the approved plan left unchanged. Both
+  // presets therefore report a clear block instead of silently downscaling.
+  it("reports the Normal envelope for a Small preset source", () => {
     const r = preflightUpscale({ sourceWidth: 1200, sourceHeight: 1680, scale: 4 });
-    expect(r.ok).toBe(true);
-    expect(r.upscalerId).toBe("realesrgan_normal");
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe("no_eligible_upscaler");
+    expect(r.reason).toBeTruthy();
   });
+
 
   it("blocks a Large preset source while Large stays unverified", () => {
     const r = preflightUpscale({ sourceWidth: 1440, sourceHeight: 2016, scale: 4 });
