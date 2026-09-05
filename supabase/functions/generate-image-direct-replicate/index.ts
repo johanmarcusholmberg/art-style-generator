@@ -17,7 +17,11 @@ import {
   STYLE_RULES,
   compilePromptForSDXL,
 } from "../_shared/prompt-compiler.ts";
-import { sdxlSizeForFormat } from "../_shared/provider-sizing.ts";
+import { sdxlSizeForFormat, formatRatioDecimal } from "../_shared/provider-sizing.ts";
+import {
+  resolveSdxlRequestSize,
+  type SdxlSizePreset,
+} from "../_shared/sdxl-size-presets.ts";
 
 interface Body {
   prompt?: string;
@@ -31,7 +35,11 @@ interface Body {
   /** Explicit pixel dims from the adapter (must be multiples of 8). */
   requestedWidth?: number;
   requestedHeight?: number;
+  /** SDXL size preset (only honoured with sdxlPresetAllowed + 50×70). */
+  sdxlSizePreset?: SdxlSizePreset | null;
+  sdxlPresetAllowed?: boolean;
 }
+
 
 const REPLICATE_SDXL_VERSION =
   "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b"; // stability-ai/sdxl
