@@ -361,8 +361,11 @@ export async function generateWithSDXL(args: GenerateArgs): Promise<ProviderResu
     requestedWidth: width,
     requestedHeight: height,
     requestedAspectRatio: args.aspectRatio,
-    providerExactMatch: sized.exact,
-    providerAdjusted: !sized.exact,
+    providerExactMatch: resolvedSize.exact,
+    providerAdjusted: resolvedSize.adjusted,
+    sizeSource: resolvedSize.sizeSource,
+    sdxlSizePreset: resolvedSize.preset,
+
   };
 }
 
