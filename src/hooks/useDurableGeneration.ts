@@ -237,7 +237,15 @@ export function useDurableGeneration(
             targetHeightPx: args.targetHeightPx ?? null,
             mode: styleKey,
             printFormatId: args.printFormatId ?? null,
+            // Defense in depth: never send a stale preset for Auto/other
+            // providers or a non-50×70 format.
+            sdxlSizePreset:
+              (args.providerPreference ?? "auto") === "sdxl" &&
+              (args.printFormatId ?? null) === "print_50x70"
+                ? args.sdxlSizePreset ?? null
+                : null,
           },
+
         ];
 
         const { data, error } = await supabase.rpc("create_generation_job", {
