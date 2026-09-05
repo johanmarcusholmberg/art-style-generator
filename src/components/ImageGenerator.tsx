@@ -941,7 +941,12 @@ export default function ImageGenerator({
           generatorPref === "auto" ? null : GENERATOR_PROVIDERS[generatorPref]?.displayName ?? null,
         sourceImageUrl: referenceImageUrl ?? null,
         referenceStrength: referenceImageUrl ? referenceStrength : null,
+        sdxlSizePreset:
+          generatorPref === "sdxl" && selectedPrintFormat.id === "print_50x70"
+            ? sdxlSizePreset
+            : null,
       });
+
       void effectiveStrictness; // acknowledged, server derives its own default
     } catch (err: any) {
       toast({
