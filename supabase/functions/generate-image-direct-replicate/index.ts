@@ -90,24 +90,27 @@ serve(async (req) => {
 
     const validIntent: "preview" | "standard" | "print" =
       sizeIntent === "preview" || sizeIntent === "print" ? sizeIntent : "standard";
-    const sized = sdxlSizeForFormat(posterFormatId, aspectRatio, validIntent);
-    let width = sized.width;
-    let height = sized.height;
-    let sizeSource: string = sized.source;
-    if (
-      typeof reqW === "number" && typeof reqH === "number" &&
-      reqW >= 256 && reqW <= 2048 && reqH >= 256 && reqH <= 2048 &&
-      reqW % 8 === 0 && reqH % 8 === 0
-    ) {
-      width = reqW; height = reqH; sizeSource = "override";
-    }
+    // Same shared resolver as the durable path — identical precedence.
+    const resolvedSize = resolveSdxlRequestSize({
+      preset: body?.sdxlSizePreset ?? null,
+      presetAllowed: body?.sdxlPresetAllowed === true,
+      posterFormatId: posterFormatId ?? null,
+      requestedWidth: typeof reqW === "number" ? reqW : null,
+      requestedHeight: typeof reqH === "number" ? reqH : null,
+      targetRatio: formatRatioDecimal(posterFormatId, aspectRatio),
+      fallback: sdxlSizeForFormat(posterFormatId, aspectRatio, validIntent),
+    });
+    const width = resolvedSize.width;
+    const height = resolvedSize.height;
+    const sizeSource = resolvedSize.sizeSource;
     const startedAt = Date.now();
 
     console.log(
       `[direct-replicate] style=${styleKey} category=${compiled.category} ` +
         `prompt_len=${compiled.prompt.length} size=${width}x${height} ` +
-        `sizeSource=${sizeSource} sizeIntent=${validIntent} exact=${sized.exact} posterFormatId=${posterFormatId ?? "none"}`,
+        `sizeSource=${sizeSource} preset=${resolvedSize.preset ?? "none"} sizeIntent=${validIntent} exact=${resolvedSize.exact} posterFormatId=${posterFormatId ?? "none"}`,
     );
+
 
 
     const createRes = await fetch("https://api.replicate.com/v1/predictions", {
