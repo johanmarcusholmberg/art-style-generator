@@ -53,6 +53,21 @@ function aspectRatioToDecimal(aspectRatio?: string): number | undefined {
   return a / b;
 }
 
+/**
+ * Target ratio (w/h) for a poster format, falling back to an aspect-ratio
+ * token. Used to RECOMPUTE exactness when an explicit size override is
+ * honoured (never inherit exactness from a discarded resolver result).
+ */
+export function formatRatioDecimal(
+  posterFormatId?: string,
+  aspectRatio?: string,
+): number | null {
+  const fmt = getPrintFormat(posterFormatId);
+  if (fmt) return fmt.aspectRatioDecimal;
+  return aspectRatioToDecimal(aspectRatio) ?? null;
+}
+
+
 // ── Provider size map (mirrors src/lib/provider-size-map.ts) ────────────
 //
 // Hard-coded per-format request dimensions for each provider. Keep in sync

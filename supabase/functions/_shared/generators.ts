@@ -34,7 +34,15 @@ export interface ProviderResult {
   providerExactMatch?: boolean;
   /** True when the provider used an approximate ratio (export must crop). */
   providerAdjusted?: boolean;
+  /**
+   * Truthful record of WHERE the requested size came from:
+   * "sdxl_preset_small" | "sdxl_preset_large" | "override" | resolver source.
+   */
+  sizeSource?: string;
+  /** SDXL size preset actually applied (null when none). */
+  sdxlSizePreset?: "small" | "large" | null;
 }
+
 
 export type ReferenceStrength =
   | "inspiration"
