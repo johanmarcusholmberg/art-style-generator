@@ -211,6 +211,9 @@ export const DURABLE_RESULT_METADATA_FIELDS: readonly string[] = [
   "requestedAspectRatio",
   "providerExactMatch",
   "providerAdjusted",
+  "sizeSource",
+  "sdxlSizePreset",
+
   "printFormatId",
   "printSize",
   "qualityMode",
