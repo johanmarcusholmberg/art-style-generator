@@ -12,7 +12,13 @@ import {
   type Strictness,
 } from "./style-meta.ts";
 import { STYLE_RULES } from "./prompt-compiler.ts";
-import { sdxlSizeForFormat, geminiAspectForFormat } from "./provider-sizing.ts";
+import {
+  sdxlSizeForFormat,
+  geminiAspectForFormat,
+  formatRatioDecimal,
+} from "./provider-sizing.ts";
+import { resolveSdxlRequestSize } from "./sdxl-size-presets.ts";
+
 
 export type ResolvedProviderId = "gemini" | "sdxl";
 export type GeneratorPreference = "auto" | ResolvedProviderId;
