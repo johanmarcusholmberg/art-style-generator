@@ -260,26 +260,29 @@ export async function generateWithSDXL(args: GenerateArgs): Promise<ProviderResu
       `prompt_len=${compiled.prompt.length} neg_len=${(compiled.negativePrompt ?? "").length}`,
   );
 
-  const sized = sdxlSizeForFormat(args.posterFormatId, args.aspectRatio, args.sizeIntent ?? "standard");
-  let width = sized.width;
-  let height = sized.height;
-  let sizeSource: string = sized.source;
-  // Honor explicit width/height overrides when both are present, valid,
-  // and within SDXL's nativeMaxLongEdge envelope.
-  if (
-    typeof args.requestedWidth === "number" &&
-    typeof args.requestedHeight === "number" &&
-    args.requestedWidth >= 256 && args.requestedWidth <= 2048 &&
-    args.requestedHeight >= 256 && args.requestedHeight <= 2048 &&
-    args.requestedWidth % 8 === 0 && args.requestedHeight % 8 === 0
-  ) {
-    width = args.requestedWidth;
-    height = args.requestedHeight;
-    sizeSource = "override";
-  }
-  console.log(
-    `[sdxl] size=${width}x${height} source=${sizeSource} sizeIntent=${args.sizeIntent ?? "standard"} posterFormatId=${args.posterFormatId ?? "none"} aspectRatio=${args.aspectRatio ?? "none"}`,
+  // ONE shared resolver owns the precedence:
+  //   preset (explicit SDXL + 50×70) > explicit override > existing resolver.
+  const fallbackSize = sdxlSizeForFormat(
+    args.posterFormatId,
+    args.aspectRatio,
+    args.sizeIntent ?? "standard",
   );
+  const resolvedSize = resolveSdxlRequestSize({
+    preset: args.sdxlSizePreset ?? null,
+    presetAllowed: args.sdxlPresetAllowed === true,
+    posterFormatId: args.posterFormatId ?? null,
+    requestedWidth: args.requestedWidth ?? null,
+    requestedHeight: args.requestedHeight ?? null,
+    targetRatio: formatRatioDecimal(args.posterFormatId, args.aspectRatio),
+    fallback: fallbackSize,
+  });
+  const width = resolvedSize.width;
+  const height = resolvedSize.height;
+  const sizeSource = resolvedSize.sizeSource;
+  console.log(
+    `[sdxl] size=${width}x${height} source=${sizeSource} preset=${resolvedSize.preset ?? "none"} exact=${resolvedSize.exact} sizeIntent=${args.sizeIntent ?? "standard"} posterFormatId=${args.posterFormatId ?? "none"} aspectRatio=${args.aspectRatio ?? "none"}`,
+  );
+
 
 
   // Create prediction
