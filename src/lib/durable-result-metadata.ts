@@ -127,6 +127,7 @@ export function reconstructNormalizedResponse(
     requestedAspectRatio: meta.requestedAspectRatio ?? undefined,
     providerExactMatch: meta.providerExactMatch,
     providerAdjusted: meta.providerAdjusted,
+
     requestedModelId: meta.requestedModelId ?? undefined,
     resolvedModelId: meta.resolvedModelId ?? undefined,
     selectedAdapterId: meta.selectedAdapterId ?? undefined,
