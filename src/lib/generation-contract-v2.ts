@@ -339,6 +339,8 @@ export const GENERATION_REQUEST_V2_FIELDS = [
   "requestedWidth",
   "requestedHeight",
   "sizeIntent",
+  "sdxlSizePreset",
   "providerLabel",
+
   "matching",
 ] as const;
