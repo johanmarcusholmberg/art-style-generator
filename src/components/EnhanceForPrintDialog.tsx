@@ -337,6 +337,23 @@ export default function EnhanceForPrintDialog({
   const recEngineAvailability =
     recFamily === "clarity" ? clarityAvailability : realesrganAvailability;
 
+  /**
+   * Advisory preflight for the Advanced/manual flow — same registry, but
+   * against the manually chosen family and scale. `useUpscale` re-runs the
+   * authoritative check; this only stops the user submitting a request that
+   * would be rejected afterwards.
+   */
+  const manualAvailability = useMemo(
+    () =>
+      preflightUpscale({
+        sourceWidth: effectiveWidth,
+        sourceHeight: effectiveHeight,
+        scale: manPlan?.effectiveScale ?? effectiveManScale,
+        upscalerId: manFamily === "clarity" ? "clarity" : null,
+      }),
+    [effectiveWidth, effectiveHeight, manPlan, effectiveManScale, manFamily],
+  );
+
   /* ---------- Confirm helpers ---------- */
   const formatLabel = posterFormatId
     ? getPrintFormat(posterFormatId)?.label ?? null
