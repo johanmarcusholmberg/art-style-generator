@@ -285,6 +285,43 @@ Deno.serve(async (req) => {
     const method: Method = "realesrgan";
     const scale: number = Math.max(2, Math.min(8, Number(body.scale ?? 4)));
 
+    /* ---------- Engine identity (no silent substitution) ---------- */
+    // Defaults to Normal only when the caller sends no engine at all
+    // (legacy clients). An explicit unknown/disabled engine is rejected.
+    const rawEngine = body.upscaler_id ?? body.upscalerId ?? null;
+    const requestedEngine: UpscalerId =
+      rawEngine == null ? "realesrgan_normal" : String(rawEngine) as UpscalerId;
+
+    if (!(requestedEngine in UPSCALERS)) {
+      return new Response(
+        JSON.stringify({ error: `Unknown upscaler "${String(rawEngine)}".` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (
+      requestedEngine !== "realesrgan_normal" &&
+      requestedEngine !== "realesrgan_large"
+    ) {
+      return new Response(
+        JSON.stringify({
+          error:
+            `Upscaler "${requestedEngine}" does not run on the direct Real-ESRGAN route.`,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const engine: RealesrganUpscalerId = requestedEngine;
+    if (!UPSCALERS[engine].enabled) {
+      return new Response(
+        JSON.stringify({
+          error:
+            `${UPSCALERS[engine].label} is not available yet — it remains disabled until its Replicate deployment has been verified.`,
+          upscaler_id: engine,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     let imageUrl: string | null = typeof body.image_url === "string"
       ? body.image_url
       : (typeof body.imageUrl === "string" ? body.imageUrl : null);
