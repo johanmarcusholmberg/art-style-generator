@@ -29,6 +29,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { preflightUpscale } from "../_shared/upscale-preflight.ts";
+import { UPSCALERS, type UpscalerId } from "../_shared/upscalers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
