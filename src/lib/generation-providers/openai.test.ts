@@ -6,7 +6,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 type InvokeArgs = { name: string; body: Record<string, unknown> };
 const invokeCalls: InvokeArgs[] = [];
-let invokeResponse: { data: Record<string, unknown> | null; error: unknown } = {
+const invokeResponse: { data: Record<string, unknown> | null; error: unknown } = {
   data: {
     imageUrl: "https://stub.local/result.png",
     model: "gpt-image-2",

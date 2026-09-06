@@ -5,7 +5,9 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  // `previewAuthStorage.ts` is platform-generated and must not be edited by
+  // hand, so it is excluded from lint rather than patched.
+  { ignores: ["dist", "src/integrations/supabase/previewAuthStorage.ts"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

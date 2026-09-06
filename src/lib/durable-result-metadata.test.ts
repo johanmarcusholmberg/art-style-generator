@@ -19,7 +19,7 @@ function loadServerFields(): string[] {
     "utf-8",
   );
   const match = src.match(
-    /DURABLE_RESULT_METADATA_FIELDS[^\[]*\[([\s\S]*?)\]\s*as const/,
+    /DURABLE_RESULT_METADATA_FIELDS[^[]*\[([\s\S]*?)\]\s*as const/,
   );
   if (!match) throw new Error("Could not locate FIELDS in server mirror");
   return Array.from(match[1].matchAll(/"([^"]+)"/g)).map((m) => m[1]);
