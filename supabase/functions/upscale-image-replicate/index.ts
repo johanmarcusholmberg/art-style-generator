@@ -348,7 +348,7 @@ Deno.serve(async (req) => {
         sourceWidth: inputDims.width,
         sourceHeight: inputDims.height,
         scale,
-        upscalerId: "realesrgan_normal",
+        upscalerId: engine,
       });
       if (!pre.ok) {
         return new Response(
