@@ -401,6 +401,7 @@ export default function EnhanceForPrintDialog({
   const handleManualConfirm = () => {
     if (!manPlan || manPlan.status === "output_too_large" || manPlan.status === "invalid_scale")
       return;
+    if (!manualAvailability.ok) return;
     setOpen(false);
     const mode = modeForPayload(manFamily, "manual");
     onConfirm(
@@ -748,10 +749,19 @@ export default function EnhanceForPrintDialog({
                 </p>
               ))}
 
+              {!manualAvailability.ok && (
+                <p className="font-display text-[11px] text-destructive flex items-start gap-1 leading-snug">
+                  <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                  {manualAvailability.reason ??
+                    "No eligible upscaler is available for this source."}
+                </p>
+              )}
+
               <Button
                 onClick={handleManualConfirm}
                 disabled={
                   !manPlan ||
+                  !manualAvailability.ok ||
                   manPlan.status === "output_too_large" ||
                   manPlan.status === "invalid_scale"
                 }
