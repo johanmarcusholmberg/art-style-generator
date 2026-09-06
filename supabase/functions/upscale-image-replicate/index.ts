@@ -39,8 +39,48 @@ const corsHeaders = {
 
 type Method = "realesrgan";
 
+/** Engines this direct route can dispatch (Clarity stays on the async route). */
+type RealesrganUpscalerId = "realesrgan_normal" | "realesrgan_large";
+
 const REAL_ESRGAN_VERSION =
   "f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa";
+
+/**
+ * Provider configuration per engine.
+ *
+ * Normal is a pinned public model version. Large/A100 is intentionally NOT
+ * hardcoded — the provider identifier must be supplied through the
+ * `REPLICATE_REALESRGAN_LARGE_VERSION` (model version hash) or
+ * `REPLICATE_REALESRGAN_LARGE_DEPLOYMENT` ("owner/deployment-name") secret.
+ * Both routes reuse the existing `REPLICATE_API_TOKEN`.
+ *
+ * Large also stays `enabled: false` in the shared registry, so requests for
+ * it are rejected before any prediction is created.
+ */
+function providerConfigFor(
+  id: RealesrganUpscalerId,
+):
+  | { kind: "version"; version: string }
+  | { kind: "deployment"; deployment: string }
+  | { kind: "unconfigured"; missing: string } {
+  if (id === "realesrgan_normal") {
+    return { kind: "version", version: REAL_ESRGAN_VERSION };
+  }
+  const deployment = Deno.env.get("REPLICATE_REALESRGAN_LARGE_DEPLOYMENT");
+  if (deployment) return { kind: "deployment", deployment };
+  const version = Deno.env.get("REPLICATE_REALESRGAN_LARGE_VERSION");
+  if (version) return { kind: "version", version };
+  return {
+    kind: "unconfigured",
+    missing:
+      "REPLICATE_REALESRGAN_LARGE_DEPLOYMENT or REPLICATE_REALESRGAN_LARGE_VERSION",
+  };
+}
+
+const PROVIDER_TAG: Record<RealesrganUpscalerId, string> = {
+  realesrgan_normal: "replicate/real-esrgan-normal",
+  realesrgan_large: "replicate/real-esrgan-large",
+};
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
