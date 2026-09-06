@@ -359,8 +359,8 @@ Deno.serve(async (req) => {
     }
 
     const t0 = Date.now();
-    const result = await runRealESRGAN(imageUrl, scale, apiToken);
-    console.log(`[enhance] method=${method} elapsed=${Date.now() - t0}ms`);
+    const result = await runRealESRGAN(imageUrl, scale, apiToken, engine);
+    console.log(`[enhance] engine=${engine} elapsed=${Date.now() - t0}ms`);
 
     if (!result.ok) {
       // Surface the real provider message so the UI can show something
@@ -392,7 +392,7 @@ Deno.serve(async (req) => {
     }
 
     const dims = await fetchImageDimensions(hosted.publicUrl);
-    const provider = "replicate/real-esrgan";
+    const provider = PROVIDER_TAG[engine];
 
     return new Response(
       JSON.stringify({
@@ -403,6 +403,7 @@ Deno.serve(async (req) => {
         method,
         scale,
         provider,
+        upscaler_id: engine,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
