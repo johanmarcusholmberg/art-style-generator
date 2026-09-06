@@ -18,8 +18,20 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import type { UpscalerId } from "@/lib/upscalers";
 
 export type ReplicateUpscaleMethod = "realesrgan";
+
+/** Engines this direct route can dispatch. Clarity stays on the async route. */
+export type RealesrganUpscalerId = Extract<
+  UpscalerId,
+  "realesrgan_normal" | "realesrgan_large"
+>;
+
+export const REALESRGAN_PROVIDER_TAG: Record<RealesrganUpscalerId, string> = {
+  realesrgan_normal: "replicate/real-esrgan-normal",
+  realesrgan_large: "replicate/real-esrgan-large",
+};
 
 export interface ReplicateUpscaleInput {
   imageUrl?: string;
@@ -27,6 +39,11 @@ export interface ReplicateUpscaleInput {
   method: ReplicateUpscaleMethod;
   /** Only meaningful for `realesrgan`. Default 4. */
   scale?: number;
+  /**
+   * Engine resolved by `preflightUpscale`. Carried unchanged to the backend,
+   * which re-validates it. Never substituted in either direction.
+   */
+  upscalerId: RealesrganUpscalerId;
 }
 
 export interface ReplicateUpscaleResult {
@@ -38,8 +55,14 @@ export interface ReplicateUpscaleResult {
   height: number | null;
   method: ReplicateUpscaleMethod;
   scale: number;
-  /** Provider tag persisted on the gallery row (`enhancement_model` column). */
-  provider: "replicate/real-esrgan";
+  /** Engine that actually ran (echoed by the backend). */
+  upscalerId: RealesrganUpscalerId;
+  /**
+   * Provider tag persisted on the gallery row (`enhancement_model` column).
+   * `replicate/real-esrgan-normal` | `replicate/real-esrgan-large`.
+   * Historical rows may still carry the generic `replicate/real-esrgan`.
+   */
+  provider: string;
 }
 
 export async function runReplicateUpscale(
