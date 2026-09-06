@@ -77,6 +77,7 @@ export async function runReplicateUpscale(
     storage_path: input.storagePath,
     method: input.method,
     scale: input.scale ?? 4,
+    upscaler_id: input.upscalerId,
   };
 
   const { data, error } = await supabase.functions.invoke(
