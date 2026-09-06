@@ -200,26 +200,39 @@ async function runRealESRGAN(
   imageUrl: string,
   scale: number,
   apiToken: string,
+  upscalerId: RealesrganUpscalerId,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  console.log(`[realesrgan] scale=${scale}`);
-  const createRes = await fetch("https://api.replicate.com/v1/predictions", {
+  const cfg = providerConfigFor(upscalerId);
+  if (cfg.kind === "unconfigured") {
+    return {
+      ok: false,
+      error: `${UPSCALERS[upscalerId].label} has no Replicate configuration (set ${cfg.missing}).`,
+    };
+  }
+  console.log(`[realesrgan] engine=${upscalerId} scale=${scale}`);
+  const endpoint = cfg.kind === "deployment"
+    ? `https://api.replicate.com/v1/deployments/${cfg.deployment}/predictions`
+    : "https://api.replicate.com/v1/predictions";
+  const payload: Record<string, unknown> = {
+    input: { image: imageUrl, scale, face_enhance: false },
+  };
+  if (cfg.kind === "version") payload.version = cfg.version;
+
+  const createRes = await fetch(endpoint, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiToken}`,
       "Content-Type": "application/json",
       Prefer: "wait",
     },
-    body: JSON.stringify({
-      version: REAL_ESRGAN_VERSION,
-      input: { image: imageUrl, scale, face_enhance: false },
-    }),
+    body: JSON.stringify(payload),
   });
   if (!createRes.ok) {
     const text = await createRes.text();
     console.error("[realesrgan] create failed:", createRes.status, text);
     return { ok: false, error: `Real-ESRGAN: ${createRes.status} ${text.slice(0, 200)}` };
   }
-  let prediction = await createRes.json();
+  const prediction = await createRes.json();
   if (prediction.status === "succeeded" && prediction.output) {
     const out = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
     return { ok: true, url: out };
