@@ -19,7 +19,10 @@ export interface OpenAIDurableOutcome {
   modelId: string;
   strategy: "manual";
   fallbackUsed: false;
-  attempted: string[];
+  attempted: Array<{ providerId: string; ok: boolean; error?: string }>;
+  /** Telemetry parity with the SDXL/Gemini outcomes. */
+  sizeSource?: string | null;
+  sdxlSizePreset?: "small" | "large" | null;
   width?: number;
   height?: number;
   requestedWidth?: number;
@@ -86,7 +89,7 @@ export async function runOpenAIDurable(args: GenerateArgs): Promise<OpenAIDurabl
     modelId: (data.model as string) ?? "gpt-image-2",
     strategy: "manual",
     fallbackUsed: false,
-    attempted: ["openai"],
+    attempted: [{ providerId: "openai", ok: true }],
     width: data.width as number | undefined,
     height: data.height as number | undefined,
     requestedWidth: (data.requestedWidth as number | undefined) ?? (data.width as number | undefined),

@@ -103,7 +103,10 @@ export function normalizeObjectPath(raw: string | null | undefined): string | nu
   } catch {
     return null;
   }
-  if (decoded.includes("\0") || /[\u0000-\u001f]/.test(decoded)) return null;
+  // Reject any C0 control character (including NUL) without a control regex.
+  for (let i = 0; i < decoded.length; i++) {
+    if (decoded.charCodeAt(i) < 0x20) return null;
+  }
 
   const segments = decoded.split("/");
   if (segments.length === 0) return null;

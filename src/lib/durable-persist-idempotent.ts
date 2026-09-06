@@ -115,7 +115,7 @@ export async function persistDurableGenerationResult(
 ): Promise<DurablePersistResult> {
   // 1. Reuse existing row if this worker (or a prior attempt) already got here.
   const existing = await repo.findImageByJobItemId(args.generationJobItemId);
-  let storagePath = existing?.storage_path ?? args.desiredStoragePath;
+  const storagePath = existing?.storage_path ?? args.desiredStoragePath;
   let galleryImageId = existing?.id ?? null;
   const reusedExistingRow = !!existing;
 

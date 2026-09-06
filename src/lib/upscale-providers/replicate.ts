@@ -18,8 +18,20 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import type { UpscalerId } from "@/lib/upscalers";
 
 export type ReplicateUpscaleMethod = "realesrgan";
+
+/** Engines this direct route can dispatch. Clarity stays on the async route. */
+export type RealesrganUpscalerId = Extract<
+  UpscalerId,
+  "realesrgan_normal" | "realesrgan_large"
+>;
+
+export const REALESRGAN_PROVIDER_TAG: Record<RealesrganUpscalerId, string> = {
+  realesrgan_normal: "replicate/real-esrgan-normal",
+  realesrgan_large: "replicate/real-esrgan-large",
+};
 
 export interface ReplicateUpscaleInput {
   imageUrl?: string;
@@ -27,6 +39,11 @@ export interface ReplicateUpscaleInput {
   method: ReplicateUpscaleMethod;
   /** Only meaningful for `realesrgan`. Default 4. */
   scale?: number;
+  /**
+   * Engine resolved by `preflightUpscale`. Carried unchanged to the backend,
+   * which re-validates it. Never substituted in either direction.
+   */
+  upscalerId: RealesrganUpscalerId;
 }
 
 export interface ReplicateUpscaleResult {
@@ -38,8 +55,14 @@ export interface ReplicateUpscaleResult {
   height: number | null;
   method: ReplicateUpscaleMethod;
   scale: number;
-  /** Provider tag persisted on the gallery row (`enhancement_model` column). */
-  provider: "replicate/real-esrgan";
+  /** Engine that actually ran (echoed by the backend). */
+  upscalerId: RealesrganUpscalerId;
+  /**
+   * Provider tag persisted on the gallery row (`enhancement_model` column).
+   * `replicate/real-esrgan-normal` | `replicate/real-esrgan-large`.
+   * Historical rows may still carry the generic `replicate/real-esrgan`.
+   */
+  provider: string;
 }
 
 export async function runReplicateUpscale(
@@ -54,6 +77,7 @@ export async function runReplicateUpscale(
     storage_path: input.storagePath,
     method: input.method,
     scale: input.scale ?? 4,
+    upscaler_id: input.upscalerId,
   };
 
   const { data, error } = await supabase.functions.invoke(
@@ -91,7 +115,18 @@ export async function runReplicateUpscale(
     height: typeof data.height === "number" ? data.height : null,
     method: data.method ?? input.method,
     scale: typeof data.scale === "number" ? data.scale : (input.scale ?? 4),
-    provider: data.provider ?? "replicate/real-esrgan",
+    // The backend echoes the engine it actually ran. It never substitutes,
+    // so a mismatch is a hard error rather than a silent acceptance.
+    upscalerId: ((): RealesrganUpscalerId => {
+      const echoed = data.upscaler_id;
+      if (echoed && echoed !== input.upscalerId) {
+        throw new Error(
+          `Upscaler mismatch: requested ${input.upscalerId}, backend ran ${echoed}.`,
+        );
+      }
+      return input.upscalerId;
+    })(),
+    provider: data.provider ?? REALESRGAN_PROVIDER_TAG[input.upscalerId],
   };
 }
 

@@ -132,7 +132,8 @@ export default function FormatDerivativesDialog({
   const toggle = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -356,7 +357,8 @@ export default function FormatDerivativesDialog({
                                 onCheckedChange={(v) =>
                                   setAcknowledged((prev) => {
                                     const n = new Set(prev);
-                                    v ? n.add(c.formatId) : n.delete(c.formatId);
+                                    if (v) n.add(c.formatId);
+                                    else n.delete(c.formatId);
                                     return n;
                                   })
                                 }

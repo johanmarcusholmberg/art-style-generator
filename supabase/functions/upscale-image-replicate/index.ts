@@ -29,6 +29,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { preflightUpscale } from "../_shared/upscale-preflight.ts";
+import { UPSCALERS, type UpscalerId } from "../_shared/upscalers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,8 +39,48 @@ const corsHeaders = {
 
 type Method = "realesrgan";
 
+/** Engines this direct route can dispatch (Clarity stays on the async route). */
+type RealesrganUpscalerId = "realesrgan_normal" | "realesrgan_large";
+
 const REAL_ESRGAN_VERSION =
   "f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa";
+
+/**
+ * Provider configuration per engine.
+ *
+ * Normal is a pinned public model version. Large/A100 is intentionally NOT
+ * hardcoded — the provider identifier must be supplied through the
+ * `REPLICATE_REALESRGAN_LARGE_VERSION` (model version hash) or
+ * `REPLICATE_REALESRGAN_LARGE_DEPLOYMENT` ("owner/deployment-name") secret.
+ * Both routes reuse the existing `REPLICATE_API_TOKEN`.
+ *
+ * Large also stays `enabled: false` in the shared registry, so requests for
+ * it are rejected before any prediction is created.
+ */
+function providerConfigFor(
+  id: RealesrganUpscalerId,
+):
+  | { kind: "version"; version: string }
+  | { kind: "deployment"; deployment: string }
+  | { kind: "unconfigured"; missing: string } {
+  if (id === "realesrgan_normal") {
+    return { kind: "version", version: REAL_ESRGAN_VERSION };
+  }
+  const deployment = Deno.env.get("REPLICATE_REALESRGAN_LARGE_DEPLOYMENT");
+  if (deployment) return { kind: "deployment", deployment };
+  const version = Deno.env.get("REPLICATE_REALESRGAN_LARGE_VERSION");
+  if (version) return { kind: "version", version };
+  return {
+    kind: "unconfigured",
+    missing:
+      "REPLICATE_REALESRGAN_LARGE_DEPLOYMENT or REPLICATE_REALESRGAN_LARGE_VERSION",
+  };
+}
+
+const PROVIDER_TAG: Record<RealesrganUpscalerId, string> = {
+  realesrgan_normal: "replicate/real-esrgan-normal",
+  realesrgan_large: "replicate/real-esrgan-large",
+};
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -159,26 +200,39 @@ async function runRealESRGAN(
   imageUrl: string,
   scale: number,
   apiToken: string,
+  upscalerId: RealesrganUpscalerId,
 ): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  console.log(`[realesrgan] scale=${scale}`);
-  const createRes = await fetch("https://api.replicate.com/v1/predictions", {
+  const cfg = providerConfigFor(upscalerId);
+  if (cfg.kind === "unconfigured") {
+    return {
+      ok: false,
+      error: `${UPSCALERS[upscalerId].label} has no Replicate configuration (set ${cfg.missing}).`,
+    };
+  }
+  console.log(`[realesrgan] engine=${upscalerId} scale=${scale}`);
+  const endpoint = cfg.kind === "deployment"
+    ? `https://api.replicate.com/v1/deployments/${cfg.deployment}/predictions`
+    : "https://api.replicate.com/v1/predictions";
+  const payload: Record<string, unknown> = {
+    input: { image: imageUrl, scale, face_enhance: false },
+  };
+  if (cfg.kind === "version") payload.version = cfg.version;
+
+  const createRes = await fetch(endpoint, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiToken}`,
       "Content-Type": "application/json",
       Prefer: "wait",
     },
-    body: JSON.stringify({
-      version: REAL_ESRGAN_VERSION,
-      input: { image: imageUrl, scale, face_enhance: false },
-    }),
+    body: JSON.stringify(payload),
   });
   if (!createRes.ok) {
     const text = await createRes.text();
     console.error("[realesrgan] create failed:", createRes.status, text);
     return { ok: false, error: `Real-ESRGAN: ${createRes.status} ${text.slice(0, 200)}` };
   }
-  let prediction = await createRes.json();
+  const prediction = await createRes.json();
   if (prediction.status === "succeeded" && prediction.output) {
     const out = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
     return { ok: true, url: out };
@@ -231,6 +285,43 @@ Deno.serve(async (req) => {
     const method: Method = "realesrgan";
     const scale: number = Math.max(2, Math.min(8, Number(body.scale ?? 4)));
 
+    /* ---------- Engine identity (no silent substitution) ---------- */
+    // Defaults to Normal only when the caller sends no engine at all
+    // (legacy clients). An explicit unknown/disabled engine is rejected.
+    const rawEngine = body.upscaler_id ?? body.upscalerId ?? null;
+    const requestedEngine: UpscalerId =
+      rawEngine == null ? "realesrgan_normal" : String(rawEngine) as UpscalerId;
+
+    if (!(requestedEngine in UPSCALERS)) {
+      return new Response(
+        JSON.stringify({ error: `Unknown upscaler "${String(rawEngine)}".` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (
+      requestedEngine !== "realesrgan_normal" &&
+      requestedEngine !== "realesrgan_large"
+    ) {
+      return new Response(
+        JSON.stringify({
+          error:
+            `Upscaler "${requestedEngine}" does not run on the direct Real-ESRGAN route.`,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const engine: RealesrganUpscalerId = requestedEngine;
+    if (!UPSCALERS[engine].enabled) {
+      return new Response(
+        JSON.stringify({
+          error:
+            `${UPSCALERS[engine].label} is not available yet — it remains disabled until its Replicate deployment has been verified.`,
+          upscaler_id: engine,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     let imageUrl: string | null = typeof body.image_url === "string"
       ? body.image_url
       : (typeof body.imageUrl === "string" ? body.imageUrl : null);
@@ -257,7 +348,7 @@ Deno.serve(async (req) => {
         sourceWidth: inputDims.width,
         sourceHeight: inputDims.height,
         scale,
-        upscalerId: "realesrgan_normal",
+        upscalerId: engine,
       });
       if (!pre.ok) {
         return new Response(
@@ -268,8 +359,8 @@ Deno.serve(async (req) => {
     }
 
     const t0 = Date.now();
-    const result = await runRealESRGAN(imageUrl, scale, apiToken);
-    console.log(`[enhance] method=${method} elapsed=${Date.now() - t0}ms`);
+    const result = await runRealESRGAN(imageUrl, scale, apiToken, engine);
+    console.log(`[enhance] engine=${engine} elapsed=${Date.now() - t0}ms`);
 
     if (!result.ok) {
       // Surface the real provider message so the UI can show something
@@ -301,7 +392,7 @@ Deno.serve(async (req) => {
     }
 
     const dims = await fetchImageDimensions(hosted.publicUrl);
-    const provider = "replicate/real-esrgan";
+    const provider = PROVIDER_TAG[engine];
 
     return new Response(
       JSON.stringify({
@@ -312,6 +403,7 @@ Deno.serve(async (req) => {
         method,
         scale,
         provider,
+        upscaler_id: engine,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

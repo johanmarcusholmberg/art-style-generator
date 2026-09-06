@@ -322,10 +322,24 @@ export function useUpscale() {
             // Edge function clamps into [2, 8]; mirror here for early UX warning.
             effectiveScale = Math.min(8, Math.max(2, opts.dynamicScale));
           }
+          // Engine identity resolved by the authoritative preflight above
+          // rides through to the backend unchanged. No substitution.
+          const resolvedEngine = preflight.upscalerId;
+          if (
+            resolvedEngine !== "realesrgan_normal" &&
+            resolvedEngine !== "realesrgan_large"
+          ) {
+            cleanupTimers();
+            setStage("failed");
+            throw new Error(
+              `Direct Replicate route cannot run engine "${resolvedEngine}".`,
+            );
+          }
           const direct = await runReplicateUpscale({
             imageUrl: effectiveSourceUrl,
             method: directMethod,
             scale: effectiveScale,
+            upscalerId: resolvedEngine,
           });
 
           cleanupTimers();

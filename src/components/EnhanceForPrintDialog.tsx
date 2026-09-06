@@ -337,6 +337,23 @@ export default function EnhanceForPrintDialog({
   const recEngineAvailability =
     recFamily === "clarity" ? clarityAvailability : realesrganAvailability;
 
+  /**
+   * Advisory preflight for the Advanced/manual flow — same registry, but
+   * against the manually chosen family and scale. `useUpscale` re-runs the
+   * authoritative check; this only stops the user submitting a request that
+   * would be rejected afterwards.
+   */
+  const manualAvailability = useMemo(
+    () =>
+      preflightUpscale({
+        sourceWidth: effectiveWidth,
+        sourceHeight: effectiveHeight,
+        scale: manPlan?.effectiveScale ?? effectiveManScale,
+        upscalerId: manFamily === "clarity" ? "clarity" : null,
+      }),
+    [effectiveWidth, effectiveHeight, manPlan, effectiveManScale, manFamily],
+  );
+
   /* ---------- Confirm helpers ---------- */
   const formatLabel = posterFormatId
     ? getPrintFormat(posterFormatId)?.label ?? null
@@ -384,6 +401,7 @@ export default function EnhanceForPrintDialog({
   const handleManualConfirm = () => {
     if (!manPlan || manPlan.status === "output_too_large" || manPlan.status === "invalid_scale")
       return;
+    if (!manualAvailability.ok) return;
     setOpen(false);
     const mode = modeForPayload(manFamily, "manual");
     onConfirm(
@@ -731,10 +749,19 @@ export default function EnhanceForPrintDialog({
                 </p>
               ))}
 
+              {!manualAvailability.ok && (
+                <p className="font-display text-[11px] text-destructive flex items-start gap-1 leading-snug">
+                  <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                  {manualAvailability.reason ??
+                    "No eligible upscaler is available for this source."}
+                </p>
+              )}
+
               <Button
                 onClick={handleManualConfirm}
                 disabled={
                   !manPlan ||
+                  !manualAvailability.ok ||
                   manPlan.status === "output_too_large" ||
                   manPlan.status === "invalid_scale"
                 }
