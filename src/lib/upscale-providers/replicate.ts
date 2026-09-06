@@ -129,5 +129,4 @@ export async function runReplicateUpscale(
     provider: data.provider ?? REALESRGAN_PROVIDER_TAG[input.upscalerId],
   };
 }
-}
 
