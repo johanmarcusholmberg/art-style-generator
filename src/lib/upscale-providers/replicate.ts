@@ -115,7 +115,19 @@ export async function runReplicateUpscale(
     height: typeof data.height === "number" ? data.height : null,
     method: data.method ?? input.method,
     scale: typeof data.scale === "number" ? data.scale : (input.scale ?? 4),
-    provider: data.provider ?? "replicate/real-esrgan",
+    // The backend echoes the engine it actually ran. It never substitutes,
+    // so a mismatch is a hard error rather than a silent acceptance.
+    upscalerId: ((): RealesrganUpscalerId => {
+      const echoed = data.upscaler_id;
+      if (echoed && echoed !== input.upscalerId) {
+        throw new Error(
+          `Upscaler mismatch: requested ${input.upscalerId}, backend ran ${echoed}.`,
+        );
+      }
+      return input.upscalerId;
+    })(),
+    provider: data.provider ?? REALESRGAN_PROVIDER_TAG[input.upscalerId],
   };
+}
 }
 
