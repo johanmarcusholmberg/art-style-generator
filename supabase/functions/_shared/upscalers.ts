@@ -31,14 +31,16 @@ export const UPSCALERS: Record<UpscalerId, UpscalerEntry> = {
     supportsDecimalScale: true,
   },
   realesrgan_large: {
-    // DISABLED until the live A100 check passes (2× at 1440×2016, inside the
-    // synchronous budget, with decimal/dynamic scale support).
+    // VERIFIED 2026-09-08 against deployment
+    // johanmarcusholmberg/upscaler-xinntao-realesrgan-large
+    // (xinntao/realesrgan, gpu-t4): 1440×2016 @2× succeeded twice (~7s) and
+    // @4.11× decimal scale produced 5918×8285 (≥ 50×70 @300 PPI).
     id: "realesrgan_large",
     family: "realesrgan",
-    label: "Real-ESRGAN (Large / A100)",
-    enabled: false,
+    label: "Real-ESRGAN (Large)",
+    enabled: true,
     maxInputPixels: null,
-    verifiedInputPixels: null,
+    verifiedInputPixels: 2_903_040,
     synchronous: true,
     supportsDecimalScale: true,
   },

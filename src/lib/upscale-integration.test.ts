@@ -45,15 +45,18 @@ describe("SDXL Small vs Real-ESRGAN Normal envelope", () => {
 });
 
 describe("no silent substitution or downscaling", () => {
-  it("disabled Large is never selected by Auto", () => {
-    expect(UPSCALERS.realesrgan_large.enabled).toBe(false);
-    expect(selectAutoUpscaler(SMALL.width * SMALL.height).upscalerId).toBeNull();
+  it("Auto escalates a >2MP source to verified Large, never Clarity", () => {
+    expect(UPSCALERS.realesrgan_large.enabled).toBe(true);
+    expect(selectAutoUpscaler(SMALL.width * SMALL.height).upscalerId).toBe(
+      "realesrgan_large",
+    );
   });
 
   it("Auto reports unavailable rather than falling back to Clarity", () => {
+    // Above the verified Large envelope (2,903,040 px) nothing is eligible.
     const r = preflightUpscale({
-      sourceWidth: SMALL.width,
-      sourceHeight: SMALL.height,
+      sourceWidth: 2000,
+      sourceHeight: 2800,
       scale: 4.11,
     });
     expect(r.ok).toBe(false);
@@ -67,11 +70,11 @@ describe("no silent substitution or downscaling", () => {
       sourceWidth: SMALL.width,
       sourceHeight: SMALL.height,
       scale: 2,
-      upscalerId: "realesrgan_large",
+      upscalerId: "realesrgan_normal",
     });
     expect(r.ok).toBe(false);
-    expect(r.code).toBe("upscaler_disabled");
-    expect(r.upscalerId).toBe("realesrgan_large");
+    expect(r.code).toBe("input_too_large");
+    expect(r.upscalerId).toBe("realesrgan_normal");
   });
 
   it("preflight never changes the source dimensions", () => {
