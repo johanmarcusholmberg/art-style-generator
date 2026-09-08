@@ -229,6 +229,10 @@ export default function ImageGenerator({
   // SDXL exact 5:7 size preset. Only meaningful for explicit SDXL + 50×70;
   // replay never restores or infers it.
   const [sdxlSizePreset, setSdxlSizePreset] = useState<"small" | "large">("small");
+  // OpenAI 50×70 offers exactly two sizes; Large is the recommended default.
+  const [openaiSizePreset, setOpenaiSizePreset] = useState<"small" | "large">(
+    defaultPosterSizeOption("openai"),
+  );
 
   // Phase 3: registry-driven model + quality/strategy selection. UI/request
   // plumbing only — router dispatch still keyed off `generatorPref`.
@@ -944,6 +948,10 @@ export default function ImageGenerator({
         sdxlSizePreset:
           generatorPref === "sdxl" && selectedPrintFormat.id === "print_50x70"
             ? sdxlSizePreset
+            : null,
+        openaiSizePreset:
+          generatorPref === "openai" && selectedPrintFormat.id === "print_50x70"
+            ? openaiSizePreset
             : null,
       });
 
