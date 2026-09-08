@@ -1,5 +1,10 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
+import {
+  POSTER_SIZE_OPTION_FORMAT_ID,
+  defaultPosterSizeOption,
+  getPosterSizeOptions,
+} from "@/lib/poster-size-options";
 import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle, Info } from "lucide-react";
 import {
   Dialog,
