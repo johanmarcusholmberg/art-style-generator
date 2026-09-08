@@ -23,7 +23,9 @@ export default function BatchNotifications() {
   useEffect(() => {
     for (const job of jobs) {
       const prev = prevStatuses.current.get(job.id);
-      const truncPrompt = job.prompt.length > 50 ? job.prompt.slice(0, 50) + "…" : job.prompt;
+      // Jobs can be stored without a prompt (e.g. edit/regeneration jobs).
+      const rawPrompt = job.prompt ?? "";
+      const truncPrompt = rawPrompt.length > 50 ? rawPrompt.slice(0, 50) + "…" : rawPrompt;
 
       if (!prev) {
         // First time seeing this job
