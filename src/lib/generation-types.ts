@@ -57,6 +57,12 @@ export interface NormalizedGenerationRequest {
   /** Style strictness — drives SDXL anchor repetition + negative boost. */
   strictness?: Strictness;
   /**
+   * Selected 50×70 generation size for OpenAI (gpt-image-2):
+   * "small" 1200×1680 or "large" 1440×2016. Only honoured for explicit
+   * OpenAI + `print_50x70`.
+   */
+  openaiSizePreset?: "small" | "large" | null;
+  /**
    * Poster format id (from `src/lib/print-formats.ts`). When set, the
    * router/adapters forward the poster format hint to the prompt compiler
    * so every provider composes for the right canvas. Foundation pass —

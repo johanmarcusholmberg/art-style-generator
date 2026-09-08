@@ -8,8 +8,8 @@ import { planPosterRatioCorrection } from "./poster-ratio-enforce";
 
 describe("gptImage2SizeForFormat — exact poster sizes", () => {
   const cases: Array<[string, "portrait" | "landscape", string]> = [
-    ["print_50x70", "portrait", "1600x2240"],
-    ["print_50x70", "landscape", "2240x1600"],
+    ["print_50x70", "portrait", "1440x2016"],
+    ["print_50x70", "landscape", "2016x1440"],
     ["print_a4", "portrait", "1120x1584"],
     ["print_a4", "landscape", "1584x1120"],
     ["print_a3", "portrait", "1584x2240"],

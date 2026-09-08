@@ -92,7 +92,7 @@ describe("resolvePrintSize — OpenAI gpt-image-2 exact poster sizes", () => {
       intent: "print",
     }) as any;
     expect(r.flexible).toBe(true);
-    expect(r.size).toBe("1600x2240");
+    expect(r.size).toBe("1440x2016");
     expect(["1024x1024", "1024x1536", "1536x1024"]).not.toContain(r.size);
     expect(r.exact).toBe(true);
   });
@@ -222,7 +222,7 @@ describe("resolveAdapterSizingOverrides — sizeIntent wire format", () => {
       intent: "print",
     }) as any;
     expect(o.sizeIntent).toBe("print");
-    expect(o.requestedSize).toBe("1600x2240");
+    expect(o.requestedSize).toBe("1440x2016");
     expect(["1024x1024", "1024x1536", "1536x1024"]).not.toContain(o.requestedSize);
   });
 

@@ -20,6 +20,11 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { resolveAdapterSizingOverrides } from "@/lib/provider-print-sizing";
+import {
+  POSTER_SIZE_OPTION_FORMAT_ID,
+  isPosterSizeOptionId,
+  openaiPosterWireSize,
+} from "@/lib/poster-size-options";
 import type {
   NormalizedGenerationRequest,
   NormalizedGenerationResponse,
@@ -47,6 +52,15 @@ export async function generateWithOpenAIAdapter(
   };
   // Forward explicit pixel size for flexible-dim models (gpt-image-2).
   if (overrides?.requestedSize) body.requestedSize = overrides.requestedSize;
+  // 50×70 offers exactly two generator sizes — the user's selection wins and
+  // is sent verbatim so the provider renders precisely that size.
+  if (
+    req.posterFormatId === POSTER_SIZE_OPTION_FORMAT_ID &&
+    isPosterSizeOptionId(req.openaiSizePreset)
+  ) {
+    body.requestedSize = openaiPosterWireSize(req.openaiSizePreset);
+    body.openaiSizePreset = req.openaiSizePreset;
+  }
 
   if (req.strictness) body.strictness = req.strictness;
   if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;

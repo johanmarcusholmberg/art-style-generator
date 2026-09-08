@@ -52,6 +52,14 @@ export async function runOpenAIDurable(args: GenerateArgs): Promise<OpenAIDurabl
     printMode: !!args.printMode,
     sizeIntent: args.sizeIntent ?? "standard",
   };
+  // 50×70 offers exactly two generator sizes; send the selected one verbatim.
+  if (
+    args.posterFormatId === "print_50x70" &&
+    (args.openaiSizePreset === "small" || args.openaiSizePreset === "large")
+  ) {
+    body.requestedSize = args.openaiSizePreset === "small" ? "1200x1680" : "1440x2016";
+    body.openaiSizePreset = args.openaiSizePreset;
+  }
   if (args.strictness) body.strictness = args.strictness;
   if (args.posterFormatHint) body.posterFormatHint = args.posterFormatHint;
   if (args.posterFormatId) body.posterFormatId = args.posterFormatId;

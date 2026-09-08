@@ -65,6 +65,7 @@ describe("GenerationRequestV2 normalization", () => {
       requestedHeight: null,
       sizeIntent: "print",
       sdxlSizePreset: null,
+      openaiSizePreset: null,
 
       providerLabel: "Gemini Nano Banana",
       matching: null,

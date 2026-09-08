@@ -1,5 +1,10 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
+import {
+  POSTER_SIZE_OPTION_FORMAT_ID,
+  defaultPosterSizeOption,
+  getPosterSizeOptions,
+} from "@/lib/poster-size-options";
 import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle, Info } from "lucide-react";
 import {
   Dialog,
@@ -229,6 +234,10 @@ export default function ImageGenerator({
   // SDXL exact 5:7 size preset. Only meaningful for explicit SDXL + 50×70;
   // replay never restores or infers it.
   const [sdxlSizePreset, setSdxlSizePreset] = useState<"small" | "large">("small");
+  // OpenAI 50×70 offers exactly two sizes; Large is the recommended default.
+  const [openaiSizePreset, setOpenaiSizePreset] = useState<"small" | "large">(
+    defaultPosterSizeOption("openai"),
+  );
 
   // Phase 3: registry-driven model + quality/strategy selection. UI/request
   // plumbing only — router dispatch still keyed off `generatorPref`.
@@ -697,6 +706,10 @@ export default function ImageGenerator({
       referenceStrength: referenceImageUrl ? referenceStrength : undefined,
       strictness: effectiveStrictness,
       posterFormatId: selectedPrintFormat.id,
+      openaiSizePreset:
+        generatorPref === "openai" && selectedPrintFormat.id === POSTER_SIZE_OPTION_FORMAT_ID
+          ? openaiSizePreset
+          : null,
       posterFormatHint: getPosterPromptHint(selectedPrintFormat.id),
       targetAspectRatio: selectedPrintFormat.aspectRatioDecimal,
       modelId: modelSelection.modelId ?? undefined,
@@ -944,6 +957,10 @@ export default function ImageGenerator({
         sdxlSizePreset:
           generatorPref === "sdxl" && selectedPrintFormat.id === "print_50x70"
             ? sdxlSizePreset
+            : null,
+        openaiSizePreset:
+          generatorPref === "openai" && selectedPrintFormat.id === "print_50x70"
+            ? openaiSizePreset
             : null,
       });
 
@@ -1853,6 +1870,30 @@ export default function ImageGenerator({
                   ))}
                 </span>
               )}
+              {generatorPref === "openai" &&
+                selectedPrintFormat.id === POSTER_SIZE_OPTION_FORMAT_ID && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
+                    title="Exact 5:7 render size for 50×70 posters"
+                  >
+                    Size:
+                    {getPosterSizeOptions("openai", selectedPrintFormat.id).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setOpenaiSizePreset(opt.id)}
+                        className={
+                          openaiSizePreset === opt.id
+                            ? "px-1.5 rounded-sm bg-primary/20 text-primary"
+                            : "px-1.5 rounded-sm hover:text-foreground"
+                        }
+                      >
+                        {opt.label} {opt.dimensionsLabel}
+                        {opt.recommended ? " — Recommended" : ""}
+                      </button>
+                    ))}
+                  </span>
+                )}
 
               {/* Model/quality/strategy popover removed — GeneratorBadge above is the single source of truth for which engine runs. */}
               <span

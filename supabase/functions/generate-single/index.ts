@@ -126,6 +126,10 @@ serve(async (httpReq) => {
       sizeIntent: req.sizeIntent,
       strictness: (req.strictness as GenerateArgs["strictness"]) ?? undefined,
       sdxlSizePreset: req.sdxlSizePreset ?? null,
+      openaiSizePreset:
+        req.providerPreference === "openai" && req.printFormatId === "print_50x70"
+          ? req.openaiSizePreset ?? null
+          : null,
       // Presets apply ONLY when the user explicitly chose SDXL.
       sdxlPresetAllowed: req.providerPreference === "sdxl",
     };

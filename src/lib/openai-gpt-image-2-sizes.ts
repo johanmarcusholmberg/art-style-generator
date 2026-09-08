@@ -27,7 +27,9 @@ export interface OpenAIGptImage2Size {
 
 /** Portrait entries; landscape is derived by swapping w/h. */
 const PORTRAIT_SIZES: Record<string, { width: number; height: number }> = {
-  print_50x70: { width: 1600, height: 2240 }, // 5:7
+  // 5:7 — the generator's default (Large) size. The only other allowed
+  // 50×70 size is Small 1200×1680, sent as an explicit requestedSize.
+  print_50x70: { width: 1440, height: 2016 },
   print_a4: { width: 1120, height: 1584 }, // ISO-A
   print_a3: { width: 1584, height: 2240 }, // ISO-A
   print_a2: { width: 2240, height: 3168 }, // ISO-A

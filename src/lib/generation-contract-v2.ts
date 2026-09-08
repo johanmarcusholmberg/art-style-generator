@@ -106,6 +106,11 @@ export interface GenerationRequestV2 {
    * `print_50x70`; cleared (null) in every other case as defense in depth.
    */
   sdxlSizePreset: "small" | "large" | null;
+  /**
+   * OpenAI 50×70 generation size ("small" 1200×1680 / "large" 1440×2016).
+   * Only set for explicit OpenAI + `print_50x70`; null everywhere else.
+   */
+  openaiSizePreset: "small" | "large" | null;
 
 
   // Display / analytics --------------------------------------------------
@@ -301,6 +306,12 @@ export function normalizeLegacyGenerationRequest(input: unknown): GenerationRequ
       (p.sdxlSizePreset === "small" || p.sdxlSizePreset === "large")
         ? (p.sdxlSizePreset as "small" | "large")
         : null,
+    openaiSizePreset:
+      providerPref === "openai" &&
+      p.printFormatId === "print_50x70" &&
+      (p.openaiSizePreset === "small" || p.openaiSizePreset === "large")
+        ? (p.openaiSizePreset as "small" | "large")
+        : null,
     providerLabel: STRING(p.providerLabel) ? (p.providerLabel as string) : null,
 
     matching,
@@ -340,6 +351,7 @@ export const GENERATION_REQUEST_V2_FIELDS = [
   "requestedHeight",
   "sizeIntent",
   "sdxlSizePreset",
+  "openaiSizePreset",
   "providerLabel",
 
   "matching",
