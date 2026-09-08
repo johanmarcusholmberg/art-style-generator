@@ -63,6 +63,8 @@ export interface StartArgs {
   referenceStrength?: string | null;
   /** SDXL exact-size preset; only honoured for explicit SDXL + print_50x70. */
   sdxlSizePreset?: "small" | "large" | null;
+  /** OpenAI 50×70 generation size; only honoured for explicit OpenAI + print_50x70. */
+  openaiSizePreset?: "small" | "large" | null;
 
 }
 
@@ -243,6 +245,11 @@ export function useDurableGeneration(
               (args.providerPreference ?? "auto") === "sdxl" &&
               (args.printFormatId ?? null) === "print_50x70"
                 ? args.sdxlSizePreset ?? null
+                : null,
+            openaiSizePreset:
+              (args.providerPreference ?? "auto") === "openai" &&
+              (args.printFormatId ?? null) === "print_50x70"
+                ? args.openaiSizePreset ?? null
                 : null,
           },
 
