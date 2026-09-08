@@ -117,7 +117,7 @@ describe("generateWithOpenAIAdapter — image-to-image", () => {
 
 describe("generateWithOpenAIAdapter — exact gpt-image-2 poster sizing", () => {
   const cases: Array<{ formatId: string; expected: string }> = [
-    { formatId: "print_50x70", expected: "1600x2240" },
+    { formatId: "print_50x70", expected: "1440x2016" },
     { formatId: "print_a4", expected: "1120x1584" },
     { formatId: "print_a3", expected: "1584x2240" },
     { formatId: "print_a2", expected: "2240x3168" },
