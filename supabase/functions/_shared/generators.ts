@@ -125,6 +125,11 @@ export interface GenerateArgs {
    * hidden preset from applying on Auto / another provider.
    */
   sdxlPresetAllowed?: boolean;
+  /**
+   * OpenAI 50×70 generation size the user picked ("small" 1200×1680 /
+   * "large" 1440×2016). Only honoured for explicit OpenAI + print_50x70.
+   */
+  openaiSizePreset?: "small" | "large" | null;
 }
 
 

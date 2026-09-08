@@ -101,6 +101,7 @@ export const GENERATION_REQUEST_V2_FIELDS: readonly string[] = [
   "requestedHeight",
   "sizeIntent",
   "sdxlSizePreset",
+  "openaiSizePreset",
   "providerLabel",
 
   "matching",
@@ -206,6 +207,12 @@ export function normalizeLegacyGenerationRequest(input: unknown): GenerationRequ
       p.printFormatId === "print_50x70" &&
       (p.sdxlSizePreset === "small" || p.sdxlSizePreset === "large")
         ? (p.sdxlSizePreset as "small" | "large")
+        : null,
+    openaiSizePreset:
+      p.providerPreference === "openai" &&
+      p.printFormatId === "print_50x70" &&
+      (p.openaiSizePreset === "small" || p.openaiSizePreset === "large")
+        ? (p.openaiSizePreset as "small" | "large")
         : null,
     providerLabel: STRING(p.providerLabel) ? (p.providerLabel as string) : null,
 
