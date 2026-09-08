@@ -44,6 +44,31 @@ const DIRECT_REPLICATE_METHOD: Partial<Record<UpscaleMode, ReplicateUpscaleMetho
   print_target_300: "realesrgan", // dynamic decimal scale — see UpscaleOptions.dynamicScale
 };
 
+/**
+ * Resolve which upscaler engine a request asks for.
+ *
+ * Clarity is only inferred for genuine Clarity/async-tiled routes. Modes with
+ * a direct-Replicate method (e.g. `print_target_300`) are Real-ESRGAN routes
+ * even though they are not sync-listed, so they fall through to Auto (null)
+ * and let the registry preflight choose.
+ */
+export function resolveRequestedEngine(args: {
+  mode: UpscaleMode;
+  upscalerId?: UpscalerId | "auto" | null;
+  upscaleFamily?: UpscaleFamily | null;
+}): UpscalerId | null {
+  const { mode, upscalerId, upscaleFamily } = args;
+  if (upscalerId && upscalerId !== "auto") return upscalerId;
+  if (
+    upscaleFamily === "clarity" ||
+    mode === "clarity_dynamic" ||
+    (isAsyncUpscaleMode(mode) && !DIRECT_REPLICATE_METHOD[mode])
+  ) {
+    return "clarity";
+  }
+  return null;
+}
+
 // Backwards-compatible re-exports (older callers expect these symbols)
 /** Measure the real pixels of an image URL in the browser. */
 async function measureImageUrl(
@@ -253,14 +278,11 @@ export function useUpscale() {
         }
       }
 
-      const requestedEngine: UpscalerId | null =
-        opts?.upscalerId && opts.upscalerId !== "auto"
-          ? opts.upscalerId
-          : opts?.upscaleFamily === "clarity" ||
-              mode === "clarity_dynamic" ||
-              isAsyncUpscaleMode(mode)
-            ? "clarity"
-            : null;
+      const requestedEngine: UpscalerId | null = resolveRequestedEngine({
+        mode,
+        upscalerId: opts?.upscalerId,
+        upscaleFamily: opts?.upscaleFamily,
+      });
 
       const preflightScale =
         opts?.dynamicScale && opts.dynamicScale > 1
