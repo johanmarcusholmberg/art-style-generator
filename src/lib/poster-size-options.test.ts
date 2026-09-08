@@ -7,7 +7,7 @@ import {
   openaiPosterWireSize,
 } from "./poster-size-options";
 import { gptImage2SizeForFormat, formatOpenAISize } from "./openai-gpt-image-2-sizes";
-import { normalizeToV2 } from "./generation-contract-v2";
+import { normalizeLegacyGenerationRequest as normalizeToV2 } from "./generation-contract-v2";
 
 describe("50×70 generator size options", () => {
   it("offers exactly two OpenAI options: Small 1200×1680 and Large 1440×2016", () => {
