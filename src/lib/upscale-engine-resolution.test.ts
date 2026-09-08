@@ -38,7 +38,7 @@ describe("requested engine resolution", () => {
 });
 
 describe("Large Real-ESRGAN envelope (regressions A/B)", () => {
-  it("A: 1200x1680 still routes to Normal under Auto at print scale", () => {
+  it("A: 1200x1680 (2.016 MP, above Normal's 2.0 MP cap) routes to Large under Auto", () => {
     const r = preflightUpscale({
       sourceWidth: 1200,
       sourceHeight: 1680,
