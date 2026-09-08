@@ -64,6 +64,8 @@ export interface GenerationRequestV2 {
   sizeIntent: "preview" | "standard" | "print";
   /** Only set for explicit SDXL + print_50x70; null everywhere else. */
   sdxlSizePreset: "small" | "large" | null;
+  /** Only set for explicit OpenAI + print_50x70; null everywhere else. */
+  openaiSizePreset: "small" | "large" | null;
   providerLabel: string | null;
 
   matching: MatchingCollectionContext | null;
