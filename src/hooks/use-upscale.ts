@@ -253,12 +253,16 @@ export function useUpscale() {
         }
       }
 
+      // Clarity is inferred only for genuinely Clarity/async-tiled routes.
+      // Modes with a direct-Replicate method (e.g. `print_target_300`) are
+      // Real-ESRGAN routes even though they are not in SYNC_MODES, so they
+      // must fall through to Auto/registry selection instead of "clarity".
       const requestedEngine: UpscalerId | null =
         opts?.upscalerId && opts.upscalerId !== "auto"
           ? opts.upscalerId
           : opts?.upscaleFamily === "clarity" ||
               mode === "clarity_dynamic" ||
-              isAsyncUpscaleMode(mode)
+              (isAsyncUpscaleMode(mode) && !DIRECT_REPLICATE_METHOD[mode])
             ? "clarity"
             : null;
 
