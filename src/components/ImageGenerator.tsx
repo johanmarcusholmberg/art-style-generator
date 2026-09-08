@@ -701,6 +701,10 @@ export default function ImageGenerator({
       referenceStrength: referenceImageUrl ? referenceStrength : undefined,
       strictness: effectiveStrictness,
       posterFormatId: selectedPrintFormat.id,
+      openaiSizePreset:
+        generatorPref === "openai" && selectedPrintFormat.id === POSTER_SIZE_OPTION_FORMAT_ID
+          ? openaiSizePreset
+          : null,
       posterFormatHint: getPosterPromptHint(selectedPrintFormat.id),
       targetAspectRatio: selectedPrintFormat.aspectRatioDecimal,
       modelId: modelSelection.modelId ?? undefined,
