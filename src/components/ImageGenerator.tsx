@@ -1870,6 +1870,30 @@ export default function ImageGenerator({
                   ))}
                 </span>
               )}
+              {generatorPref === "openai" &&
+                selectedPrintFormat.id === POSTER_SIZE_OPTION_FORMAT_ID && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
+                    title="Exact 5:7 render size for 50×70 posters"
+                  >
+                    Size:
+                    {getPosterSizeOptions("openai", selectedPrintFormat.id).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setOpenaiSizePreset(opt.id)}
+                        className={
+                          openaiSizePreset === opt.id
+                            ? "px-1.5 rounded-sm bg-primary/20 text-primary"
+                            : "px-1.5 rounded-sm hover:text-foreground"
+                        }
+                      >
+                        {opt.label} {opt.dimensionsLabel}
+                        {opt.recommended ? " — Recommended" : ""}
+                      </button>
+                    ))}
+                  </span>
+                )}
 
               {/* Model/quality/strategy popover removed — GeneratorBadge above is the single source of truth for which engine runs. */}
               <span
