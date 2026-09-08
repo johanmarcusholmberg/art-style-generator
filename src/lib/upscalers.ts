@@ -66,20 +66,20 @@ export const UPSCALERS: Record<UpscalerId, UpscalerEntry> = {
   realesrgan_large: {
     id: "realesrgan_large",
     family: "realesrgan",
-    label: "Real-ESRGAN (Large / A100)",
+    label: "Real-ESRGAN (Large)",
     description:
-      "Real-ESRGAN pinned to a larger-GPU deployment for higher-resolution sources.",
-    // DISABLED until the live A100 check passes. The check must prove, on a
-    // pinned model version: (1) 1440×2016 @2× succeeds, (2) it returns
-    // inside the synchronous edge-function budget, and (3) it accepts the
-    // decimal/dynamic scale the 300 PPI flow needs (~4.11× for 50×70).
-    // Only then flip `enabled` to true and set `verifiedInputPixels`.
-    enabled: false,
+      "Real-ESRGAN pinned to a dedicated deployment for higher-resolution sources.",
+    // VERIFIED 2026-09-08 on deployment
+    // johanmarcusholmberg/upscaler-xinntao-realesrgan-large
+    // (xinntao/realesrgan): 1440×2016 @2× succeeded twice synchronously
+    // (~7s predict) → 2880×4032, and the decimal 4.11× print scale produced
+    // 5918×8285 (≥ 5906×8268 / 300 PPI at 50×70).
+    enabled: true,
     maxInputPixels: null,
-    verifiedInputPixels: null,
+    verifiedInputPixels: 2_903_040,
     synchronous: true,
     supportsDecimalScale: true,
-    estimatedTime: "~40–90s",
+    estimatedTime: "~15–40s",
   },
   clarity: {
     id: "clarity",

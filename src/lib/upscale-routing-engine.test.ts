@@ -55,11 +55,15 @@ describe("Auto engine routing", () => {
     expect(r.autoSelected).toBe(true);
   });
 
-  it("reports unavailable for a >2MP source while Large is disabled", () => {
-    const r = preflightUpscale({ sourceWidth: 1200, sourceHeight: 1680, scale: 4 });
-    expect(r.ok).toBe(false);
-    expect(r.code).toBe("no_eligible_upscaler");
-    expect(r.upscalerId).toBeNull();
+  it("escalates a >2MP source to Large, and blocks beyond the verified envelope", () => {
+    const ok = preflightUpscale({ sourceWidth: 1200, sourceHeight: 1680, scale: 4 });
+    expect(ok.ok).toBe(true);
+    expect(ok.upscalerId).toBe("realesrgan_large");
+
+    const blocked = preflightUpscale({ sourceWidth: 2000, sourceHeight: 2800, scale: 4 });
+    expect(blocked.ok).toBe(false);
+    expect(blocked.code).toBe("no_eligible_upscaler");
+    expect(blocked.upscalerId).toBeNull();
   });
 
   it("never selects Clarity", () => {
@@ -70,15 +74,14 @@ describe("Auto engine routing", () => {
 });
 
 describe("manual engine selection", () => {
-  it("blocks disabled Large instead of falling back to Normal", () => {
+  it("blocks Large above its verified envelope instead of substituting", () => {
     const r = preflightUpscale({
-      sourceWidth: 1000,
-      sourceHeight: 1400,
+      sourceWidth: 2000,
+      sourceHeight: 2800,
       scale: 2,
       upscalerId: "realesrgan_large",
     });
     expect(r.ok).toBe(false);
-    expect(r.code).toBe("upscaler_disabled");
     expect(r.upscalerId).toBe("realesrgan_large");
   });
 
@@ -153,8 +156,9 @@ describe("runReplicateUpscale carries engine identity", () => {
 /* ------------------------------ UI state -------------------------------- */
 
 describe("registry state today", () => {
-  it("keeps Large disabled", () => {
-    expect(UPSCALERS.realesrgan_large.enabled).toBe(false);
+  it("has Large enabled with a verified 1440x2016 envelope", () => {
+    expect(UPSCALERS.realesrgan_large.enabled).toBe(true);
+    expect(UPSCALERS.realesrgan_large.verifiedInputPixels).toBe(2_903_040);
   });
 
   it("Small SDXL preset is above the Normal input ceiling", () => {
@@ -163,14 +167,7 @@ describe("registry state today", () => {
     expect(small.width * small.height).toBeGreaterThan(
       UPSCALERS.realesrgan_normal.maxInputPixels!,
     );
-    // Both Recommended (Auto) and Advanced/manual Real-ESRGAN are unavailable.
-    expect(
-      preflightUpscale({
-        sourceWidth: small.width,
-        sourceHeight: small.height,
-        scale: 4.11,
-      }).ok,
-    ).toBe(false);
+    // Normal stays blocked; Auto escalates to Large instead of downscaling.
     expect(
       preflightUpscale({
         sourceWidth: small.width,
@@ -179,6 +176,13 @@ describe("registry state today", () => {
         upscalerId: "realesrgan_normal",
       }).ok,
     ).toBe(false);
+    expect(
+      preflightUpscale({
+        sourceWidth: small.width,
+        sourceHeight: small.height,
+        scale: 4.11,
+      }).upscalerId,
+    ).toBe("realesrgan_large");
   });
 
   it("manual Clarity stays available for that same source", () => {

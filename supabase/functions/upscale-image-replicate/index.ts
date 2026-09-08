@@ -213,9 +213,13 @@ async function runRealESRGAN(
   const endpoint = cfg.kind === "deployment"
     ? `https://api.replicate.com/v1/deployments/${cfg.deployment}/predictions`
     : "https://api.replicate.com/v1/predictions";
-  const payload: Record<string, unknown> = {
-    input: { image: imageUrl, scale, face_enhance: false },
-  };
+  // Engine-specific input contracts:
+  //  - Normal (nightmareai/real-esrgan)  → { image, scale, face_enhance }
+  //  - Large  (xinntao/realesrgan)       → { img, scale, version, face_enhance }
+  const input: Record<string, unknown> = upscalerId === "realesrgan_large"
+    ? { img: imageUrl, scale, version: "General - v3", face_enhance: false }
+    : { image: imageUrl, scale, face_enhance: false };
+  const payload: Record<string, unknown> = { input };
   if (cfg.kind === "version") payload.version = cfg.version;
 
   const createRes = await fetch(endpoint, {

@@ -121,19 +121,23 @@ describe("contract normalization clears ineligible presets", () => {
 });
 
 describe("upscale preflight", () => {
-  // NOTE: Small is 2.016 MP, marginally above the existing 2.0 MP Normal
-  // Real-ESRGAN envelope, which the approved plan left unchanged. Both
-  // presets therefore report a clear block instead of silently downscaling.
-  it("reports the Normal envelope for a Small preset source", () => {
+  // NOTE: Small is 2.016 MP, marginally above the unchanged 2.0 MP Normal
+  // envelope, so Auto escalates to the verified Large engine — never a
+  // silent downscale and never Clarity.
+  it("routes a Small preset source to Large (above the Normal envelope)", () => {
     const r = preflightUpscale({ sourceWidth: 1200, sourceHeight: 1680, scale: 4 });
-    expect(r.ok).toBe(false);
-    expect(r.code).toBe("no_eligible_upscaler");
-    expect(r.reason).toBeTruthy();
+    expect(r.ok).toBe(true);
+    expect(r.upscalerId).toBe("realesrgan_large");
   });
 
-
-  it("blocks a Large preset source while Large stays unverified", () => {
+  it("routes a Large preset source to the verified Large engine", () => {
     const r = preflightUpscale({ sourceWidth: 1440, sourceHeight: 2016, scale: 4 });
+    expect(r.ok).toBe(true);
+    expect(r.upscalerId).toBe("realesrgan_large");
+  });
+
+  it("blocks sources above the verified Large envelope", () => {
+    const r = preflightUpscale({ sourceWidth: 2000, sourceHeight: 2800, scale: 4 });
     expect(r.ok).toBe(false);
     expect(r.upscalerId).toBeNull();
   });
