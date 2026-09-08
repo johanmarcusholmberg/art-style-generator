@@ -204,8 +204,31 @@ serve(async (req) => {
       sizeSource = "default";
       providerExactMatch = false;
     }
-    // Honor adapter-provided "WxH" override (capability-gated client-side).
-    if (typeof requestedSize === "string" && /^\d{3,4}x\d{3,4}$/.test(requestedSize)) {
+    // For 50×70 the generator offers exactly two sizes — Small 1200×1680 and
+    // Large 1440×2016. Anything else is rejected outright (no substitution,
+    // no silent 1600×2240).
+    const ALLOWED_50X70 = ["1200x1680", "1440x2016"];
+    if (posterFormatId === "print_50x70") {
+      if (typeof requestedSize === "string") {
+        if (!ALLOWED_50X70.includes(requestedSize)) {
+          return new Response(
+            JSON.stringify({
+              error: `Unsupported 50×70 size "${requestedSize}". Allowed: ${ALLOWED_50X70.join(", ")}.`,
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        const [w, h] = requestedSize.split("x").map(Number);
+        size = requestedSize; width = w; height = h; sizeSource = "override";
+      }
+      if (!ALLOWED_50X70.includes(size)) {
+        return new Response(
+          JSON.stringify({ error: `Resolved 50×70 size "${size}" is not an allowed generator size.` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    } else if (typeof requestedSize === "string" && /^\d{3,4}x\d{3,4}$/.test(requestedSize)) {
+      // Honor adapter-provided "WxH" override (capability-gated client-side).
       const [w, h] = requestedSize.split("x").map(Number);
       if (w >= 256 && w <= 4096 && h >= 256 && h <= 4096 && w % 16 === 0 && h % 16 === 0) {
         size = requestedSize; width = w; height = h; sizeSource = "override";
