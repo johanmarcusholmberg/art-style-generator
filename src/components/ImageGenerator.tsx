@@ -93,7 +93,6 @@ import {
   type ResolvedProviderId,
   GENERATOR_PROVIDERS,
   loadGeneratorPreference,
-  saveGeneratorPreference,
   loadGeneratorPreferenceForStyle,
   setStyleGeneratorOverride,
 } from "@/lib/generators";
