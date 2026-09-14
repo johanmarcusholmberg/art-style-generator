@@ -111,12 +111,18 @@ export const GENERATOR_OPTIONS: GeneratorOption[] = [
 
 export const DEFAULT_GENERATOR: GeneratorPreference = "auto";
 
-/** Persisted user preference key (sessionStorage). */
+/**
+ * Persisted user preference key (localStorage).
+ *
+ * This is the user's DEFAULT generator for every style. It must survive
+ * tabs and browser restarts, so it lives in localStorage — not
+ * sessionStorage.
+ */
 const STORAGE_KEY = "generator-preference";
 
 export function loadGeneratorPreference(): GeneratorPreference {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (raw === "auto" || raw === "sdxl" || raw === "gemini" || raw === "openai") return raw;
   } catch { /* ignore */ }
   return DEFAULT_GENERATOR;
@@ -124,7 +130,7 @@ export function loadGeneratorPreference(): GeneratorPreference {
 
 export function saveGeneratorPreference(pref: GeneratorPreference) {
   try {
-    sessionStorage.setItem(STORAGE_KEY, pref);
+    localStorage.setItem(STORAGE_KEY, pref);
   } catch { /* ignore */ }
 }
 
