@@ -93,6 +93,7 @@ import {
   type ResolvedProviderId,
   GENERATOR_PROVIDERS,
   loadGeneratorPreference,
+  saveGeneratorPreference,
 } from "@/lib/generators";
 
 import {
@@ -316,6 +317,21 @@ export default function ImageGenerator({
   const [promptHistoryRefresh, setPromptHistoryRefresh] = useState(0);
 
   const { toast } = useToast();
+
+  // One-click "make this provider my default" from the result row.
+  const handleSetDefaultProvider = useCallback(
+    (provider: string) => {
+      if (provider !== "sdxl" && provider !== "gemini" && provider !== "openai") return;
+      const pref = provider as GeneratorPreference;
+      setGeneratorPref(pref);
+      saveGeneratorPreference(pref);
+      toast({
+        title: `${GENERATOR_PROVIDERS[pref].displayName} is now your default generator`,
+        description: "Applies to all styles and persists across sessions.",
+      });
+    },
+    [toast],
+  );
 
   // Shared upscale hook
   const {
@@ -2176,6 +2192,8 @@ export default function ImageGenerator({
                 referenceStrength={lastReferenceStrength}
                 prompt={prompt}
                 styleKey={styleConfig.styleKey}
+                currentPreference={generatorPref}
+                onSetDefaultProvider={handleSetDefaultProvider}
               />
             )}
 
@@ -2530,14 +2548,23 @@ interface ResultRouteRowProps {
   referenceStrength: ReferenceStrength | null;
   prompt: string;
   styleKey: string;
+  /** The user's current default generator preference. */
+  currentPreference: GeneratorPreference;
+  /** Sets a provider as the persisted default generator. */
+  onSetDefaultProvider: (provider: string) => void;
 }
 
 function ResultRouteRow({
   provider, model, route, fallback, routingReason, referenceStrength, prompt, styleKey,
+  currentPreference, onSetDefaultProvider,
 }: ResultRouteRowProps) {
   const { rating, setFeedback } = useImageFeedback({
     prompt, styleKey, provider, route,
   });
+  const defaultableProvider =
+    provider === "sdxl" || provider === "gemini" || provider === "openai"
+      ? (provider as ResolvedProviderId)
+      : null;
   return (
     <div className="flex flex-wrap items-center justify-center gap-2">
       <RouteBadge
@@ -2588,6 +2615,19 @@ function ResultRouteRow({
           <ThumbsDown className="h-3 w-3" />
         </button>
       </div>
+      {defaultableProvider && defaultableProvider !== currentPreference && (
+        <button
+          type="button"
+          onClick={() => onSetDefaultProvider(defaultableProvider)}
+          className={cn(
+            "font-display text-[10px] px-2 py-1 rounded-sm border transition-colors",
+            "border-primary/40 text-primary hover:bg-primary/10",
+          )}
+          title="Make this generator your default for all styles"
+        >
+          Make {GENERATOR_PROVIDERS[defaultableProvider].displayName} default
+        </button>
+      )}
     </div>
   );
 }

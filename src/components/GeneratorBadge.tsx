@@ -92,7 +92,8 @@ export default function GeneratorBadge({
           </p>
           <p className="font-display text-[11px] text-muted-foreground leading-snug">
             Single source of truth for which engine actually generates the
-            image. Upscaling is configured separately below.
+            image. Your choice is saved as the default for all styles and
+            persists across sessions.
           </p>
         </div>
 
