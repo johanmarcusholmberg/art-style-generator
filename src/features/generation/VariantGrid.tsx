@@ -26,6 +26,11 @@ import {
 import { cn } from "@/lib/utils";
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { loadImageDimensions } from "@/lib/image-metadata";
+import {
+  GENERATOR_PROVIDERS,
+  type GeneratorPreference,
+  type ResolvedProviderId,
+} from "@/lib/generators";
 import type { VariantTile } from "./useVariantFanOut";
 import type { NormalizedGenerationResponse } from "@/lib/generation-types";
 
@@ -40,6 +45,10 @@ export interface VariantGridProps {
   savingTileId?: number | null;
   /** Active print format id used to compute the per-tile effective-PPI badge. */
   printFormatId?: string | null;
+  /** The user's current default generator preference. */
+  currentPreference?: GeneratorPreference;
+  /** Sets a provider as the persisted default generator (all styles). */
+  onSetDefaultProvider?: (provider: ResolvedProviderId) => void;
 }
 
 export default function VariantGrid({
