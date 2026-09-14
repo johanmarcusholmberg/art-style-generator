@@ -135,6 +135,69 @@ export function saveGeneratorPreference(pref: GeneratorPreference) {
 }
 
 /**
+ * Per-style overrides.
+ *
+ * Each art-style page can pin its own generator. When a style has no
+ * override it falls back to the overall default above, so existing
+ * behavior is unchanged for styles the user never touched.
+ */
+const STYLE_STORAGE_KEY = "generator-preference-by-style";
+
+export type StyleGeneratorOverrides = Record<string, GeneratorPreference>;
+
+function isPreference(v: unknown): v is GeneratorPreference {
+  return v === "auto" || v === "sdxl" || v === "gemini" || v === "openai";
+}
+
+export function loadStyleGeneratorOverrides(): StyleGeneratorOverrides {
+  try {
+    const raw = localStorage.getItem(STYLE_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: StyleGeneratorOverrides = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (isPreference(v)) out[k] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export function saveStyleGeneratorOverrides(map: StyleGeneratorOverrides) {
+  try {
+    localStorage.setItem(STYLE_STORAGE_KEY, JSON.stringify(map));
+  } catch { /* ignore */ }
+}
+
+/** Override for a style, or undefined when the style follows the overall default. */
+export function getStyleGeneratorOverride(
+  styleKey: string | undefined | null,
+): GeneratorPreference | undefined {
+  if (!styleKey) return undefined;
+  return loadStyleGeneratorOverrides()[styleKey];
+}
+
+/** Pass `undefined` to clear the override and follow the overall default again. */
+export function setStyleGeneratorOverride(
+  styleKey: string,
+  pref: GeneratorPreference | undefined,
+) {
+  const map = loadStyleGeneratorOverrides();
+  if (pref === undefined) delete map[styleKey];
+  else map[styleKey] = pref;
+  saveStyleGeneratorOverrides(map);
+}
+
+/** Effective preference for a style: its override, else the overall default. */
+export function loadGeneratorPreferenceForStyle(
+  styleKey: string | undefined | null,
+): GeneratorPreference {
+  return getStyleGeneratorOverride(styleKey) ?? loadGeneratorPreference();
+}
+
+/**
  * Resolve which provider should be tried first given the user preference.
  *
  * Auto strategy is INTENTIONAL and DETERMINISTIC:
