@@ -112,6 +112,8 @@ function VariantTileCard({
   saved,
   saving,
   printFormatId,
+  currentPreference,
+  onSetDefaultProvider,
 }: {
   tile: VariantTile;
   onKeep: VariantGridProps["onKeep"];
@@ -120,9 +122,21 @@ function VariantTileCard({
   saved: boolean;
   saving: boolean;
   printFormatId: string | null;
+  currentPreference?: GeneratorPreference;
+  onSetDefaultProvider?: (provider: ResolvedProviderId) => void;
 }) {
   const r = tile.response;
   const dims = useTileDimensions(tile);
+  const tileProvider =
+    r && (r.generationProvider === "sdxl" ||
+      r.generationProvider === "gemini" ||
+      r.generationProvider === "openai")
+      ? (r.generationProvider as ResolvedProviderId)
+      : null;
+  const showMakeDefault =
+    tileProvider !== null &&
+    onSetDefaultProvider !== undefined &&
+    tileProvider !== currentPreference;
 
   return (
     <div
