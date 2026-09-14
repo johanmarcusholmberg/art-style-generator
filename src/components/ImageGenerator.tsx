@@ -92,8 +92,8 @@ import {
   type GeneratorPreference,
   type ResolvedProviderId,
   GENERATOR_PROVIDERS,
-  loadGeneratorPreference,
-  saveGeneratorPreference,
+  loadGeneratorPreferenceForStyle,
+  setStyleGeneratorOverride,
 } from "@/lib/generators";
 
 import {
@@ -230,7 +230,7 @@ export default function ImageGenerator({
   );
   // Phase 1: generator provider preference (auto/sdxl/gemini), persisted in sessionStorage
   const [generatorPref, setGeneratorPref] = useState<GeneratorPreference>(
-    () => initialPreset?.providerPreference ?? loadGeneratorPreference(),
+    () => initialPreset?.providerPreference ?? loadGeneratorPreferenceForStyle(variantStyleKey),
   );
   // SDXL exact 5:7 size preset. Only meaningful for explicit SDXL + 50×70;
   // replay never restores or infers it.
@@ -324,13 +324,13 @@ export default function ImageGenerator({
       if (provider !== "sdxl" && provider !== "gemini" && provider !== "openai") return;
       const pref = provider as GeneratorPreference;
       setGeneratorPref(pref);
-      saveGeneratorPreference(pref);
+      setStyleGeneratorOverride(variantStyleKey, pref);
       toast({
-        title: `${GENERATOR_PROVIDERS[pref].displayName} is now your default generator`,
-        description: "Applies to all styles and persists across sessions.",
+        title: `${GENERATOR_PROVIDERS[pref].displayName} is now the default for ${modeLabel}`,
+        description: "Only this style page is affected. It persists across sessions.",
       });
     },
-    [toast],
+    [toast, variantStyleKey, modeLabel],
   );
 
   // Shared upscale hook
@@ -1863,6 +1863,8 @@ export default function ImageGenerator({
                 onChange={setGeneratorPref}
                 lastUsedProvider={lastProviderUsed}
                 lastFallbackUsed={lastFallbackUsed}
+                styleKey={variantStyleKey}
+                styleLabel={modeLabel}
               />
               {generatorPref === "sdxl" && selectedPrintFormat.id === "print_50x70" && (
                 <span
