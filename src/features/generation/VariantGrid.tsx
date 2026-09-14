@@ -257,6 +257,19 @@ function VariantTileCard({
               </Button>
             </div>
           </div>
+          {showMakeDefault && tileProvider && (
+            <button
+              type="button"
+              onClick={() => onSetDefaultProvider!(tileProvider)}
+              className={cn(
+                "self-start font-display text-[10px] px-2 py-1 rounded-sm border transition-colors",
+                "border-primary/40 text-primary hover:bg-primary/10",
+              )}
+              title="Make this generator your default for all styles"
+            >
+              Make {GENERATOR_PROVIDERS[tileProvider].displayName} default
+            </button>
+          )}
         </div>
       )}
     </div>
