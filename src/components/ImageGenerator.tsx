@@ -2486,6 +2486,8 @@ export default function ImageGenerator({
             savedTileIds={savedTileIds}
             savingTileId={savingTileId}
             printFormatId={generationMode === "print-ready" ? selectedPrintFormat.id : null}
+            currentPreference={generatorPref}
+            onSetDefaultProvider={handleSetDefaultProvider}
           />
         )}
       </WorkspaceWideResult>
