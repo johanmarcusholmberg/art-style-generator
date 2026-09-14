@@ -26,6 +26,11 @@ import {
 import { cn } from "@/lib/utils";
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { loadImageDimensions } from "@/lib/image-metadata";
+import {
+  GENERATOR_PROVIDERS,
+  type GeneratorPreference,
+  type ResolvedProviderId,
+} from "@/lib/generators";
 import type { VariantTile } from "./useVariantFanOut";
 import type { NormalizedGenerationResponse } from "@/lib/generation-types";
 
@@ -40,6 +45,10 @@ export interface VariantGridProps {
   savingTileId?: number | null;
   /** Active print format id used to compute the per-tile effective-PPI badge. */
   printFormatId?: string | null;
+  /** The user's current default generator preference. */
+  currentPreference?: GeneratorPreference;
+  /** Sets a provider as the persisted default generator (all styles). */
+  onSetDefaultProvider?: (provider: ResolvedProviderId) => void;
 }
 
 export default function VariantGrid({
@@ -52,6 +61,8 @@ export default function VariantGrid({
   savedTileIds,
   savingTileId,
   printFormatId,
+  currentPreference,
+  onSetDefaultProvider,
 }: VariantGridProps) {
   const hasAny = tiles.some((t) => t.status !== "idle");
   if (!hasAny) return null;
@@ -84,6 +95,8 @@ export default function VariantGrid({
             saved={!!savedTileIds?.has(tile.id)}
             saving={savingTileId === tile.id}
             printFormatId={printFormatId ?? null}
+            currentPreference={currentPreference}
+            onSetDefaultProvider={onSetDefaultProvider}
           />
         ))}
       </div>
@@ -99,6 +112,8 @@ function VariantTileCard({
   saved,
   saving,
   printFormatId,
+  currentPreference,
+  onSetDefaultProvider,
 }: {
   tile: VariantTile;
   onKeep: VariantGridProps["onKeep"];
@@ -107,9 +122,21 @@ function VariantTileCard({
   saved: boolean;
   saving: boolean;
   printFormatId: string | null;
+  currentPreference?: GeneratorPreference;
+  onSetDefaultProvider?: (provider: ResolvedProviderId) => void;
 }) {
   const r = tile.response;
   const dims = useTileDimensions(tile);
+  const tileProvider =
+    r && (r.generationProvider === "sdxl" ||
+      r.generationProvider === "gemini" ||
+      r.generationProvider === "openai")
+      ? (r.generationProvider as ResolvedProviderId)
+      : null;
+  const showMakeDefault =
+    tileProvider !== null &&
+    onSetDefaultProvider !== undefined &&
+    tileProvider !== currentPreference;
 
   return (
     <div
@@ -230,6 +257,19 @@ function VariantTileCard({
               </Button>
             </div>
           </div>
+          {showMakeDefault && tileProvider && (
+            <button
+              type="button"
+              onClick={() => onSetDefaultProvider!(tileProvider)}
+              className={cn(
+                "self-start font-display text-[10px] px-2 py-1 rounded-sm border transition-colors",
+                "border-primary/40 text-primary hover:bg-primary/10",
+              )}
+              title="Make this generator your default for all styles"
+            >
+              Make {GENERATOR_PROVIDERS[tileProvider].displayName} default
+            </button>
+          )}
         </div>
       )}
     </div>
