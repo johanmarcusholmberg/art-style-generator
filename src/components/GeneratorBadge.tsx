@@ -10,6 +10,8 @@ import {
   resolveGenerator,
   loadGeneratorPreference,
   saveGeneratorPreference,
+  getStyleGeneratorOverride,
+  setStyleGeneratorOverride,
 } from "@/lib/generators";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -19,6 +21,10 @@ interface GeneratorBadgeProps {
   /** Provider that was actually used for the most recent generation, if any. */
   lastUsedProvider?: string | null;
   lastFallbackUsed?: boolean;
+  /** When provided, selections are saved as the default for THIS style only. */
+  styleKey?: string;
+  /** Human-readable style name used in the popover copy. */
+  styleLabel?: string;
 }
 
 interface QuickHealth {
@@ -32,8 +38,13 @@ export default function GeneratorBadge({
   onChange,
   lastUsedProvider,
   lastFallbackUsed,
+  styleKey,
+  styleLabel,
 }: GeneratorBadgeProps) {
   const [open, setOpen] = useState(false);
+  const [hasStyleOverride, setHasStyleOverride] = useState(
+    () => getStyleGeneratorOverride(styleKey) !== undefined,
+  );
   const [health, setHealth] = useState<QuickHealth[] | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(false);
 
@@ -64,7 +75,19 @@ export default function GeneratorBadge({
 
   const handleSelect = (id: GeneratorPreference) => {
     onChange(id);
-    saveGeneratorPreference(id);
+    if (styleKey) {
+      setStyleGeneratorOverride(styleKey, id);
+      setHasStyleOverride(true);
+    } else {
+      saveGeneratorPreference(id);
+    }
+  };
+
+  const handleClearStyleOverride = () => {
+    if (!styleKey) return;
+    setStyleGeneratorOverride(styleKey, undefined);
+    setHasStyleOverride(false);
+    onChange(loadGeneratorPreference());
   };
 
   return (
@@ -91,11 +114,29 @@ export default function GeneratorBadge({
             Image model
           </p>
           <p className="font-display text-[11px] text-muted-foreground leading-snug">
-            Single source of truth for which engine actually generates the
-            image. Your choice is saved as the default for all styles and
-            persists across sessions.
+            {styleKey
+              ? `Your choice is saved as the default for ${styleLabel ?? "this style"} only. Other styles keep their own default.`
+              : "Your choice is saved as the default for all styles and persists across sessions."}
           </p>
+          {styleKey && (
+            <p className="font-display text-[10px] text-muted-foreground mt-1">
+              {hasStyleOverride
+                ? "This style has its own default."
+                : `Following your overall default (${GENERATOR_PROVIDERS[resolveGenerator(loadGeneratorPreference()).primary.providerId].displayName}).`}
+            </p>
+          )}
         </div>
+
+        {styleKey && hasStyleOverride && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="font-display text-[11px] h-7 w-full justify-start"
+            onClick={handleClearStyleOverride}
+          >
+            Use my overall default instead
+          </Button>
+        )}
 
         <div className="space-y-1">
           {GENERATOR_OPTIONS.map((opt) => {
