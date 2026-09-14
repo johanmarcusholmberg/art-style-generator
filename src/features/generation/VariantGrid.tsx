@@ -61,6 +61,8 @@ export default function VariantGrid({
   savedTileIds,
   savingTileId,
   printFormatId,
+  currentPreference,
+  onSetDefaultProvider,
 }: VariantGridProps) {
   const hasAny = tiles.some((t) => t.status !== "idle");
   if (!hasAny) return null;
@@ -93,6 +95,8 @@ export default function VariantGrid({
             saved={!!savedTileIds?.has(tile.id)}
             saving={savingTileId === tile.id}
             printFormatId={printFormatId ?? null}
+            currentPreference={currentPreference}
+            onSetDefaultProvider={onSetDefaultProvider}
           />
         ))}
       </div>
