@@ -56,14 +56,6 @@ const TIER_META: Record<
   },
 };
 
-/** Largest format (by area) where the image reaches >= 280 PPI. */
-function findBestFormat(w: number, h: number): PrintFormat | null {
-  const CM = 1 / 2.54;
-  const sorted = [...(getPrintFormat("print_50x70") ? require("@/lib/print-formats").PRINT_FORMATS as PrintFormat[] : [])];
-  // Avoid circular import weirdness — PRINT_FORMATS is imported below instead.
-  return null;
-}
-
 /** Simple ratio label like "5:7" from pixel dims. */
 function ratioLabel(w: number, h: number): string {
   const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
