@@ -19,6 +19,7 @@ import MatchingCollectionDialog from "@/components/matching-collection/MatchingC
 import { resolveMatchingCollectionAnchor } from "@/lib/matching-collection/anchor-resolver";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
 import { PosterFormatStatus } from "@/components/PosterFormatStatus";
+import PrintReadinessCard from "@/components/PrintReadinessCard";
 import { describeExportSource } from "@/lib/asset-selection";
 import {
   AlertDialog,
@@ -2208,6 +2209,12 @@ export default function ImageGenerator({
               }
               canonicalSourceUrl={enhancedImageUrl || baseImageUrl || imageUrl || null}
               adopting={adoptingCanonical}
+            />
+
+            <PrintReadinessCard
+              widthPx={(enhancedProbedDims ?? baseProbedDims)?.width ?? null}
+              heightPx={(enhancedProbedDims ?? baseProbedDims)?.height ?? null}
+              printFormatId={selectedPrintFormat.id}
             />
 
 
