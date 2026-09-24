@@ -4,7 +4,6 @@ import {
   assessExportReadiness,
   isAspectRatioMatch,
   getPrintFormat,
-  type PrintFormat,
 } from "@/lib/print-formats";
 
 interface PrintReadinessCardProps {
