@@ -43,6 +43,9 @@ import { loadImageDimensions, classifyPrintReadiness } from "@/lib/image-metadat
 import { recordAssetCostEvent } from "@/lib/cost-events";
 import DownloadButton from "@/components/generation/DownloadButton";
 import UploadedImageInput, { type UploadedSource } from "@/components/generation/UploadedImageInput";
+import StylePromptHints from "@/components/generation/StylePromptHints";
+import ColorOverrideInput from "@/components/generation/ColorOverrideInput";
+import { applyColorOverride } from "@/lib/prompt-hints";
 import GeneratedImageActions from "@/components/generation/GeneratedImageActions";
 import { GeneratorWorkspace, WorkspaceControls, WorkspaceResult, WorkspaceWideResult } from "@/components/generation/GeneratorWorkspace";
 
@@ -180,6 +183,9 @@ export default function ImageGenerator({
     : (styleConfig.freestyleModeValue ?? `${styleConfig.styleKey}-freestyle`);
 
   const persistKey = `${styleConfig.styleKey}-${mode}` as any;
+  const activeStyleRules = isTertiary ? styleConfig.tertiaryRules : isThemed ? styleConfig.themedRules : styleConfig.freestyleRules;
+  const [colorOverride, setColorOverride] = useState("");
+  const promptWithColors = (p: string) => (isInlineEditing ? p.trim() : applyColorOverride(p, colorOverride));
 
   const {
     prompt, setPrompt,
@@ -712,7 +718,7 @@ export default function ImageGenerator({
       provider: strictnessProvider,
     });
     return {
-      prompt: activePrompt.trim(),
+      prompt: promptWithColors(activePrompt),
       styleKey: variantStyleKey,
       aspectRatio: effectiveAspectRatio,
       backgroundStyle,
@@ -758,7 +764,7 @@ export default function ImageGenerator({
     if (savedTileIds.has(tile.id) || savingTileId !== null) return;
     setSavingTileId(tile.id);
     try {
-      const finalPrompt = (isInlineEditing ? editPrompt : prompt).trim();
+      const finalPrompt = promptWithColors(isInlineEditing ? editPrompt : prompt);
       const isPrint = generationMode === "print-ready";
       const { baseDims, masterDims, readiness } = await probeDimensionsAndReadiness(
         response.imageUrl,
@@ -947,7 +953,7 @@ export default function ImageGenerator({
 
     // Track the request context so the completion effect can pass it
     // through even after realtime reconnect / refresh.
-    activePromptRef.current = activePrompt.trim();
+    activePromptRef.current = promptWithColors(activePrompt);
     activeRefImageRef.current = referenceImageUrl;
     activeRefStrengthRef.current = referenceImageUrl ? referenceStrength : null;
 
@@ -957,7 +963,7 @@ export default function ImageGenerator({
       // so the server resolves an equivalent generator to the in-tab
       // router path.
       await durable.start({
-        prompt: activePrompt.trim(),
+        prompt: promptWithColors(activePrompt),
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
         generationMode: "print-ready",
@@ -1619,6 +1625,9 @@ export default function ImageGenerator({
                     }
                     className="min-h-[100px] bg-card border-border font-display text-base resize-none focus-visible:ring-primary disabled:opacity-60"
                   />
+                  {!isEditMode && (
+                    <StylePromptHints rules={activeStyleRules} prompt={prompt} colorOverride={colorOverride} />
+                  )}
                   <p className="font-display font-bold text-sm text-foreground">
                     {isEditMode ? "Edit suggestions" : "Suggestions"}
                   </p>
