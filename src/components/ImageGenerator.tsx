@@ -1645,6 +1645,94 @@ export default function ImageGenerator({
             "Enhance for print" button appears next to the generated image
             once it's available (see action row below). */}
 
+        {!isInlineEditing && (
+          <ColorOverrideInput value={colorOverride} onChange={setColorOverride} disabled={loading} />
+        )}
+
+
+        {/* Generation Mode selector hidden — defaults to "print-ready" via state. */}
+
+        {/* Poster size & Output quality cards hidden — defaults are
+            selectedPrintFormat = print_50x70 and qualityTarget = print-300. */}
+
+        {/* ── Artwork card (compact) ─────────────────────────────────── */}
+        <div className="rounded-md border border-border bg-card/60 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h3 className="font-display text-sm font-bold text-foreground">Artwork</h3>
+          </div>
+
+          {/* Poster format selector — controls artwork composition + export shape */}
+          <div className="flex items-center justify-between gap-3 flex-wrap pt-2 border-t border-border/60">
+            <div className="flex flex-col">
+              <span className="font-display text-[11px] text-muted-foreground">Poster format</span>
+              <span className="font-display text-[10px] text-muted-foreground/70">
+                Controls the artwork composition and export shape.
+              </span>
+            </div>
+            <select
+              value={selectedPrintFormat.id}
+              onChange={(e) => {
+                const next = PRINT_FORMATS.find((f) => f.id === e.target.value);
+                if (next) setSelectedPrintFormat(next);
+              }}
+              className="font-display text-xs px-2 py-1 rounded-sm border border-border bg-background text-foreground"
+              aria-label="Poster format"
+            >
+              {PRINT_FORMATS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+
+        {/* Poster setup section hidden — composer text + template state remain
+            in defaults (template "fika", textMode "composer", safe area off). */}
+
+        {/* ── Advanced settings (provider/debug controls) ────────────── */}
+        <details className="group">
+          <summary className="cursor-pointer select-none px-1 py-1 flex items-center gap-2 font-display text-xs">
+            <span className="font-bold text-foreground">More options</span>
+            <span className="text-muted-foreground">(reference image · paper · model · details)</span>
+            {lastProviderUsed && (
+              <span className="ml-auto flex items-center gap-2">
+                {lastRequestedSize && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
+                    title={
+                      lastProviderExactMatch === false
+                        ? `The generator returned ${lastRequestedSize}, which does not exactly match your selected poster aspect ratio. The image is auto-corrected (padded or center-cropped) to the exact print ratio before saving and export — no manual step needed.`
+                        : `The generator produced ${lastRequestedSize} at the exact aspect ratio of your selected poster format. No ratio correction was applied.`
+                    }
+                  >
+                    Last render: {lastRequestedSize}
+                    <span
+                      className={
+                        lastProviderExactMatch === false
+                          ? "text-amber-500"
+                          : "text-emerald-500"
+                      }
+                    >
+                      ·{" "}
+                      {lastProviderExactMatch === false
+                        ? "auto-corrected to poster ratio"
+                        : "matches poster ratio"}
+                    </span>
+                  </span>
+                )}
+                <RouteBadge
+                  provider={lastProviderUsed}
+                  model={lastModelUsed}
+                  route={lastExecutionRoute}
+                  fallback={lastFallbackUsed}
+                  variant="compact"
+                />
+              </span>
+            )}
+          </summary>
+          <div className="px-1 pt-3 pb-1 space-y-3">
         {/* Upload source image — optional, lets the user run the prompt
             against a reference image (reuses the edit/source pipeline). */}
         {!isEditMode && (
@@ -1693,17 +1781,8 @@ export default function ImageGenerator({
             </p>
           </div>
         )}
-
-        {/* Generation Mode selector hidden — defaults to "print-ready" via state. */}
-
-        {/* Poster size & Output quality cards hidden — defaults are
-            selectedPrintFormat = print_50x70 and qualityTarget = print-300. */}
-
-        {/* ── Artwork card (compact) ─────────────────────────────────── */}
-        <div className="rounded-md border border-border bg-card/60 p-3 space-y-2">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <h3 className="font-display text-sm font-bold text-foreground">Artwork</h3>
             <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-display text-[11px] font-bold text-foreground">Artwork</span>
               <span className="font-display text-[11px] text-muted-foreground">Background:</span>
               <div className="inline-flex items-center gap-1 border border-border rounded-sm p-0.5">
                 <button
@@ -1759,80 +1838,6 @@ export default function ImageGenerator({
                 </>
               )}
             </div>
-          </div>
-
-          {/* Poster format selector — controls artwork composition + export shape */}
-          <div className="flex items-center justify-between gap-3 flex-wrap pt-2 border-t border-border/60">
-            <div className="flex flex-col">
-              <span className="font-display text-[11px] text-muted-foreground">Poster format</span>
-              <span className="font-display text-[10px] text-muted-foreground/70">
-                Controls the artwork composition and export shape.
-              </span>
-            </div>
-            <select
-              value={selectedPrintFormat.id}
-              onChange={(e) => {
-                const next = PRINT_FORMATS.find((f) => f.id === e.target.value);
-                if (next) setSelectedPrintFormat(next);
-              }}
-              className="font-display text-xs px-2 py-1 rounded-sm border border-border bg-background text-foreground"
-              aria-label="Poster format"
-            >
-              {PRINT_FORMATS.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-
-        {/* Poster setup section hidden — composer text + template state remain
-            in defaults (template "fika", textMode "composer", safe area off). */}
-
-        {/* ── Advanced settings (provider/debug controls) ────────────── */}
-        <details className="group">
-          <summary className="cursor-pointer select-none px-1 py-1 flex items-center gap-2 font-display text-xs">
-            <span className="font-bold text-foreground">Advanced settings</span>
-            <span className="text-muted-foreground">(provider · strictness · compare)</span>
-            {lastProviderUsed && (
-              <span className="ml-auto flex items-center gap-2">
-                {lastRequestedSize && (
-                  <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
-                    title={
-                      lastProviderExactMatch === false
-                        ? `The generator returned ${lastRequestedSize}, which does not exactly match your selected poster aspect ratio. The image is auto-corrected (padded or center-cropped) to the exact print ratio before saving and export — no manual step needed.`
-                        : `The generator produced ${lastRequestedSize} at the exact aspect ratio of your selected poster format. No ratio correction was applied.`
-                    }
-                  >
-                    Last render: {lastRequestedSize}
-                    <span
-                      className={
-                        lastProviderExactMatch === false
-                          ? "text-amber-500"
-                          : "text-emerald-500"
-                      }
-                    >
-                      ·{" "}
-                      {lastProviderExactMatch === false
-                        ? "auto-corrected to poster ratio"
-                        : "matches poster ratio"}
-                    </span>
-                  </span>
-                )}
-                <RouteBadge
-                  provider={lastProviderUsed}
-                  model={lastModelUsed}
-                  route={lastExecutionRoute}
-                  fallback={lastFallbackUsed}
-                  variant="compact"
-                />
-              </span>
-            )}
-          </summary>
-          <div className="px-1 pt-3 pb-1 space-y-3">
             {(lastRequestedModelId || lastResolvedModelId || lastModelFallbackReason) && (
               <div
                 className="px-2 py-1.5 rounded-sm border border-border bg-muted/30 text-[10px] font-display text-muted-foreground leading-snug"
