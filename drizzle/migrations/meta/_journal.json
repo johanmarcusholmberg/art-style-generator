@@ -8,6 +8,13 @@
       "when": 1795683109975,
       "tag": "0000_add_generated_images_updated_at",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795683162193,
+      "tag": "0001_restrict_upscale_jobs_admin",
+      "breakpoints": true
     }
   ]
 }

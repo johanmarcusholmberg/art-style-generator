@@ -1,0 +1,11 @@
+DROP POLICY IF EXISTS "Anyone can delete upscale_jobs" ON public.upscale_jobs;
+DROP POLICY IF EXISTS "Anyone can update upscale_jobs" ON public.upscale_jobs;
+DROP POLICY IF EXISTS "Anyone can insert upscale_jobs" ON public.upscale_jobs;
+DROP POLICY IF EXISTS "Anyone can view upscale_jobs" ON public.upscale_jobs;
+REVOKE ALL ON public.upscale_jobs FROM anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.upscale_jobs TO authenticated;
+GRANT ALL ON public.upscale_jobs TO service_role;
+CREATE POLICY "Admin can view upscale_jobs" ON public.upscale_jobs FOR SELECT TO authenticated USING (public.is_current_user_admin());
+CREATE POLICY "Admin can insert upscale_jobs" ON public.upscale_jobs FOR INSERT TO authenticated WITH CHECK (public.is_current_user_admin());
+CREATE POLICY "Admin can update upscale_jobs" ON public.upscale_jobs FOR UPDATE TO authenticated USING (public.is_current_user_admin()) WITH CHECK (public.is_current_user_admin());
+CREATE POLICY "Admin can delete upscale_jobs" ON public.upscale_jobs FOR DELETE TO authenticated USING (public.is_current_user_admin());
