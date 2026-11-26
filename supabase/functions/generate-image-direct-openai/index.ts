@@ -16,6 +16,7 @@ import {
   compilePromptForOpenAI,
 } from "../_shared/prompt-compiler.ts";
 import { openaiGptImage2SizeForFormat } from "../_shared/provider-sizing.ts";
+import { classifyOpenAIError } from "../_shared/openai-errors.ts";
 
 type ReferenceStrength =
   | "inspiration"
@@ -290,16 +291,10 @@ serve(async (req) => {
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       console.error(`[direct-openai] HTTP ${res.status}: ${text.slice(0, 500)}`);
-      // Map common errors to clearer messages.
-      let errMsg = `OpenAI image error ${res.status}: ${text.slice(0, 200)}`;
-      if (res.status === 401) errMsg = "OpenAI rejected the API key (401).";
-      else if (res.status === 429) errMsg = "OpenAI rate limit hit (429). Try again shortly.";
-      else if (res.status === 400 && text.includes("safety")) {
-        errMsg = "OpenAI safety system blocked this prompt. Try rewording.";
-      }
+      const failure = classifyOpenAIError(res.status, text);
       return new Response(
-        JSON.stringify({ error: errMsg }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: failure.error, code: failure.code, retryable: failure.retryable }),
+        { status: failure.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 

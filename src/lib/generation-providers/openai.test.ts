@@ -54,6 +54,21 @@ function baseRequest(
 
 beforeEach(() => {
   invokeCalls.length = 0;
+  invokeResponse.error = null;
+});
+
+describe("generateWithOpenAIAdapter — failure reporting", () => {
+  it("surfaces the billing error body instead of a generic invocation error", async () => {
+    invokeResponse.error = {
+      context: new Response(JSON.stringify({ error: "OpenAI API credits are exhausted.", code: "quota-exhausted" }), { status: 402 }),
+    };
+    await expect(generateWithOpenAIAdapter(baseRequest())).rejects.toThrow("OpenAI API credits are exhausted.");
+    expect(invokeCalls).toHaveLength(1);
+  });
+  it("preserves network errors without a response body", async () => {
+    invokeResponse.error = new Error("Network unavailable");
+    await expect(generateWithOpenAIAdapter(baseRequest())).rejects.toThrow("Network unavailable");
+  });
 });
 
 describe("generateWithOpenAIAdapter — image-to-image", () => {

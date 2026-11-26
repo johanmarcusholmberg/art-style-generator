@@ -84,7 +84,9 @@ export async function runOpenAIDurable(args: GenerateArgs): Promise<OpenAIDurabl
     const message = (data?.error as string) ?? `OpenAI generation failed (HTTP ${res.status})`;
     // 4xx from the OpenAI function means the request itself is wrong —
     // retrying will not help, so surface it as terminal.
-    const code = res.status >= 400 && res.status < 500 ? "invalid-prompt" : "provider-error";
+    const code = data?.code === "quota-exhausted" ? "quota-exhausted"
+      : res.status === 429 ? "rate-limit"
+      : res.status >= 400 && res.status < 500 ? "invalid-prompt" : "provider-error";
     throw new ProviderError(code, message);
   }
   if (typeof data.imageUrl !== "string" || !data.imageUrl) {

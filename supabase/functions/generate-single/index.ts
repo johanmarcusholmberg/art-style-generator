@@ -285,7 +285,7 @@ serve(async (httpReq) => {
       // Attempt-count is bumped inside claim; terminal iff exhausted OR non-retryable.
       const nonRetryable =
         err instanceof ProviderError &&
-        ["missing-key", "invalid-prompt", "unsupported"].includes(err.code);
+        ["missing-key", "invalid-prompt", "unsupported", "quota-exhausted"].includes(err.code);
       const terminal = nonRetryable;
       try {
         await supabase.rpc("fail_generation_item", {

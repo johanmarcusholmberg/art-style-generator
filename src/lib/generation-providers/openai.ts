@@ -81,7 +81,15 @@ export async function generateWithOpenAIAdapter(
     "generate-image-direct-openai",
     { body },
   );
-  if (error) throw error;
+  if (error) {
+    // invoke() reports non-2xx as a generic HTTP error; preserve the actionable body.
+    const context = error.context;
+    if (context instanceof Response) {
+      const failure = await context.clone().json().catch(() => null);
+      if (typeof failure?.error === "string") throw new Error(failure.error);
+    }
+    throw error;
+  }
   if (!data || data.error) {
     throw new Error(data?.error || "Direct OpenAI generation failed");
   }
