@@ -556,6 +556,7 @@ export type Database = {
           target_height_px: number | null
           target_ppi: number | null
           target_width_px: number | null
+          updated_at: string
           upscale_applied: boolean | null
           upscale_factor: number | null
           upscale_method: string | null
@@ -638,6 +639,7 @@ export type Database = {
           target_height_px?: number | null
           target_ppi?: number | null
           target_width_px?: number | null
+          updated_at?: string
           upscale_applied?: boolean | null
           upscale_factor?: number | null
           upscale_method?: string | null
@@ -720,6 +722,7 @@ export type Database = {
           target_height_px?: number | null
           target_ppi?: number | null
           target_width_px?: number | null
+          updated_at?: string
           upscale_applied?: boolean | null
           upscale_factor?: number | null
           upscale_method?: string | null
