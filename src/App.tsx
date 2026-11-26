@@ -43,6 +43,8 @@ import StyleControlPanel from "./pages/StyleControlPanel";
 import PrintCalculator from "./pages/PrintCalculator";
 import ArtNouveau from "./pages/ArtNouveau";
 import MidCenturyModern from "./pages/MidCenturyModern";
+import FineArtPhotography from "./pages/FineArtPhotography";
+import AnalogFilm from "./pages/AnalogFilm";
 import LooseWatercolor from "./pages/LooseWatercolor";
 import BackendInfo from "./pages/BackendInfo";
 import QuickAccess from "./pages/QuickAccess";
@@ -120,6 +122,8 @@ const App = () => (
               <Route path="/print-calculator" element={protect(<PrintCalculator />)} />
               <Route path="/artnouveau" element={protect(<ArtNouveau />)} />
               <Route path="/midcenturymodern" element={protect(<MidCenturyModern />)} />
+              <Route path="/fine-art-photography" element={protect(<FineArtPhotography />)} />
+              <Route path="/analog-film" element={protect(<AnalogFilm />)} />
               <Route path="/loosewatercolor" element={protect(<LooseWatercolor />)} />
               <Route path="/collection/:id" element={protect(<CollectionPage />)} />
 

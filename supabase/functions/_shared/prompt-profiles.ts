@@ -18,6 +18,8 @@ export type StyleCategory =
   | "painterly"
   | "photographic_mono"
   | "photographic"
+  | "photo_fineart"
+  | "photo_analog"
   | "lo_fi_print"
   | "comic_print"
   | "tattoo_flash"
@@ -67,6 +69,10 @@ export const STYLE_CATEGORY_OVERRIDES: Record<string, StyleCategory> = {
   "modernist_cocktail-freestyle": "poster_flat",
 
   // Mediterranean Heritage → premium color travel photography
+  fineartphoto: "photo_fineart",
+  "fineartphoto-freestyle": "photo_fineart",
+  analogfilm: "photo_analog",
+  "analogfilm-freestyle": "photo_analog",
   mediterranean_heritage: "photographic",
   "mediterranean_heritage-freestyle": "photographic",
 
@@ -309,6 +315,16 @@ export const SDXL_CATEGORY_PROFILES: Record<StyleCategory, SdxlProfile> = {
       "ugly",
       "deformed",
     ],
+  },
+  photo_fineart: {
+    reinforcement: ["fine-art photograph", "natural light", "true-to-life color", "sharp realistic detail", "shallow depth of field", "clean low-noise image"],
+    composition: ["strong focal point with clean framing", "intentional negative space", "balanced composition"],
+    negative: ["illustration", "painting", "watercolor", "cartoon", "anime", "vector", "3d render", "cgi", "hdr", "oversaturated", "film grain", "noise", "watermark", "text", "letters", "logo"],
+  },
+  photo_analog: {
+    reinforcement: ["analog film photograph", "35mm color film", "Kodak Portra tones", "fine natural film grain", "soft contrast", "warm faded colors", "natural light"],
+    composition: ["clear focal point", "relaxed natural framing", "balanced composition"],
+    negative: ["illustration", "painting", "cartoon", "anime", "3d render", "cgi", "hdr", "oversharpened", "digital look", "light leaks", "film border", "frame numbers", "watermark", "text", "letters", "logo"],
   },
   photographic: {
     reinforcement: [
@@ -701,6 +717,28 @@ export const OPENAI_CATEGORY_PROFILES: Record<StyleCategory, OpenAIProfile> = {
       "photographic realism or any rendered-engine look",
       "soft gradient shading inside shapes or watercolor tattoo styling",
       "any banner text, lettering, or watermarks",
+    ],
+  },
+  photo_fineart: {
+    guidance: [
+      "render this as a clean fine-art photograph — realistic, natural light, true-to-life neutral color, crisp detail, no film grain",
+      "compose with a strong single focal point, clean framing and intentional negative space",
+    ],
+    avoid: [
+      "any illustration, painting, cartoon, 3D render or CGI look",
+      "HDR, oversaturation, heavy filters, visible grain or noise",
+      "watermarks, logos, captions or any rendered text",
+    ],
+  },
+  photo_analog: {
+    guidance: [
+      "render this as a real analog color film photograph (35mm or medium format, Portra-like tones) with soft even fine grain, warm faded color and gentle contrast",
+      "compose with a clear focal point and relaxed natural framing",
+    ],
+    avoid: [
+      "any illustration, painting, cartoon, 3D render or CGI look",
+      "clinical digital sharpness, HDR, fake light leaks, scratches, film borders or frame numbers",
+      "watermarks, logos, captions or any rendered text",
     ],
   },
   photographic: {

@@ -158,9 +158,14 @@ const SOFT_PAINTERLY_FAMILY = new Set([
   "minimalism",
   "loosewatercolor",
   "loosewatercolor-freestyle",
+  // analog film keeps its grain — gentle path, no heavy cleanup
+  "analogfilm",
+  "analogfilm-freestyle",
 ]);
 
 const PHOTOREAL_FAMILY = new Set<string>([
+  "fineartphoto",
+  "fineartphoto-freestyle",
   // urbannoir was here but has been repositioned as illustrative noir (Phase 4)
 ]);
 

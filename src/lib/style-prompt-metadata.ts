@@ -57,6 +57,8 @@ const STYLE_KEY_TO_ROUTE: Record<string, string> = {
   artnouveau: "/artnouveau",
   midcenturymodern: "/midcenturymodern",
   loosewatercolor: "/loosewatercolor",
+  fineartphoto: "/fine-art-photography",
+  analogfilm: "/analog-film",
 };
 
 export function getCatalogEntryForStyleKey(

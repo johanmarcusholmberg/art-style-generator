@@ -85,6 +85,10 @@ const GEMINI_FIRST_STYLES = new Set<string>([
   // Mediterranean heritage — photographic travel style, Gemini-first per user spec
   "mediterranean_heritage",
   "mediterranean_heritage-freestyle",
+  "fineartphoto",
+  "fineartphoto-freestyle",
+  "analogfilm",
+  "analogfilm-freestyle",
 ]);
 
 const LOVABLE_SDXL_STYLES = new Set<string>([

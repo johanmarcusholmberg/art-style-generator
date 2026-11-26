@@ -73,6 +73,7 @@ const SOFT_STYLES = [
   "watercolor",
   "watercolour",
   "loosewatercolor",
+  "analogfilm",
   "botanical",
   "painterly",
   "vintage",

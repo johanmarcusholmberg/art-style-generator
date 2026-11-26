@@ -59,6 +59,8 @@ const STYLE_LABELS: Record<string, string> = {
   artnouveau: "🌸 Art Nouveau",
   midcenturymodern: "🌞 Mid-Century Modern",
   loosewatercolor: "💧 Loose Watercolor",
+  fineartphoto: "📷 Fine Art Photography",
+  analogfilm: "🎞️ Analog Film",
 };
 const styleLabel = (k: string) => STYLE_LABELS[k] ?? k;
 

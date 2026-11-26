@@ -46,6 +46,8 @@ import {
   MEDITERRANEAN_HERITAGE_STYLE,
   ARTNOUVEAU_STYLE,
   MIDCENTURYMODERN_STYLE,
+  FINEARTPHOTO_STYLE,
+  ANALOGFILM_STYLE,
   LOOSEWATERCOLOR_STYLE,
   type StyleConfig,
 } from "@/lib/style-config";
@@ -79,6 +81,8 @@ export const STYLE_CONFIG_BY_ROUTE: Record<string, StyleConfig> = {
   "/artnouveau": ARTNOUVEAU_STYLE,
   "/midcenturymodern": MIDCENTURYMODERN_STYLE,
   "/loosewatercolor": LOOSEWATERCOLOR_STYLE,
+  "/fine-art-photography": FINEARTPHOTO_STYLE,
+  "/analog-film": ANALOGFILM_STYLE,
 };
 
 /** Reverse index: canonical styleKey → route. */

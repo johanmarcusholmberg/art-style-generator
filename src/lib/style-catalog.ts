@@ -24,6 +24,7 @@ export type StyleCategory =
   | "Illustration"
   | "Modern & graphic"
   | "Travel Photography"
+  | "Photography"
   | "Experimental";
 
 export type StyleFamily =
@@ -562,6 +563,38 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printIntentModifier:
       "Use broad watercolor washes, clear subject silhouettes, and avoid tiny fragile pigment details that may become muddy in large prints.",
   },
+  {
+    route: "/fine-art-photography",
+    name: "Fine Art Photography",
+    emoji: "📷",
+    description: "Clean, sharp fine-art photography of any subject with natural light and true-to-life color.",
+    bestFor: "Landscapes, nature, still life, city and interiors as calm gallery-quality photo prints.",
+    category: "Photography",
+    family: "photo_mood",
+    visibility: "primary",
+    printSuitability: "excellent",
+    textureProfile: "clean",
+    shortUserDescription: "Clean, sharp fine-art photo of any subject in natural light.",
+    styleIntent: "Gallery-quality realistic photography of any subject",
+    negativePromptHints: ["illustration", "painting", "3D render", "HDR", "oversaturated", "film grain"],
+    printIntentModifier: "Keep the photograph sharp, clean and low-noise with natural tones so it holds up at large print sizes.",
+  },
+  {
+    route: "/analog-film",
+    name: "Analog Film",
+    emoji: "🎞️",
+    description: "35mm and medium-format film look with soft grain, warm tones and gentle contrast.",
+    bestFor: "Nostalgic photo prints of streets, coastlines, cafés, cars and everyday scenes.",
+    category: "Photography",
+    family: "photo_mood",
+    visibility: "primary",
+    printSuitability: "good",
+    textureProfile: "medium_texture",
+    shortUserDescription: "Warm film photo look with soft grain and gentle contrast.",
+    styleIntent: "Nostalgic analog film photography of any subject",
+    negativePromptHints: ["illustration", "painting", "3D render", "HDR", "digital over-sharpening", "fake light leaks"],
+    printIntentModifier: "Keep film grain fine and even, never clumpy, so it reads as natural texture in large prints.",
+  },
 ];
 
 export const STYLE_CATEGORIES: StyleCategory[] = [
@@ -569,6 +602,7 @@ export const STYLE_CATEGORIES: StyleCategory[] = [
   "Illustration",
   "Modern & graphic",
   "Travel Photography",
+  "Photography",
   "Experimental",
 ];
 

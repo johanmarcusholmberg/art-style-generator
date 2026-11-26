@@ -189,6 +189,16 @@ export const STYLE_PROMPT_METADATA: Record<string, StylePromptMetadata> = {
     printIntentModifier:
       "Use broad watercolor washes, clear subject silhouettes, and avoid tiny fragile pigment details that may become muddy in large prints.",
   },
+  fineartphoto: {
+    negativeHints: ["illustration", "painting", "3D render", "HDR", "oversaturated", "film grain"],
+    printIntentModifier:
+      "Keep the photograph sharp, clean and low-noise with natural tones so it holds up at large print sizes.",
+  },
+  analogfilm: {
+    negativeHints: ["illustration", "painting", "3D render", "HDR", "digital over-sharpening", "fake light leaks"],
+    printIntentModifier:
+      "Keep film grain fine and even, never clumpy, so it reads as natural texture in large prints.",
+  },
 };
 
 /**

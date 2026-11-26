@@ -119,10 +119,12 @@ describe("catalog wiring", () => {
     expect(routes).toEqual(
       [
         "/",
+        "/analog-film",
         "/artnouveau",
         "/blend",
         "/botanical",
         "/brutalistposter",
+        "/fine-art-photography",
         "/graffiti",
         "/lineart",
         "/loosewatercolor",
@@ -177,6 +179,8 @@ describe("phase 3: client ↔ edge prompt-metadata parity", () => {
     "/artnouveau": "artnouveau",
     "/midcenturymodern": "midcenturymodern",
     "/loosewatercolor": "loosewatercolor",
+    "/fine-art-photography": "fineartphoto",
+    "/analog-film": "analogfilm",
   };
 
   it("every catalog entry with prompt metadata has an edge mapping", () => {

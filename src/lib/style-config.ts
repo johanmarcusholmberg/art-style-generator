@@ -1100,3 +1100,49 @@ export const LOOSEWATERCOLOR_STYLE: StyleConfig = {
   themedRules: STYLE_RULES["loosewatercolor"],
   freestyleRules: STYLE_RULES["loosewatercolor-freestyle"],
 };
+
+export const FINEARTPHOTO_STYLE: StyleConfig = {
+  styleKey: "fineartphoto",
+  themedEdgeFn: "generate-image-fineartphoto",
+  freestyleEdgeFn: "generate-image-fineartphoto-freestyle",
+  themedTabLabel: "📷 Fine Art Photo",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Photo",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your subject… e.g. 'A misty forest at dawn'",
+  freestylePlaceholder: "Describe any subject… e.g. 'Coastal cliffs in soft morning light'",
+  prompts: {
+    themed: { generate: ["A misty forest at dawn", "A still life with handmade ceramics", "A quiet city street at night", "Coastal cliffs in soft morning light", "A lone tree in a snowy field", "Sunlight through a linen curtain"], edit: ["Soften the light and reduce contrast", "Simplify the background and add negative space", "Make the colors more neutral and natural"] },
+    freestyle: { generate: ["A calm lake with mountain reflections", "Fresh pears on a wooden table", "An empty concrete staircase in soft light", "Wild grasses backlit at sunset"], edit: ["Calm the composition \u2014 fewer elements", "Shift the light to golden hour", "Increase sharpness on the main subject"] },
+  },
+  themedModeValue: "fineartphoto",
+  freestyleModeValue: "fineartphoto-freestyle",
+  themedBadge: "📷",
+  freestyleBadge: "🎨",
+  downloadPrefix: "fine-art-photography",
+  themedRules: STYLE_RULES["fineartphoto"],
+  freestyleRules: STYLE_RULES["fineartphoto-freestyle"],
+};
+
+export const ANALOGFILM_STYLE: StyleConfig = {
+  styleKey: "analogfilm",
+  themedEdgeFn: "generate-image-analogfilm",
+  freestyleEdgeFn: "generate-image-analogfilm-freestyle",
+  themedTabLabel: "🎞️ Analog Film",
+  freestyleTabLabel: "🎨 Freestyle",
+  themedGenerateLabel: "Generate Film Photo",
+  freestyleGenerateLabel: "Generate Image",
+  themedPlaceholder: "Describe your subject… e.g. 'A seaside café in late afternoon'",
+  freestylePlaceholder: "Describe any subject… e.g. 'A vintage car on a desert road'",
+  prompts: {
+    themed: { generate: ["A seaside caf\u00e9 in late afternoon", "A vintage car on a desert road", "Laundry drying between old houses", "A bicycle leaning against a sunlit wall", "A quiet beach in summer haze", "A diner booth by the window"], edit: ["Make the film grain a little softer", "Warm the colors toward summer evening", "Lower the contrast for a more faded look"] },
+    freestyle: { generate: ["A misty pine forest on film", "A lighthouse at dusk", "Wildflowers by a country road", "A tram on a quiet street"], edit: ["Shift the tones toward cooler film stock", "Add more breathing room around the subject", "Make the light feel more natural"] },
+  },
+  themedModeValue: "analogfilm",
+  freestyleModeValue: "analogfilm-freestyle",
+  themedBadge: "🎞️",
+  freestyleBadge: "🎨",
+  downloadPrefix: "analog-film",
+  themedRules: STYLE_RULES["analogfilm"],
+  freestyleRules: STYLE_RULES["analogfilm-freestyle"],
+};

@@ -81,6 +81,8 @@ describe("style-registry (Stage 1 canonical registry)", () => {
       "vintage",
       "artnouveau",
       "midcenturymodern",
+      "fineartphoto",
+      "analogfilm",
       "loosewatercolor",
     ]) {
       expect(batchValues.has(key), `batch missing ${key}`).toBe(true);

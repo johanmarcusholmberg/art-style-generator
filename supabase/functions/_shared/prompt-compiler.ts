@@ -1168,6 +1168,52 @@ export const STYLE_RULES: Record<string, StyleRules> = {
     edgeSafety: ["silhouettes at the image edges are part of the poster — preserve them"],
   },
 
+  fineartphoto: {
+    visualGoal: ["clean fine-art photograph of any subject", "gallery-quality photographic wall art", "calm, timeless, print-worthy photo"],
+    styleAnchors: ["fine-art photography", "editorial color photograph", "large-format camera look", "natural light photography"],
+    styleRules: ["realistic premium photography — never illustration, never painting, never 3D", "natural, believable light with gentle realistic shadows", "true-to-life neutral color, balanced exposure", "real materials and textures rendered with crisp detail", "intentional depth of field — sharp subject, natural background falloff"],
+    compositionRules: ["strong single focal point with clean framing", "balanced composition with intentional negative space", "natural leading lines and calm visual hierarchy", "subject occupies roughly 40 to 80 percent of the frame", "all composition elements stay fully within the image boundary"],
+    colorRules: ["neutral, true-to-life color with subtle natural warmth", "restrained palette — no oversaturation", "clean whites and natural shadow detail"],
+    qualityRules: ["gallery-worthy print-ready fine-art photograph", "extremely sharp realistic micro-detail", "clean low-noise finish with no film grain"],
+    avoidRules: ["illustration, painting, watercolor, vector, cartoon, anime or surreal styling", "3D render, CGI or plastic AI-art look", "HDR, oversaturation, heavy filters or teal-orange grade", "visible film grain or noise", "watermarks, logos, captions or any rendered text", "cluttered snapshot framing"],
+    blockedTraits: ["illustration", "painting", "cartoon", "3D rendering", "HDR", "film grain", "logos and text"],
+    edgeSafety: ["scene details near the borders are part of the photograph — preserve them fully", "do not crop or fade the subject at the image boundary"],
+  },
+  "fineartphoto-freestyle": {
+    visualGoal: ["clean fine-art photograph of any subject", "gallery-quality photographic wall art"],
+    styleAnchors: ["fine-art photography", "editorial color photograph", "natural light photography"],
+    styleRules: ["realistic premium photography — never illustration, never painting, never 3D", "natural believable light", "true-to-life neutral color", "crisp realistic detail"],
+    compositionRules: ["strong focal point with clean framing", "intentional negative space", "all composition elements stay fully within the image boundary"],
+    colorRules: ["neutral true-to-life color", "no oversaturation"],
+    qualityRules: ["gallery-worthy print-ready photograph", "sharp realistic micro-detail, low noise"],
+    avoidRules: ["illustration, painting, cartoon or anime styling", "3D render or CGI", "HDR or heavy filters", "visible film grain", "watermarks, logos or any rendered text"],
+    blockedTraits: ["illustration", "painting", "3D rendering", "HDR", "film grain"],
+    edgeSafety: ["details near the borders are part of the photograph — preserve them"],
+  },
+
+  analogfilm: {
+    visualGoal: ["analog film photograph of any subject", "35mm / medium-format film wall art", "nostalgic, warm, timeless photo"],
+    styleAnchors: ["analog film photography", "35mm film photograph", "medium-format film look", "Kodak Portra / Fuji film tones"],
+    styleRules: ["realistic photograph shot on color film — never illustration, never painting, never 3D", "soft natural fine film grain across the whole image", "gentle warm film color with slight natural color shifts", "softer contrast with lifted shadows and smooth highlight roll-off", "natural available light"],
+    compositionRules: ["clear focal point with relaxed natural framing", "balanced composition with breathing room", "subject occupies roughly 40 to 80 percent of the frame", "all composition elements stay fully within the image boundary"],
+    colorRules: ["warm, slightly faded film palette", "soft natural skin and earth tones", "no neon, no oversaturation"],
+    qualityRules: ["print-ready film photograph with even fine grain", "real optical softness — no artificial blur", "authentic analog finish"],
+    avoidRules: ["illustration, painting, watercolor, cartoon or anime styling", "3D render, CGI or plastic AI-art look", "clinical digital sharpness, HDR or heavy filters", "fake light leaks, scratches, dust or vignette borders", "film rebates, frame numbers, watermarks or any rendered text"],
+    blockedTraits: ["illustration", "painting", "3D rendering", "HDR", "digital over-sharpening", "logos and text"],
+    edgeSafety: ["scene details near the borders are part of the photograph — preserve them", "no film borders or frame edges"],
+  },
+  "analogfilm-freestyle": {
+    visualGoal: ["analog film photograph of any subject", "nostalgic film wall art"],
+    styleAnchors: ["analog film photography", "35mm film photograph", "medium-format film look"],
+    styleRules: ["realistic film photograph — never illustration or 3D", "soft natural fine film grain", "gentle warm film color", "softer contrast"],
+    compositionRules: ["clear focal point with relaxed natural framing", "all composition elements stay fully within the image boundary"],
+    colorRules: ["warm slightly faded film palette", "no neon or oversaturation"],
+    qualityRules: ["print-ready film photograph with even fine grain"],
+    avoidRules: ["illustration, painting or cartoon styling", "3D render or CGI", "clinical digital sharpness or HDR", "fake light leaks, scratches or film borders", "watermarks or any rendered text"],
+    blockedTraits: ["illustration", "3D rendering", "HDR", "digital over-sharpening"],
+    edgeSafety: ["no film borders or frame edges"],
+  },
+
   loosewatercolor: {
     visualGoal: ["soft expressive loose watercolor artwork", "airy painterly wall art with handmade character", "elegant but imperfect watercolor composition"],
     styleAnchors: ["loose expressive watercolor", "soft pigment blooms and washes", "airy painterly illustration", "handmade watercolor character"],
@@ -1284,6 +1330,12 @@ function styleStrictSuffix(styleKey: string): string {
   }
   if (styleKey === "modernist_cocktail" || styleKey === "modernist_cocktail-freestyle") {
     return "STRICT STYLE: modernist cocktail poster — bold geometric construction, flat vector-like rendering with hard clean edges, limited 3–5 color modernist palette (e.g. navy/orange/cream, olive/mustard/cream, terracotta/teal/ivory, burgundy/beige/black/gold), subtle screen-print texture and grain on flat color areas, mid-century / Bauhaus / Swiss poster influence, vintage advertising aesthetic. COMPOSITION: ONE central hero drink in ONE primary vessel (cocktail glass, wine glass, beer mug, coffee cup, tumbler, coupe), occupying roughly 50–75% of the vertical poster, with intentional negative space and a thin implied poster border/frame line just inside the artwork edges. Liquid and glass simplified into geometric reflections, abstract highlights, and layered flat color planes — never photoreal. At most ONE small graphic accent (one citrus slice, one olive, one abstract shape) and optionally one small restrained modernist typographic line; never paragraphs and never logos. STRICTLY AVOID: photorealistic drinks or glassware, realistic glass reflections, realistic bar interiors or crowded scenes, multiple competing drinks, stock-photo or marketing-photography look, AI fantasy aesthetics, ornate decorations, busy backgrounds, excessive text or recipe blocks, rendered logos/brand marks/watermarks, 3D rendering, glossy digital sheen, cinematic lighting, watercolor, oil painting, anime, cartoon, rainbow palettes. Do not copy any specific reference poster.";
+  }
+  if (styleKey === "fineartphoto" || styleKey === "fineartphoto-freestyle") {
+    return "STRICT STYLE: clean fine-art photograph — realistic premium photography, NEVER illustration, NEVER painting, NEVER 3D render, NEVER AI-art aesthetic. Natural believable light, true-to-life neutral color, crisp realistic micro-detail, intentional depth of field, clean low-noise finish without film grain. COMPOSITION: strong single focal point, clean framing, intentional negative space. STRICTLY AVOID: HDR, oversaturation, heavy filters, film grain, watermarks, logos or rendered text.";
+  }
+  if (styleKey === "analogfilm" || styleKey === "analogfilm-freestyle") {
+    return "STRICT STYLE: analog color film photograph (35mm / medium format, Portra-like tones) — realistic photography, NEVER illustration, NEVER painting, NEVER 3D render. Soft even fine film grain, gentle warm slightly faded film color, softer contrast with lifted shadows, natural available light. COMPOSITION: clear focal point, relaxed natural framing. STRICTLY AVOID: clinical digital sharpness, HDR, fake light leaks, scratches, film borders or frame numbers, watermarks or rendered text.";
   }
   if (styleKey === "mediterranean_heritage" || styleKey === "mediterranean_heritage-freestyle") {
     return "STRICT STYLE: fine-art Mediterranean travel photograph — realistic premium photography, NEVER illustration, NEVER painting, NEVER 3D render, NEVER AI-art aesthetic. Authentic Mediterranean materials with natural aging and patina (limestone, weathered wood, peeling paint, aged plaster, terracotta, old stone), soft natural Mediterranean sunlight (warm morning or golden afternoon) with gentle realistic shadows, sunwashed naturally faded palette (sage, olive, terracotta, sandstone, limestone, cream, beige, dusty blue, faded turquoise, weathered white, ochre, muted earth tones). COMPOSITION: strong focal point with clean framing, balanced composition with intentional negative space and natural leading lines, subject occupies roughly 50–80% of the frame, poster-friendly editorial layout. The visual identity stays consistent across architecture (doors, windows, balconies, facades, staircases, courtyards, churches, alleyways), nature (olive trees, lemon trees, bougainvillea, vineyards, coastlines, cliffs), lifestyle (cafés, terraces, market stalls, fishing boats, harbors, plazas), and details (ceramic pots, lanterns, shutters, fountains, stone textures). Supporting Mediterranean plants may complement the subject but must never overwhelm it. People may appear occasionally but rarely as the main subject. STRICTLY AVOID: any illustration, painting, watercolor, gouache, vector, cartoon, anime, fantasy or surrealism; HDR, dramatic cinematic lighting, artificial neon, extreme contrast, overprocessed travel photography, instagram-style filters, teal-orange grade, oversaturation; crowds, heavy traffic, modern advertisements, brand logos, watermarks, rendered text or captions; pristine new construction or luxury-modern perfection. Do not copy any specific real-world location or building.";
